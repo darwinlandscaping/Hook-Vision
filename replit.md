@@ -28,11 +28,17 @@ A fishing sonar analysis mobile app built with Expo + React Native.
 - AI-powered fish analysis (count, depth, species, casting advice) via OpenAI GPT vision
 - Animated sonar pulse UI with deep ocean dark theme
 - Analysis history stored locally with AsyncStorage (up to 50 entries)
-- History tab to review past analyses
+- NT Tides: real-time tide predictions scraped from Bureau of Meteorology for Darwin, Gove & Groote Eylandt with 1-hour server-side caching
+- NT Species guide: 14 NT species with bag limits, size rules, slot limits, eating ratings, best months, and season info (static data, no API needed)
 
-**Screens:**
-- `app/(tabs)/index.tsx` — Analyze screen (upload + analyze)
+**Screens (4 tabs):**
+- `app/(tabs)/index.tsx` — Analyze screen (upload + AI analyze)
+- `app/(tabs)/tides.tsx` — Tides screen with port selector, next tide countdown, and daily tide schedule
+- `app/(tabs)/species.tsx` — Species guide with search, category filter, and expandable cards
 - `app/(tabs)/history.tsx` — History of past analyses
+
+**Data:**
+- `data/ntSpecies.ts` — Static NT species regulations database (14 species)
 
 **Components:**
 - `components/SonarPulse.tsx` — Animated sonar ring pulse
@@ -51,6 +57,8 @@ Express 5 API server.
 **Routes:**
 - `GET /api/healthz` — Health check
 - `POST /api/analyze` — Analyze sonar image (accepts `{ imageBase64: string }`, returns fish analysis JSON)
+- `GET /api/tides?port=darwin&days=3` — NT tide predictions scraped from BOM (1-hour in-memory cache). Ports: `darwin`, `gove`, `groote`
+- `GET /api/tides/ports` — List available NT ports
 
 ## Key Commands
 

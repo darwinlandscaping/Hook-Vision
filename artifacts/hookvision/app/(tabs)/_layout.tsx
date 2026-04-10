@@ -16,6 +16,14 @@ function NativeTabLayout() {
         <Icon sf={{ default: "waveform", selected: "waveform" }} />
         <Label>Analyze</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="tides">
+        <Icon sf={{ default: "water.waves", selected: "water.waves" }} />
+        <Label>Tides</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="species">
+        <Icon sf={{ default: "fish", selected: "fish.fill" }} />
+        <Label>Species</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="history">
         <Icon sf={{ default: "clock", selected: "clock.fill" }} />
         <Label>History</Label>
@@ -57,6 +65,7 @@ function ClassicTabLayout() {
               style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
             />
           ) : null,
+        tabBarLabelStyle: { fontSize: 11, fontFamily: "Inter_500Medium" },
       }}
     >
       <Tabs.Screen
@@ -65,7 +74,31 @@ function ClassicTabLayout() {
           title: "Analyze",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="waveform" tintColor={color} size={24} />
+              <SymbolView name="waveform" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="fish" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="tides"
+        options={{
+          title: "Tides",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="water.waves" tintColor={color} size={22} />
+            ) : (
+              <Feather name="activity" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="species"
+        options={{
+          title: "Species",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="fish" tintColor={color} size={22} />
             ) : (
               <MaterialCommunityIcons name="fish" size={22} color={color} />
             ),
@@ -77,7 +110,7 @@ function ClassicTabLayout() {
           title: "History",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="clock" tintColor={color} size={24} />
+              <SymbolView name="clock" tintColor={color} size={22} />
             ) : (
               <Feather name="clock" size={22} color={color} />
             ),
