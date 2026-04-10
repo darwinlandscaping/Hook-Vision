@@ -12,6 +12,7 @@ interface FishAnalysis {
   suggestion: string;
   waterTemp?: string;
   bottomType?: string;
+  lowranceModel?: string | null;
 }
 
 interface AnalysisCardProps {
@@ -153,6 +154,14 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
           label="Bottom"
           value={analysis.bottomType}
           delay={500}
+        />
+      )}
+      {analysis.lowranceModel && (
+        <StatRow
+          icon={<MaterialCommunityIcons name="radar" size={16} color={colors.accent} />}
+          label="Sonar Unit"
+          value={`Lowrance ${analysis.lowranceModel}`}
+          delay={600}
         />
       )}
 
