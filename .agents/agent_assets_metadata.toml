@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "fgSxsSde1O-BOyWFHq9Tm"
+uri = "file://artifacts/hookvision/assets/images/icon.png"
+type = "image"
+title = "hookvision app icon"
+
+[[generated]]
+id = "GsLZe-EsG-s1BKnUztsEg"
+uri = "file://artifacts/hookvision/assets/images/sonar-sample.png"
+type = "image"
+title = "sonar sample screen"

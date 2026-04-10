@@ -1,0 +1,378 @@
+import React, { useCallback, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+
+import { AnalysisCard } from "@/components/AnalysisCard";
+import { SonarPulse } from "@/components/SonarPulse";
+import { useColors } from "@/hooks/useColors";
+import { useHistory } from "@/context/HistoryContext";
+
+interface FishAnalysis {
+  fishCount: number;
+  depth: string;
+  distance: string;
+  species: string;
+  confidence: number;
+  suggestion: string;
+  waterTemp?: string;
+  bottomType?: string;
+}
+
+export default function AnalyzeScreen() {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const { addEntry } = useHistory();
+
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<FishAnalysis | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const buttonScale = useSharedValue(1);
+  const analyzeScale = useSharedValue(1);
+
+  const animatedButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+  }));
+  const animatedAnalyzeStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: analyzeScale.value }],
+  }));
+
+  const pickImage = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Required", "Please allow access to your photo library.");
+      return;
+    }
+
+    buttonScale.value = withSpring(0.95, {}, () => {
+      buttonScale.value = withSpring(1);
+    });
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+      base64: true,
+      allowsEditing: false,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+      setImageBase64(result.assets[0].base64 ?? null);
+      setAnalysis(null);
+      setError(null);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }, [buttonScale]);
+
+  const analyzeImage = useCallback(async () => {
+    if (!imageBase64) return;
+
+    analyzeScale.value = withSpring(0.96, {}, () => {
+      analyzeScale.value = withSpring(1);
+    });
+
+    setLoading(true);
+    setError(null);
+    setAnalysis(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const domain = process.env.EXPO_PUBLIC_DOMAIN;
+      const baseUrl = domain ? `https://${domain}` : "";
+      const response = await fetch(`${baseUrl}/api/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64 }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "Analysis failed");
+      }
+
+      const data: FishAnalysis = await response.json();
+      setAnalysis(data);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      if (imageUri) {
+        addEntry({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          imageUri,
+          timestamp: Date.now(),
+          fishCount: data.fishCount,
+          species: data.species,
+          depth: data.depth,
+          suggestion: data.suggestion,
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      setError(msg);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setLoading(false);
+    }
+  }, [imageBase64, imageUri, addEntry, analyzeScale]);
+
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  return (
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingTop: topPad + 16,
+          paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 24,
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.header}>
+        <Text style={[styles.appName, { color: colors.primary }]}>HookVision</Text>
+        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+          AI-powered sonar analysis
+        </Text>
+      </View>
+
+      {!imageUri ? (
+        <View style={styles.emptyState}>
+          <SonarPulse size={140} active />
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+            Scan your sonar
+          </Text>
+          <Text style={[styles.emptyDesc, { color: colors.mutedForeground }]}>
+            Upload a screenshot from your fish finder and get instant AI insights on fish count, depth, species, and casting advice.
+          </Text>
+          <Animated.View style={animatedButtonStyle}>
+            <TouchableOpacity
+              style={[styles.uploadBtn, { backgroundColor: colors.primary }]}
+              onPress={pickImage}
+              activeOpacity={0.85}
+            >
+              <Feather name="upload" size={18} color={colors.primaryForeground} />
+              <Text style={[styles.uploadBtnText, { color: colors.primaryForeground }]}>
+                Upload Screenshot
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      ) : (
+        <View style={styles.analyzeSection}>
+          <View style={[styles.imageContainer, { borderColor: colors.border }]}>
+            <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
+            <TouchableOpacity
+              style={[styles.changeBtn, { backgroundColor: colors.secondary }]}
+              onPress={pickImage}
+              activeOpacity={0.7}
+            >
+              <Feather name="refresh-cw" size={14} color={colors.primary} />
+              <Text style={[styles.changeBtnText, { color: colors.primary }]}>Change</Text>
+            </TouchableOpacity>
+          </View>
+
+          {!analysis && !loading && (
+            <Animated.View style={animatedAnalyzeStyle}>
+              <TouchableOpacity
+                style={[styles.analyzeBtn, { backgroundColor: colors.primary }]}
+                onPress={analyzeImage}
+                activeOpacity={0.85}
+              >
+                <SonarPulse size={24} active={false} />
+                <Text style={[styles.analyzeBtnText, { color: colors.primaryForeground }]}>
+                  Analyze Sonar
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <SonarPulse size={80} active />
+              <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
+                Scanning sonar...
+              </Text>
+              <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} />
+            </View>
+          )}
+
+          {error && (
+            <View style={[styles.errorBox, { backgroundColor: `${colors.destructive}18`, borderColor: `${colors.destructive}44` }]}>
+              <Feather name="alert-circle" size={16} color={colors.destructive} />
+              <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
+            </View>
+          )}
+
+          {analysis && <AnalysisCard analysis={analysis} />}
+
+          {analysis && (
+            <TouchableOpacity
+              style={[styles.newBtn, { borderColor: colors.border }]}
+              onPress={() => {
+                setImageUri(null);
+                setImageBase64(null);
+                setAnalysis(null);
+                setError(null);
+              }}
+              activeOpacity={0.7}
+            >
+              <Feather name="plus" size={16} color={colors.mutedForeground} />
+              <Text style={[styles.newBtnText, { color: colors.mutedForeground }]}>
+                New analysis
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 20,
+    gap: 24,
+  },
+  header: {
+    alignItems: "center",
+    gap: 4,
+  },
+  appName: {
+    fontSize: 28,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: 0.3,
+  },
+  emptyState: {
+    alignItems: "center",
+    gap: 16,
+    paddingVertical: 20,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontFamily: "Inter_600SemiBold",
+    marginTop: 8,
+  },
+  emptyDesc: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 16,
+  },
+  uploadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 30,
+    marginTop: 8,
+  },
+  uploadBtnText: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  analyzeSection: {
+    gap: 16,
+  },
+  imageContainer: {
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    position: "relative",
+  },
+  image: {
+    width: "100%",
+    height: 220,
+  },
+  changeBtn: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  changeBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  analyzeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 14,
+    borderRadius: 30,
+  },
+  analyzeBtnText: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  loadingContainer: {
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 20,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  newBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  newBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+});
