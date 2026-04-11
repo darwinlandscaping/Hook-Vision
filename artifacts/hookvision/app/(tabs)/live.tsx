@@ -129,7 +129,7 @@ export default function LiveScreen() {
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
         quality: 0.75,
-        skipProcessing: true,
+        ...(Platform.OS !== "web" ? { skipProcessing: true } : {}),
       });
 
       if (!photo?.base64) throw new Error("Failed to capture photo.");
@@ -211,18 +211,6 @@ export default function LiveScreen() {
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
   const topPad    = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom + 16;
-
-  if (Platform.OS === "web") {
-    return (
-      <View style={[styles.permissionContainer, { backgroundColor: colors.background, paddingTop: topPad }]}>
-        <MaterialCommunityIcons name="video" size={52} color={colors.mutedForeground} />
-        <Text style={[styles.permTitle, { color: colors.foreground }]}>Live Camera</Text>
-        <Text style={[styles.permDesc, { color: colors.mutedForeground }]}>
-          Live camera and sonar mount mode are available on your phone. Open HookVision on your device to use it.
-        </Text>
-      </View>
-    );
-  }
 
   if (!permission) {
     return (
