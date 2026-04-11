@@ -55,6 +55,34 @@ The most important factor for NT fishing is tidal state:
 ### Groote Eylandt Spots
 - **Groote tidal creeks** (barra, threadfin): Classic tidal creek barra on run-out.
 
+## NT Boat Ramps Reference (nearest ramps to common spots)
+
+Use these real NT boat ramps — match the closest ramp to each recommended spot:
+
+**Darwin Harbour / Inner Harbour:**
+- Stokes Hill Boat Ramp: lat -12.4778, lng 130.8404 (Frances Bay, all-weather concrete, lit at night)
+- Cullen Bay Marina Ramp: lat -12.4654, lng 130.8260 (sheltered, tidal lock, 24hr access)
+- East Point Reserve Ramp: lat -12.4171, lng 130.8281 (rock bar launches, best at mid-high tide, no ramp at low)
+
+**Buffalo Creek / Lee Point / Casuarina:**
+- Buffalo Creek Boat Ramp: lat -12.3584, lng 130.9286 (sealed, excellent condition, toilet facilities)
+- Lee Point Boat Ramp: lat -12.3307, lng 130.8942 (good access, park on grass, reaches artificial reef)
+
+**Middle Arm / Elizabeth River:**
+- Middle Arm Boat Ramp: lat -12.5403, lng 130.8764 (tidal, best 2hrs either side of mid-tide)
+- Virginia Boat Ramp (Elizabeth River): lat -12.5011, lng 131.0124 (dirt road, check conditions in wet)
+
+**Mary River / Kakadu Corridor:**
+- Point Stuart Boat Ramp: lat -12.5722, lng 131.6972 (sealed road, toilet, good all tides, 4WD not required)
+- Corroboree Billabong Boat Ramp: lat -12.7055, lng 132.0618 (may close in wet season — check NT roads)
+- Shady Camp Boat Ramp: lat -12.6386, lng 131.8174 (4WD track last 10km, may close wet season)
+
+**Daly River:**
+- Daly River Boat Ramp: lat -13.7728, lng 130.6943 (sealed access, tidal, 200km from Darwin)
+
+**Gove / Nhulunbuy:**
+- Gove Boat Ramp, Nhulunbuy: lat -12.1852, lng 136.7168 (all-weather, sealed, facilities)
+
 ## Your Task
 
 Based on the conditions provided, generate exactly 3 spot recommendations with full fishing intel. Rank by immediate opportunity (most fishable RIGHT NOW based on current tide timing comes first).
@@ -67,6 +95,8 @@ Each spot must include:
 - Rig
 - Technique (2 sentences max)
 - Urgency: "NOW" if within 2hrs of perfect window, "SOON" if within 4hrs, "LATER" if best after current conditions pass
+- Nearest boat ramp (pick from the list above, choose the geographically closest one to your recommended spot)
+- Road access note (1 sentence — sealed/unsealed, 4WD needed? any wet season closure risk?)
 
 Return ONLY valid JSON:
 {
@@ -78,7 +108,13 @@ Return ONLY valid JSON:
       "lure": "specific lure/bait with size and colour",
       "rig": "leader, hook, sinker",
       "technique": "exactly how to fish it",
-      "urgency": "NOW|SOON|LATER"
+      "urgency": "NOW|SOON|LATER",
+      "boatRamp": {
+        "name": "exact ramp name from list",
+        "lat": -12.4778,
+        "lng": 130.8404,
+        "accessNote": "one sentence on road/access conditions and any closure risk"
+      }
     }
   ],
   "headline": "One punchy Aussie fishing headline summarising the conditions today — e.g. 'Spring tide + full moon = barra mayhem tonight'"

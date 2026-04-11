@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -93,6 +94,13 @@ interface TideEntry {
   timestamp: number;
 }
 
+interface BoatRamp {
+  name: string;
+  lat: number;
+  lng: number;
+  accessNote: string;
+}
+
 interface ForecastSpot {
   name: string;
   species: string;
@@ -101,6 +109,7 @@ interface ForecastSpot {
   rig: string;
   technique: string;
   urgency: "NOW" | "SOON" | "LATER";
+  boatRamp?: BoatRamp;
 }
 
 interface ForecastResult {
@@ -181,6 +190,17 @@ function UrgencyBadge({ urgency, colors }: { urgency: string; colors: ReturnType
 
 // ─── Spot Card ────────────────────────────────────────────────────────────────
 function SpotCard({ spot, index, colors }: { spot: ForecastSpot; index: number; colors: ReturnType<typeof useColors> }) {
+  const openSatMap = () => {
+    if (!spot.boatRamp) return;
+    const { lat, lng } = spot.boatRamp;
+    const url = `https://www.google.com/maps/@${lat},${lng},14z/data=!3m1!1e3`;
+    Linking.openURL(url).catch(() => {});
+  };
+
+  const openRoadReport = () => {
+    Linking.openURL("https://roadreport.nt.gov.au/").catch(() => {});
+  };
+
   return (
     <View style={[styles.spotCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.spotHeader}>
@@ -206,6 +226,39 @@ function SpotCard({ spot, index, colors }: { spot: ForecastSpot; index: number; 
         <TacticItem icon="link-variant" label="RIG" value={spot.rig} colors={colors} />
       </View>
       <TacticItem icon="run-fast" label="TECHNIQUE" value={spot.technique} colors={colors} full />
+
+      {/* ── Boat Ramp Section ── */}
+      {spot.boatRamp && (
+        <View style={[styles.rampSection, { borderTopColor: colors.border }]}>
+          <View style={styles.rampHeader}>
+            <MaterialCommunityIcons name="ferry" size={14} color={colors.accent} />
+            <Text style={[styles.rampHeaderText, { color: colors.mutedForeground }]}>NEAREST BOAT RAMP</Text>
+          </View>
+          <Text style={[styles.rampName, { color: colors.foreground }]}>{spot.boatRamp.name}</Text>
+          <View style={[styles.rampAccessRow, { backgroundColor: `${colors.accent}14`, borderColor: `${colors.accent}28` }]}>
+            <MaterialCommunityIcons name="road-variant" size={12} color={colors.accent} />
+            <Text style={[styles.rampAccessText, { color: colors.mutedForeground }]}>{spot.boatRamp.accessNote}</Text>
+          </View>
+          <View style={styles.rampBtnRow}>
+            <TouchableOpacity
+              style={[styles.rampBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+              onPress={openSatMap}
+              activeOpacity={0.75}
+            >
+              <MaterialCommunityIcons name="satellite-variant" size={14} color={colors.primary} />
+              <Text style={[styles.rampBtnText, { color: colors.primary }]}>Satellite Map</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.rampBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+              onPress={openRoadReport}
+              activeOpacity={0.75}
+            >
+              <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#ff8c00" />
+              <Text style={[styles.rampBtnText, { color: "#ff8c00" }]}>Road Closures</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -582,4 +635,58 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   rereadText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+
+  rampSection: {
+    gap: 8,
+    paddingTop: 12,
+    marginTop: 4,
+    borderTopWidth: 1,
+  },
+  rampHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  rampHeaderText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.9,
+  },
+  rampName: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  rampAccessRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 7,
+    padding: 9,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  rampAccessText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+  },
+  rampBtnRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  rampBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  rampBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
 });
