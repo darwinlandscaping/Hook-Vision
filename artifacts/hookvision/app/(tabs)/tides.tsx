@@ -204,7 +204,7 @@ export default function TidesScreen() {
       }
     >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Tides</Text>
+        <Text style={[styles.title, { color: colors.primary }]}>🌊 Tides</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           Bureau of Meteorology · NT
         </Text>
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 14, gap: 8 },
   header: { gap: 2 },
-  title: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  title: { fontSize: 22, fontFamily: "Oswald_700Bold", letterSpacing: 0.5 },
   subtitle: { fontSize: 11, fontFamily: "Inter_400Regular" },
   portSelector: { flexDirection: "row", gap: 6 },
   portChip: {

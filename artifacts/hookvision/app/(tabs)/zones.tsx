@@ -345,7 +345,7 @@ export default function ZonesScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.primary }]}>Depth Strike Zones</Text>
+        <Text style={[styles.title, { color: colors.primary }]}>🗺️ Depth Strike Zones</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           40 years of NT river knowledge — meter-by-meter
         </Text>
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 14, gap: 8 },
 
   header: { alignItems: "center", gap: 2 },
-  title: { fontSize: 18, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  title: { fontSize: 22, fontFamily: "Oswald_700Bold", letterSpacing: 0.5 },
   subtitle: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center" },
 
   legendRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, justifyContent: "center" },

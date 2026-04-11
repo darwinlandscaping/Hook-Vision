@@ -29,7 +29,7 @@ export default function HistoryScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 16 }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>History</Text>
+        <Text style={[styles.title, { color: colors.primary }]}>📋 History</Text>
         {history.length > 0 && (
           <TouchableOpacity onPress={handleClear} activeOpacity={0.7}>
             <Text style={[styles.clearBtn, { color: colors.destructive }]}>Clear all</Text>
@@ -82,7 +82,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Oswald_700Bold",
+    letterSpacing: 0.5,
   },
   clearBtn: {
     fontSize: 14,

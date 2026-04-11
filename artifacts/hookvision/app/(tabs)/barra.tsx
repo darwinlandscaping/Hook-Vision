@@ -419,8 +419,8 @@ const styles = StyleSheet.create({
 
   header: { alignItems: "center", gap: 2 },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" },
-  titleRed: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#ff2200", letterSpacing: 1 },
-  titleWhite: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#ffffff", letterSpacing: 0.5 },
+  titleRed: { fontSize: 24, fontFamily: "Oswald_700Bold", color: "#ff2200", letterSpacing: 2 },
+  titleWhite: { fontSize: 18, fontFamily: "Oswald_700Bold", color: "#ffffff", letterSpacing: 1 },
   subtitle: { fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2, textAlign: "center" },
 
   condBar: {
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   },
   bigBtnLoading: { backgroundColor: "#8b0000" },
   bigBtnIcon: { fontSize: 26 },
-  bigBtnText: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#ffffff", letterSpacing: 1 },
+  bigBtnText: { fontSize: 20, fontFamily: "Oswald_700Bold", color: "#ffffff", letterSpacing: 2 },
   bigBtnSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#ffaaaa", letterSpacing: 0.3 },
 
   errorBox: {

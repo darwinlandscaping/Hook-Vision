@@ -415,7 +415,7 @@ export default function ForecastScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.primary }]}>Here Fishy Fishy</Text>
+          <Text style={[styles.title, { color: colors.primary }]}>🎣 Here Fishy Fishy</Text>
           <NarratorSettingsTrigger />
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 14, gap: 8 },
   header: { alignItems: "center", gap: 2 },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" },
-  title: { fontSize: 20, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  title: { fontSize: 24, fontFamily: "Oswald_700Bold", letterSpacing: 1 },
   subtitle: { fontSize: 11, fontFamily: "Inter_400Regular" },
 
   condGrid: { gap: 6 },
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   bigBtnEmoji: { fontSize: 18 },
-  bigBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  bigBtnText: { fontSize: 18, fontFamily: "Oswald_700Bold", letterSpacing: 1.5 },
 
   errorBox: {
     flexDirection: "row",

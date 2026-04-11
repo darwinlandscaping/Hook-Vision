@@ -197,9 +197,11 @@ export default function AnalyzeScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Text style={[styles.appName, { color: colors.primary }]}>HookVision</Text>
+        <Text style={[styles.appTag, { color: colors.primary }]}>🎣 AI FISHING ASSISTANT · NT AUSTRALIA 🐟</Text>
+        <Text style={[styles.appName, { color: "#ffffff" }]}>HOOKVISION</Text>
+        <View style={[styles.titleBar, { backgroundColor: colors.primary }]} />
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          AI-powered sonar analysis
+          sonar · tides · trophy barra
         </Text>
       </View>
 
@@ -340,15 +342,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 2,
   },
+  appTag: {
+    fontSize: 8,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1.2,
+    textAlign: "center",
+  },
   appName: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.5,
+    fontSize: 36,
+    fontFamily: "Oswald_700Bold",
+    letterSpacing: 4,
+    textAlign: "center",
+  },
+  titleBar: {
+    height: 3,
+    width: 60,
+    borderRadius: 2,
+    marginVertical: 4,
   },
   subtitle: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
-    letterSpacing: 0.3,
+    letterSpacing: 1.5,
+    textAlign: "center",
+    textTransform: "uppercase",
   },
   fullWidth: {
     width: "100%",
@@ -359,8 +376,9 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   emptyTitle: {
-    fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
+    fontSize: 20,
+    fontFamily: "Oswald_700Bold",
+    letterSpacing: 1,
     marginTop: 2,
   },
   emptyDesc: {

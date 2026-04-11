@@ -208,7 +208,7 @@ export default function SpeciesScreen() {
       ListHeaderComponent={
         <View style={styles.headerBlock}>
           <View style={styles.titleRow}>
-            <Text style={[styles.title, { color: colors.foreground }]}>NT Species</Text>
+            <Text style={[styles.title, { color: colors.primary }]}>🐟 NT Species</Text>
             <Text style={[styles.count, { color: colors.mutedForeground }]}>
               {filtered.length} of {NT_SPECIES.length}
             </Text>
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 16 },
   headerBlock: { gap: 12, marginBottom: 12 },
   titleRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-  title: { fontSize: 24, fontFamily: "Inter_700Bold" },
+  title: { fontSize: 24, fontFamily: "Oswald_700Bold", letterSpacing: 0.5 },
   count: { fontSize: 13, fontFamily: "Inter_400Regular" },
   subtitle: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: -6 },
   searchBox: {
