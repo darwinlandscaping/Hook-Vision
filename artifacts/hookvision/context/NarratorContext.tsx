@@ -67,7 +67,7 @@ interface NarratorCtx {
 
 const NarratorContext = createContext<NarratorCtx | null>(null);
 
-// ─── Voice rates/pitch per character ─────────────────────────────────────────
+// ─── Voice rates/pitch per character (native only) ────────────────────────────
 const CHAR_VOICE: Record<NarratorCharacter, { rate: number; pitch: number }> = {
   AUSSIE:       { rate: 0.90, pitch: 0.72 },
   BENAUD:       { rate: 0.82, pitch: 0.68 },
@@ -75,13 +75,38 @@ const CHAR_VOICE: Record<NarratorCharacter, { rate: number; pitch: number }> = {
   ATTENBOROUGH: { rate: 0.78, pitch: 0.65 },
 };
 
+// ─── Web Audio engine (module-level, persists across renders) ─────────────────
+// Using Web Audio API + OpenAI TTS endpoint instead of window.speechSynthesis,
+// which is blocked in cross-origin iframes by browsers.
+let _audioCtx: AudioContext | null = null;
+let _audioSource: AudioBufferSourceNode | null = null;
+
+function getAudioContext(): AudioContext {
+  if (!_audioCtx || _audioCtx.state === "closed") {
+    _audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+  }
+  return _audioCtx;
+}
+
+function stopWebAudio() {
+  try {
+    _audioSource?.stop();
+    _audioSource?.disconnect();
+  } catch {}
+  _audioSource = null;
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function NarratorProvider({ children }: { children: React.ReactNode }) {
   const [character, setCharacterState] = useState<NarratorCharacter>("AUSSIE");
   const [language, setLanguageState]   = useState<NarratorLanguage>("en-AU");
   const [speaking, setSpeaking]         = useState(false);
   const [loading, setLoading]           = useState(false);
-  const webUttRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const characterRef = useRef(character);
+  const languageRef  = useRef(language);
+
+  useEffect(() => { characterRef.current = character; }, [character]);
+  useEffect(() => { languageRef.current  = language;  }, [language]);
 
   // Persist preferences
   useEffect(() => {
@@ -107,90 +132,75 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
 
   const stop = useCallback(() => {
     if (Platform.OS === "web") {
-      window.speechSynthesis?.cancel();
-      webUttRef.current = null;
+      stopWebAudio();
     } else {
       Speech.stop();
     }
     setSpeaking(false);
   }, []);
 
-  // Unlock web speech synthesis within user gesture context.
-  // Returns a promise that resolves once the unlock utterance has finished,
-  // at which point Chrome considers the page "speech-authorised".
-  const unlockWebSpeech = useCallback((): Promise<void> => {
-    return new Promise((resolve) => {
-      if (Platform.OS !== "web" || !("speechSynthesis" in window)) {
-        resolve();
-        return;
+  // ─── Web: unlock AudioContext in user gesture, then fetch + play TTS audio ──
+  // Must call unlockAudioCtx() synchronously within the user gesture handler
+  // BEFORE any await, so the AudioContext is in "running" state when we later
+  // call source.start() after the async TTS fetch.
+  const unlockAudioCtx = useCallback(() => {
+    if (Platform.OS !== "web") return;
+    try {
+      const ctx = getAudioContext();
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
       }
-      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-      // An empty string may be treated as a no-op by Chrome; use a single space
-      // at near-zero volume and maximum rate so it's inaudible and instant.
-      const unlock = new SpeechSynthesisUtterance("\u00A0");
-      unlock.volume = 0.001;
-      unlock.rate   = 10;
-      unlock.onend   = () => resolve();
-      unlock.onerror = () => resolve();
-      window.speechSynthesis.speak(unlock);
-      // Safety timeout in case onend never fires
-      setTimeout(resolve, 500);
-    });
+    } catch {}
   }, []);
 
+  const playTTSAudio = useCallback(async (text: string) => {
+    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const baseUrl = domain ? `https://${domain}` : "";
+
+    setSpeaking(true);
+    try {
+      const resp = await fetch(`${baseUrl}/api/tts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, lang: languageRef.current }),
+      });
+      if (!resp.ok) throw new Error("TTS request failed");
+
+      const arrayBuffer = await resp.arrayBuffer();
+      const ctx = getAudioContext();
+
+      // Resume if it got suspended while we were fetching
+      if (ctx.state === "suspended") await ctx.resume();
+
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+      stopWebAudio();
+
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ctx.destination);
+      source.onended = () => { setSpeaking(false); _audioSource = null; };
+      source.start(0);
+      _audioSource = source;
+    } catch (err) {
+      console.warn("[Narrator] TTS playback failed:", err);
+      setSpeaking(false);
+    }
+  }, []);
+
+  // ─── speak(): called directly (character demo, live camera) ─────────────────
   const speak = useCallback(
     (text: string) => {
       stop();
-      const { rate, pitch } = CHAR_VOICE[character];
-
       if (Platform.OS === "web") {
-        if (!("speechSynthesis" in window)) return;
-        setSpeaking(true);
-        // Ensure synthesis engine is running (can pause after idle)
-        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-
-        const fire = (voices: SpeechSynthesisVoice[]) => {
-          const preferred = [
-            (v: SpeechSynthesisVoice) => v.lang.toLowerCase().replace("_", "-") === language.toLowerCase(),
-            (v: SpeechSynthesisVoice) => v.lang.toLowerCase().startsWith(language.split("-")[0].toLowerCase()),
-            (v: SpeechSynthesisVoice) => /en/i.test(v.lang),
-          ];
-          let chosen: SpeechSynthesisVoice | undefined;
-          for (const test of preferred) { chosen = voices.find(test); if (chosen) break; }
-
-          const utt = new SpeechSynthesisUtterance(text);
-          if (chosen) utt.voice = chosen;
-          utt.lang = chosen?.lang ?? language;
-          utt.rate = rate;
-          utt.pitch = pitch;
-          utt.volume = 1.0;
-          utt.onend  = () => { setSpeaking(false); webUttRef.current = null; };
-          utt.onerror = () => { setSpeaking(false); webUttRef.current = null; };
-          webUttRef.current = utt;
-          window.speechSynthesis.speak(utt);
-        };
-
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) {
-          fire(voices);
-        } else {
-          // Some environments never fire onvoiceschanged; fall back after 1 s
-          let fired = false;
-          const fallback = setTimeout(() => {
-            if (!fired) { fired = true; fire([]); }
-          }, 1000);
-          window.speechSynthesis.onvoiceschanged = () => {
-            if (!fired) {
-              fired = true;
-              clearTimeout(fallback);
-              fire(window.speechSynthesis.getVoices());
-            }
-          };
-        }
+        // Unlock AudioContext synchronously within user gesture, then fetch TTS
+        unlockAudioCtx();
+        playTTSAudio(text);
       } else {
+        const { rate, pitch } = CHAR_VOICE[characterRef.current];
         setSpeaking(true);
         Speech.speak(text, {
-          language,
+          language: languageRef.current,
           rate,
           pitch,
           onDone:    () => setSpeaking(false),
@@ -199,17 +209,20 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
         });
       }
     },
-    [character, language, stop]
+    [stop, unlockAudioCtx, playTTSAudio]
   );
 
+  // ─── narratePage(): fetches AI script then speaks it ────────────────────────
   const narratePage = useCallback(
     async (pageType: string, content: string) => {
       if (loading) return;
       setLoading(true);
       stop();
-      // Unlock speech synthesis NOW (synchronously within the user gesture).
-      // We await completion so Chrome registers it before we fetch and speak.
-      await unlockWebSpeech();
+
+      // Unlock AudioContext NOW — synchronously within the user gesture.
+      // After any await the browser may refuse to resume it.
+      unlockAudioCtx();
+
       try {
         const domain = process.env.EXPO_PUBLIC_DOMAIN;
         const baseUrl = domain ? `https://${domain}` : "";
@@ -220,14 +233,29 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
         });
         if (!resp.ok) throw new Error("Narrate failed");
         const { text } = await resp.json();
-        if (text) speak(text);
+        if (text) {
+          if (Platform.OS === "web") {
+            await playTTSAudio(text);
+          } else {
+            const { rate, pitch } = CHAR_VOICE[character];
+            setSpeaking(true);
+            Speech.speak(text, {
+              language,
+              rate,
+              pitch,
+              onDone:    () => setSpeaking(false),
+              onError:   () => setSpeaking(false),
+              onStopped: () => setSpeaking(false),
+            });
+          }
+        }
       } catch {
         // silently fail
       } finally {
         setLoading(false);
       }
     },
-    [character, language, loading, speak, stop, unlockWebSpeech]
+    [character, language, loading, stop, unlockAudioCtx, playTTSAudio]
   );
 
   return (
