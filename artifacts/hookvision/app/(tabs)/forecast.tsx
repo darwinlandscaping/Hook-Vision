@@ -472,6 +472,24 @@ export default function ForecastScreen() {
         </View>
       )}
 
+      {/* Pre-result hint */}
+      {!forecast && !loading && !error && (
+        <View style={[styles.hintBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.hintTitle, { color: colors.mutedForeground }]}>WHAT YOU'LL GET</Text>
+          {[
+            { e: "📍", t: "Top 3 fishing spots in NT right now based on conditions" },
+            { e: "🌊", t: "Species targeting advice matched to current tide stage" },
+            { e: "🎣", t: "Exactly where to fish, what lure & when to be there" },
+            { e: "🌙", t: "Moon phase, season & water temp all factored in" },
+          ].map(({ e, t }) => (
+            <View key={t} style={styles.hintRow}>
+              <Text style={styles.hintEmoji}>{e}</Text>
+              <Text style={[styles.hintText, { color: colors.foreground }]}>{t}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* Results */}
       {forecast && (
         <View style={styles.results}>
@@ -703,4 +721,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
+
+  hintBox: {
+    borderRadius: 14, borderWidth: 1, padding: 16, gap: 12,
+  },
+  hintTitle: {
+    fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1, textTransform: "uppercase",
+  },
+  hintRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  hintEmoji: { fontSize: 16, width: 22 },
+  hintText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
 });

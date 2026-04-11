@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "@expo-google-fonts/oswald": "^0.4.2",
+    "expo-audio": "^55.0.13",
     "expo-av": "^16.0.8",
     "expo-camera": "^55.0.15",
     "expo-speech": "^55.0.13"

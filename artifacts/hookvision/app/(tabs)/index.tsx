@@ -190,6 +190,7 @@ export default function AnalyzeScreen() {
       contentContainerStyle={[
         styles.content,
         {
+          flexGrow: 1,
           paddingTop: topPad + 16,
           paddingBottom: Platform.OS === "web" ? 70 : insets.bottom + 24,
         },
@@ -371,7 +372,9 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   emptyState: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     paddingVertical: 4,
   },
