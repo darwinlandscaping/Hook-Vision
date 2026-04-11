@@ -199,7 +199,7 @@ export default function SpeciesScreen() {
         styles.listContent,
         {
           paddingTop: topPad + 16,
-          paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 24,
+          paddingBottom: Platform.OS === "web" ? 70 : insets.bottom + 24,
         },
       ]}
       showsVerticalScrollIndicator={false}

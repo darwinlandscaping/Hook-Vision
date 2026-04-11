@@ -67,7 +67,7 @@ function ClassicTabLayout() {
           borderTopWidth: 1,
           borderTopColor: colors.border,
           elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+          ...(isWeb ? { height: 60 } : {}),
         },
         tabBarBackground: () =>
           isIOS ? (
@@ -81,7 +81,8 @@ function ClassicTabLayout() {
               style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
             />
           ) : null,
-        tabBarLabelStyle: { fontSize: 10, fontFamily: "Inter_500Medium" },
+        tabBarLabelStyle: { fontSize: 9, fontFamily: "Inter_500Medium" },
+        tabBarIconStyle: { marginBottom: -2 },
       }}
     >
       <Tabs.Screen
@@ -135,7 +136,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="barra"
         options={{
-          title: "Big Barra",
+          title: "Barra",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="target" tintColor={color} size={22} />

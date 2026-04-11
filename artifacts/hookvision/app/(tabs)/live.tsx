@@ -113,7 +113,7 @@ export default function LiveScreen() {
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
   const topPad   = Platform.OS === "web" ? 20 : insets.top;
-  const botPad   = Platform.OS === "web" ? 20 : insets.bottom + 16;
+  const botPad   = Platform.OS === "web" ? 70 : insets.bottom + 16;
 
   // Request web camera
   const requestWebCamera = useCallback(async () => {
