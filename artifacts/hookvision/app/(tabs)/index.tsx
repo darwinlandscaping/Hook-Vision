@@ -247,6 +247,22 @@ export default function AnalyzeScreen() {
           <Text style={[styles.brandNote, { color: colors.mutedForeground }]}>
             Works with Lowrance, Garmin, Humminbird, Simrad, Raymarine, Furuno & more
           </Text>
+
+          {/* What you'll get hint */}
+          <View style={[styles.hintBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.hintTitle, { color: colors.mutedForeground }]}>WHAT YOU'LL GET</Text>
+            {[
+              { e: "🐟", t: "Species ID — barramundi, mangrove jack, threadfin & more" },
+              { e: "📏", t: "Exact depth & distance to fish marks on screen" },
+              { e: "🎣", t: "Lure choice, rig setup & retrieve technique" },
+              { e: "🌡️", t: "Water temp read + bottom type analysis" },
+            ].map(({ e, t }) => (
+              <View key={t} style={styles.hintRow}>
+                <Text style={styles.hintEmoji}>{e}</Text>
+                <Text style={[styles.hintText, { color: colors.foreground }]}>{t}</Text>
+              </View>
+            ))}
+          </View>
         </View>
       ) : (
         <View style={styles.analyzeSection}>
@@ -506,4 +522,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_500Medium",
   },
+
+  hintBox: {
+    width: "100%",
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+    marginTop: 8,
+  },
+  hintTitle: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  hintRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  hintEmoji: { fontSize: 16, width: 22 },
+  hintText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
 });
