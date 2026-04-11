@@ -37,7 +37,7 @@ interface FishAnalysis {
   rig?: string;
   waterTemp?: string;
   bottomType?: string;
-  lowranceModel?: string | null;
+  sonarModel?: string | null;
 }
 
 export default function AnalyzeScreen() {
@@ -51,25 +51,67 @@ export default function AnalyzeScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const buttonScale = useSharedValue(1);
+  const cameraScale = useSharedValue(1);
+  const galleryScale = useSharedValue(1);
   const analyzeScale = useSharedValue(1);
 
-  const animatedButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
+  const animatedCameraStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cameraScale.value }],
+  }));
+  const animatedGalleryStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: galleryScale.value }],
   }));
   const animatedAnalyzeStyle = useAnimatedStyle(() => ({
     transform: [{ scale: analyzeScale.value }],
   }));
 
-  const pickImage = useCallback(async () => {
+  const handleImageSelected = useCallback(
+    (uri: string, base64: string | null | undefined) => {
+      setImageUri(uri);
+      setImageBase64(base64 ?? null);
+      setAnalysis(null);
+      setError(null);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    []
+  );
+
+  const openCamera = useCallback(async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Camera Permission Required",
+        "Please allow camera access so you can photograph your sonar screen directly.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    cameraScale.value = withSpring(0.92, {}, () => {
+      cameraScale.value = withSpring(1);
+    });
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.9,
+      base64: true,
+      allowsEditing: false,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      handleImageSelected(result.assets[0].uri, result.assets[0].base64);
+    }
+  }, [cameraScale, handleImageSelected]);
+
+  const openGallery = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("Permission Required", "Please allow access to your photo library.");
       return;
     }
 
-    buttonScale.value = withSpring(0.95, {}, () => {
-      buttonScale.value = withSpring(1);
+    galleryScale.value = withSpring(0.92, {}, () => {
+      galleryScale.value = withSpring(1);
     });
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -80,13 +122,9 @@ export default function AnalyzeScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
-      setImageBase64(result.assets[0].base64 ?? null);
-      setAnalysis(null);
-      setError(null);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      handleImageSelected(result.assets[0].uri, result.assets[0].base64);
     }
-  }, [buttonScale]);
+  }, [galleryScale, handleImageSelected]);
 
   const analyzeImage = useCallback(async () => {
     if (!imageBase64) return;
@@ -172,33 +210,65 @@ export default function AnalyzeScreen() {
             Scan your sonar
           </Text>
           <Text style={[styles.emptyDesc, { color: colors.mutedForeground }]}>
-            Upload a screenshot from your fish finder and get instant AI insights on fish count, depth, species, and casting advice.
+            Point your phone at the sonar screen or upload a screenshot. Get instant AI advice on species, depth, lures and technique.
           </Text>
-          <Animated.View style={animatedButtonStyle}>
+
+          {/* Camera — primary action */}
+          <Animated.View style={[animatedCameraStyle, styles.fullWidth]}>
             <TouchableOpacity
-              style={[styles.uploadBtn, { backgroundColor: colors.primary }]}
-              onPress={pickImage}
+              style={[styles.cameraBtn, { backgroundColor: colors.primary }]}
+              onPress={openCamera}
               activeOpacity={0.85}
             >
-              <Feather name="upload" size={18} color={colors.primaryForeground} />
-              <Text style={[styles.uploadBtnText, { color: colors.primaryForeground }]}>
+              <Feather name="camera" size={20} color={colors.primaryForeground} />
+              <Text style={[styles.cameraBtnText, { color: colors.primaryForeground }]}>
+                Take Photo of Sonar
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Gallery — secondary */}
+          <Animated.View style={[animatedGalleryStyle, styles.fullWidth]}>
+            <TouchableOpacity
+              style={[styles.galleryBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+              onPress={openGallery}
+              activeOpacity={0.8}
+            >
+              <Feather name="image" size={18} color={colors.foreground} />
+              <Text style={[styles.galleryBtnText, { color: colors.foreground }]}>
                 Upload Screenshot
               </Text>
             </TouchableOpacity>
           </Animated.View>
+
+          <Text style={[styles.brandNote, { color: colors.mutedForeground }]}>
+            Works with Lowrance, Garmin, Humminbird, Simrad, Raymarine, Furuno & more
+          </Text>
         </View>
       ) : (
         <View style={styles.analyzeSection}>
           <View style={[styles.imageContainer, { borderColor: colors.border }]}>
             <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
-            <TouchableOpacity
-              style={[styles.changeBtn, { backgroundColor: colors.secondary }]}
-              onPress={pickImage}
-              activeOpacity={0.7}
-            >
-              <Feather name="refresh-cw" size={14} color={colors.primary} />
-              <Text style={[styles.changeBtnText, { color: colors.primary }]}>Change</Text>
-            </TouchableOpacity>
+
+            {/* Overlay action buttons */}
+            <View style={styles.imageActions}>
+              <TouchableOpacity
+                style={[styles.overlayBtn, { backgroundColor: colors.secondary }]}
+                onPress={openCamera}
+                activeOpacity={0.8}
+              >
+                <Feather name="camera" size={14} color={colors.primary} />
+                <Text style={[styles.overlayBtnText, { color: colors.primary }]}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.overlayBtn, { backgroundColor: colors.secondary }]}
+                onPress={openGallery}
+                activeOpacity={0.8}
+              >
+                <Feather name="image" size={14} color={colors.primary} />
+                <Text style={[styles.overlayBtnText, { color: colors.primary }]}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {!analysis && !loading && (
@@ -220,7 +290,7 @@ export default function AnalyzeScreen() {
             <View style={styles.loadingContainer}>
               <SonarPulse size={80} active />
               <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-                Scanning sonar...
+                Reading your sonar...
               </Text>
               <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} />
             </View>
@@ -280,15 +350,18 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     letterSpacing: 0.3,
   },
+  fullWidth: {
+    width: "100%",
+  },
   emptyState: {
     alignItems: "center",
-    gap: 16,
-    paddingVertical: 20,
+    gap: 14,
+    paddingVertical: 16,
   },
   emptyTitle: {
     fontSize: 22,
     fontFamily: "Inter_600SemiBold",
-    marginTop: 8,
+    marginTop: 6,
   },
   emptyDesc: {
     fontSize: 14,
@@ -297,18 +370,41 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     paddingHorizontal: 16,
   },
-  uploadBtn: {
+  cameraBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 28,
+    paddingVertical: 16,
+    borderRadius: 30,
+    marginTop: 6,
+  },
+  cameraBtnText: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.2,
+  },
+  galleryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     paddingHorizontal: 28,
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderRadius: 30,
-    marginTop: 8,
+    borderWidth: 1,
   },
-  uploadBtnText: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
+  galleryBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+  },
+  brandNote: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 16,
+    marginTop: 4,
   },
   analyzeSection: {
     gap: 16,
@@ -323,10 +419,14 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 220,
   },
-  changeBtn: {
+  imageActions: {
     position: "absolute",
     top: 10,
     right: 10,
+    flexDirection: "row",
+    gap: 6,
+  },
+  overlayBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
@@ -334,7 +434,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
   },
-  changeBtnText: {
+  overlayBtnText: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
