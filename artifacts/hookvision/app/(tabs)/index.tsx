@@ -93,7 +93,7 @@ export default function AnalyzeScreen() {
 
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ["images"],
-      quality: 0.9,
+      quality: 0.7,
       base64: true,
       allowsEditing: false,
     });
