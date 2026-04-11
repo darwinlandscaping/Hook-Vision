@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import * as Speech from "expo-speech";
 import { useColors } from "@/hooks/useColors";
+import { useVoice } from "@/hooks/useVoice";
 
 interface FishAnalysis {
   fishCount: number;
@@ -183,7 +183,7 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
   const colors = useColors();
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(0.95)).current;
-  const [speaking, setSpeaking] = useState(false);
+  const { speak, stop, speaking } = useVoice();
 
   useEffect(() => {
     Animated.parallel([
@@ -202,38 +202,20 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
 
     if (autoSpeak) {
       const timer = setTimeout(() => {
-        Speech.stop();
-        setSpeaking(true);
-        Speech.speak(buildSpeechText(analysis), {
-          language: "en-AU",
-          rate: 0.92,
-          pitch: 1.0,
-          onDone: () => setSpeaking(false),
-          onError: () => setSpeaking(false),
-          onStopped: () => setSpeaking(false),
-        });
+        speak(buildSpeechText(analysis));
       }, 600);
       return () => {
         clearTimeout(timer);
-        Speech.stop();
+        stop();
       };
     }
   }, []);
 
   const toggleSpeech = () => {
     if (speaking) {
-      Speech.stop();
-      setSpeaking(false);
+      stop();
     } else {
-      setSpeaking(true);
-      Speech.speak(buildSpeechText(analysis), {
-        language: "en-AU",
-        rate: 0.92,
-        pitch: 1.0,
-        onDone: () => setSpeaking(false),
-        onError: () => setSpeaking(false),
-        onStopped: () => setSpeaking(false),
-      });
+      speak(buildSpeechText(analysis));
     }
   };
 

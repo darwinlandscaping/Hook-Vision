@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
-import * as Speech from "expo-speech";
+import { useVoice } from "@/hooks/useVoice";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 
@@ -90,43 +90,22 @@ export default function LiveScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { addEntry } = useHistory();
+  const { speak, stop: stopSpeaking, speaking } = useVoice();
 
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
   const [result, setResult] = useState<FishAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [autoSpeak, setAutoSpeak] = useState(true);
 
   const cameraRef = useRef<CameraView>(null);
 
-  useEffect(() => {
-    return () => {
-      Speech.stop();
-    };
-  }, []);
-
   const speakResult = useCallback(
     (analysis: FishAnalysis) => {
-      Speech.stop();
-      setSpeaking(true);
-      const text = buildSpeechText(analysis);
-      Speech.speak(text, {
-        language: "en-AU",
-        rate: 0.92,
-        pitch: 1.0,
-        onDone: () => setSpeaking(false),
-        onError: () => setSpeaking(false),
-        onStopped: () => setSpeaking(false),
-      });
+      speak(buildSpeechText(analysis));
     },
-    []
+    [speak]
   );
-
-  const stopSpeaking = useCallback(() => {
-    Speech.stop();
-    setSpeaking(false);
-  }, []);
 
   const scanNow = useCallback(async () => {
     if (scanning || !cameraRef.current) return;
