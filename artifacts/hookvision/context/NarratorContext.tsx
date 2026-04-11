@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Speech from "expo-speech";
+import { Audio } from "expo-av";
 import { Platform } from "react-native";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -67,17 +67,7 @@ interface NarratorCtx {
 
 const NarratorContext = createContext<NarratorCtx | null>(null);
 
-// ─── Voice rates/pitch per character (native only) ────────────────────────────
-const CHAR_VOICE: Record<NarratorCharacter, { rate: number; pitch: number }> = {
-  AUSSIE:       { rate: 0.90, pitch: 0.72 },
-  BENAUD:       { rate: 0.82, pitch: 0.68 },
-  CHOPPER:      { rate: 1.05, pitch: 0.78 },
-  ATTENBOROUGH: { rate: 0.78, pitch: 0.65 },
-};
-
 // ─── Web Audio engine (module-level, persists across renders) ─────────────────
-// Using Web Audio API + OpenAI TTS endpoint instead of window.speechSynthesis,
-// which is blocked in cross-origin iframes by browsers.
 let _audioCtx: AudioContext | null = null;
 let _audioSource: AudioBufferSourceNode | null = null;
 
@@ -89,11 +79,18 @@ function getAudioContext(): AudioContext {
 }
 
 function stopWebAudio() {
-  try {
-    _audioSource?.stop();
-    _audioSource?.disconnect();
-  } catch {}
+  try { _audioSource?.stop(); _audioSource?.disconnect(); } catch {}
   _audioSource = null;
+}
+
+// ─── Native Audio (expo-av) ───────────────────────────────────────────────────
+let _nativeSound: Audio.Sound | null = null;
+
+async function stopNativeAudio() {
+  if (_nativeSound) {
+    try { await _nativeSound.stopAsync(); await _nativeSound.unloadAsync(); } catch {}
+    _nativeSound = null;
+  }
 }
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
@@ -102,11 +99,20 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState]   = useState<NarratorLanguage>("en-AU");
   const [speaking, setSpeaking]         = useState(false);
   const [loading, setLoading]           = useState(false);
-  const characterRef = useRef(character);
-  const languageRef  = useRef(language);
+  const languageRef = useRef(language);
 
-  useEffect(() => { characterRef.current = character; }, [character]);
-  useEffect(() => { languageRef.current  = language;  }, [language]);
+  useEffect(() => { languageRef.current = language; }, [language]);
+
+  // Configure expo-av audio session for native
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+      }).catch(() => {});
+    }
+  }, []);
 
   // Persist preferences
   useEffect(() => {
@@ -134,29 +140,31 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     if (Platform.OS === "web") {
       stopWebAudio();
     } else {
-      Speech.stop();
+      stopNativeAudio();
     }
     setSpeaking(false);
   }, []);
 
-  // ─── Web: unlock AudioContext in user gesture, then fetch + play TTS audio ──
-  // Must call unlockAudioCtx() synchronously within the user gesture handler
-  // BEFORE any await, so the AudioContext is in "running" state when we later
-  // call source.start() after the async TTS fetch.
+  // ─── Web: unlock AudioContext within user gesture ────────────────────────────
   const unlockAudioCtx = useCallback(() => {
     if (Platform.OS !== "web") return;
     try {
       const ctx = getAudioContext();
-      if (ctx.state === "suspended") {
-        ctx.resume().catch(() => {});
-      }
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
     } catch {}
   }, []);
 
-  const playTTSAudio = useCallback(async (text: string) => {
+  // ─── Shared: build the TTS GET URL for native streaming ─────────────────────
+  const ttsUrl = useCallback((text: string) => {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
+    return `${baseUrl}/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(languageRef.current)}`;
+  }, []);
 
+  // ─── Web: fetch TTS audio and play via Web Audio API ────────────────────────
+  const playTTSWeb = useCallback(async (text: string) => {
+    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const baseUrl = domain ? `https://${domain}` : "";
     setSpeaking(true);
     try {
       const resp = await fetch(`${baseUrl}/api/tts`, {
@@ -165,17 +173,11 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ text, lang: languageRef.current }),
       });
       if (!resp.ok) throw new Error("TTS request failed");
-
       const arrayBuffer = await resp.arrayBuffer();
       const ctx = getAudioContext();
-
-      // Resume if it got suspended while we were fetching
       if (ctx.state === "suspended") await ctx.resume();
-
       const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-
       stopWebAudio();
-
       const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(ctx.destination);
@@ -183,33 +185,48 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
       source.start(0);
       _audioSource = source;
     } catch (err) {
-      console.warn("[Narrator] TTS playback failed:", err);
+      console.warn("[Narrator] Web TTS failed:", err);
       setSpeaking(false);
     }
   }, []);
+
+  // ─── Native: play TTS audio via expo-av ─────────────────────────────────────
+  const playTTSNative = useCallback(async (text: string) => {
+    setSpeaking(true);
+    await stopNativeAudio();
+    try {
+      const url = ttsUrl(text);
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: url },
+        { shouldPlay: true, volume: 1.0 }
+      );
+      _nativeSound = sound;
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (!status.isLoaded) return;
+        if (status.didJustFinish) {
+          setSpeaking(false);
+          sound.unloadAsync().catch(() => {});
+          _nativeSound = null;
+        }
+      });
+    } catch (err) {
+      console.warn("[Narrator] Native TTS failed:", err);
+      setSpeaking(false);
+    }
+  }, [ttsUrl]);
 
   // ─── speak(): called directly (character demo, live camera) ─────────────────
   const speak = useCallback(
     (text: string) => {
       stop();
       if (Platform.OS === "web") {
-        // Unlock AudioContext synchronously within user gesture, then fetch TTS
         unlockAudioCtx();
-        playTTSAudio(text);
+        playTTSWeb(text);
       } else {
-        const { rate, pitch } = CHAR_VOICE[characterRef.current];
-        setSpeaking(true);
-        Speech.speak(text, {
-          language: languageRef.current,
-          rate,
-          pitch,
-          onDone:    () => setSpeaking(false),
-          onError:   () => setSpeaking(false),
-          onStopped: () => setSpeaking(false),
-        });
+        playTTSNative(text);
       }
     },
-    [stop, unlockAudioCtx, playTTSAudio]
+    [stop, unlockAudioCtx, playTTSWeb, playTTSNative]
   );
 
   // ─── narratePage(): fetches AI script then speaks it ────────────────────────
@@ -218,11 +235,8 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
       if (loading) return;
       setLoading(true);
       stop();
-
-      // Unlock AudioContext NOW — synchronously within the user gesture.
-      // After any await the browser may refuse to resume it.
+      // Unlock AudioContext synchronously within the user gesture (web only)
       unlockAudioCtx();
-
       try {
         const domain = process.env.EXPO_PUBLIC_DOMAIN;
         const baseUrl = domain ? `https://${domain}` : "";
@@ -235,18 +249,9 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
         const { text } = await resp.json();
         if (text) {
           if (Platform.OS === "web") {
-            await playTTSAudio(text);
+            await playTTSWeb(text);
           } else {
-            const { rate, pitch } = CHAR_VOICE[character];
-            setSpeaking(true);
-            Speech.speak(text, {
-              language,
-              rate,
-              pitch,
-              onDone:    () => setSpeaking(false),
-              onError:   () => setSpeaking(false),
-              onStopped: () => setSpeaking(false),
-            });
+            await playTTSNative(text);
           }
         }
       } catch {
@@ -255,7 +260,7 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     },
-    [character, language, loading, stop, unlockAudioCtx, playTTSAudio]
+    [character, language, loading, stop, unlockAudioCtx, playTTSWeb, playTTSNative]
   );
 
   return (

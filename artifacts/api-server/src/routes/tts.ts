@@ -63,9 +63,12 @@ function chunkText(text: string, maxLen = 180): string[] {
   return chunks.length ? chunks : [text.slice(0, maxLen)];
 }
 
-router.post("/tts", async (req, res) => {
-  const { text, lang = "en-AU" } = req.body as { text?: string; lang?: string };
-
+async function handleTTS(
+  text: string | undefined,
+  lang: string,
+  req: Parameters<Parameters<typeof router.post>[1]>[0],
+  res: Parameters<Parameters<typeof router.post>[1]>[1]
+) {
   if (!text || typeof text !== "string") {
     res.status(400).json({ error: "text is required" });
     return;
@@ -86,6 +89,18 @@ router.post("/tts", async (req, res) => {
     req.log.error({ err }, "TTS request failed");
     res.status(500).json({ error: "Voice generation failed." });
   }
+}
+
+// POST — used by web (Web Audio API fetches ArrayBuffer)
+router.post("/tts", async (req, res) => {
+  const { text, lang = "en" } = req.body as { text?: string; lang?: string };
+  await handleTTS(text, lang, req, res);
+});
+
+// GET — used by native (expo-av streams directly from URL)
+router.get("/tts", async (req, res) => {
+  const { text, lang = "en" } = req.query as { text?: string; lang?: string };
+  await handleTTS(text, lang, req, res);
 });
 
 export default router;
