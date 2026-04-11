@@ -182,7 +182,7 @@ export default function TidesScreen() {
     retry: 1,
   });
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 0 : insets.top;
 
   return (
     <ScrollView
@@ -310,18 +310,18 @@ export default function TidesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 20, gap: 16 },
+  content: { paddingHorizontal: 14, gap: 8 },
   header: { gap: 2 },
-  title: { fontSize: 24, fontFamily: "Inter_700Bold" },
-  subtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  portSelector: { flexDirection: "row", gap: 8 },
+  title: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  subtitle: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  portSelector: { flexDirection: "row", gap: 6 },
   portChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
   },
-  portChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  portChipText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   loadingState: { alignItems: "center", gap: 12, paddingVertical: 40 },
   loadingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   errorBox: {
@@ -335,19 +335,19 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   retryText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   nextCard: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
-    gap: 12,
+    padding: 12,
+    gap: 8,
   },
-  nextCardHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  nextCardTitle: { fontSize: 12, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.8 },
+  nextCardHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  nextCardTitle: { fontSize: 10, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.8 },
   nextCardBody: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
-  nextTideType: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  nextTideTime: { fontSize: 28, fontFamily: "Inter_700Bold", marginTop: 2 },
+  nextTideType: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  nextTideTime: { fontSize: 22, fontFamily: "Inter_700Bold", marginTop: 2 },
   countdownBox: { alignItems: "flex-end" },
-  countdownNumber: { fontSize: 22, fontFamily: "Inter_700Bold" },
-  countdownLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  countdownNumber: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  countdownLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   heightRow: { flexDirection: "row", alignItems: "center" },
   heightLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
   heightValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginLeft: 4 },
@@ -362,9 +362,9 @@ const styles = StyleSheet.create({
   tideRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
   },
   pastRow: { opacity: 0.45 },
   tideTypeTag: {
@@ -377,9 +377,9 @@ const styles = StyleSheet.create({
     width: 70,
   },
   tideTypeText: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
-  tideTime: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
+  tideTime: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
   tideHeightContainer: { flexDirection: "row", alignItems: "baseline", gap: 2 },
-  tideHeight: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  tideHeight: { fontSize: 15, fontFamily: "Inter_700Bold" },
   tideUnit: { fontSize: 12, fontFamily: "Inter_400Regular" },
   passedLabel: { fontSize: 10, fontFamily: "Inter_400Regular" },
   tideDivider: { height: 1, marginHorizontal: 14 },

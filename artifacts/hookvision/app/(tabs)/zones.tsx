@@ -325,7 +325,7 @@ function RiverChips({
 export default function ZonesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 0 : insets.top;
 
   const [selectedId, setSelectedId] = useState<string>("all");
 
@@ -389,36 +389,36 @@ export default function ZonesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 16, gap: 14 },
+  content: { paddingHorizontal: 14, gap: 8 },
 
-  header: { alignItems: "center", gap: 4 },
-  title: { fontSize: 24, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
+  header: { alignItems: "center", gap: 2 },
+  title: { fontSize: 18, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  subtitle: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center" },
 
-  legendRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center" },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  legendRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, justifyContent: "center" },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontSize: 10, fontFamily: "Inter_500Medium" },
 
   chipScroll: { flexGrow: 0 },
-  chipScrollContent: { gap: 8, paddingHorizontal: 2 },
+  chipScrollContent: { gap: 6, paddingHorizontal: 2 },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
   },
-  chipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  chipText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 
   riverCard: {
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 14,
-    gap: 12,
+    padding: 10,
+    gap: 8,
   },
-  riverHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  riverName: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  riverRegion: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  riverHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  riverName: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  riverRegion: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
   riverHeaderRight: { alignItems: "flex-end", gap: 8 },
   seasonPill: {
     paddingHorizontal: 9,

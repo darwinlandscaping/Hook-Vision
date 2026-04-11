@@ -254,7 +254,7 @@ function CondItem({ emoji, label, hot }: { emoji: string; label: string; hot?: b
 export default function BarraScreen() {
   const colors  = useColors();
   const insets  = useSafeAreaInsets();
-  const topPad  = Platform.OS === "web" ? 67 : insets.top;
+  const topPad  = Platform.OS === "web" ? 0 : insets.top;
 
   const now    = new Date();
   const month  = now.getMonth() + 1;
@@ -415,13 +415,13 @@ export default function BarraScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 18, gap: 16 },
+  content: { paddingHorizontal: 14, gap: 8 },
 
   header: { alignItems: "center", gap: 2 },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" },
-  titleRed: { fontSize: 28, fontFamily: "Inter_700Bold", color: "#ff2200", letterSpacing: 1 },
-  titleWhite: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#ffffff", letterSpacing: 0.5 },
-  subtitle: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 4, textAlign: "center" },
+  titleRed: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#ff2200", letterSpacing: 1 },
+  titleWhite: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#ffffff", letterSpacing: 0.5 },
+  subtitle: { fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2, textAlign: "center" },
 
   condBar: {
     flexDirection: "row",
@@ -445,18 +445,18 @@ const styles = StyleSheet.create({
   },
   bigBtn: {
     backgroundColor: "#cc1100",
-    borderRadius: 20,
-    paddingVertical: 28,
+    borderRadius: 16,
+    paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 4,
     borderWidth: 2,
     borderColor: "#ff2200",
   },
   bigBtnLoading: { backgroundColor: "#8b0000" },
-  bigBtnIcon: { fontSize: 36 },
-  bigBtnText: { fontSize: 24, fontFamily: "Inter_700Bold", color: "#ffffff", letterSpacing: 1 },
-  bigBtnSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#ffaaaa", letterSpacing: 0.3 },
+  bigBtnIcon: { fontSize: 26 },
+  bigBtnText: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#ffffff", letterSpacing: 1 },
+  bigBtnSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#ffaaaa", letterSpacing: 0.3 },
 
   errorBox: {
     flexDirection: "row", alignItems: "center", gap: 8,

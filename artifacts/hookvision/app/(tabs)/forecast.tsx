@@ -302,7 +302,7 @@ function CondPill({ emoji, label, value, sub, colours }: {
 export default function ForecastScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 0 : insets.top;
 
   const now = new Date();
   const month = now.getMonth() + 1;
@@ -513,36 +513,36 @@ export default function ForecastScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 20, gap: 16 },
-  header: { alignItems: "center", gap: 4 },
+  content: { paddingHorizontal: 14, gap: 8 },
+  header: { alignItems: "center", gap: 2 },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" },
-  title: { fontSize: 26, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  title: { fontSize: 20, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  subtitle: { fontSize: 11, fontFamily: "Inter_400Regular" },
 
-  condGrid: { gap: 8 },
+  condGrid: { gap: 6 },
   condPill: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 12,
-    padding: 12,
-    borderRadius: 12,
+    gap: 8,
+    padding: 8,
+    borderRadius: 10,
     borderWidth: 1,
   },
-  condEmoji: { fontSize: 22, marginTop: 2 },
-  condLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.8 },
-  condValue: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginTop: 1 },
-  condSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2, lineHeight: 15 },
+  condEmoji: { fontSize: 18, marginTop: 1 },
+  condLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.8 },
+  condValue: { fontSize: 12, fontFamily: "Inter_600SemiBold", marginTop: 1 },
+  condSub: { fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 1, lineHeight: 14 },
 
   seasonBox: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
-    padding: 14,
-    borderRadius: 12,
+    gap: 8,
+    padding: 10,
+    borderRadius: 10,
     borderWidth: 1,
   },
-  seasonBoxEmoji: { fontSize: 20, marginTop: 1 },
-  seasonBoxText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  seasonBoxEmoji: { fontSize: 16, marginTop: 1 },
+  seasonBoxText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
 
   pulseWrapper: {
     shadowColor: "#00d4aa",
@@ -555,12 +555,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
-    paddingVertical: 20,
+    gap: 10,
+    paddingVertical: 13,
     borderRadius: 30,
   },
-  bigBtnEmoji: { fontSize: 24 },
-  bigBtnText: { fontSize: 20, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  bigBtnEmoji: { fontSize: 18 },
+  bigBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
 
   errorBox: {
     flexDirection: "row",
@@ -572,14 +572,14 @@ const styles = StyleSheet.create({
   },
   errorText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
 
-  results: { gap: 14 },
+  results: { gap: 10 },
   headlineBox: {
-    padding: 16,
-    borderRadius: 12,
+    padding: 10,
+    borderRadius: 10,
     borderWidth: 1,
     borderLeftWidth: 4,
   },
-  headlineText: { fontSize: 15, fontFamily: "Inter_700Bold", lineHeight: 22 },
+  headlineText: { fontSize: 13, fontFamily: "Inter_700Bold", lineHeight: 18 },
   spotsHeader: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
@@ -589,24 +589,24 @@ const styles = StyleSheet.create({
   },
 
   spotCard: {
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     overflow: "hidden",
-    gap: 10,
-    padding: 14,
+    gap: 6,
+    padding: 10,
   },
-  spotHeader: { gap: 8 },
-  spotTitleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  spotHeader: { gap: 6 },
+  spotTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   spotNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  spotNumberText: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  spotName: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  spotSpecies: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginTop: 1 },
+  spotNumberText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  spotName: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  spotSpecies: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 1 },
 
   urgencyBadge: {
     paddingHorizontal: 10,

@@ -173,7 +173,7 @@ export default function SpeciesScreen() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<FishCategory | "all">("all");
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 0 : insets.top;
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();

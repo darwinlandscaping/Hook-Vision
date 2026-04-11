@@ -182,7 +182,7 @@ export default function AnalyzeScreen() {
     }
   }, [imageBase64, imageUri, addEntry, analyzeScale]);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 0 : insets.top;
 
   return (
     <ScrollView
@@ -205,7 +205,7 @@ export default function AnalyzeScreen() {
 
       {!imageUri ? (
         <View style={styles.emptyState}>
-          <SonarPulse size={140} active />
+          <SonarPulse size={80} active />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
             Scan your sonar
           </Text>
@@ -333,20 +333,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 20,
-    gap: 24,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   header: {
     alignItems: "center",
-    gap: 4,
+    gap: 2,
   },
   appName: {
-    fontSize: 28,
+    fontSize: 22,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
     letterSpacing: 0.3,
   },
@@ -355,33 +355,33 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: "center",
-    gap: 14,
-    paddingVertical: 16,
+    gap: 8,
+    paddingVertical: 4,
   },
   emptyTitle: {
-    fontSize: 22,
+    fontSize: 17,
     fontFamily: "Inter_600SemiBold",
-    marginTop: 6,
+    marginTop: 2,
   },
   emptyDesc: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    lineHeight: 20,
-    paddingHorizontal: 16,
+    lineHeight: 17,
+    paddingHorizontal: 8,
   },
   cameraBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    paddingHorizontal: 28,
-    paddingVertical: 16,
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 30,
     marginTop: 6,
   },
   cameraBtnText: {
-    fontSize: 17,
+    fontSize: 14,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.2,
   },
@@ -390,17 +390,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingHorizontal: 28,
-    paddingVertical: 13,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 30,
     borderWidth: 1,
   },
   galleryBtnText: {
-    fontSize: 15,
+    fontSize: 13,
     fontFamily: "Inter_500Medium",
   },
   brandNote: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 16,

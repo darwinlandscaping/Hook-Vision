@@ -14,7 +14,7 @@ export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { history, removeEntry, clearHistory } = useHistory();
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 0 : insets.top;
 
   const handleDelete = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
