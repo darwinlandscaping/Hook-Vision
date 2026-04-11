@@ -180,22 +180,23 @@ function RiverCard({ river, colors }: { river: RiverSystem; colors: ReturnType<t
         onPress={() => setExpanded((e) => !e)}
         style={styles.riverHeader}
       >
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.riverName, { color: colors.primary }]}>{river.name}</Text>
-          <Text style={[styles.riverRegion, { color: colors.mutedForeground }]}>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={[styles.riverName, { color: colors.primary }]} numberOfLines={1}>
+            {river.name}
+          </Text>
+          <View style={[styles.seasonPill, { backgroundColor: `${colors.primary}18`, borderColor: `${colors.primary}40`, alignSelf: "flex-start" }]}>
+            <Text style={[styles.seasonPillText, { color: colors.primary }]}>{river.bestSeason}</Text>
+          </View>
+          <Text style={[styles.riverRegion, { color: colors.mutedForeground }]} numberOfLines={1} ellipsizeMode="tail">
             {river.region} · {river.distanceFromDarwin}
           </Text>
         </View>
-        <View style={styles.riverHeaderRight}>
-          <View style={[styles.seasonPill, { backgroundColor: `${colors.primary}20`, borderColor: `${colors.primary}44` }]}>
-            <Text style={[styles.seasonPillText, { color: colors.primary }]}>{river.bestSeason}</Text>
-          </View>
-          <Feather
-            name={expanded ? "chevron-up" : "chevron-down"}
-            size={18}
-            color={colors.mutedForeground}
-          />
-        </View>
+        <Feather
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={16}
+          color={colors.mutedForeground}
+          style={{ marginTop: 2 }}
+        />
       </TouchableOpacity>
 
       {expanded && (
@@ -416,18 +417,18 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 8,
   },
-  riverHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  riverName: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  riverRegion: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
-  riverHeaderRight: { alignItems: "flex-end", gap: 8 },
+  riverHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  riverName: { fontSize: 16, fontFamily: "Oswald_700Bold", letterSpacing: 0.3 },
+  riverRegion: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  riverHeaderRight: { alignItems: "flex-end", gap: 6 },
   seasonPill: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
     borderWidth: 1,
   },
-  seasonPillText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  riverCharacter: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  seasonPillText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+  riverCharacter: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, flexShrink: 1 },
 
   riverMeta: { gap: 6 },
   metaPill: {
