@@ -115,6 +115,19 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     setSpeaking(false);
   }, []);
 
+  // Unlock web speech synthesis within user gesture context
+  const unlockWebSpeech = useCallback(() => {
+    if (Platform.OS !== "web" || !("speechSynthesis" in window)) return;
+    // Resume if paused (Chrome pauses after 15s of inactivity)
+    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    // Speak a zero-length utterance to satisfy Chrome's user-gesture requirement
+    const unlock = new SpeechSynthesisUtterance("");
+    unlock.volume = 0;
+    window.speechSynthesis.speak(unlock);
+    // Cancel immediately so it doesn't linger
+    setTimeout(() => window.speechSynthesis.cancel(), 50);
+  }, []);
+
   const speak = useCallback(
     (text: string) => {
       stop();
@@ -123,6 +136,8 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
       if (Platform.OS === "web") {
         if (!("speechSynthesis" in window)) return;
         setSpeaking(true);
+        // Ensure synthesis engine is running (can pause after idle)
+        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
 
         const fire = (voices: SpeechSynthesisVoice[]) => {
           const preferred = [
@@ -168,6 +183,9 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
       if (loading) return;
       setLoading(true);
       stop();
+      // Unlock speech synthesis NOW while we still have the user gesture —
+      // Chrome blocks speech that fires after an async gap (fetch await).
+      unlockWebSpeech();
       try {
         const domain = process.env.EXPO_PUBLIC_DOMAIN;
         const baseUrl = domain ? `https://${domain}` : "";
@@ -185,7 +203,7 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     },
-    [character, language, loading, speak, stop]
+    [character, language, loading, speak, stop, unlockWebSpeech]
   );
 
   return (
