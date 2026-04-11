@@ -92,14 +92,26 @@ router.post("/analyze", async (req, res) => {
 
     let parsed: unknown;
     try {
+      // First try: clean markdown fences and parse directly
       const cleaned = raw
-        .replace(/```json\n?/g, "")
+        .replace(/```json\n?/gi, "")
         .replace(/```\n?/g, "")
         .trim();
-      parsed = JSON.parse(cleaned);
+
+      // Second try: extract the JSON object from anywhere in the response
+      // This handles cases where the AI prefixes/suffixes text around the JSON
+      let jsonStr = cleaned;
+      if (!jsonStr.startsWith("{")) {
+        const match = jsonStr.match(/\{[\s\S]*\}/);
+        if (match) {
+          jsonStr = match[0];
+        }
+      }
+
+      parsed = JSON.parse(jsonStr);
     } catch {
       req.log.error({ raw }, "Failed to parse AI response as JSON");
-      res.status(500).json({ error: "Failed to parse analysis" });
+      res.status(500).json({ error: "Failed to parse analysis. The AI returned an unexpected response." });
       return;
     }
 

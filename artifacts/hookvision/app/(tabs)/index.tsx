@@ -106,8 +106,14 @@ export default function AnalyzeScreen() {
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Analysis failed");
+        let errMsg = "Analysis failed. Please try again.";
+        try {
+          const errBody = await response.json();
+          if (errBody?.error) errMsg = errBody.error;
+        } catch {
+          // non-JSON error body, use default
+        }
+        throw new Error(errMsg);
       }
 
       const data: FishAnalysis = await response.json();
