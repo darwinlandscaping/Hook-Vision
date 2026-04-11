@@ -93,13 +93,13 @@ async function handleTTS(
 
 // POST — used by web (Web Audio API fetches ArrayBuffer)
 router.post("/tts", async (req, res) => {
-  const { text, lang = "en" } = req.body as { text?: string; lang?: string };
+  const { text, lang = "en-AU" } = req.body as { text?: string; lang?: string };
   await handleTTS(text, lang, req, res);
 });
 
 // GET — used by native (expo-av streams directly from URL)
 router.get("/tts", async (req, res) => {
-  const { text, lang = "en" } = req.query as { text?: string; lang?: string };
+  const { text, lang = "en-AU" } = req.query as { text?: string; lang?: string };
   await handleTTS(text, lang, req, res);
 });
 
