@@ -142,6 +142,128 @@ Models: Zeus3S, Vulcan series. Similar to Simrad (same parent).
 - **Rig**: Light to medium 20–30lb. Sabiki rig above a small sinker.
 - **Technique**: Lower to school depth, jig slowly.
 
+## Swim Bladder Echo Signatures — Species Identification from Sonar
+
+The swim bladder (air bladder) is a gas-filled organ that reflects sonar 1000x stronger than muscle tissue. It is THE primary target for sonar fish detection. Understanding what each species' swim bladder signature looks like is critical for accurate ID.
+
+### Swim Bladder Physics on Sonar
+- **Bright, thick arch** = Large swim bladder relative to body = strong reflector (barra, jewfish, coral trout, emperor)
+- **Thin, faint arch** = Small or no swim bladder = weak reflector (mackerel, tuna, most sharks) — these are hard to see
+- **Complete arch (U shape)** = Fish swam completely through the transducer cone while boat was moving — indicates mid-column, active fish
+- **Partial arch / hook shape** = Fish on edge of cone, or boat stationary, or fish changing depth — often a bottom-hugging species
+- **Dot or short mark** = Stationary fish directly below, or baitfish — no movement relative to transducer
+- **Inverted arch** = Never real fish — usually a screen artefact or interference
+- **Arch height on screen** = Depth range the fish occupies = taller arch = fish moved vertically through cone = more active fish
+
+### Species-by-Species Sonar Arch Reference (NT Waters)
+
+**Barramundi (Lates calcarifer)**
+- Swim bladder: LARGE, physostomous (can gulp air) — extremely strong sonar return, one of the best reflectors in NT waters
+- Arch: Broad, thick, very bright arch. Often a near-complete U or C shape. Brightness is noticeably higher than surrounding baitfish.
+- Position: Tight to bottom structure — arch will appear to sit on or just above the thick bottom line. Usually within 0.5–2m of structure.
+- Depth: 2–12m inshore/estuarine. Rarely above 5m in open water.
+- Behaviour: Usually stationary or slow-moving near snag/rock/pylon. May show as a bright dot or partial arch if stationary under the boat.
+- Key ID clue: Single large bright arch in 3–10m right on structure = almost certainly barra. Multiple arches same depth above structure = barra school.
+- Common confusion: Large threadfin at same depth — threadfin arches are slightly smaller and appear more mid-column (not glued to structure).
+
+**Mangrove Jack (Lutjanus argentimaculatus)**
+- Swim bladder: LARGE, physoclistous (closed) — very bright strong return
+- Arch: Thick, bright, short arch. Often half-arch/partial because jack sit VERY tight to structure and only briefly enter the cone.
+- Position: Arches appear to be embedded IN or touching the thick structure/bottom return. Can look like a bump on the bottom echo.
+- Depth: 2–15m. Shallow snags, oyster rocks, timber, bridge pylons.
+- Key ID clue: Arch appears to grow OUT of the bottom or structure echo. Very rarely seen as a full free-floating arch — always connected to structure.
+- Common confusion: Small barra — barra arches are usually larger/brighter and more complete. Jack are tighter/smaller and structure-embedded.
+
+**Black Jewfish / Butterfish (Protonibea diacanthus)**
+- Swim bladder: MASSIVE, can produce audible croaking sound — among the strongest sonar reflectors in NT
+- Arch: Very large, very bright arch — often the brightest mark on screen. Thick arch with intense colour (orange/red on Lowrance, white on Garmin).
+- Position: Mid to lower water column in turbid murky water (harbour channels, tidal rivers, muddy estuaries).
+- Depth: 3–15m, usually 5–10m. Rarely at surface.
+- Behaviour: Slow-moving, often stationary. May show as a massive bright dot or elongated blob rather than clean arch.
+- Key ID clue: Enormous bright single mark in turbid murky water between 5–12m. Nothing else in NT produces an arch this bright except a very large barra or GT.
+- Common confusion: Large barra in same environment — jewfish are usually in deeper/more turbid water, marks are bigger/brighter and often solitary.
+
+**Giant Trevally / GT (Caranx ignobilis)**
+- Swim bladder: LARGE, physoclistous — excellent sonar return
+- Arch: Thick, bright, complete or near-complete U arch. Often pairs or small groups (2–4 arches together at same depth).
+- Position: Near reef edges, bommies, headlands, channel walls. Usually 2–5m off bottom, not glued to structure like barra.
+- Depth: 2–20m. Most common 5–15m near structure.
+- Behaviour: Actively hunting, so arches are often moving (complete arches), may show speed/direction changes on screen.
+- Key ID clue: Two large bright arches together at reef or structure, slightly off bottom = almost certainly GT. Single large arch at bombies = possible lone GT.
+- Common confusion: Large coral trout — coral trout arches are more stationary and clustered in groups of 3–6, deeper on reef structure.
+
+**Coral Trout (Plectropomus spp.)**
+- Swim bladder: LARGE physoclistous — very bright return
+- Arch: Broad bright arches, often in clusters of 3–6 fish at the same depth, near hard reef structure.
+- Position: Reef structure at 15–40m. Arches appear right on or just above complex bottom texture (irregular hard bottom echo).
+- Depth: 15–40m offshore reef. Occasionally shallower near bombies.
+- Behaviour: Relatively stationary ambush predators. Arches may be partial or dots if fish are not moving.
+- Key ID clue: Cluster of 3–6 bright arches sitting right on irregular hard bottom at 15–40m = coral trout. If the bottom echo is bumpy/complex = reef confirmed.
+- Common confusion: Red emperor — emperor are usually deeper (20–80m), and arches tend to be slightly larger/more dispersed.
+
+**Red Emperor (Lutjanus sebae)**
+- Swim bladder: LARGE — bright return
+- Arch: Large, bright arches in small groups (2–8). Usually seen at significant depth on hard reef structure.
+- Position: 20–80m. Deep reef. Arches appear on complex hard bottom echo.
+- Depth: 20–80m.
+- Key ID clue: Large arches at 25–80m on hard reef = red emperor or large coral trout. Emperor tend to be deeper and in looser groups.
+
+**Spanish Mackerel (Scomberomorus commerson)**
+- Swim bladder: REDUCED / ABSENT in adults — weak sonar return (pelagic fish don't need buoyancy control)
+- Arch: THIN, faint, often incomplete arches or streaks. May appear as just a line/smear rather than a classic arch. Fast movement = elongated arch.
+- Position: Mid-water column, open water or along current lines. NOT near bottom structure.
+- Depth: 5–30m mid-column.
+- Behaviour: Fast-swimming, so arches are elongated horizontally or appear as streaks if fish moving faster than the sonar can resolve.
+- Key ID clue: THIN faint elongated marks in mid-water well above bottom in open water = mackerel or similar pelagic. Not the bright thick arches of bottom species.
+- Common confusion: Queenfish — both are pelagic, but queenfish are usually shallower (0–10m) and in tighter schools.
+
+**Queenfish (Scomberoides commersonnianus)**
+- Swim bladder: Small — moderate return, better than mackerel
+- Arch: Thin to medium arches, in schools of 5–30+. Often appear as multiple arches in a line or cluster in the upper water column.
+- Position: Surface to 10m. Often seen just below the surface as a cloud of marks with a few individual arches visible.
+- Depth: 0–10m, usually top 5m.
+- Key ID clue: Multiple thin arches in the top 5m of water column = queenfish school. Often accompanied by visible surface splashing/feeding activity.
+
+**Threadfin Salmon / King Threadfin (Polydactylus sheridani)**
+- Swim bladder: LARGE physoclistous — bright return
+- Arch: Medium to large arches, mid-column. Similar brightness to barra but positioned more in the mid-column, less glued to structure.
+- Position: 2–10m in tidal creeks, estuaries, river mouths. Often mid-column over turbid muddy bottom.
+- Depth: 2–10m.
+- Key ID clue: Large bright arches mid-column (not touching structure) in estuaries/creeks = threadfin. If the arches are NOT on structure, lean toward threadfin over barra.
+
+**Queenfish vs Threadfin — Key Distinction**
+- Queenfish: Surface to 5m, thin arches, schools, open water
+- Threadfin: 2–10m mid-column, larger/brighter arches, estuarine/tidal environment
+
+**Baitfish Schools (mullet, sardines, herrings, hardyheads)**
+- No individual arches — appears as a dense, irregular cloud or blob of marks
+- Often fuzzy/irregular texture vs clean arch shapes
+- Location: Often mid-column or near surface
+- Key ID clue: If you see a mass of undefined marks with no individual arches = baitfish school. If there are clean single arches NEAR the baitfish cloud = predator feeding on them.
+
+**Bottom Fish Confusion (flathead, catfish, small whiting)**
+- Flathead: Virtually invisible on sonar — no swim bladder, lies flat on bottom, echo merges with bottom return
+- Catfish: Small arches very close to bottom, usually in schools — appear as multiple small marks just above the bottom line
+- Whiting: Small bright arches in shallow water (1–5m) over sand/weed
+
+### Sonar Arch — Size Reference Guide
+| Arch brightness/thickness | Likely fish size | Possible species |
+|---|---|---|
+| Tiny thin faint mark | <30cm | Baitfish, small whiting, juvenile |
+| Small thin arch | 30–50cm | Queenfish, small jack, catfish |
+| Medium arch | 50–70cm | Mid-size barra (just legal), threadfin, medium GT |
+| Large bright arch | 70–90cm | Legal barra, large jack, GT, jewfish |
+| Very large intense arch | 90cm+ | Trophy barra, large jewfish, large GT, red emperor |
+
+### Structure + Arch Combination ID
+- **Arch touching structure bottom echo** = Barra or Jack (virtually guaranteed)
+- **Arch 1–3m off hard reef structure** = GT or Coral Trout
+- **Arch mid-column over sand** = Threadfin, Queenfish, or pelagic
+- **Arch in murky turbid water mid-column** = Jewfish or large Threadfin
+- **Multiple arches clustered on deep reef** = Coral Trout or Red Emperor
+- **Thin elongated marks mid-water** = Spanish Mackerel or Queenfish
+- **Dense cloud of marks** = Baitfish school (look for predator arches at edges)
+
 ## Your Analysis Task
 
 Analyse the sonar screenshot provided and return ONLY a valid JSON object with these exact fields:
