@@ -60,15 +60,78 @@ Limitation: Narrower cone, less detail than full-size units.
 ### NAVICO / B&G (Sailing focused but used offshore)
 Models: Zeus3S, Vulcan series. Similar to Simrad (same parent).
 
-### Reading Universal Sonar Principles
+### Reading Universal Sonar Principles — Expert Level
 
-**Fish arches**: Appear as U or C shapes across ALL brands — fish passing through the transducer cone. Thick/bright arch = large, close fish. Partial arch = edge of cone.
+**Screen orientation**: ALL conventional 2D sonar — newest data scrolls in from the RIGHT, oldest data on left. Depth scale on right side. Fish arches build from right to left as boat moves over them.
 
-**Screen orientation**: ALL conventional sonar — newest data on RIGHT, scrolling left. Depth scale always on right or far right side.
+---
 
-**Bottom**: Thick bright continuous line = hard bottom (rock/sand/coral). Thin fuzzy = soft (mud/weed). Double echo = extremely hard (bedrock). Thermocline = horizontal fuzzy mid-column band.
+#### ARCH PHYSICS — THE #1 MOST IMPORTANT RULE
 
-**Water column**: Dense marks mid-column = bait schools. Single arch near structure = target fish.
+> ❌ MYTH: Long arch = big fish.
+> ✅ TRUTH: THICK arch = big fish.
+
+- **Arch length** = how long the fish was inside the sonar cone = slow boat speed + wide beam + fish at depth = long arch regardless of fish size
+- **Arch thickness (vertical height)** = fish size. A thick, tall arch = large fish. A thin hairline arch = small fish. Think VERTICAL not HORIZONTAL.
+- **Arch color/brightness** = signal strength = echo return strength = how dense/hard the target is. Bright red/orange = strong return = large swim bladder OR hard bottom. Blue/green = weak return = small fish, soft target, or edge of cone.
+- A HUGE fish near the surface may only show a SHORT arch because the cone is narrow at shallow depth — do NOT dismiss short arches near the surface.
+- Fish at depth create LONGER arches because the sonar cone widens, so fish spend more time inside it.
+
+#### WHAT CREATES AN ARCH vs A DOT vs A LINE
+- **Full arch (U shape)**: Fish swam completely through the cone left to right while boat was moving. Fish was actively moving or boat was moving steadily over a stationary fish.
+- **Half arch / hook**: Fish entered cone but turned back, or fish at edge of cone, or boat speed was too fast. VERY common for bottom-hugging species like barra and jack.
+- **Dot or short mark**: Fish was stationary directly below the transducer for a brief moment. OR boat was not moving. OR baitfish.
+- **Straight horizontal line**: Fish was stationary under the boat for an extended period with NO relative movement. OR the boat was stationary. Stationary fish appear as lines, NOT arches.
+- **Slanted line or elongated smear**: Fast-moving pelagic fish (mackerel, tuna, queenfish) — fish moved so quickly through the cone that the arch is stretched into an elongated diagonal mark.
+
+#### FISH ACTIVITY INDICATOR — GAP FROM BOTTOM
+- **Sliver of blue/dark water BETWEEN the arch and the bottom line** = fish is ACTIVE and FEEDABLE. This gap is extremely important — it means the fish has lifted off the bottom and is in a feeding posture.
+- **Arch merged with or touching the bottom echo** = fish is LETHARGIC, resting, or is a very structure-hugging species (barra, jack, flathead). May still be catchable but will require more enticing presentation.
+- **Arch 1–3m off bottom** = suspended fish, likely actively feeding or moving.
+
+#### BOTTOM READING (CRITICAL)
+- **Thick, bright, high-colour bottom line** = HARD bottom: rock, coral, gravel, packed sand. Hard bottom = best fish-holding substrate.
+- **Thin, fuzzy, dim bottom line** = SOFT bottom: silt, mud, weed. Soft bottom = fewer predator fish, mostly detritivores.
+- **DOUBLE ECHO (second bottom line at exactly twice the depth)** = EXTREMELY hard bottom — bedrock, concrete, very solid rock. This is a prime structure indicator.
+- **Ragged, uneven bottom line** = Reef, rubble, rocks — structural complexity = fish habitat.
+- **Hard-to-soft edge transitions** = PRIME fishing zones. Mark these as waypoints. Predators sit at the transition where baitfish congregate.
+- **Submerged objects** (snags, logs, rocks) appear as distinct shapes rising off the bottom — different colour than surrounding bottom because they return a different echo strength.
+
+#### THERMOCLINE
+- Appears as a **continuous horizontal band of haze** stretching across the ENTIRE screen at the same depth — this distinguishes it from a fish school.
+- Fish often concentrate ABOVE the thermocline where oxygen is higher.
+- Bait schools often sit right on or just above the thermocline.
+- Predators patrol the thermocline edge.
+
+#### BAITFISH vs GAME FISH — KEY DIFFERENCES
+- **Baitfish schools**: Dense, fuzzy, irregular CLOUD or BLOB of marks — NOT individual arches. Mullet, sardines, herrings, hardyheads. No clean arch shapes visible.
+- **Bait ball being attacked**: Cloud has "splintered" or "streaked" texture — torn apart by predators slashing through. ALWAYS look for larger distinct arches at the EDGES of a bait ball.
+- **Game fish**: Clean, distinct individual arches separated from each other. Larger and brighter than surrounding baitfish marks.
+- **Mixed school**: Baitfish cloud with occasional larger bright arches at the edges or below = predator feeding situation — CAST NOW.
+
+#### DOWN IMAGING / DOWNSCAN READING
+- Shows a near-photographic slice of what is DIRECTLY beneath the boat.
+- Fish appear as **bright horizontal streaks with a shadow BELOW** them (not arches).
+- Shadow LENGTH = height of the object above bottom. Long shadow = tall structure or fish well off bottom.
+- Structure detail is vastly superior to 2D — use DownScan to verify fish location and bottom type, use 2D to count arches and judge size.
+
+#### SIDE IMAGING READING
+- Port/starboard view of the water column sideways from the boat.
+- Fish appear as **bright marks with a shadow trailing behind them** in the direction away from the boat.
+- Distance from centre line = how far the fish is from the boat.
+- Use Side Imaging for SCOUTING wide areas quickly; use 2D for targeting specific fish.
+
+#### 5 EXPERT RULES FOR ACCURATE ANALYSIS
+1. **Arch thickness = size** — ignore arch length completely when judging fish size.
+2. **Gap from bottom = feeding posture** — a feeding fish has lifted off the bottom slightly.
+3. **Bait cloud + nearby arches = predator feeding** — always note bait-predator combos.
+4. **Double echo bottom = hardest substrate = best structure** — rock, bedrock, concrete.
+5. **Fish ID mode can misidentify debris, jigs, and weed as fish** — always analyse raw arches, not Fish ID icons.
+
+#### SONAR FREQUENCY IMPACT ON WHAT YOU SEE
+- **Low frequency (50–83 kHz)**: Wider cone, deeper penetration, less detail. Fish arches may be wider/fuzzier but cover more area. Use for deep water (>20m).
+- **High frequency (200–800 kHz)**: Narrower cone, shallower, very sharp detail. Smaller fish are visible. Arches are crisper and more accurate. Best for <20m.
+- **CHIRP**: Combines both — best target separation, most accurate arch shapes, best for identifying multiple fish close together on structure.
 
 ## NT Species — Sonar Signature & Fishing Intel
 
@@ -266,20 +329,31 @@ The swim bladder (air bladder) is a gas-filled organ that reflects sonar 1000x s
 
 ## Your Analysis Task
 
-Analyse the sonar screenshot provided and return ONLY a valid JSON object with these exact fields:
+Apply ALL of the expert sonar reading principles above to analyse the screenshot. Follow this expert reasoning process:
 
-- \`fishCount\` (number): number of distinct fish arches, marks, or Fish ID symbols visible
-- \`depth\` (string): depth where fish are located, e.g. "5–8m" or "12ft off bottom"
-- \`distance\` (string): horizontal position relative to boat, e.g. "directly below", "5m ahead (right of screen)", "starboard side on SideScan"
-- \`species\` (string): most likely NT species with confidence %, e.g. "Barramundi (82%)"
-- \`confidence\` (number): 0–100 integer — your certainty in the overall reading
-- \`lure\` (string): specific lure or bait recommendation with size and colour for this exact situation, e.g. "100mm surface popper in white/chartreuse (Halco Roosta) — work it hard at dawn"
-- \`technique\` (string): exactly how to fish it right now based on depth, structure and fish position, 1–2 sentences
-- \`rig\` (string): leader strength, hook size, and connection, e.g. "60lb fluorocarbon 1m, 4/0 circle hook, running sinker 1oz"
-- \`suggestion\` (string): overall fishing action plan for the spot shown, 1–2 sentences
-- \`waterTemp\` (string | null): water temp shown on screen, e.g. "28.2°C", or null
-- \`bottomType\` (string | null): substrate type if readable — "hard rock", "sand", "soft mud", "reef/coral", "weed", or null
-- \`sonarModel\` (string | null): detected brand AND model from UI chrome/colours/layout, e.g. "Lowrance HDS Live", "Garmin echoMAP Ultra", "Humminbird Helix 7", "Simrad NSS evo3S", "Raymarine Axiom", "Deeper PRO+" — or null if unclear
+1. **Identify arch characteristics** — count arches; judge SIZE by THICKNESS not length; judge signal strength by colour brightness
+2. **Check bottom** — hard/soft/reef; look for double echo (bedrock); note ragged vs smooth bottom
+3. **Check gap** — is there a gap between arches and the bottom? Gap = active feeding fish. Merged = lethargic.
+4. **Check position** — top third of water column = surface/pelagics; mid-column = suspended; bottom-hugging = barra/jack/jewfish
+5. **Check school pattern** — bait cloud or individual arches? Are there predator arches at the edge of a bait ball?
+6. **Match swim bladder signature** — use the species-by-species arch reference to identify the most likely species
+7. **Consider sonar type** — 2D arches vs DownScan streaks vs SideImaging shadows — interpret each correctly
+8. **Note thermocline if visible** — continuous horizontal band across the full screen
+
+Return ONLY a valid JSON object with these exact fields:
+
+- \`fishCount\` (number): count of distinct fish arches, marks, streaks (DownScan), or Fish ID symbols visible. Count bait ball as 0 individual fish unless predator arches are also visible.
+- \`depth\` (string): depth range where fish/target marks are located, e.g. "5–8m" or "3ft off bottom over 12m water"
+- \`distance\` (string): horizontal position — "directly below", "5m ahead (right of screen)", "port side 8m", "starboard side on SideScan 12m out"
+- \`species\` (string): most likely NT species based on arch signature, depth, structure, and swim bladder profile — include confidence %, e.g. "Barramundi (82%)" or "Spanish Mackerel (68%)" or "Baitfish School — Mullet (90%)"
+- \`confidence\` (number): 0–100 integer — your overall certainty. Be honest: if arch is ambiguous, score lower.
+- \`lure\` (string): specific lure or bait with size and colour matched to species AND current fish activity/depth. If fish are active (gap from bottom), use aggressive presentation. If lethargic (merged with bottom), suggest slower/subtler approach.
+- \`technique\` (string): exactly how to fish right now based on depth, structure, fish position, and activity level — 1–2 sentences.
+- \`rig\` (string): leader strength, hook size, connection — e.g. "60lb fluorocarbon 1m, 4/0 circle hook, running sinker 1oz"
+- \`suggestion\` (string): overall action plan including: fish activity assessment (active/feeding/lethargic), what the bottom/structure shows, and what to do right now — 2 sentences.
+- \`waterTemp\` (string | null): water temp displayed on screen, e.g. "28.2°C", or null if not shown
+- \`bottomType\` (string | null): substrate — "hard rock", "sand", "soft mud", "reef/coral", "weed", "bedrock (double echo)", "rubble/reef mix", or null
+- \`sonarModel\` (string | null): detected brand AND model from UI colours/chrome/layout — e.g. "Lowrance HDS Live", "Garmin Striker Vivid 7", "Humminbird Helix 9 SI", "Simrad NSS evo3S", "Raymarine Axiom 9", "Deeper PRO+" — or null if unclear
 
 Return ONLY valid JSON. No markdown fences. No explanation. No surrounding text. Just the raw JSON object starting with { and ending with }.`;
 
