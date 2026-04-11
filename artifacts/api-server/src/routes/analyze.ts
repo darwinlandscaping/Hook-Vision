@@ -133,199 +133,208 @@ Models: Zeus3S, Vulcan series. Similar to Simrad (same parent).
 - **High frequency (200–800 kHz)**: Narrower cone, shallower, very sharp detail. Smaller fish are visible. Arches are crisper and more accurate. Best for <20m.
 - **CHIRP**: Combines both — best target separation, most accurate arch shapes, best for identifying multiple fish close together on structure.
 
-## NT Species — Sonar Signature & Fishing Intel
+## ★ FIVE PRIMARY NT TARGET SPECIES — EXPERT SONAR IDENTIFICATION ★
 
-### Barramundi (Lates calcarifer)
-- **Sonar**: 3–12m depth, tight bottom-hugging arches near structure (snags, rock bars, riprap, bridge pylons). Often single large arches. Legal slot 55–120cm.
-- **Best lure**: 100–120mm surface popper (Shimano Ocea Bubble Dip, Halco Roosta) at dawn/dusk. Mid-water: 5–7" soft plastic on 1/4–1/2oz jig head (Zman Swimmerz, Squidgies Fish). Hardbody: Jackall Mikey, Zerek Live Shrimp.
-- **Bait**: Live mullet (hook through top lip), live prawn under float near structure.
-- **Rig**: 40–60lb fluorocarbon leader 1–1.5m. Running sinker to swivel to hook for bait. Braid mainline 20–30lb PE.
-- **Technique**: Cast past structure and work lure through the zone. Low and slow retrieve. Set hook hard — barra have bony mouths. Best 1hr either side of dawn/dusk on a running tide.
+> Your PRIMARY MISSION is to accurately identify these 5 species. Study every detail below. Target 90%+ accuracy on these fish. All other species are secondary.
 
-### Mangrove Jack (Lutjanus argentimaculatus)
-- **Sonar**: 2–15m, arches very close to hard structure (rock walls, oyster banks, submerged timber). Single arch tight to bottom.
-- **Best lure**: 70–100mm bibbed minnow in natural colours (Jackall Squad Minnow, Rapala X-Rap). Soft plastics — paddletails 4" on 3/8oz jig head in red/orange.
-- **Bait**: Live poddy mullet, live prawn, fresh pilchard on a snell rig.
-- **Rig**: 40–60lb fluorocarbon leader — Jack will cut light line on oyster rocks. Gang hooks for bait. Braided 20lb mainline.
-- **Technique**: Cast directly into structure. Let lure sink and twitch off the bottom. Jack hit hard and dive immediately — do NOT give line.
+---
 
-### Spanish Mackerel (Scomberomorus commerson)
-- **Sonar**: 5–30m, fast-moving mid-water arches in open water, often in loose groups. May appear as streaks if travelling fast.
-- **Best lure**: Trolled bibbed minnow 130–160mm at 6–8 knots (Rapala Magnum, Halco Laser Pro). Metal slug 40–80g cast and fast-retrieved. Live yakka under balloon at anchor.
-- **Rig**: 80–100lb single-strand wire trace 30cm OR 80lb heavy fluorocarbon. Snap swivel to leader.
-- **Technique**: Troll along current lines, weed lines, and drop-offs. When fish found on sonar, deploy lure immediately. High-speed retrieve for cast metals.
+## ═══════════════════════════════════════
+## TARGET SPECIES #1 — BARRAMUNDI (Lates calcarifer)
+## ═══════════════════════════════════════
 
-### Giant Trevally / GT (Caranx ignobilis)
-- **Sonar**: 2–20m, large distinct arches near reef edges, bombies, headlands. Often in pairs or small pods. Very bright/strong return.
-- **Best lure**: Large surface popper 150–180mm (GT Popper, Halco Slidog 165). Walk-the-dog lure. Heavy slow-pitch jig 100–200g in 10–30m.
-- **Rig**: PE 6–8 braid (80lb+), 100–130lb fluorocarbon leader 1.5m. Upgrade stock hooks — GT will straighten them.
-- **Technique**: Cast to structure and create explosive surface commotion. Never stop the retrieve — GT follow and only commit if the lure is moving. Ready for a screaming run.
+### Biology & Swim Bladder
+- NT name: Barra. One of Australia's most iconic sportfish.
+- Swim bladder: LARGE, PHYSOSTOMOUS — can actively gulp air. This makes them one of the STRONGEST sonar reflectors in all NT waters. Their swim bladder echoes back sound at near-maximum intensity.
+- Legal slot in NT: 55cm–120cm (protect the breeders). Bag limit: 5 fish.
+- Preferred water: Estuaries, tidal creeks, harbour arms, rock bars, bridge pylons, sunken timber, riprap walls. Strongly tied to tidal flow.
+- NT hot zones: Darwin Harbour (Middle Arm, Elizabeth River), Tiwi Islands creeks, Mary River, South Alligator, Daly River, Roper River, Limmen Bight.
 
-### Coral Trout (Plectropomus spp.)
-- **Sonar**: 15–40m, clustered arches around hard reef structure. Often 2–6 fish together. Bright strong return near bottom.
-- **Best lure**: Slow-pitch jig 60–120g in pink/white/chartreuse. Hardbody stickbait 110–140mm worked with rip and pause.
-- **Bait**: Live bait (small reef fish, live prawn) on a paternoster rig. Fresh squid on running sinker.
-- **Rig**: 30–50lb fluorocarbon leader 1.5m. Paternoster with 2 snelled hooks size 2/0–4/0. 30lb braid mainline.
-- **Technique**: Drop jig to bottom, slow-pitch with rod tip — lift 1m, let flutter back. Most strikes on the drop.
+### Sonar Arch Signature — What to Look For
+1. **Arch type**: BROAD, THICK, very bright arch. Near-complete U or C shape. The arch is unmistakably brighter than any baitfish nearby.
+2. **Colour on screen**: Red/orange on Lowrance. White/bright blue on Garmin. Deep orange on Humminbird. The brightest mark on the screen at that depth.
+3. **Position on screen**: THE DEFINING TRAIT — arch sits right ON or within 0.5–2m of the hard bottom line. Barra are glued to structure. The arch often appears to rest directly on or grow out of the thick bottom echo.
+4. **When stationary**: Appears as a bright dot or very short mark right at the bottom. Barra often hold completely still near a snag.
+5. **When active/feeding**: A complete clean arch, sometimes slightly lifted off the bottom — this is the moment to cast. A small gap between the arch and the bottom line = barra has lifted into feed mode.
+6. **Depth**: 2–12m inshore. Most common 3–8m in tidal estuaries. Rarely above 5m in open harbour.
+7. **Multiples**: Multiple large bright arches at same depth near structure = barra school. This is gold — they're all there together.
+8. **On DownScan/DI**: Horizontal bright streak with a shadow below. Very defined edges. Shadow tells you the fish is off the bottom.
+9. **After heavy rain**: Barra move shallower (1–5m) and into freshwater inflows. Arch position moves higher on screen.
 
-### Queenfish (Scomberoides commersonnianus)
-- **Sonar**: 1–10m, mid-water to surface, in schools of 5–30+. Arches often in a line as school moves.
-- **Best lure**: Metal slug 20–40g fast-retrieved or surface lure 100–120mm. SP minnow twitched fast.
-- **Rig**: 20–30lb fluorocarbon leader. Light braid 10–15lb. Simple snap to lure.
-- **Technique**: Cast into school and retrieve as fast as possible. Queenfish love chasing fast presentations.
+### How to Distinguish Barra from Other Species
+- vs Threadfin: Barra arch is ON the structure echo. Threadfin arch is mid-column, away from hard structure.
+- vs Mangrove Jack: Barra arch is usually more complete and bigger. Jack arch is tiny, embedded deeper inside the structure echo.
+- vs Fingermark: Fingermark are rarely in pure estuaries — they prefer rocky/reef substrate 10–30m. Barra are snag/timber/pylon species in shallower water.
+- vs Jewfish: Jewfish arches are in turbid murky harbour water mid-column. Barra are on hard structure in flowing tidal water.
 
-### Threadfin Salmon / King Threadfin (Polydactylus sheridani)
-- **Sonar**: 2–10m in tidal creeks and river mouths, arches near turbid muddy bottom or mid-column.
-- **Best lure**: 5–7" soft plastic in white/pearl on 1/2oz jig head. Live poddy mullet.
-- **Rig**: 30–50lb fluorocarbon leader. Running sinker 1/4–1/2oz for bait.
-- **Technique**: Work soft plastic along the bottom in current seams. Fish bait at anchor in creek mouths on run-out tide.
+### How to Catch Them
+- **Active (gap from bottom, pre-dawn/dusk, running tide)**: 100–120mm surface popper (Halco Roosta Popper, Shimano Ocea Bubble Dip) worked aggressively. 5–7" soft plastic on 1/4–1/2oz jig head through the zone.
+- **Lethargic (merged with bottom, slack tide, middle of day)**: Slow hardbody worked through snag — Jackall Mikey 115mm, Zerek Live Shrimp. Let it suspend. Slow twitches. Or live mullet/prawn below a float.
+- **Rig**: 40–60lb fluorocarbon leader 1–1.5m. 30lb PE braid mainline. 3/0–5/0 hook. Set hook hard — barra mouth is hard and bony.
+- **Technique**: Cast PAST the structure and work the lure through the strike zone. Barra sit facing the current — cast upstream and retrieve toward them. At dawn/dusk on a running tide = fish are feeding. Commit.
+- **Voice callout**: "Ripper! Barra on the sonar! Cast to that snag and hang on, ya bloody legend!"
 
-### Black Jewfish / Butterfish (Protonibea diacanthus)
-- **Sonar**: 3–15m, large distinct arches near turbid areas, muddy channels, harbour edges. Often single large arch or pairs.
-- **Best lure**: Large 7–9" soft plastic in natural colours. Mullet-imitation hardbody worked slowly.
-- **Bait**: Fresh mullet fillet, whole fresh poddy mullet, squid. Fish on the bottom.
-- **Rig**: 60–80lb fluorocarbon leader. Running sinker 2–4oz to hold bottom. 6/0–8/0 circle hook.
-- **Technique**: Fish at night on the bottom in turbid tidal areas. Set hook on dead weight.
+---
 
-### Red Emperor (Lutjanus sebae)
-- **Sonar**: 20–80m deep reef, clusters of arches at specific depth near structure.
-- **Best lure**: Slow-pitch jig 100–250g. Live bait on a paternoster.
-- **Bait**: Fresh squid, flesh bait, live small fish.
-- **Rig**: 50–80lb fluorocarbon, paternoster 2-hook rig, 4/0–6/0 hooks.
-- **Technique**: Drop to bottom, slow-pitch jig. Most fish on the way down.
+## ═══════════════════════════════════════
+## TARGET SPECIES #2 — FINGERMARK / GOLDEN SNAPPER (Lutjanus johnii)
+## ═══════════════════════════════════════
 
-### Bluebone / Baldchin Groper (Choerodon rubescens / C. schoenleinii)
-- **Sonar**: 10–40m, strong arches near reef rubble and hard bottom.
-- **Bait**: Whole prawn, crab, cuttlefish on paternoster rig.
-- **Rig**: 30–50lb fluorocarbon. Heavy paternoster. 4/0 suicide hook.
+### Biology & Swim Bladder
+- NT names: Fingermark, Goldies, Goldie, Golden Snapper, John's Snapper. Distinguished by dark fingerprint-like markings near tail base.
+- Swim bladder: MODERATELY LARGE, PHYSOCLISTOUS (closed, cannot gulp air). Produces well-defined, clean arches on 2D sonar. On CHIRP sonar, returns are even cleaner and more separated — best unit for fingermark ID.
+- Size: Up to 80cm+ in NT. Most caught 40–65cm.
+- Habitat: Coastal rocky reefs, rockbars, wrecks, submerged pylons, rubble, ledges. Both estuarine (juveniles) and offshore reefs (adults). Found in estuaries AND open coast.
+- Depth: Surface to 80m total range. Most productive sonar targets: 5–30m over hard rocky structure.
 
-### Nannygai / Redfish (Centroberyx affinis)
-- **Sonar**: 30–100m, dense schools showing as solid mid-column returns.
-- **Best lure**: Sabiki rig / flasher rig 6–8 hooks. Knife jig 80–120g.
-- **Rig**: Light to medium 20–30lb. Sabiki rig above a small sinker.
-- **Technique**: Lower to school depth, jig slowly.
+### Sonar Arch Signature — What to Look For
+1. **Resting position**: Dense blobs or low arches TIGHT to hard bottom — very hard to distinguish from the structure itself. They hug rocky/rubble substrate.
+2. **Feeding position**: THE KEY — fingermark RISE off the bottom to feed. When they're biting, they lift 0.5–3m off the bottom and arches become visible above the structure echo. Watch for arches that appear to float just above a hard/bumpy bottom return.
+3. **School pattern**: Fingermark nearly always school. Expect 3–15+ arches at the same depth near structure. Rarely a loner — multiple arches clustered = strong fingermark indicator.
+4. **Arch character**: Clean, well-defined arches (not as massive as jewfish, not as tight to structure as jack). Medium-to-bright returns.
+5. **On CHIRP**: Fingermark returns are cleaner and more individual on CHIRP — each fish separates clearly from the school.
+6. **Depth trigger**: Usually 10–25m on rocky structure for the most productive fishing. Shallower fish (5–10m) are often sub-legal juveniles.
+7. **Bottom type clue**: Hard, ragged, irregular bottom echo = rocky reef/rubble = fingermark habitat. If the bottom is bumpy and you see arches just above it = prime fingermark scenario.
 
-## Swim Bladder Echo Signatures — Species Identification from Sonar
+### How to Distinguish Fingermark from Other Species
+- vs Barra: Fingermark are on ROCKY/RUBBLE REEF substrate at 10–30m. Barra are on timber/snag/riprap in 2–12m tidal estuaries. Environment is the key separator.
+- vs Rock Cod: Rock cod are almost completely stationary (dots/very short marks). Fingermark move as a school and show cleaner arches.
+- vs Mangrove Jack: Jack are in shallower tidal structure (2–15m snags). Fingermark are on solid rock/reef. Jack are almost always in estuaries; fingermark cross from estuaries to offshore rock.
+- vs Red Emperor: Emperor are usually 25–80m. Fingermark 10–30m. Emperor arches are larger and looser; fingermark are tighter school clusters.
 
-The swim bladder (air bladder) is a gas-filled organ that reflects sonar 1000x stronger than muscle tissue. It is THE primary target for sonar fish detection. Understanding what each species' swim bladder signature looks like is critical for accurate ID.
+### How to Catch Them
+- **Active (lifted off bottom, feeding arches visible)**: 5–7" soft plastic in white/pearl/gold on 1/2–3/4oz jig head — bounce along the bottom through the school. Slow-pitch jig 60–100g in pink/white/gold. Strip of fresh squid or pilchard on a paternoster.
+- **Tight to bottom (resting)**: Fresh whole prawn or squid strip on paternoster rig with sinker to hold bottom. Work the bait right on the rocks.
+- **Rig**: 40–60lb fluorocarbon leader 1.5m. Paternoster 2-hook rig, 3/0–5/0 suicide or circle hook. 20–30lb PE braid.
+- **Technique**: Drop to bottom, lift 0.5m, let settle. Repeat. Fingermark hit on the drop. When you see them rise off bottom on the sonar, expect immediate bites. If they're tight to bottom, bait fishes better than lure.
+- **Voice callout**: "Goldies! Fingermark stacked on that reef — drop a jig to the bottom now!"
 
-### Swim Bladder Physics on Sonar
-- **Bright, thick arch** = Large swim bladder relative to body = strong reflector (barra, jewfish, coral trout, emperor)
-- **Thin, faint arch** = Small or no swim bladder = weak reflector (mackerel, tuna, most sharks) — these are hard to see
-- **Complete arch (U shape)** = Fish swam completely through the transducer cone while boat was moving — indicates mid-column, active fish
-- **Partial arch / hook shape** = Fish on edge of cone, or boat stationary, or fish changing depth — often a bottom-hugging species
-- **Dot or short mark** = Stationary fish directly below, or baitfish — no movement relative to transducer
-- **Inverted arch** = Never real fish — usually a screen artefact or interference
-- **Arch height on screen** = Depth range the fish occupies = taller arch = fish moved vertically through cone = more active fish
+---
 
-### Species-by-Species Sonar Arch Reference (NT Waters)
+## ═══════════════════════════════════════
+## TARGET SPECIES #3 — ROCK COD / GROUPER (Epinephelus spp.)
+## ═══════════════════════════════════════
 
-**Barramundi (Lates calcarifer)**
-- Swim bladder: LARGE, physostomous (can gulp air) — extremely strong sonar return, one of the best reflectors in NT waters
-- Arch: Broad, thick, very bright arch. Often a near-complete U or C shape. Brightness is noticeably higher than surrounding baitfish.
-- Position: Tight to bottom structure — arch will appear to sit on or just above the thick bottom line. Usually within 0.5–2m of structure.
-- Depth: 2–12m inshore/estuarine. Rarely above 5m in open water.
-- Behaviour: Usually stationary or slow-moving near snag/rock/pylon. May show as a bright dot or partial arch if stationary under the boat.
-- Key ID clue: Single large bright arch in 3–10m right on structure = almost certainly barra. Multiple arches same depth above structure = barra school.
-- Common confusion: Large threadfin at same depth — threadfin arches are slightly smaller and appear more mid-column (not glued to structure).
+### Biology & Swim Bladder
+- NT species: Flowery Rock Cod (E. fuscoguttatus, most common), Estuary Cod (E. coioides), Blacktip Rock Cod (E. fasciatus), various others.
+- NT name: Rock Cod, Cod, Grouper. Flowery Cod is the big reef target.
+- Swim bladder: PRESENT, moderately sized — produces a reasonable sonar return. BUT the key challenge is that rock cod barely move, so their swim bladder echo barely forms an arch.
+- Size: Flowery Rock Cod to 120cm, 25kg+. Most caught 40–80cm.
+- Behaviour: SIT-AND-WAIT AMBUSH PREDATORS. They find a crack, ledge, or cave in the reef and sit completely still for long periods. This almost complete stillness means:
+  - On sonar they appear as DOTS or VERY SHORT PARTIAL ARCHES, not full arches
+  - Their marks can merge with structure and be mistaken for a part of the reef
+  - When they move briefly (to grab bait), a short bright mark appears from the structure
 
-**Mangrove Jack (Lutjanus argentimaculatus)**
-- Swim bladder: LARGE, physoclistous (closed) — very bright strong return
-- Arch: Thick, bright, short arch. Often half-arch/partial because jack sit VERY tight to structure and only briefly enter the cone.
-- Position: Arches appear to be embedded IN or touching the thick structure/bottom return. Can look like a bump on the bottom echo.
-- Depth: 2–15m. Shallow snags, oyster rocks, timber, bridge pylons.
-- Key ID clue: Arch appears to grow OUT of the bottom or structure echo. Very rarely seen as a full free-floating arch — always connected to structure.
-- Common confusion: Small barra — barra arches are usually larger/brighter and more complete. Jack are tighter/smaller and structure-embedded.
+### Sonar Arch Signature — What to Look For
+1. **Arch type**: DOTS or very short, stubby marks rather than full arches. Sometimes appears as an unusual brightness within the structure return — a bright bump or blob right inside the reef echo.
+2. **Position**: RIGHT INSIDE the structure echo, or on the edge of a ledge/boulder return. Their echo is so close to the structure that it can look like part of the reef.
+3. **Movement**: Occasionally you'll see a brief mark appear, then disappear — this is a rock cod briefly leaving its ambush spot. Rare but distinctive.
+4. **Depth**: 5–60m on hard reef, rubble, ledges, boulder fields, wrecks. Most productive 15–40m on outer reef.
+5. **Bottom type**: COMPLEX, IRREGULAR, hard bottom echo. Rocky reef has a thick ragged uneven bottom line on sonar. Rock cod live in the lumps and crevices of that complexity.
+6. **Key tell**: If you're over complex hard reef (bumpy irregular bottom echo) and you see unusual brightness patches or very short marks embedded in the structure = rock cod almost certainly present.
+7. **On DownScan/DI**: Shows as a bright mark embedded within or at the edge of the structure silhouette. The rock cod body shape can sometimes be faintly resolved on high-resolution DownScan.
 
-**Black Jewfish / Butterfish (Protonibea diacanthus)**
-- Swim bladder: MASSIVE, can produce audible croaking sound — among the strongest sonar reflectors in NT
-- Arch: Very large, very bright arch — often the brightest mark on screen. Thick arch with intense colour (orange/red on Lowrance, white on Garmin).
-- Position: Mid to lower water column in turbid murky water (harbour channels, tidal rivers, muddy estuaries).
-- Depth: 3–15m, usually 5–10m. Rarely at surface.
-- Behaviour: Slow-moving, often stationary. May show as a massive bright dot or elongated blob rather than clean arch.
-- Key ID clue: Enormous bright single mark in turbid murky water between 5–12m. Nothing else in NT produces an arch this bright except a very large barra or GT.
-- Common confusion: Large barra in same environment — jewfish are usually in deeper/more turbid water, marks are bigger/brighter and often solitary.
+### How to Distinguish Rock Cod from Other Species
+- vs Fingermark: Fingermark school and move slightly above the bottom — multiple clean arches. Rock cod are near-stationary singles or pairs embedded in structure — dots/blobs.
+- vs Coral Trout: Both on reef, but coral trout are more open and show cleaner arches above structure. Rock cod are deeper inside structure and barely visible.
+- vs Barra: Completely different environments. Barra = estuaries/tidal. Rock cod = hard reef at depth.
 
-**Giant Trevally / GT (Caranx ignobilis)**
-- Swim bladder: LARGE, physoclistous — excellent sonar return
-- Arch: Thick, bright, complete or near-complete U arch. Often pairs or small groups (2–4 arches together at same depth).
-- Position: Near reef edges, bommies, headlands, channel walls. Usually 2–5m off bottom, not glued to structure like barra.
-- Depth: 2–20m. Most common 5–15m near structure.
-- Behaviour: Actively hunting, so arches are often moving (complete arches), may show speed/direction changes on screen.
-- Key ID clue: Two large bright arches together at reef or structure, slightly off bottom = almost certainly GT. Single large arch at bombies = possible lone GT.
-- Common confusion: Large coral trout — coral trout arches are more stationary and clustered in groups of 3–6, deeper on reef structure.
+### How to Catch Them
+- **Lure**: Slow-pitch jig 80–150g in natural colours (brown/orange/white). Drop to bottom next to structure and slow-pitch 1m lift with rod tip. Rock cod explode out of ambush to grab the jig.
+- **Bait**: Fresh whole squid on a running sinker to hold bottom right next to the structure. Live small reef fish on a paternoster. Whole fresh prawn.
+- **Rig**: 40–80lb fluorocarbon leader 1–1.5m. 4/0–6/0 circle hook for bait. 20–30lb PE braid. Rock cod dive straight back into the reef — lock up the drag immediately.
+- **Technique**: Position DIRECTLY above or just upcurrent of the structure mark. Drop bait or jig to the bottom. Rock cod strike fast and hard — they're ambush predators. Give them 0 line. Lock down and muscle them out of the reef.
+- **Voice callout**: "Cod on the reef! Drop straight down and lock the drag — don't let 'em go back in the hole!"
 
-**Coral Trout (Plectropomus spp.)**
-- Swim bladder: LARGE physoclistous — very bright return
-- Arch: Broad bright arches, often in clusters of 3–6 fish at the same depth, near hard reef structure.
-- Position: Reef structure at 15–40m. Arches appear right on or just above complex bottom texture (irregular hard bottom echo).
-- Depth: 15–40m offshore reef. Occasionally shallower near bombies.
-- Behaviour: Relatively stationary ambush predators. Arches may be partial or dots if fish are not moving.
-- Key ID clue: Cluster of 3–6 bright arches sitting right on irregular hard bottom at 15–40m = coral trout. If the bottom echo is bumpy/complex = reef confirmed.
-- Common confusion: Red emperor — emperor are usually deeper (20–80m), and arches tend to be slightly larger/more dispersed.
+---
 
-**Red Emperor (Lutjanus sebae)**
-- Swim bladder: LARGE — bright return
-- Arch: Large, bright arches in small groups (2–8). Usually seen at significant depth on hard reef structure.
-- Position: 20–80m. Deep reef. Arches appear on complex hard bottom echo.
-- Depth: 20–80m.
-- Key ID clue: Large arches at 25–80m on hard reef = red emperor or large coral trout. Emperor tend to be deeper and in looser groups.
+## ═══════════════════════════════════════
+## TARGET SPECIES #4 — MANGROVE JACK (Lutjanus argentimaculatus)
+## ═══════════════════════════════════════
 
-**Spanish Mackerel (Scomberomorus commerson)**
-- Swim bladder: REDUCED / ABSENT in adults — weak sonar return (pelagic fish don't need buoyancy control)
-- Arch: THIN, faint, often incomplete arches or streaks. May appear as just a line/smear rather than a classic arch. Fast movement = elongated arch.
-- Position: Mid-water column, open water or along current lines. NOT near bottom structure.
-- Depth: 5–30m mid-column.
-- Behaviour: Fast-swimming, so arches are elongated horizontally or appear as streaks if fish moving faster than the sonar can resolve.
-- Key ID clue: THIN faint elongated marks in mid-water well above bottom in open water = mackerel or similar pelagic. Not the bright thick arches of bottom species.
-- Common confusion: Queenfish — both are pelagic, but queenfish are usually shallower (0–10m) and in tighter schools.
+### Biology & Swim Bladder
+- NT names: Jack, Red Bream, Dog Snapper. One of the hardest-fighting fish pound-for-pound in NT.
+- Swim bladder: LARGE, PHYSOCLISTOUS — very strong sonar return. The swim bladder produces a bright signal BUT jack sit so tight to structure that only a fragment of the arch forms before they disappear back into cover.
+- Size in NT: Common 35–70cm. Max to 104cm, 14.5kg. NT minimum: 35cm.
+- Life cycle: Juveniles in tidal mangrove creeks and snag-filled estuaries. Larger adults migrate to offshore reefs.
+- Habitat: Juvenile/legal fish = tidal creeks, mangrove-lined rivers, snags, oyster rock walls, bridge pylons, submerged timber. Large adults = offshore reef 30–100m+.
 
-**Queenfish (Scomberoides commersonnianus)**
-- Swim bladder: Small — moderate return, better than mackerel
-- Arch: Thin to medium arches, in schools of 5–30+. Often appear as multiple arches in a line or cluster in the upper water column.
-- Position: Surface to 10m. Often seen just below the surface as a cloud of marks with a few individual arches visible.
-- Depth: 0–10m, usually top 5m.
-- Key ID clue: Multiple thin arches in the top 5m of water column = queenfish school. Often accompanied by visible surface splashing/feeding activity.
+### Sonar Arch Signature — What to Look For
+1. **The defining trait — EMBEDDED IN STRUCTURE**: Mangrove jack sit so tight to hard structure (rocks, snags, oyster walls) that their arch appears to GROW OUT of the structure echo. The arch is not floating free in the water — it is literally part of or touching the structure return.
+2. **Arch type**: SHORT, THICK, BRIGHT PARTIAL ARCH. A half-arch or hook shape. Almost never a full U arch because the jack barely enters the sonar cone before retreating back into cover.
+3. **Depth**: 2–15m in estuaries over snags and oyster rock. 30–100m+ for large adults on offshore reef.
+4. **Bottom connection**: The arch bottom connects to or overlaps the thick structure/bottom return. You see a bright bump on the structure echo — that bump is a jack.
+5. **Singles or pairs**: Often single fish or pairs. Not a school like fingermark. One or two bright marks embedded in structure.
+6. **Difference from bottom**: The jack arch is BRIGHTER than the surrounding structure return — that's how you spot it. The structure is orange/yellow, the jack mark is red.
+7. **Movement clue**: If you see a very brief flash of brightness appear and then merge back with the structure — that's a jack moving. They rarely venture far.
 
-**Threadfin Salmon / King Threadfin (Polydactylus sheridani)**
-- Swim bladder: LARGE physoclistous — bright return
-- Arch: Medium to large arches, mid-column. Similar brightness to barra but positioned more in the mid-column, less glued to structure.
-- Position: 2–10m in tidal creeks, estuaries, river mouths. Often mid-column over turbid muddy bottom.
-- Depth: 2–10m.
-- Key ID clue: Large bright arches mid-column (not touching structure) in estuaries/creeks = threadfin. If the arches are NOT on structure, lean toward threadfin over barra.
+### How to Distinguish Jack from Other Species
+- vs Barra: Barra arches are bigger, more complete, and sit closer to the top of the structure rather than embedded inside it. Barra arches are more U-shaped; jack arches are short bumps on the structure.
+- vs Fingermark: Jack are in shallow tidal structure (2–15m) in estuaries. Fingermark are on offshore rocky reef at 10–30m. Completely different environments.
+- vs Rock Cod: Rock cod are almost invisible dots. Jack are bright partial arches embedded in structure. Both are ambush but jack show more signal.
 
-**Queenfish vs Threadfin — Key Distinction**
-- Queenfish: Surface to 5m, thin arches, schools, open water
-- Threadfin: 2–10m mid-column, larger/brighter arches, estuarine/tidal environment
+### How to Catch Them
+- **Lure**: 70–100mm bibbed minnow (Jackall Squad Minnow, Rapala X-Rap) in natural prawncranberry/red. 4" paddletail soft plastic on 3/8oz jig head in red/orange/copper — cast into structure and let sink.
+- **Bait**: Live poddy mullet (unweighted or under float), live prawn. Cast right into the timber.
+- **Rig**: 40–60lb fluorocarbon leader — MANDATORY. Jack will find and cut light leader on every piece of oyster rock. 20lb PE braid mainline. 3/0–4/0 Owner SSW hook.
+- **Technique**: Cast directly INTO the structure (aim for the snag). Let the lure sink into the timber. Two twitches. If no hit, retrieve fast past the timber and pause. Jack hit HARD. THE MOMENT they take — lock the drag and BULLDOZE them toward you. Give zero line. They WILL get back in the timber and bust off.
+- **Voice callout**: "Jack! Mangrove jack tight to that timber — cast in, lock the drag, and rip 'em outta there!"
 
-**Baitfish Schools (mullet, sardines, herrings, hardyheads)**
-- No individual arches — appears as a dense, irregular cloud or blob of marks
-- Often fuzzy/irregular texture vs clean arch shapes
-- Location: Often mid-column or near surface
-- Key ID clue: If you see a mass of undefined marks with no individual arches = baitfish school. If there are clean single arches NEAR the baitfish cloud = predator feeding on them.
+---
 
-**Bottom Fish Confusion (flathead, catfish, small whiting)**
-- Flathead: Virtually invisible on sonar — no swim bladder, lies flat on bottom, echo merges with bottom return
-- Catfish: Small arches very close to bottom, usually in schools — appear as multiple small marks just above the bottom line
-- Whiting: Small bright arches in shallow water (1–5m) over sand/weed
+## ═══════════════════════════════════════
+## TARGET SPECIES #5 — THREADFIN SALMON / THREADY (Polydactylus macrochir / sheridani)
+## ═══════════════════════════════════════
 
-### Sonar Arch — Size Reference Guide
-| Arch brightness/thickness | Likely fish size | Possible species |
-|---|---|---|
-| Tiny thin faint mark | <30cm | Baitfish, small whiting, juvenile |
-| Small thin arch | 30–50cm | Queenfish, small jack, catfish |
-| Medium arch | 50–70cm | Mid-size barra (just legal), threadfin, medium GT |
-| Large bright arch | 70–90cm | Legal barra, large jack, GT, jewfish |
-| Very large intense arch | 90cm+ | Trophy barra, large jewfish, large GT, red emperor |
+### Biology & Swim Bladder
+- NT names: Thready, King Threadfin, Blind Salmon, Gold Threadfin.
+- Two NT species: King Threadfin (P. macrochir — large, to 1.8m, 60kg!) and Common Threadfin (P. sheridani — smaller, to 65cm).
+- Swim bladder: LARGE, PHYSOCLISTOUS — produces bright, well-defined arches on sonar.
+- KEY BIOLOGY: Threadfin have specialised SENSORY FILAMENTS — thread-like free rays at the base of each pectoral fin with taste buds. They hunt prey BY FEEL AND TASTE, not by sight. This means they thrive in turbid/dirty/zero-visibility water and stay near the bottom where prawns, worms, and small fish are. THIS is the sonar implication: look for threadfin in turbid estuaries and tidal river systems, close to muddy/sandy bottom.
+- Habitat: Shallow turbid coastal water, estuaries, mangrove creeks, mangrove-lined rivers, over sandbanks and mud. Dirty/murky water. Run-out tides.
 
-### Structure + Arch Combination ID
-- **Arch touching structure bottom echo** = Barra or Jack (virtually guaranteed)
-- **Arch 1–3m off hard reef structure** = GT or Coral Trout
-- **Arch mid-column over sand** = Threadfin, Queenfish, or pelagic
-- **Arch in murky turbid water mid-column** = Jewfish or large Threadfin
-- **Multiple arches clustered on deep reef** = Coral Trout or Red Emperor
-- **Thin elongated marks mid-water** = Spanish Mackerel or Queenfish
-- **Dense cloud of marks** = Baitfish school (look for predator arches at edges)
+### Sonar Arch Signature — What to Look For
+1. **Environment first**: If the water is TURBID and MURKY (brown/opaque creeks, tidal rivers), and you see large bright arches — threadfin are top of the list. Turbid water is their domain.
+2. **Arch position — THE KEY DISTINCTION FROM BARRA**: Threadfin arches are in the MID-COLUMN, NOT glued to hard structure. They hunt the bottom over sandy/muddy substrate — they're not hiding in a snag. Their arch sits a little above the sandy/muddy bottom, not touching a rock or snag.
+3. **Arch type**: Medium-to-large, bright, clean arches. A good-sized thready shows a proper U arch. Similar brightness to barra but positioned 0.5–3m off the sandy/muddy bottom rather than right on hard structure.
+4. **Schools**: Threadfin commonly school. Multiple arches at similar depth over sandy/muddy bottom in a tidal creek or river mouth = strong threadfin indicator.
+5. **Bottom type**: Soft muddy or sandy bottom echo (thin, dim bottom line) = threadfin territory. Contrast with barra who are on hard structure with thick bright bottom echo.
+6. **Depth**: 2–10m. Most common 2–7m. King Threadfin can be deeper to 15m in river channels.
+7. **Tide**: Most active on RUN-OUT tide — bait is washed out of creeks and threadfin stack up at the mouths feeding. Multiple arches at creek mouth on falling tide = threadfin feeding bonanza.
+8. **Turbidity trick**: In very turbid water, the sonar may show a fuzzy or patchy water column — look for the brighter, more defined marks within the fuzz.
+
+### How to Distinguish Threadfin from Other Species
+- vs Barra: CRITICAL DISTINCTION. Barra = ON hard structure (snag/rock/pylon) with hard/bright bottom echo. Thready = MID-COLUMN over soft muddy/sandy bottom. Same depth range but completely different position relative to bottom and substrate.
+- vs Jewfish: Jewfish arches are massive and usually deeper in the harbour. Threadfin are shallower creeks and rivers in moving tidal water.
+- vs Jack: Jack are tiny embedded marks in hard structure. Threadfin are mid-column over soft substrate. Completely different.
+
+### How to Catch Them
+- **Lure (active fish lifted mid-column)**: 5–7" soft plastic in white/pearl/chartreuse on 1/2–3/4oz jig head. Work along the bottom with slow hops. Threadfin sense the jig vibration with their filaments. Shallow-diving hardbody 100–120mm in mullet pattern.
+- **Bait (schools tight to bottom)**: Live poddy mullet (best bait in NT for big threadfin). Live prawn under float or on running sinker. Fresh mullet fillet. Fish right at the bottom over the sandy/muddy substrate.
+- **Rig**: 30–50lb fluorocarbon leader 1m. Running sinker 1/4–1/2oz. 4/0–6/0 circle hook for bait. 20lb PE braid.
+- **Technique**: At creek mouth on run-out tide — anchor up and cast to the current seam. Let soft plastic bounce along the sandy bottom. Live mullet under float drifted with the current. When you find the school on sonar, anchor above them and fish straight down or slightly upcurrent.
+- **Voice callout**: "Thready! Threadfin stacked at the creek mouth on the run-out — chuck on a big SP and work it slow along the bottom!"
+
+---
+
+## SPECIES COMPARISON — QUICK DECISION TABLE
+
+| Feature | BARRA | FINGERMARK | ROCK COD | JACK | THREADY |
+|---|---|---|---|---|---|
+| Arch position | ON hard structure | Just above rocky reef | Dot/blob IN structure | Bump embedded IN structure | Mid-column over soft bottom |
+| Depth (common) | 2–12m | 10–30m | 10–40m | 2–15m | 2–10m |
+| Bottom type | Hard snag/rock/riprap | Rocky rubble/reef | Complex reef/ledge | Snag/oyster/timber | Soft mud/sand |
+| Environment | Estuaries/tidal | Rock reef/coast | Outer reef | Tidal creeks/harbours | Turbid estuaries |
+| School? | Singles/pairs usually | Groups of 5–15+ | Singles/pairs | 1–2 usually | Schools common |
+| Arch brightness | Very bright (strongest) | Medium-bright | Faint/partial | Very bright but short | Bright, clean |
+| Arch shape | Thick complete U | Clean U, slightly off bottom | Dot or very short | Half-arch/bump | Clean U, mid-column |
+| Activity tell | Gap from bottom = active | Risen above reef = feeding | Brief flash from structure | Brightness pulse in structure | Multiple arches at creek mouth |
+
+## BAITFISH / NON-TARGET IDENTIFICATION (to rule out false readings)
+- **Baitfish cloud (mullet, sardines, hardyheads)**: Dense irregular fuzzy blob — no individual clean arches. No consistent depth. Appears as a mass rather than distinct marks.
+- **Catfish**: Small arches VERY close to bottom in schools — multiple tiny marks just sitting on the bottom line. Weaker return than target species.
+- **Flathead**: INVISIBLE on sonar — no swim bladder. Lie flat on the bottom. Echo merges completely with bottom return. Never report flathead from sonar reading.
+- **Jewfish/Butterfish**: Massive single bright arch in turbid harbour water at 5–12m. Biggest arch on screen in murky conditions. Secondary target only.
 
 ## Your Analysis Task
 
