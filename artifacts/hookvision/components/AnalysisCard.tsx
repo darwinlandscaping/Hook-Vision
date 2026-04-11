@@ -285,21 +285,29 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
         </View>
       </View>
 
-      {/* Fish photo */}
-      {fishImageUrl && (
-        <View style={[styles.fishImageContainer, { borderColor: colors.border }]}>
+      {/* Fish photo — always shown, skeleton while loading */}
+      <View style={[styles.fishImageContainer, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
+        {fishImageUrl ? (
           <Image
             source={{ uri: fishImageUrl }}
             style={styles.fishImage}
             resizeMode="cover"
           />
-          <View style={[styles.fishImageLabel, { backgroundColor: `${colors.background}cc` }]}>
-            <Text style={[styles.fishImageLabelText, { color: colors.primary }]}>
-              {analysis.species.replace(/\s*\(\d+%\)/, "")}
-            </Text>
+        ) : (
+          <View style={styles.fishImageSkeleton}>
+            <MaterialCommunityIcons name="fish" size={48} color={colors.border} />
+            <Text style={[styles.fishSkeletonText, { color: colors.mutedForeground }]}>Loading photo…</Text>
           </View>
+        )}
+        <View style={[styles.fishImageLabel, { backgroundColor: `${colors.background}dd` }]}>
+          <Text style={[styles.fishImageLabelText, { color: colors.primary }]}>
+            {analysis.species.replace(/\s*\(\d+%\)/, "")}
+          </Text>
+          <Text style={[styles.fishImageConfidence, { color: colors.mutedForeground }]}>
+            {analysis.confidence}% confidence
+          </Text>
         </View>
-      )}
+      </View>
 
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
@@ -357,25 +365,28 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
           </View>
           {analysis.lure && (
             <>
-              {lureImageUrl && (
-                <View style={[styles.lureImageRow]}>
+              {/* Lure image — full width, large */}
+              <View style={[styles.lureImageContainer, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
+                {lureImageUrl ? (
                   <Image
                     source={{ uri: lureImageUrl }}
-                    style={[styles.lureImage, { borderColor: colors.border }]}
+                    style={styles.lureImageFull}
                     resizeMode="cover"
                   />
-                  {lureCategory && (
-                    <View style={styles.lureLabelCol}>
-                      <Text style={[styles.lureCategoryLabel, { color: colors.mutedForeground }]}>
-                        TYPE
-                      </Text>
-                      <Text style={[styles.lureCategoryValue, { color: colors.accent }]}>
-                        {lureCategory.label}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
+                ) : (
+                  <View style={styles.fishImageSkeleton}>
+                    <MaterialCommunityIcons name="hook" size={40} color={colors.border} />
+                    <Text style={[styles.fishSkeletonText, { color: colors.mutedForeground }]}>Loading lure photo…</Text>
+                  </View>
+                )}
+                {lureCategory && (
+                  <View style={[styles.fishImageLabel, { backgroundColor: `${colors.background}dd` }]}>
+                    <Text style={[styles.fishImageLabelText, { color: colors.accent }]}>
+                      {lureCategory.label}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <TacticBox
                 icon={<MaterialCommunityIcons name="hook" size={13} color={colors.accent} />}
                 label="LURE / BAIT"
@@ -547,52 +558,53 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   fishImageContainer: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: "hidden",
     borderWidth: 1,
-    height: 160,
+    height: 200,
     position: "relative",
   },
   fishImage: {
     width: "100%",
     height: "100%",
   },
+  fishImageSkeleton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  fishSkeletonText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
   fishImageLabel: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 1,
   },
   fishImageLabelText: {
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.3,
-  },
-  lureImageRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  lureImage: {
-    width: 90,
-    height: 70,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  lureLabelCol: {
-    flex: 1,
-    gap: 3,
-  },
-  lureCategoryLabel: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  lureCategoryValue: {
     fontSize: 15,
     fontFamily: "Inter_700Bold",
+    letterSpacing: 0.2,
+  },
+  fishImageConfidence: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
+  lureImageContainer: {
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    height: 180,
+    position: "relative",
+  },
+  lureImageFull: {
+    width: "100%",
+    height: "100%",
   },
 });
