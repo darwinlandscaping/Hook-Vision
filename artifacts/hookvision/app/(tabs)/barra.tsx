@@ -21,6 +21,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useColors } from "@/hooks/useColors";
+import { NarratorButton } from "@/components/NarratorButton";
+import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 
 // ─── Moon Phase (reuse same algorithm) ───────────────────────────────────────
 function getMoonPhase(date: Date): { name: string; day: number; tideType: string } {
@@ -333,7 +335,10 @@ export default function BarraScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.titleRed}>TROPHY BARRA</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.titleRed}>TROPHY BARRA</Text>
+          <NarratorSettingsTrigger />
+        </View>
         <Text style={styles.titleWhite}>DEPTH PREDICTOR</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           40 years of NT river data · targeting 70cm+
@@ -385,6 +390,14 @@ export default function BarraScreen() {
             <PredCard key={pred.rank} pred={pred} colors={colors} />
           ))}
 
+          {/* Narrator */}
+          {result && (
+            <NarratorButton
+              pageType="trophy barra prediction"
+              content={`${result.bigPictureRead} Top depth: ${result.topDepth}. ${result.predictions.map((p, i) => `${i + 1}. ${p.spot} on the ${p.river} — ${p.targetDepth} depth, ${p.confidence} confidence. ${p.why}`).join(" ")}`}
+            />
+          )}
+
           {/* Re-run */}
           <TouchableOpacity
             style={[styles.rerunBtn, { borderColor: colors.border }]}
@@ -405,6 +418,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 18, gap: 16 },
 
   header: { alignItems: "center", gap: 2 },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" },
   titleRed: { fontSize: 28, fontFamily: "Inter_700Bold", color: "#ff2200", letterSpacing: 1 },
   titleWhite: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#ffffff", letterSpacing: 0.5 },
   subtitle: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 4, textAlign: "center" },

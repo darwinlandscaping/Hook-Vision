@@ -22,6 +22,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useColors } from "@/hooks/useColors";
+import { NarratorButton } from "@/components/NarratorButton";
+import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 
 // ─── Moon Phase Calculation ───────────────────────────────────────────────────
 function getMoonPhase(date: Date): {
@@ -412,7 +414,10 @@ export default function ForecastScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.primary }]}>Here Fishy Fishy</Text>
+        <View style={styles.headerRow}>
+          <Text style={[styles.title, { color: colors.primary }]}>Here Fishy Fishy</Text>
+          <NarratorSettingsTrigger />
+        </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           Conditions-based NT spot guide
         </Text>
@@ -483,6 +488,14 @@ export default function ForecastScreen() {
             <SpotCard key={i} spot={spot} index={i} colors={colors} />
           ))}
 
+          {/* Narrator */}
+          {forecast && (
+            <NarratorButton
+              pageType="fishing forecast"
+              content={`${forecast.headline}. Top spots: ${forecast.spots.map((s, i) => `${i + 1}. ${s.name} — ${s.species}, ${s.urgency}. ${s.why}`).join(" ")}`}
+            />
+          )}
+
           {/* Re-read button */}
           <TouchableOpacity
             style={[styles.rereadBtn, { borderColor: colors.border }]}
@@ -502,6 +515,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 16 },
   header: { alignItems: "center", gap: 4 },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular" },
 

@@ -4,6 +4,7 @@ import analyzeRouter from "./analyze";
 import tidesRouter from "./tides";
 import forecastRouter from "./forecast";
 import barraRouter from "./barra";
+import narrateRouter from "./narrate";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(analyzeRouter);
 router.use(tidesRouter);
 router.use(forecastRouter);
 router.use(barraRouter);
+router.use(narrateRouter);
 
 export default router;

@@ -14,6 +14,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { HistoryProvider } from "@/context/HistoryContext";
+import { NarratorProvider } from "@/context/NarratorContext";
 import { setBaseUrl } from "@workspace/api-client-react";
 
 if (process.env.EXPO_PUBLIC_DOMAIN) {
@@ -53,9 +54,11 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView>
-            <HistoryProvider>
-              <RootLayoutNav />
-            </HistoryProvider>
+            <NarratorProvider>
+              <HistoryProvider>
+                <RootLayoutNav />
+              </HistoryProvider>
+            </NarratorProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>
