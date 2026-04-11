@@ -24,15 +24,72 @@ interface AnalysisCardProps {
   autoSpeak?: boolean;
 }
 
+const SPECIES_SLANG: Record<string, string> = {
+  barramundi: "barra",
+  "mangrove jack": "jack",
+  "spanish mackerel": "spaniard",
+  "giant trevally": "GT",
+  "coral trout": "coral",
+  queenfish: "queenie",
+  "threadfin salmon": "threadie",
+  "king threadfin": "threadie",
+  "black jewfish": "jewie",
+  jewfish: "jewie",
+  "red emperor": "emperor",
+};
+
+function speciesNickname(raw: string): string {
+  const clean = raw.replace(/\s*\(\d+%\)/, "").toLowerCase();
+  for (const [key, nick] of Object.entries(SPECIES_SLANG)) {
+    if (clean.includes(key)) return nick;
+  }
+  return raw.replace(/\s*\(\d+%\)/, "");
+}
+
 function buildSpeechText(a: FishAnalysis): string {
   const parts: string[] = [];
-  const speciesClean = a.species.replace(/\s*\(\d+%\)/, "");
-  parts.push(`${a.fishCount} ${a.fishCount === 1 ? "fish" : "fish"} detected on the sonar.`);
-  parts.push(`Most likely ${speciesClean}, at ${a.depth}, ${a.distance}.`);
-  if (a.lure) parts.push(`Use ${a.lure}.`);
-  if (a.technique) parts.push(a.technique);
-  if (a.rig) parts.push(`Rig: ${a.rig}.`);
-  if (a.suggestion) parts.push(a.suggestion);
+  const nick = speciesNickname(a.species);
+  const count = a.fishCount;
+
+  // Fish count opener
+  if (count === 0) {
+    parts.push("Oi mate, sonar's drawing a blank — nothing showing down there right now.");
+  } else if (count === 1) {
+    parts.push(`Got a lone unit on the sonar, mate.`);
+  } else if (count <= 3) {
+    parts.push(`Ripper — got ${count} fish showing on the sonar!`);
+  } else {
+    parts.push(`Bloody hell, ${count} fish on the sonar — they're stacked up down there!`);
+  }
+
+  // Species + position
+  parts.push(`Reckon they're ${nick} — sitting about ${a.depth}, ${a.distance}.`);
+
+  // Confidence qualifier
+  if (a.confidence < 60) {
+    parts.push("Hard to be certain but that's my best read of it.");
+  } else if (a.confidence >= 90) {
+    parts.push("Deadset confident on that call.");
+  }
+
+  // Lure
+  if (a.lure) {
+    parts.push(`Chuck on ${a.lure}.`);
+  }
+
+  // Technique — keep as-is since it's already tactical
+  if (a.technique) {
+    parts.push(a.technique);
+  }
+
+  // Rig
+  if (a.rig) {
+    parts.push(`Rig up with ${a.rig}.`);
+  }
+
+  // Outro
+  parts.push("Get in there and smash 'em, ya bloody legend!");
+
   return parts.join(" ");
 }
 

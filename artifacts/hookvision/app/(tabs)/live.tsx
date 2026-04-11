@@ -32,15 +32,57 @@ interface FishAnalysis {
   sonarModel?: string | null;
 }
 
+const SPECIES_SLANG: Record<string, string> = {
+  barramundi: "barra",
+  "mangrove jack": "jack",
+  "spanish mackerel": "spaniard",
+  "giant trevally": "GT",
+  "coral trout": "coral",
+  queenfish: "queenie",
+  "threadfin salmon": "threadie",
+  "king threadfin": "threadie",
+  "black jewfish": "jewie",
+  jewfish: "jewie",
+  "red emperor": "emperor",
+};
+
+function speciesNickname(raw: string): string {
+  const clean = raw.replace(/\s*\(\d+%\)/, "").toLowerCase();
+  for (const [key, nick] of Object.entries(SPECIES_SLANG)) {
+    if (clean.includes(key)) return nick;
+  }
+  return raw.replace(/\s*\(\d+%\)/, "");
+}
+
 function buildSpeechText(a: FishAnalysis): string {
   const parts: string[] = [];
-  const speciesClean = a.species.replace(/\s*\(\d+%\)/, "");
-  parts.push(`I can see ${a.fishCount} ${a.fishCount === 1 ? "fish" : "fish"} on the sonar.`);
-  parts.push(`Most likely ${speciesClean}, at ${a.depth}, ${a.distance}.`);
-  if (a.lure) parts.push(`Use ${a.lure}.`);
+  const nick = speciesNickname(a.species);
+  const count = a.fishCount;
+
+  if (count === 0) {
+    parts.push("Oi mate, sonar's drawing a blank — nothing showing down there right now.");
+  } else if (count === 1) {
+    parts.push("Got a lone unit on the sonar, mate.");
+  } else if (count <= 3) {
+    parts.push(`Ripper — got ${count} fish showing on the sonar!`);
+  } else {
+    parts.push(`Bloody hell, ${count} fish on the sonar — they're stacked up down there!`);
+  }
+
+  parts.push(`Reckon they're ${nick} — sitting about ${a.depth}, ${a.distance}.`);
+
+  if (a.confidence < 60) {
+    parts.push("Hard to be certain but that's my best read of it.");
+  } else if (a.confidence >= 90) {
+    parts.push("Deadset confident on that call.");
+  }
+
+  if (a.lure) parts.push(`Chuck on ${a.lure}.`);
   if (a.technique) parts.push(a.technique);
   if (a.rig) parts.push(`Rig up with ${a.rig}.`);
-  if (a.suggestion) parts.push(a.suggestion);
+
+  parts.push("Get in there and smash 'em, ya bloody legend!");
+
   return parts.join(" ");
 }
 
