@@ -10,6 +10,9 @@ interface FishAnalysis {
   species: string;
   confidence: number;
   suggestion: string;
+  lure?: string;
+  technique?: string;
+  rig?: string;
   waterTemp?: string;
   bottomType?: string;
   lowranceModel?: string | null;
@@ -64,6 +67,47 @@ function StatRow({ icon, label, value, delay }: StatRowProps) {
   );
 }
 
+interface TacticBoxProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  colors: ReturnType<typeof useColors>;
+  delay: number;
+}
+
+function TacticBox({ icon, label, value, colors, delay }: TacticBoxProps) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(10)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 350, delay, useNativeDriver: true }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 350,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [opacity, translateY, delay]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.tacticBox,
+        { backgroundColor: colors.secondary, opacity, transform: [{ translateY }] },
+      ]}
+    >
+      <View style={styles.tacticHeader}>
+        {icon}
+        <Text style={[styles.tacticLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      </View>
+      <Text style={[styles.tacticValue, { color: colors.foreground }]}>{value}</Text>
+    </Animated.View>
+  );
+}
+
 export function AnalysisCard({ analysis }: AnalysisCardProps) {
   const colors = useColors();
   const cardOpacity = useRef(new Animated.Value(0)).current;
@@ -104,13 +148,14 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
         },
       ]}
     >
+      {/* Header — fish count + confidence */}
       <View style={styles.cardHeader}>
         <View style={styles.fishCountSection}>
           <Text style={[styles.fishCountNumber, { color: colors.primary }]}>
             {analysis.fishCount}
           </Text>
           <Text style={[styles.fishCountLabel, { color: colors.mutedForeground }]}>
-            {analysis.fishCount === 1 ? "fish detected" : "fish detected"}
+            fish detected
           </Text>
         </View>
         <View style={[styles.confidenceBadge, { backgroundColor: `${confidenceColor}22`, borderColor: `${confidenceColor}66` }]}>
@@ -122,6 +167,7 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
 
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
+      {/* Where & what */}
       <StatRow
         icon={<MaterialCommunityIcons name="fish" size={16} color={colors.primary} />}
         label="Species"
@@ -136,7 +182,7 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
       />
       <StatRow
         icon={<Feather name="navigation" size={16} color={colors.depth} />}
-        label="Distance"
+        label="Position"
         value={analysis.distance}
         delay={300}
       />
@@ -145,7 +191,7 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
           icon={<Feather name="thermometer" size={16} color={colors.sonar} />}
           label="Water Temp"
           value={analysis.waterTemp}
-          delay={400}
+          delay={380}
         />
       )}
       {analysis.bottomType && (
@@ -153,7 +199,7 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
           icon={<MaterialCommunityIcons name="layers" size={16} color={colors.mutedForeground} />}
           label="Bottom"
           value={analysis.bottomType}
-          delay={500}
+          delay={440}
         />
       )}
       {analysis.lowranceModel && (
@@ -161,12 +207,51 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
           icon={<MaterialCommunityIcons name="radar" size={16} color={colors.accent} />}
           label="Sonar Unit"
           value={`Lowrance ${analysis.lowranceModel}`}
-          delay={600}
+          delay={500}
         />
+      )}
+
+      {/* How to catch it */}
+      {(analysis.lure || analysis.technique || analysis.rig) && (
+        <>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="fish" size={13} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.primary }]}>HOW TO CATCH IT</Text>
+          </View>
+          {analysis.lure && (
+            <TacticBox
+              icon={<MaterialCommunityIcons name="hook" size={13} color={colors.accent} />}
+              label="LURE / BAIT"
+              value={analysis.lure}
+              colors={colors}
+              delay={200}
+            />
+          )}
+          {analysis.technique && (
+            <TacticBox
+              icon={<Feather name="activity" size={13} color={colors.primary} />}
+              label="TECHNIQUE"
+              value={analysis.technique}
+              colors={colors}
+              delay={300}
+            />
+          )}
+          {analysis.rig && (
+            <TacticBox
+              icon={<Feather name="link" size={13} color={colors.depth} />}
+              label="RIG"
+              value={analysis.rig}
+              colors={colors}
+              delay={400}
+            />
+          )}
+        </>
       )}
 
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
+      {/* Overall plan */}
       <View style={[styles.suggestionBox, { backgroundColor: colors.secondary }]}>
         <Feather name="target" size={14} color={colors.primary} style={styles.suggestionIcon} />
         <Text style={[styles.suggestionText, { color: colors.foreground }]}>
@@ -215,7 +300,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    marginVertical: 4,
+    marginVertical: 2,
   },
   statRow: {
     flexDirection: "row",
@@ -242,6 +327,38 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     marginTop: 1,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: -4,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1,
+  },
+  tacticBox: {
+    borderRadius: 10,
+    padding: 12,
+    gap: 5,
+  },
+  tacticHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  tacticLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  tacticValue: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
   },
   suggestionBox: {
     flexDirection: "row",

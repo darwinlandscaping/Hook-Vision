@@ -32,8 +32,12 @@ interface FishAnalysis {
   species: string;
   confidence: number;
   suggestion: string;
+  lure?: string;
+  technique?: string;
+  rig?: string;
   waterTemp?: string;
   bottomType?: string;
+  lowranceModel?: string | null;
 }
 
 export default function AnalyzeScreen() {
