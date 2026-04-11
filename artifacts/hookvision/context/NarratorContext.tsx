@@ -115,17 +115,27 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     setSpeaking(false);
   }, []);
 
-  // Unlock web speech synthesis within user gesture context
-  const unlockWebSpeech = useCallback(() => {
-    if (Platform.OS !== "web" || !("speechSynthesis" in window)) return;
-    // Resume if paused (Chrome pauses after 15s of inactivity)
-    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-    // Speak a zero-length utterance to satisfy Chrome's user-gesture requirement
-    const unlock = new SpeechSynthesisUtterance("");
-    unlock.volume = 0;
-    window.speechSynthesis.speak(unlock);
-    // Cancel immediately so it doesn't linger
-    setTimeout(() => window.speechSynthesis.cancel(), 50);
+  // Unlock web speech synthesis within user gesture context.
+  // Returns a promise that resolves once the unlock utterance has finished,
+  // at which point Chrome considers the page "speech-authorised".
+  const unlockWebSpeech = useCallback((): Promise<void> => {
+    return new Promise((resolve) => {
+      if (Platform.OS !== "web" || !("speechSynthesis" in window)) {
+        resolve();
+        return;
+      }
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+      // An empty string may be treated as a no-op by Chrome; use a single space
+      // at near-zero volume and maximum rate so it's inaudible and instant.
+      const unlock = new SpeechSynthesisUtterance("\u00A0");
+      unlock.volume = 0.001;
+      unlock.rate   = 10;
+      unlock.onend   = () => resolve();
+      unlock.onerror = () => resolve();
+      window.speechSynthesis.speak(unlock);
+      // Safety timeout in case onend never fires
+      setTimeout(resolve, 500);
+    });
   }, []);
 
   const speak = useCallback(
@@ -161,8 +171,22 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
         };
 
         const voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) { fire(voices); }
-        else { window.speechSynthesis.onvoiceschanged = () => fire(window.speechSynthesis.getVoices()); }
+        if (voices.length > 0) {
+          fire(voices);
+        } else {
+          // Some environments never fire onvoiceschanged; fall back after 1 s
+          let fired = false;
+          const fallback = setTimeout(() => {
+            if (!fired) { fired = true; fire([]); }
+          }, 1000);
+          window.speechSynthesis.onvoiceschanged = () => {
+            if (!fired) {
+              fired = true;
+              clearTimeout(fallback);
+              fire(window.speechSynthesis.getVoices());
+            }
+          };
+        }
       } else {
         setSpeaking(true);
         Speech.speak(text, {
@@ -183,9 +207,9 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
       if (loading) return;
       setLoading(true);
       stop();
-      // Unlock speech synthesis NOW while we still have the user gesture —
-      // Chrome blocks speech that fires after an async gap (fetch await).
-      unlockWebSpeech();
+      // Unlock speech synthesis NOW (synchronously within the user gesture).
+      // We await completion so Chrome registers it before we fetch and speak.
+      await unlockWebSpeech();
       try {
         const domain = process.env.EXPO_PUBLIC_DOMAIN;
         const baseUrl = domain ? `https://${domain}` : "";

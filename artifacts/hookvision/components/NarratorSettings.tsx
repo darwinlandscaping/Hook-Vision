@@ -28,15 +28,17 @@ export function NarratorSettings({ visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const { character, language, setCharacter, setLanguage, speak } = useNarrator();
 
+  const DEMOS: Record<NarratorCharacter, string> = {
+    AUSSIE:       "G'day mate! Bloody ripper conditions out there today — let's go find us a big barra!",
+    BENAUD:       "Marvellous. The conditions today are simply magnificent. One ball, perfectly delivered to the tidal zone.",
+    CHOPPER:      "Listen here ya mug — I'll tell ya exactly where the fish are, and ya better be grateful.",
+    ATTENBOROUGH: "Here, in the ancient waters of the Northern Territory, a magnificent barramundi awaits.",
+  };
+
   const handleCharacter = (c: NarratorCharacter) => {
     setCharacter(c);
-    const demos: Record<NarratorCharacter, string> = {
-      AUSSIE:       "G'day mate! Bloody ripper conditions out there today — let's go find us a big barra!",
-      BENAUD:       "Marvellous. The conditions today are simply magnificent. One ball, perfectly delivered to the tidal zone.",
-      CHOPPER:      "Listen here ya mug — I'll tell ya exactly where the fish are, and ya better be grateful.",
-      ATTENBOROUGH: "Here, in the ancient waters of the Northern Territory, a magnificent barramundi awaits.",
-    };
-    setTimeout(() => speak(demos[c]), 200);
+    // Speak immediately — no setTimeout, so the user gesture is still live
+    speak(DEMOS[c]);
   };
 
   return (
@@ -116,10 +118,20 @@ export function NarratorSettings({ visible, onClose }: Props) {
             })}
           </View>
 
+          {/* Test voice button */}
+          <TouchableOpacity
+            style={[styles.testBtn, { backgroundColor: colors.card, borderColor: colors.primary }]}
+            onPress={() => speak(DEMOS[character])}
+            activeOpacity={0.8}
+          >
+            <Feather name="volume-2" size={15} color={colors.primary} />
+            <Text style={[styles.testBtnText, { color: colors.primary }]}>Test Voice Now</Text>
+          </TouchableOpacity>
+
           <View style={[styles.infoBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="info" size={13} color={colors.mutedForeground} />
             <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
-              Tap any narrator button on any page to hear the AI describe what's on screen in your selected character's voice and language.
+              Tap a character card above to hear a demo, or tap any narrator button on any page to hear the AI describe what's on screen.
             </Text>
           </View>
         </ScrollView>
@@ -191,6 +203,12 @@ const styles = StyleSheet.create({
   },
   langFlag: { fontSize: 16 },
   langName: { fontSize: 13, fontFamily: "Inter_500Medium" },
+
+  testBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    padding: 14, borderRadius: 12, borderWidth: 1.5,
+  },
+  testBtnText: { fontSize: 14, fontFamily: "Inter_700Bold" },
 
   infoBox: {
     flexDirection: "row", alignItems: "flex-start", gap: 8,
