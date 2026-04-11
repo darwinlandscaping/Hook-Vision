@@ -1,8 +1,10 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Easing, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useVoice } from "@/hooks/useVoice";
+import { useFishImage } from "@/hooks/useFishImage";
+import { fetchLureImage, getLureCategory } from "@/data/lureImages";
 
 interface FishAnalysis {
   fishCount: number;
@@ -184,6 +186,15 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(0.95)).current;
   const { speak, stop, speaking } = useVoice();
+  const fishImageUrl = useFishImage(analysis.species);
+  const [lureImageUrl, setLureImageUrl] = useState<string | null>(null);
+  const lureCategory = analysis.lure ? getLureCategory(analysis.lure) : null;
+
+  useEffect(() => {
+    if (analysis.lure) {
+      fetchLureImage(analysis.lure).then(setLureImageUrl);
+    }
+  }, [analysis.lure]);
 
   useEffect(() => {
     Animated.parallel([
@@ -274,6 +285,22 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
         </View>
       </View>
 
+      {/* Fish photo */}
+      {fishImageUrl && (
+        <View style={[styles.fishImageContainer, { borderColor: colors.border }]}>
+          <Image
+            source={{ uri: fishImageUrl }}
+            style={styles.fishImage}
+            resizeMode="cover"
+          />
+          <View style={[styles.fishImageLabel, { backgroundColor: `${colors.background}cc` }]}>
+            <Text style={[styles.fishImageLabelText, { color: colors.primary }]}>
+              {analysis.species.replace(/\s*\(\d+%\)/, "")}
+            </Text>
+          </View>
+        </View>
+      )}
+
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
       {/* Where & what */}
@@ -329,13 +356,34 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
             <Text style={[styles.sectionTitle, { color: colors.primary }]}>HOW TO CATCH IT</Text>
           </View>
           {analysis.lure && (
-            <TacticBox
-              icon={<MaterialCommunityIcons name="hook" size={13} color={colors.accent} />}
-              label="LURE / BAIT"
-              value={analysis.lure}
-              colors={colors}
-              delay={200}
-            />
+            <>
+              {lureImageUrl && (
+                <View style={[styles.lureImageRow]}>
+                  <Image
+                    source={{ uri: lureImageUrl }}
+                    style={[styles.lureImage, { borderColor: colors.border }]}
+                    resizeMode="cover"
+                  />
+                  {lureCategory && (
+                    <View style={styles.lureLabelCol}>
+                      <Text style={[styles.lureCategoryLabel, { color: colors.mutedForeground }]}>
+                        TYPE
+                      </Text>
+                      <Text style={[styles.lureCategoryValue, { color: colors.accent }]}>
+                        {lureCategory.label}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+              <TacticBox
+                icon={<MaterialCommunityIcons name="hook" size={13} color={colors.accent} />}
+                label="LURE / BAIT"
+                value={analysis.lure}
+                colors={colors}
+                delay={200}
+              />
+            </>
           )}
           {analysis.technique && (
             <TacticBox
@@ -497,5 +545,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     lineHeight: 20,
+  },
+  fishImageContainer: {
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    height: 160,
+    position: "relative",
+  },
+  fishImage: {
+    width: "100%",
+    height: "100%",
+  },
+  fishImageLabel: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  fishImageLabelText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
+  },
+  lureImageRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  lureImage: {
+    width: 90,
+    height: 70,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  lureLabelCol: {
+    flex: 1,
+    gap: 3,
+  },
+  lureCategoryLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  lureCategoryValue: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
   },
 });
