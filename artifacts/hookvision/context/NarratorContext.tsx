@@ -58,6 +58,7 @@ interface NarratorCtx {
   language: NarratorLanguage;
   speaking: boolean;
   loading: boolean;
+  transcript: string;
   setCharacter: (c: NarratorCharacter) => void;
   setLanguage: (l: NarratorLanguage) => void;
   speak: (text: string) => void;
@@ -67,23 +68,7 @@ interface NarratorCtx {
 
 const NarratorContext = createContext<NarratorCtx | null>(null);
 
-// ─── Web Audio engine (module-level, persists across renders) ─────────────────
-let _audioCtx: AudioContext | null = null;
-let _audioSource: AudioBufferSourceNode | null = null;
-
-function getAudioContext(): AudioContext {
-  if (!_audioCtx || _audioCtx.state === "closed") {
-    _audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-  }
-  return _audioCtx;
-}
-
-function stopWebAudio() {
-  try { _audioSource?.stop(); _audioSource?.disconnect(); } catch {}
-  _audioSource = null;
-}
-
-// ─── Native Audio (expo-av) ───────────────────────────────────────────────────
+// ─── Native Audio (expo-av, module-level) ─────────────────────────────────────
 let _nativeSound: Audio.Sound | null = null;
 
 async function stopNativeAudio() {
@@ -93,12 +78,23 @@ async function stopNativeAudio() {
   }
 }
 
+// ─── Web Audio element (module-level) ─────────────────────────────────────────
+let _webAudio: HTMLAudioElement | null = null;
+
+function stopWebAudio() {
+  if (_webAudio) {
+    try { _webAudio.pause(); _webAudio.src = ""; } catch {}
+    _webAudio = null;
+  }
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function NarratorProvider({ children }: { children: React.ReactNode }) {
   const [character, setCharacterState] = useState<NarratorCharacter>("AUSSIE");
   const [language, setLanguageState]   = useState<NarratorLanguage>("en-AU");
   const [speaking, setSpeaking]         = useState(false);
   const [loading, setLoading]           = useState(false);
+  const [transcript, setTranscript]     = useState("");
   const languageRef = useRef(language);
 
   useEffect(() => { languageRef.current = language; }, [language]);
@@ -145,52 +141,47 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     setSpeaking(false);
   }, []);
 
-  // ─── Web: unlock AudioContext within user gesture ────────────────────────────
-  const unlockAudioCtx = useCallback(() => {
-    if (Platform.OS !== "web") return;
-    try {
-      const ctx = getAudioContext();
-      if (ctx.state === "suspended") ctx.resume().catch(() => {});
-    } catch {}
-  }, []);
-
-  // ─── Shared: build the TTS GET URL for native streaming ─────────────────────
+  // ─── Build TTS URL (GET endpoint, works for both web Audio element & native) ──
   const ttsUrl = useCallback((text: string) => {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
     return `${baseUrl}/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(languageRef.current)}`;
   }, []);
 
-  // ─── Web: fetch TTS audio and play via Web Audio API ────────────────────────
-  const playTTSWeb = useCallback(async (text: string) => {
-    const domain = process.env.EXPO_PUBLIC_DOMAIN;
-    const baseUrl = domain ? `https://${domain}` : "";
+  // ─── Web: play TTS using HTMLAudioElement ─────────────────────────────────────
+  // audioEl must be created synchronously inside the user gesture to satisfy
+  // autoplay policy. We create it up-front, then set src after fetching.
+  const playTTSWeb = useCallback(async (text: string, audioEl: HTMLAudioElement) => {
     setSpeaking(true);
+    stopWebAudio();
+    _webAudio = audioEl;
     try {
-      const resp = await fetch(`${baseUrl}/api/tts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, lang: languageRef.current }),
-      });
-      if (!resp.ok) throw new Error("TTS request failed");
-      const arrayBuffer = await resp.arrayBuffer();
-      const ctx = getAudioContext();
-      if (ctx.state === "suspended") await ctx.resume();
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-      stopWebAudio();
-      const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(ctx.destination);
-      source.onended = () => { setSpeaking(false); _audioSource = null; };
-      source.start(0);
-      _audioSource = source;
+      // Fetch audio blob from GET endpoint
+      const url = ttsUrl(text);
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`TTS HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      audioEl.src = objectUrl;
+      audioEl.onended = () => {
+        setSpeaking(false);
+        URL.revokeObjectURL(objectUrl);
+        if (_webAudio === audioEl) _webAudio = null;
+      };
+      audioEl.onerror = () => {
+        setSpeaking(false);
+        URL.revokeObjectURL(objectUrl);
+        if (_webAudio === audioEl) _webAudio = null;
+      };
+      await audioEl.play();
     } catch (err) {
       console.warn("[Narrator] Web TTS failed:", err);
       setSpeaking(false);
+      if (_webAudio === audioEl) _webAudio = null;
     }
-  }, []);
+  }, [ttsUrl]);
 
-  // ─── Native: play TTS audio via expo-av ─────────────────────────────────────
+  // ─── Native: play TTS via expo-av streaming ───────────────────────────────────
   const playTTSNative = useCallback(async (text: string) => {
     setSpeaking(true);
     await stopNativeAudio();
@@ -215,28 +206,36 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     }
   }, [ttsUrl]);
 
-  // ─── speak(): called directly (character demo, live camera) ─────────────────
+  // ─── speak(): called directly (character demo, live camera) ──────────────────
   const speak = useCallback(
     (text: string) => {
       stop();
+      setTranscript(text);
       if (Platform.OS === "web") {
-        unlockAudioCtx();
-        playTTSWeb(text);
+        // Create Audio element synchronously (within the gesture call stack)
+        const audioEl = new Audio();
+        playTTSWeb(text, audioEl);
       } else {
         playTTSNative(text);
       }
     },
-    [stop, unlockAudioCtx, playTTSWeb, playTTSNative]
+    [stop, playTTSWeb, playTTSNative]
   );
 
-  // ─── narratePage(): fetches AI script then speaks it ────────────────────────
+  // ─── narratePage(): AI script then speaks ────────────────────────────────────
   const narratePage = useCallback(
     async (pageType: string, content: string) => {
       if (loading) return;
       setLoading(true);
       stop();
-      // Unlock AudioContext synchronously within the user gesture (web only)
-      unlockAudioCtx();
+
+      // Create Audio element synchronously INSIDE the user gesture so autoplay
+      // policy is satisfied — even though we await async work afterward.
+      let audioEl: HTMLAudioElement | null = null;
+      if (Platform.OS === "web") {
+        audioEl = new Audio();
+      }
+
       try {
         const domain = process.env.EXPO_PUBLIC_DOMAIN;
         const baseUrl = domain ? `https://${domain}` : "";
@@ -245,27 +244,28 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content, character, language, pageType }),
         });
-        if (!resp.ok) throw new Error("Narrate failed");
+        if (!resp.ok) throw new Error(`Narrate HTTP ${resp.status}`);
         const { text } = await resp.json();
         if (text) {
-          if (Platform.OS === "web") {
-            await playTTSWeb(text);
+          setTranscript(text);
+          if (Platform.OS === "web" && audioEl) {
+            await playTTSWeb(text, audioEl);
           } else {
             await playTTSNative(text);
           }
         }
-      } catch {
-        // silently fail
+      } catch (err) {
+        console.warn("[Narrator] narratePage error:", err);
       } finally {
         setLoading(false);
       }
     },
-    [character, language, loading, stop, unlockAudioCtx, playTTSWeb, playTTSNative]
+    [character, language, loading, stop, playTTSWeb, playTTSNative]
   );
 
   return (
     <NarratorContext.Provider
-      value={{ character, language, speaking, loading, setCharacter, setLanguage, speak, narratePage, stop }}
+      value={{ character, language, speaking, loading, transcript, setCharacter, setLanguage, speak, narratePage, stop }}
     >
       {children}
     </NarratorContext.Provider>

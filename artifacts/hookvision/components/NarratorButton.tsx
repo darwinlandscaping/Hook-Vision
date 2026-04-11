@@ -18,7 +18,7 @@ interface Props {
 
 export function NarratorButton({ pageType, content, compact = false }: Props) {
   const colors  = useColors();
-  const { character, speaking, loading, narratePage, stop } = useNarrator();
+  const { character, speaking, loading, transcript, narratePage, stop } = useNarrator();
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
   const active = speaking || loading;
 
@@ -82,11 +82,15 @@ export function NarratorButton({ pageType, content, compact = false }: Props) {
         <Text style={[styles.charName, { color: active ? charInfo.color : colors.foreground }]}>
           {loading ? "Writing script..." : speaking ? `${charInfo.name} is speaking...` : `Listen — ${charInfo.name}`}
         </Text>
-        {!active && (
+        {speaking && transcript ? (
+          <Text style={[styles.charTagline, { color: colors.mutedForeground }]} numberOfLines={2}>
+            {transcript}
+          </Text>
+        ) : !active ? (
           <Text style={[styles.charTagline, { color: colors.mutedForeground }]}>
             {charInfo.tagline}
           </Text>
-        )}
+        ) : null}
       </View>
       <Feather
         name={speaking ? "volume-x" : "volume-2"}
