@@ -28,6 +28,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "fish", selected: "fish.fill" }} />
         <Label>Species</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="barra">
+        <Icon sf={{ default: "target", selected: "target" }} />
+        <Label>Big Barra</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="zones">
         <Icon sf={{ default: "chart.bar.fill", selected: "chart.bar.fill" }} />
         <Label>Zones</Label>
@@ -125,6 +129,18 @@ function ClassicTabLayout() {
               <SymbolView name="fish" tintColor={color} size={22} />
             ) : (
               <MaterialCommunityIcons name="fish" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="barra"
+        options={{
+          title: "Big Barra",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="target" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="crosshairs-gps" size={22} color={color} />
             ),
         }}
       />
