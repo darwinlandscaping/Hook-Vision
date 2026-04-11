@@ -28,6 +28,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "fish", selected: "fish.fill" }} />
         <Label>Species</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="zones">
+        <Icon sf={{ default: "chart.bar.fill", selected: "chart.bar.fill" }} />
+        <Label>Zones</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="forecast">
         <Icon sf={{ default: "fish.fill", selected: "fish.fill" }} />
         <Label>Fishy</Label>
@@ -121,6 +125,18 @@ function ClassicTabLayout() {
               <SymbolView name="fish" tintColor={color} size={22} />
             ) : (
               <MaterialCommunityIcons name="fish" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="zones"
+        options={{
+          title: "Zones",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="chart.bar.fill" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="chart-bar" size={22} color={color} />
             ),
         }}
       />
