@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Speech from "expo-speech";
 import { useColors } from "@/hooks/useColors";
 
 interface FishAnalysis {
@@ -20,6 +21,19 @@ interface FishAnalysis {
 
 interface AnalysisCardProps {
   analysis: FishAnalysis;
+  autoSpeak?: boolean;
+}
+
+function buildSpeechText(a: FishAnalysis): string {
+  const parts: string[] = [];
+  const speciesClean = a.species.replace(/\s*\(\d+%\)/, "");
+  parts.push(`${a.fishCount} ${a.fishCount === 1 ? "fish" : "fish"} detected on the sonar.`);
+  parts.push(`Most likely ${speciesClean}, at ${a.depth}, ${a.distance}.`);
+  if (a.lure) parts.push(`Use ${a.lure}.`);
+  if (a.technique) parts.push(a.technique);
+  if (a.rig) parts.push(`Rig: ${a.rig}.`);
+  if (a.suggestion) parts.push(a.suggestion);
+  return parts.join(" ");
 }
 
 interface StatRowProps {
@@ -108,10 +122,11 @@ function TacticBox({ icon, label, value, colors, delay }: TacticBoxProps) {
   );
 }
 
-export function AnalysisCard({ analysis }: AnalysisCardProps) {
+export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) {
   const colors = useColors();
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(0.95)).current;
+  const [speaking, setSpeaking] = useState(false);
 
   useEffect(() => {
     Animated.parallel([
@@ -127,7 +142,43 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [cardOpacity, cardScale]);
+
+    if (autoSpeak) {
+      const timer = setTimeout(() => {
+        Speech.stop();
+        setSpeaking(true);
+        Speech.speak(buildSpeechText(analysis), {
+          language: "en-AU",
+          rate: 0.92,
+          pitch: 1.0,
+          onDone: () => setSpeaking(false),
+          onError: () => setSpeaking(false),
+          onStopped: () => setSpeaking(false),
+        });
+      }, 600);
+      return () => {
+        clearTimeout(timer);
+        Speech.stop();
+      };
+    }
+  }, []);
+
+  const toggleSpeech = () => {
+    if (speaking) {
+      Speech.stop();
+      setSpeaking(false);
+    } else {
+      setSpeaking(true);
+      Speech.speak(buildSpeechText(analysis), {
+        language: "en-AU",
+        rate: 0.92,
+        pitch: 1.0,
+        onDone: () => setSpeaking(false),
+        onError: () => setSpeaking(false),
+        onStopped: () => setSpeaking(false),
+      });
+    }
+  };
 
   const confidenceColor =
     analysis.confidence >= 80
@@ -148,7 +199,7 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
         },
       ]}
     >
-      {/* Header — fish count + confidence */}
+      {/* Header — fish count + confidence + voice */}
       <View style={styles.cardHeader}>
         <View style={styles.fishCountSection}>
           <Text style={[styles.fishCountNumber, { color: colors.primary }]}>
@@ -158,10 +209,29 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
             fish detected
           </Text>
         </View>
-        <View style={[styles.confidenceBadge, { backgroundColor: `${confidenceColor}22`, borderColor: `${confidenceColor}66` }]}>
-          <Text style={[styles.confidenceText, { color: confidenceColor }]}>
-            {analysis.confidence}% confident
-          </Text>
+        <View style={styles.headerRight}>
+          <View style={[styles.confidenceBadge, { backgroundColor: `${confidenceColor}22`, borderColor: `${confidenceColor}66` }]}>
+            <Text style={[styles.confidenceText, { color: confidenceColor }]}>
+              {analysis.confidence}%
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.voiceBtn,
+              {
+                backgroundColor: speaking ? `${colors.primary}22` : colors.secondary,
+                borderColor: speaking ? colors.primary : colors.border,
+              },
+            ]}
+            onPress={toggleSpeech}
+            activeOpacity={0.8}
+          >
+            <Feather
+              name={speaking ? "volume-x" : "volume-2"}
+              size={16}
+              color={speaking ? colors.primary : colors.mutedForeground}
+            />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -273,6 +343,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  voiceBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   fishCountSection: {
     flexDirection: "row",

@@ -16,6 +16,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "waveform", selected: "waveform" }} />
         <Label>Analyze</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="live">
+        <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
+        <Label>Live</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="tides">
         <Icon sf={{ default: "water.waves", selected: "water.waves" }} />
         <Label>Tides</Label>
@@ -65,7 +69,7 @@ function ClassicTabLayout() {
               style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
             />
           ) : null,
-        tabBarLabelStyle: { fontSize: 11, fontFamily: "Inter_500Medium" },
+        tabBarLabelStyle: { fontSize: 10, fontFamily: "Inter_500Medium" },
       }}
     >
       <Tabs.Screen
@@ -77,6 +81,18 @@ function ClassicTabLayout() {
               <SymbolView name="waveform" tintColor={color} size={22} />
             ) : (
               <MaterialCommunityIcons name="fish" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="live"
+        options={{
+          title: "Live",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="camera.viewfinder" tintColor={color} size={22} />
+            ) : (
+              <Feather name="video" size={22} color={color} />
             ),
         }}
       />
