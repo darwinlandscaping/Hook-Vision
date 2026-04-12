@@ -68,13 +68,13 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.root}>
-      {/* ── Buffalo — top half ── */}
-      <Image source={BUFFALO} style={styles.buffaloImg} resizeMode="cover" />
+      {/* ── Barra — top half ── */}
+      <Image source={BARRA} style={styles.buffaloImg} resizeMode="cover" />
       <LinearGradient colors={["transparent", BG]} style={styles.buffaloFade} pointerEvents="none" />
 
-      {/* ── Barra — bottom half, slides up ── */}
+      {/* ── Buffalo — bottom half, slides up ── */}
       <Animated.View style={[styles.barraContainer, { opacity: barraOpacity, transform: [{ translateY: barraY }] }]}>
-        <Image source={BARRA} style={styles.barraImg} resizeMode="cover" />
+        <Image source={BUFFALO} style={styles.barraImg} resizeMode="cover" />
         <LinearGradient colors={[BG, "transparent", "transparent"]} locations={[0, 0.35, 1]} style={styles.barraFade} pointerEvents="none" />
       </Animated.View>
 
