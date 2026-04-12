@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
+import { HVHeader } from "@/components/HVHeader";
 import { HistoryItem } from "@/components/HistoryItem";
 import type { HistoryEntry } from "@/components/HistoryItem";
 import { useColors } from "@/hooks/useColors";
@@ -28,10 +29,10 @@ export default function HistoryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 16 }]}>
-        <Text style={[styles.title, { color: colors.primary }]}>📋 History</Text>
+      <View style={[styles.header, { paddingTop: topPad + 8 }]}>
+        <HVHeader subtitle="Session History" />
         {history.length > 0 && (
-          <TouchableOpacity onPress={handleClear} activeOpacity={0.7}>
+          <TouchableOpacity onPress={handleClear} activeOpacity={0.7} style={styles.clearWrap}>
             <Text style={[styles.clearBtn, { color: colors.destructive }]}>Clear all</Text>
           </TouchableOpacity>
         )}
@@ -74,11 +75,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: "column",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 8,
+    gap: 4,
+  },
+  clearWrap: {
+    alignSelf: "flex-end",
+    marginRight: 8,
   },
   title: {
     fontSize: 24,

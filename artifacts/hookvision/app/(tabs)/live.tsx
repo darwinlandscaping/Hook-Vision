@@ -11,6 +11,7 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 
+import { HVHeader } from "@/components/HVHeader";
 import { SonarPulse } from "@/components/SonarPulse";
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 import { useColors } from "@/hooks/useColors";
@@ -230,6 +231,7 @@ export default function LiveScreen() {
     if (webPermission === "unknown" || webPermission === "requesting") {
       return (
         <View style={[styles.permContainer, { backgroundColor: colors.background }]}>
+          <HVHeader subtitle="Live Camera" />
           <MaterialCommunityIcons name="video" size={52} color={colors.primary} />
           <Text style={[styles.permTitle, { color: colors.foreground }]}>Live Sonar Camera</Text>
           <Text style={[styles.permDesc, { color: colors.mutedForeground }]}>
@@ -254,6 +256,7 @@ export default function LiveScreen() {
     if (webPermission === "denied") {
       return (
         <View style={[styles.permContainer, { backgroundColor: colors.background }]}>
+          <HVHeader subtitle="Live Camera" />
           <Feather name="video-off" size={52} color={colors.destructive} />
           <Text style={[styles.permTitle, { color: colors.foreground }]}>Camera Blocked</Text>
           <Text style={[styles.permDesc, { color: colors.mutedForeground }]}>

@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 
 const NT_PORTS = [
@@ -203,12 +204,7 @@ export default function TidesScreen() {
         />
       }
     >
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.primary }]}>🌊 Tides</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Bureau of Meteorology · NT
-        </Text>
-      </View>
+      <HVHeader subtitle="NT Tide Predictions" />
 
       <View style={styles.portSelector}>
         {NT_PORTS.map((port) => (

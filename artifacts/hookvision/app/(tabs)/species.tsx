@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { NT_SPECIES, CATEGORIES, type NTSpecies, type FishCategory } from "@/data/ntSpecies";
 
@@ -207,6 +208,7 @@ export default function SpeciesScreen() {
       scrollEnabled={filtered.length > 0}
       ListHeaderComponent={
         <View style={styles.headerBlock}>
+          <HVHeader subtitle="NT Species Guide" />
           <View style={styles.titleRow}>
             <Text style={[styles.title, { color: colors.primary }]}>🐟 NT Species</Text>
             <Text style={[styles.count, { color: colors.mutedForeground }]}>

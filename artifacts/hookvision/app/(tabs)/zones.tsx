@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 
+import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { RIVER_SYSTEMS, type DepthZone, type RiverSystem } from "@/data/depthZones";
 
@@ -344,13 +345,7 @@ export default function ZonesScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.primary }]}>🗺️ Depth Strike Zones</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          40 years of NT river knowledge — meter-by-meter
-        </Text>
-      </View>
+      <HVHeader subtitle="Depth Strike Zones" />
 
       {/* Legend */}
       <View style={styles.legendRow}>

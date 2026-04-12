@@ -20,6 +20,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { NarratorButton } from "@/components/NarratorButton";
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
@@ -333,6 +334,7 @@ export default function BarraScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
+      <HVHeader subtitle="Trophy Barra Predictor" />
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>

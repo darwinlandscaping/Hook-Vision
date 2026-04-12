@@ -21,6 +21,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { NarratorButton } from "@/components/NarratorButton";
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
@@ -412,10 +413,10 @@ export default function ForecastScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
+      <HVHeader subtitle="Here Fishy Fishy" />
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.primary }]}>🎣 Here Fishy Fishy</Text>
           <NarratorSettingsTrigger />
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
