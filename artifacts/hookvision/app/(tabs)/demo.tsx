@@ -40,8 +40,8 @@ const DEMOS = [
     num: 3,
     brand: "Humminbird",
     model: "HELIX 10",
-    desc: "Trophy fish arch at 8m — large isolated return consistent with a 70cm+ barramundi.",
-    tags: ["Trophy", "Barra", "8m"],
+    desc: "Clean arch at 8m over hard rocky reef — classic fingermark (golden snapper) feeding posture above the rubble.",
+    tags: ["Fingermark", "Goldies", "8m"],
     accent: "#ffd700",
   },
   {

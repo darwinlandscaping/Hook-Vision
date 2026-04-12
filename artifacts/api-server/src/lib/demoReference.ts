@@ -59,19 +59,31 @@ SPECIES CONFIRMATION: Threadfin Salmon (King Threadfin / Polydactylus macrochir)
   3: {
     brand: "Humminbird",
     model: "HELIX 10",
-    label: `DEMO 3 — HUMMINBIRD HELIX 10 — ANSWER: SINGLE TROPHY BARRAMUNDI at 8m depth.
+    label: `DEMO 3 — HUMMINBIRD HELIX 10 — ANSWER: FINGERMARK / GOLDEN SNAPPER (Lutjanus johnii) at 8m depth over hard rocky reef structure.
 
 WHAT TO SEE IN THIS IMAGE:
-• ONE very large, THICK, BRIGHT ISOLATED arch at ~8m depth
-• Arch is significantly thicker (taller vertical height) than a typical small fish — indicates 70cm+ fish
-• Humminbird orange-brown palette — deep orange/red = strongest return = big swim bladder
-• The arch sits right ON the bottom echo or within 1m of it — classic barra position on structure
-• Hard, thick bottom line visible — structure substrate (rock bar / snag)
-• This is a SINGLE large fish, not a school — the solitary nature + large arch = trophy barra
-• On Humminbird, the UI shows the orange logo, deeper contrast, depth displayed at top
-• The massive arch size on the vertical axis = very large fish. Thin arches = small fish. This arch is FAT.
-• 8m depth + hard structure + single massive arch = trophy barra, NOT threadfin (too deep, wrong bottom), NOT jewfish (jewfish would be in harbour water, more turbid)
-SPECIES CONFIRMATION: Barramundi (Lates calcarifer) — single trophy fish 70cm+. Confidence should be 85%+.`,
+• ONE clean, well-defined ARCH at ~8m depth
+• Arch sits JUST ABOVE the hard bottom echo — not embedded inside it — classic fingermark feeding posture (lifted 0.5–2m off the rocky bottom to feed)
+• Hard, ragged, IRREGULAR bottom line visible — rocky reef/rubble substrate — THE KEY FINGERMARK HABITAT TELL
+• Humminbird orange-brown palette — the arch is bright orange/amber = good return from a sizeable swim bladder
+• Arch shape is clean U-curve — fingermark produce clean, well-defined arches unlike mangrove jack (half-arch embedded in structure) or barra (arch right ON snag)
+• Depth of 8m over rocky reef = textbook fingermark zone (fingermark: 5–30m on rock/rubble/reef)
+• Environment is coastal rocky reef, NOT an estuarine tidal creek — this rules out barramundi (barra live in tidal estuaries on timber/riprap, not coastal rock reef)
+• NO snag, timber, or mangrove structure visible — rules out barra and mangrove jack
+• Humminbird UI: orange logo, high-contrast display, depth at top
+
+⚠️ WHY THIS IS NOT BARRAMUNDI:
+• Barra prefer ESTUARINE habitat — tidal creeks, river mouths, riprap walls, submerged timber, bridge pylons
+• Barra arches sit ON hard structure (the arch merges with or sits right on the snag/rock return)
+• THIS arch is ABOVE a rocky reef bottom, not on an estuarine snag — fingermark habitat
+• Barra are rare on open coastal rock reef at 8m; fingermark are extremely common there
+
+KEY DISTINCTION — FINGERMARK vs BARRA:
+• Barra = estuarine snag/pylon/riprap at 2–12m with arch ON the structure echo
+• Fingermark = coastal rock reef/rubble at 8–30m with arch FLOATING 0.5–2m ABOVE the reef echo
+• This image = rocky reef substrate + arch above bottom = FINGERMARK, NOT barra
+
+SPECIES CONFIRMATION: Fingermark / Golden Snapper (Lutjanus johnii). Confidence should be 85%+. Size: 45–65cm based on arch brightness and thickness. This is a legal-size fish over the NT minimum.`,
   },
   4: {
     brand: "Simrad",
