@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,8 +13,9 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DemoStore } from "@/app/(tabs)/demo";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -127,6 +128,22 @@ export default function HomeScreen() {
   const [analysis, setAnalysis] = useState<FishAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoAnalyzeRef = useRef(false);
+
+  // Pick up demo image loaded from the Demo tab and auto-analyse it
+  useFocusEffect(
+    useCallback(() => {
+      if (DemoStore.pendingUri && DemoStore.pendingBase64) {
+        autoAnalyzeRef.current = true;
+        setImageUri(DemoStore.pendingUri);
+        setImageBase64(DemoStore.pendingBase64);
+        setAnalysis(null);
+        setError(null);
+        DemoStore.pendingUri = null;
+        DemoStore.pendingBase64 = null;
+      }
+    }, [])
+  );
 
   const cameraScale = useSharedValue(1);
   const galleryScale = useSharedValue(1);
@@ -208,6 +225,14 @@ export default function HomeScreen() {
       setLoading(false);
     }
   }, [imageBase64, imageUri, addEntry, analyzeScale]);
+
+  // Auto-analyse when a demo image is injected from the Demo tab
+  useEffect(() => {
+    if (autoAnalyzeRef.current && imageBase64) {
+      autoAnalyzeRef.current = false;
+      analyzeImage();
+    }
+  }, [imageBase64, analyzeImage]);
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 
