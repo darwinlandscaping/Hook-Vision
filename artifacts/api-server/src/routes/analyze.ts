@@ -133,6 +133,155 @@ Models: Zeus3S, Vulcan series. Similar to Simrad (same parent).
 - **High frequency (200–800 kHz)**: Narrower cone, shallower, very sharp detail. Smaller fish are visible. Arches are crisper and more accurate. Best for <20m.
 - **CHIRP**: Combines both — best target separation, most accurate arch shapes, best for identifying multiple fish close together on structure.
 
+---
+
+#### NT TIDAL INTELLIGENCE — HOW THE TIDE CHANGES WHAT YOU SEE
+
+NT tides are among the most extreme in Australia — daily range 2.4ft (neap) up to 24ft (spring). This tidal range is the dominant variable that changes where fish are on the sonar screen and how they're positioned.
+
+**Running tide (flooding IN or draining OUT — water moving fast):**
+- Barra are ACTIVE. Arches show a clear gap (0.5–2m) from the bottom — fish have lifted into feeding position.
+- Fish face INTO the current. Arch appears on the up-current side of the structure first, then builds as boat moves over.
+- Barra stack on the downstream side of structure (behind pylons, snags, rock bars) to intercept bait carried by tidal flow.
+- Multiple arches on the same piece of structure = group feeding event. Cast NOW.
+- Threadfin stack at creek mouths on the outgoing/run-out tide — multiple arches at the channel mouth edge.
+
+**Peak tide (high or low water — minimal water movement):**
+- Fish MERGE with structure. Arches settle back down onto the bottom echo. Feeding posture is lost.
+- Sonar shows arches touching or inside structure echo — fish are resting, lethargic.
+- This is the worst window for surface lures. Switch to slow presentations: suspending hardbodies, live bait.
+- Still worth scanning — you can mark fish locations for the next tidal movement.
+
+**Turning tide (transition from high to low or low to high — first 30 mins):**
+- Arches begin separating from the bottom. The gap grows as water starts moving.
+- Fish begin repositioning — this is the riskiest phase for the angler but the transition is high value.
+- Watch for brief flashes of arches that weren't there before — fish activating.
+
+**Full ebb (low, outgoing — drop from high to low water):**
+- Bait pours out of tidal creeks and mangroves — baitfish schools appear at creek mouths and channel junctions.
+- Barra and threadfin stack at the entrance to drop-offs to intercept washing bait — look for arches at the lip of channel edges.
+- Water depth decreases on flats — fish concentrate into the remaining channels and holes. This deepens and intensifies arch clusters.
+
+**Reading the tide from the sonar without a tide chart:**
+- If arches are lifting off the bottom and feeding posture is shown → tide is running, fish are active.
+- If arches are merged with structure, fish are tightly compressed into holes and channels → tide is at peak or slack.
+- If arches have disappeared from shallow structure but there's a dense cluster in deeper channel water → tide is dropping, fish have moved to channel.
+
+---
+
+#### TURBID / MURKY WATER SONAR READING — NT ESTUARY SPECIALIST
+
+NT estuaries are frequently brown, chocolatey, and very turbid — especially after rain, during run-off, and in wet season. This affects the sonar in critical ways:
+
+**What turbid water does to sonar:**
+- Increases noise/interference in the water column. Bottom echo appears THICKER, fuzzier.
+- Fine suspended sediment creates a faint "haze" through the entire water column — this is NOT a thermocline, it's sediment.
+- Fish arches may appear slightly softer/blurrier at their edges but the CORE brightness (from the swim bladder) still cuts through.
+- Sonar sensitivity: if the image looks washed out with too much noise, REDUCE gain/sensitivity slightly. If arches are faint, INCREASE gain.
+
+**Identifying barra arches in turbid water:**
+- Barramundi's massive physostomous swim bladder still produces one of the STRONGEST returns in the water column — their arch is BRIGHTER than the surrounding noise even in thick turbid water.
+- Look for the BRIGHTEST marks that aren't on the bottom line — in murky water, barra still stand out by brightness contrast.
+- Arch shape may be less perfect (edges blurrier) but the core bright centre remains. Focus on brightness, not arch shape perfection.
+
+**Sediment haze vs thermocline vs bait cloud:**
+- Sediment haze: fills the ENTIRE water column evenly. Very fine, consistent grain through ALL depths.
+- Thermocline: distinct horizontal band at ONE specific depth only, clear water above and below.
+- Bait cloud: patchy, irregular, concentrated mass — not uniform through the whole column.
+
+**Turbid water depth compensation:**
+- In very turbid water, the apparent depth may read slightly shallow because sound hits suspended particles before reaching the bottom.
+- Add 0.5–1m to shallow readings if water is heavily silted.
+
+---
+
+#### SNAG, TIMBER & STRUCTURE IDENTIFICATION ON DOWNSCAN / 2D
+
+Identifying the STRUCTURE ITSELF (not just fish) is critical for targeting barra. Barra live IN and ON structure.
+
+**Submerged logs / fallen trees (horizontal timber):**
+- 2D: Appears as a raised section of "false bottom" — a bright mark rising above the actual bottom line, like a hump or bump. Often the barra arch sits directly on top of this hump.
+- DownScan: Long horizontal bright streak with a very clear shadow beneath it. The shadow length = how high the log is off the bottom. A fallen tree with 1m of clearance under it = 1m shadow on DownScan.
+- Multiple overlapping bright streaks at different heights = timber pile / snag field. PRIME barra country.
+
+**Standing dead timber (upright trunks in flooded timber/billabongs):**
+- 2D: Multiple thin vertical columns of brightness rising from the bottom line — each trunk is a separate bright vertical mark. On a flat bottom with standing timber, looks like a "city skyline" of vertical marks.
+- DownScan: Very clear. Each trunk appears as a distinct vertical post with its own shadow. Fish arches appear at the TOP or SIDE of trunk marks — barra sit at the base and top of vertical timber.
+- Classic NT wet-season/run-off habitat. Mary River, Daly River, South Alligator System.
+
+**Rock bars / submerged rock formations:**
+- 2D: Irregular, rough, bumpy bottom line with uneven thickness. The bright double echo may appear directly under the hardest rock faces.
+- DownScan: Very high contrast marks on the bottom — rock is one of the hardest sonar reflectors. Gaps between rocks (crevices, caves) appear as dark spots between bright marks.
+- Barra on rock bars: arch sits directly on the rough bottom contour, appearing to grow out of the complex bottom signal.
+
+**Bridge pylons / concrete structures:**
+- DownScan/SideScan: Very distinct geometric columns — straight, uniform, extremely high contrast. Shadow is a perfect rectangle.
+- 2D: Multiple very bright, symmetric half-arches or dots as you pass each pylon.
+- Barra on pylons: Large bright arches appear on BOTH sides of the pylon mark as the boat approaches. The arch literally hugs the pylon signature.
+
+**Submerged rock bar at channel edge (critical barra holding spot):**
+- Bottom transitions sharply from hard/bright to soft/dim — this edge is the strike zone.
+- Barra sit at the hard/soft boundary, facing into the current, waiting for bait swept over the bar.
+- Any arch sitting at THIS specific bottom transition is almost certainly a feeding barra.
+
+---
+
+#### BAITFISH SCHOOL UNDER PREDATOR ATTACK — WHAT TO LOOK FOR
+
+Reading what's happening INSIDE and AROUND a bait school is one of the most advanced sonar skills.
+
+**Undisturbed baitfish school:**
+- Thin, consistent horizontal oval or flat layer at a fixed depth. No movement, no disruption. Uniform grain.
+- Appears as a solid, uniform green/yellow blob on standard sonar. No individual arches distinguishable.
+
+**Baitfish school under barra attack:**
+- The shape CHANGES from a flat oval to a DOME or SPHERE — baitfish ball up as a defensive response.
+- The ball has "streaming" or "tailing" edges — baitfish spiralling inward as predators slash from below.
+- Dark "holes" appear in the bait cloud — these are predators punching through it. Each dark hole is a large fish body displacing the bait.
+- "Splintered" texture: The previously uniform blob develops sharp streamers and fracture lines radiating outward.
+- **Large distinct arches appear BELOW, BESIDE, or at the EDGES of the bait ball** — these are the predators. THIS IS THE KEY SIGNAL. Barra, jack, and trevally drive bait upward and then slash through from beneath.
+- "Donut" or ring pattern: In extreme feeding, the bait ball hollows out in the center as predators drive bait into a ring/ring shape. This is peak feeding chaos — cast immediately.
+
+**Action trigger:**
+- ANY large distinct arch appearing at the EDGE of or just BELOW a bait cloud = active predator feeding = CAST NOW.
+- Bait cloud moving upward toward the surface + large arches below it = surface lure time.
+- Bait cloud not moving + no large arches = resting bait, no predators yet — monitor the spot.
+
+---
+
+#### NT HOT SPOT QUICK SONAR REFERENCE — DEPTHS & STRUCTURE
+
+**Darwin Harbour:**
+- Main channel: 15–30m. Fingermark, jewfish, Spanish mackerel, GT on warship wrecks.
+- Harbour arms (Middle Arm, East Arm, Cullen Bay): 4–14m. Barra on rock bars, riprap walls, bridge pylons.
+- Elizabeth River: 3–8m. Heavy snag country. Barra hold year-round. Rock bar at mouth is gold at run-out tide.
+- Sadgroves Creek / Winnellie Creek outlets: 2–6m. Mangrove jack and juvenile barra on oyster rock walls at 2–4m.
+- East Arm Wharf pylons: 6–12m around structure. Large barra and jewfish on the dock pylon fields.
+
+**Mary River System:**
+- Wet season/run-off: Fish spread into flooded timber in 1–5m. Massive barra in flooded country.
+- Dry season: Channel fish concentrate at 4–10m. Sonar shows standing timber arches. Rock bar at confluence of Mary and Shrapnel Creek.
+- Point Stuart boat ramp approach: 3–6m. Known for barra stacked on the bar points.
+
+**Daly River:**
+- 3–12m in main channel. Clear water (unlike Darwin estuaries) — sonar arches are very clean.
+- Limestone rock bars are prime barra country — look for hard bright bottom transitions with barra arches just upcurrent of the rock.
+- Trophy territory: fish 55–120cm common. Arches are FAT and very bright.
+- Best on incoming tides in the lower reaches.
+
+**Tiwi Islands:**
+- Remote pristine systems: Bathurst/Melville Islands creeks. 2–8m.
+- No pressure, lots of fish. Multiple arches on snags and timber are common — this is what "loaded" sonar looks like.
+- Running tides are everything here. Fish exactly on the turning tide.
+
+**Roper River / Limmen Bight:**
+- 4–15m. Remote. Trophy barra in the 80–120cm range.
+- Rock shelves and submerged ledges are key structure. Look for thick bright bottom line with barra arches at the upstream edge of ledges.
+
+**Gove / Nhulunbuy:**
+- Offshore rock reef: 10–40m. Fingermark, coral trout, red emperor.
+- Estuary systems: classic barra country 3–10m with mangrove jack on snags.
+
 ## ★ FIVE PRIMARY NT TARGET SPECIES — EXPERT SONAR IDENTIFICATION ★
 
 > Your PRIMARY MISSION is to accurately identify these 5 species. Study every detail below. Target 90%+ accuracy on these fish. All other species are secondary.
@@ -428,7 +577,22 @@ router.post("/analyze", async (req, res) => {
             },
             {
               type: "text",
-              text: "Analyse this sonar/fish finder screenshot. Return only the JSON object.",
+              text: `Analyse this sonar/fish finder screenshot using the full expert framework above. Apply this exact reasoning sequence:
+
+1. SONAR BRAND: Identify brand/model from UI chrome, colour palette, layout.
+2. SCREEN TYPE: Is this 2D traditional sonar, DownScan/Down Imaging, SideImaging, or a split-screen?
+3. BOTTOM: Hard or soft? Thickness + colour + double echo = rock/bedrock. Fuzzy/thin = mud/sand. Ragged = reef.
+4. STRUCTURE: Any snags, timber, pylons, rock bars, ledges visible rising from bottom?
+5. ARCH ANALYSIS: Count distinct arches. Judge THICKNESS (=size), not length. Check COLOUR BRIGHTNESS. Check gap from bottom — gap = active feeding, merged = lethargic.
+6. POSITION: Are arches on hard structure (barra/jack), above rocky reef (fingermark), mid-column over soft bottom (thready), or near surface in shallow (croc check)?
+7. SCHOOL vs SINGLES: Bait cloud or individual arches? Any predator arches at the edge of a bait ball?
+8. TIDAL READ: Are arches lifted with gap (tide running, fish active) or merged with bottom (slack/peak tide, fish resting)?
+9. TURBIDITY: Is there sediment haze through the water column? Adjust confidence accordingly.
+10. CROC CHECK: Any large SOLID DENSE elongated blob in the top 3m of the water column? If yes, crocAlert=true.
+11. SPECIES ID: Match all clues to the species reference table.
+12. LURE & TECHNIQUE: Match to fish activity (active vs lethargic), depth, and structure.
+
+Return ONLY the raw JSON object.`,
             },
           ],
         },
