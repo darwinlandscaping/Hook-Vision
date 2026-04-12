@@ -215,6 +215,65 @@ router.get("/community/stats", async (_req, res) => {
   }
 });
 
+// ─── GET /api/community/hotspots ─────────────────────────────────────────────
+// Returns top fishing locations scored by activity, fish count & species variety.
+// "heat" field: "firing" = 2+ scans in last 2h, "hot" = 1 scan in last 2h, "warm" otherwise.
+router.get("/community/hotspots", async (_req, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT
+        location_name                                                          AS "locationName",
+        COUNT(*)::int                                                          AS report_count,
+        ROUND(AVG(fish_count)::numeric, 1)                                    AS avg_fish_count,
+        COUNT(DISTINCT species)::int                                          AS species_count,
+        SUM(CASE WHEN submitted_at > NOW() - INTERVAL '2 hours'  THEN 1 ELSE 0 END)::int AS recent_2h,
+        SUM(CASE WHEN submitted_at > NOW() - INTERVAL '6 hours'  THEN 1 ELSE 0 END)::int AS recent_6h,
+        MAX(submitted_at)                                                      AS latest_at,
+        -- Most common species at this location
+        (SELECT species FROM community_reports r2
+          WHERE r2.location_name = community_reports.location_name
+            AND r2.submitted_at  > NOW() - INTERVAL '24 hours'
+          GROUP BY species ORDER BY COUNT(*) DESC LIMIT 1)                    AS top_species
+      FROM community_reports
+      WHERE location_name IS NOT NULL
+        AND submitted_at > NOW() - INTERVAL '24 hours'
+      GROUP BY location_name
+      HAVING COUNT(*) >= 1
+      ORDER BY (
+        COUNT(*) * GREATEST(COALESCE(AVG(fish_count), 1), 1) +
+        COUNT(DISTINCT species) * 2 +
+        SUM(CASE WHEN submitted_at > NOW() - INTERVAL '2 hours' THEN 5 ELSE 0 END)
+      ) DESC
+      LIMIT 8
+    `);
+
+    const hotspots = (rows.rows as any[]).map((r) => {
+      const recent2h = Number(r.recent_2h ?? 0);
+      const recent6h = Number(r.recent_6h ?? 0);
+      const heat: "firing" | "hot" | "warm" =
+        recent2h >= 2 ? "firing" :
+        recent2h >= 1 || recent6h >= 3 ? "hot" : "warm";
+      return {
+        locationName: r.locationName as string,
+        reportCount:  Number(r.report_count),
+        avgFishCount: parseFloat(r.avg_fish_count ?? "0"),
+        speciesCount: Number(r.species_count),
+        topSpecies:   (r.top_species as string | null) ?? null,
+        recent2h,
+        recent6h,
+        heat,
+        latestAt: r.latest_at,
+      };
+    });
+
+    const firingSpots = hotspots.filter((h) => h.heat === "firing");
+    res.json({ hotspots, firingCount: firingSpots.length });
+  } catch (err) {
+    logger.error({ err }, "Failed to get hotspots");
+    res.status(500).json({ error: "Failed to get hotspots" });
+  }
+});
+
 // ─── GET /api/community/compare ──────────────────────────────────────────────
 // Explains the sonar differences between two fish species so the user
 // understands why the AI detected a different species than expected.

@@ -45,6 +45,18 @@ interface Insights {
   tips: string[];
   summary: string;
 }
+interface Hotspot {
+  locationName: string;
+  reportCount:  number;
+  avgFishCount: number;
+  speciesCount: number;
+  topSpecies:   string | null;
+  recent2h:     number;
+  recent6h:     number;
+  heat:         "firing" | "hot" | "warm";
+  latestAt:     string;
+}
+
 interface FeedReport {
   id: number;
   species: string | null;
@@ -95,8 +107,9 @@ function feedTimeAgo(iso: string) {
   return "now";
 }
 
-const FEED_POLL_MS     = 30_000;  // 30 seconds
-const INSIGHTS_POLL_MS = 5 * 60_000; // 5 minutes
+const FEED_POLL_MS      = 30_000;         // 30 seconds
+const INSIGHTS_POLL_MS  = 5 * 60_000;    // 5 minutes
+const HOTSPOT_POLL_MS   = 2 * 60_000;    // 2 minutes
 
 export default function CommunityScreen() {
   const colors  = useColors();
@@ -114,10 +127,32 @@ export default function CommunityScreen() {
   const [expandedIdx, setExpandedIdx]   = useState<number | null>(null);
   const [analysingIdx, setAnalysingIdx] = useState<number | null>(null);
 
+  const [hotspots, setHotspots]         = useState<Hotspot[]>([]);
+  const [firingAlert, setFiringAlert]   = useState<Hotspot | null>(null);
+  const [alertDismissed, setAlertDismissed] = useState(false);
+
   const feedTimer     = useRef<ReturnType<typeof setInterval> | null>(null);
   const insightsTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hotspotTimer  = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastFeedId    = useRef<number>(0);
   const isFocused     = useRef(false);
+
+  // ── fetch hotspots ─────────────────────────────────────────────────────────
+  const fetchHotspots = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/community/hotspots`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const spots: Hotspot[] = data.hotspots ?? [];
+      setHotspots(spots);
+      const topFiring = spots.find((s) => s.heat === "firing");
+      if (topFiring && !alertDismissed) {
+        setFiringAlert(topFiring);
+      } else if (!topFiring) {
+        setFiringAlert(null);
+      }
+    } catch {}
+  }, [alertDismissed]);
 
   // ── fetch live feed ────────────────────────────────────────────────────────
   const fetchFeed = useCallback(async (silent = true) => {
@@ -157,8 +192,9 @@ export default function CommunityScreen() {
   // ── refresh everything ─────────────────────────────────────────────────────
   const refreshAll = useCallback(async () => {
     setNewCount(0);
-    await Promise.all([fetchFeed(false), fetchInsights(true)]);
-  }, [fetchFeed, fetchInsights]);
+    setAlertDismissed(false);
+    await Promise.all([fetchFeed(false), fetchInsights(true), fetchHotspots()]);
+  }, [fetchFeed, fetchInsights, fetchHotspots]);
 
   // ── start / stop polling on focus ─────────────────────────────────────────
   useFocusEffect(useCallback(() => {
@@ -167,17 +203,20 @@ export default function CommunityScreen() {
 
     // initial load
     fetchFeed(false);
+    fetchHotspots();
     if (!insights) fetchInsights(true);
 
     feedTimer.current     = setInterval(() => fetchFeed(true), FEED_POLL_MS);
     insightsTimer.current = setInterval(() => fetchInsights(false), INSIGHTS_POLL_MS);
+    hotspotTimer.current  = setInterval(() => fetchHotspots(), HOTSPOT_POLL_MS);
 
     return () => {
       isFocused.current = false;
       if (feedTimer.current)     clearInterval(feedTimer.current);
       if (insightsTimer.current) clearInterval(insightsTimer.current);
+      if (hotspotTimer.current)  clearInterval(hotspotTimer.current);
     };
-  }, [fetchFeed, fetchInsights, insights]));
+  }, [fetchFeed, fetchInsights, fetchHotspots, insights]));
 
   // ── Send community species demo to Analyzer ────────────────────────────────
   const sendToAnalyzer = useCallback(async (speciesName: string, idx: number) => {
@@ -222,6 +261,28 @@ export default function CommunityScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* ── FIRING HOTSPOT ALERT BANNER ──────────────────────────────────────── */}
+      {firingAlert && !alertDismissed && (
+        <View style={styles.alertBanner}>
+          <Text style={styles.alertFire}>🔥</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.alertTitle}>SPOT FIRING NOW</Text>
+            <Text style={styles.alertBody} numberOfLines={1}>
+              {firingAlert.locationName}
+              {firingAlert.topSpecies ? ` · ${firingAlert.topSpecies}` : ""}
+              {` · ${firingAlert.recent2h} scan${firingAlert.recent2h !== 1 ? "s" : ""} in 2h`}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.alertDismiss}
+            onPress={() => setAlertDismissed(true)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="x" size={15} color="#ff9900" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -283,6 +344,72 @@ export default function CommunityScreen() {
             Refreshes every 30s · All data anonymous
           </Text>
         </View>
+
+        {/* ── BEST GO'S — HOTSPOT TRACKER ──────────────────────────────── */}
+        {hotspots.length > 0 && (
+          <View style={[styles.hotspotCard, { backgroundColor: colors.card, borderColor: "#ff990040" }]}>
+            {/* Header */}
+            <View style={styles.hotspotHeader}>
+              <View style={styles.hotspotTitleRow}>
+                <Text style={styles.hotspotFire}>🎯</Text>
+                <View>
+                  <Text style={[styles.hotspotTitle, { color: colors.foreground }]}>BEST GO'S</Text>
+                  <Text style={[styles.hotspotSub, { color: colors.mutedForeground }]}>Top spots · last 24h</Text>
+                </View>
+              </View>
+              <View style={[styles.livePill, { borderColor: "#ff990050", backgroundColor: "#ff990015" }]}>
+                <View style={[styles.liveDot, { backgroundColor: "#ff9900" }]} />
+                <Text style={[styles.livePillText, { color: "#ff9900" }]}>LIVE</Text>
+              </View>
+            </View>
+
+            {/* Spot rows */}
+            {hotspots.map((spot, i) => {
+              const isFirst = i === 0;
+              const heatCol = spot.heat === "firing" ? "#ff4400" : spot.heat === "hot" ? "#ffd700" : C.teal;
+              const heatLabel = spot.heat === "firing" ? "🔥 FIRING" : spot.heat === "hot" ? "🌡 HOT" : "✓ ACTIVE";
+              return (
+                <View
+                  key={spot.locationName}
+                  style={[
+                    styles.spotRow,
+                    {
+                      borderColor: heatCol + (isFirst ? "60" : "30"),
+                      backgroundColor: isFirst ? heatCol + "12" : "transparent",
+                    },
+                  ]}
+                >
+                  {/* Rank */}
+                  <View style={[styles.spotRank, { backgroundColor: heatCol + "25" }]}>
+                    <Text style={[styles.spotRankText, { color: heatCol }]}>#{i + 1}</Text>
+                  </View>
+
+                  {/* Details */}
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[styles.spotName, { color: colors.foreground }]} numberOfLines={1}>
+                      {spot.locationName}
+                    </Text>
+                    <Text style={[styles.spotDetail, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      {spot.topSpecies ?? "Mixed species"}
+                      {spot.avgFishCount > 0 ? ` · avg ${spot.avgFishCount} fish` : ""}
+                      {spot.speciesCount > 1 ? ` · ${spot.speciesCount} species` : ""}
+                    </Text>
+                  </View>
+
+                  {/* Heat badge */}
+                  <View style={[styles.heatBadge, { borderColor: heatCol + "60", backgroundColor: heatCol + "20" }]}>
+                    <Text style={[styles.heatBadgeText, { color: heatCol }]}>{heatLabel}</Text>
+                    <Text style={[styles.spotScans, { color: heatCol + "cc" }]}>{spot.reportCount} scans</Text>
+                  </View>
+                </View>
+              );
+            })}
+
+            <Text style={[styles.pollNote, { color: colors.mutedForeground + "70", marginTop: 6 }]}>
+              Updates every 2 min · Heat = recency × fish count
+            </Text>
+          </View>
+        )}
 
         {/* ── INSIGHTS ──────────────────────────────────────────────────── */}
         {loadingInsights && !insights ? (
@@ -607,4 +734,54 @@ const styles = StyleSheet.create({
     textAlign: "center", lineHeight: 17,
     marginTop: 4, marginBottom: 8, paddingHorizontal: 16,
   },
+
+  // ── Firing alert banner ──────────────────────────────────────────────────
+  alertBanner: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: "#ff440018",
+    borderTopWidth: 1, borderBottomWidth: 1, borderColor: "#ff440060",
+    paddingHorizontal: 16, paddingVertical: 10,
+  },
+  alertFire:    { fontSize: 22 },
+  alertTitle:   { fontSize: 10, fontFamily: "Inter_700Bold", color: "#ff6600", letterSpacing: 1.2 },
+  alertBody:    { fontSize: 12, fontFamily: "Inter_500Medium", color: "#ff9900", marginTop: 1 },
+  alertDismiss: { padding: 4 },
+
+  // ── BEST GO'S hotspot card ───────────────────────────────────────────────
+  hotspotCard: {
+    borderRadius: 14, borderWidth: 1,
+    padding: 14, marginBottom: 16, gap: 10,
+  },
+  hotspotHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  hotspotTitleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  hotspotFire:   { fontSize: 26 },
+  hotspotTitle:  { fontSize: 16, fontFamily: "Oswald_700Bold", letterSpacing: 0.5 },
+  hotspotSub:    { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  livePill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    borderWidth: 1, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4,
+  },
+  liveDot:      { width: 7, height: 7, borderRadius: 3.5 },
+  livePillText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
+
+  spotRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    borderRadius: 10, borderWidth: 1, padding: 10,
+  },
+  spotRank: {
+    width: 32, height: 32, borderRadius: 8,
+    alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+  },
+  spotRankText:  { fontSize: 12, fontFamily: "Inter_700Bold" },
+  spotName:      { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  spotDetail:    { fontSize: 11, fontFamily: "Inter_400Regular" },
+  heatBadge: {
+    alignItems: "center", borderWidth: 1, borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 5, gap: 1, flexShrink: 0,
+  },
+  heatBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  spotScans:     { fontSize: 9, fontFamily: "Inter_400Regular" },
 });
