@@ -215,4 +215,39 @@ router.get("/community/stats", async (_req, res) => {
   }
 });
 
+// ─── GET /api/community/compare ──────────────────────────────────────────────
+// Explains the sonar differences between two fish species so the user
+// understands why the AI detected a different species than expected.
+router.get("/community/compare", async (req, res) => {
+  const a = String(req.query.a ?? "").slice(0, 100).trim();
+  const b = String(req.query.b ?? "").slice(0, 100).trim();
+  if (!a || !b) {
+    return res.status(400).json({ error: "Query params a and b are required" });
+  }
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1",
+      max_completion_tokens: 250,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an expert fishfinder sonar analyst for Northern Territory Australian tropical waters. " +
+            "Explain in 2-3 short sentences how the sonar signatures of two fish species differ, " +
+            "so an angler understands why AI detection can vary between them. Keep it practical and plain.",
+        },
+        {
+          role: "user",
+          content: `Compare the sonar signatures of ${a} vs ${b}. Why might a sonar AI identify one when the other is expected?`,
+        },
+      ],
+    });
+    const explanation = completion.choices[0]?.message?.content?.trim() ?? "";
+    res.json({ explanation });
+  } catch (err) {
+    logger.error({ err }, "Failed to compare species");
+    res.status(500).json({ error: "Failed to generate comparison" });
+  }
+});
+
 export default router;

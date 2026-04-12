@@ -15,6 +15,7 @@ import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DemoStore } from "@/app/(tabs)/demo";
+import { SpeciesCompareStore } from "@/stores/SpeciesCompareStore";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -139,6 +140,11 @@ export default function HomeScreen() {
   const [imageLayout, setImageLayout] = useState({ width: SCREEN_W - 32, height: 240 });
   const autoAnalyzeRef = useRef(false);
 
+  // ── Species comparison (community → analyze flow) ──────────────────────────
+  const [compareCard, setCompareCard] = useState<{ expected: string; found: string } | null>(null);
+  const [compareExp, setCompareExp]   = useState<string | null>(null);
+  const [loadingCompare, setLoadingCompare] = useState(false);
+
   // Pick up demo image loaded from the Demo tab and auto-analyse it
   useFocusEffect(
     useCallback(() => {
@@ -243,6 +249,18 @@ export default function HomeScreen() {
         throw new Error("AI response was cut off — please try again.");
       }
       setAnalysis(data);
+      // ── Compare with community-expected species ──
+      if (SpeciesCompareStore.expectedSpecies) {
+        const expected = SpeciesCompareStore.expectedSpecies;
+        SpeciesCompareStore.expectedSpecies = null;
+        SpeciesCompareStore.demoNum = null;
+        const found = data.species ?? "";
+        if (!found.toLowerCase().includes(expected.toLowerCase()) &&
+            !expected.toLowerCase().includes(found.toLowerCase())) {
+          setCompareCard({ expected, found });
+          setCompareExp(null);
+        }
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Hands-free: narrate the result summary
       autoSpeak(
@@ -293,6 +311,26 @@ export default function HomeScreen() {
       analyzeImage();
     }
   }, [imageBase64, analyzeImage]);
+
+  // ── Learn why two species differ on sonar ─────────────────────────────────
+  const learnWhy = useCallback(async (expected: string, found: string) => {
+    try {
+      setLoadingCompare(true);
+      const reportDomain = process.env.EXPO_PUBLIC_DOMAIN;
+      const base = reportDomain ? `https://${reportDomain}` : "";
+      const res = await fetch(
+        `${base}/api/community/compare?a=${encodeURIComponent(expected)}&b=${encodeURIComponent(found)}`
+      );
+      if (!res.ok) throw new Error("API error");
+      const data = await res.json();
+      setCompareExp(data.explanation ?? "No explanation available.");
+      autoSpeak(data.explanation ?? "");
+    } catch {
+      setCompareExp("Could not load explanation — please check your connection.");
+    } finally {
+      setLoadingCompare(false);
+    }
+  }, [autoSpeak]);
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 
@@ -372,8 +410,47 @@ export default function HomeScreen() {
 
         {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} />}
 
+        {/* ── Species comparison card ─────────────────────────────────────── */}
+        {analysis && compareCard && (
+          <View style={[styles.compareCard, { backgroundColor: colors.card, borderColor: "#ffd70055" }]}>
+            <View style={styles.compareHeader}>
+              <Feather name="alert-circle" size={16} color="#ffd700" />
+              <Text style={[styles.compareTitle, { color: "#ffd700" }]}>Species Difference Detected</Text>
+            </View>
+            <View style={styles.compareRow}>
+              <View style={[styles.compareChip, { borderColor: "#00d4aa55", backgroundColor: "#00d4aa15" }]}>
+                <Text style={[styles.compareChipLabel, { color: colors.mutedForeground }]}>Community expected</Text>
+                <Text style={[styles.compareChipVal, { color: "#00d4aa" }]}>{compareCard.expected}</Text>
+              </View>
+              <Feather name="arrow-right" size={14} color={colors.mutedForeground} />
+              <View style={[styles.compareChip, { borderColor: "#ffd70055", backgroundColor: "#ffd70015" }]}>
+                <Text style={[styles.compareChipLabel, { color: colors.mutedForeground }]}>AI identified</Text>
+                <Text style={[styles.compareChipVal, { color: "#ffd700" }]}>{compareCard.found}</Text>
+              </View>
+            </View>
+            {compareExp ? (
+              <Text style={[styles.compareExp, { color: colors.foreground }]}>{compareExp}</Text>
+            ) : (
+              <TouchableOpacity
+                style={[styles.learnBtn, { borderColor: "#ffd70055", opacity: loadingCompare ? 0.6 : 1 }]}
+                onPress={() => learnWhy(compareCard.expected, compareCard.found)}
+                activeOpacity={0.8}
+                disabled={loadingCompare}
+              >
+                {loadingCompare
+                  ? <Text style={[styles.learnBtnText, { color: "#ffd700" }]}>Asking AI…</Text>
+                  : <>
+                      <MaterialCommunityIcons name="brain" size={14} color="#ffd700" />
+                      <Text style={[styles.learnBtnText, { color: "#ffd700" }]}>Learn why they look different on sonar</Text>
+                    </>
+                }
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {analysis && (
-          <TouchableOpacity style={[styles.newBtn, { borderColor: colors.border }]} onPress={() => { setImageUri(null); setImageBase64(null); setAnalysis(null); setError(null); }} activeOpacity={0.7}>
+          <TouchableOpacity style={[styles.newBtn, { borderColor: colors.border }]} onPress={() => { setImageUri(null); setImageBase64(null); setAnalysis(null); setError(null); setCompareCard(null); setCompareExp(null); }} activeOpacity={0.7}>
             <Feather name="plus" size={16} color={colors.mutedForeground} />
             <Text style={[styles.newBtnText, { color: colors.mutedForeground }]}>New analysis</Text>
           </TouchableOpacity>
@@ -563,4 +640,23 @@ const styles = StyleSheet.create({
   errorText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   newBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
   newBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+
+  /* Species comparison card */
+  compareCard: {
+    borderRadius: 14, borderWidth: 1, padding: 14, gap: 12,
+  },
+  compareHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  compareTitle:  { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  compareRow:    { flexDirection: "row", alignItems: "center", gap: 8 },
+  compareChip: {
+    flex: 1, borderWidth: 1, borderRadius: 10, padding: 10, gap: 3, alignItems: "center",
+  },
+  compareChipLabel: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  compareChipVal:   { fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" },
+  compareExp: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  learnBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    borderWidth: 1, borderRadius: 10, paddingVertical: 11, paddingHorizontal: 14,
+  },
+  learnBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
 });

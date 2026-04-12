@@ -1,6 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   Platform,
   RefreshControl,
   ScrollView,
@@ -10,11 +12,14 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
+import { DemoStore } from "@/app/(tabs)/demo";
+import { SpeciesCompareStore } from "@/stores/SpeciesCompareStore";
 
 const C = {
   teal:   "#00d4aa",
@@ -48,6 +53,16 @@ interface FeedReport {
   locationName: string | null;
   lureSuggestion: string | null;
   submittedAt: string;
+}
+
+// Map community species name → demo image number (1-4)
+function speciesDemoNum(species: string): number {
+  const s = species.toLowerCase();
+  if (s.includes("barra"))                         return 1;
+  if (s.includes("threadfin"))                     return 2;
+  if (s.includes("fingermark") || s.includes("golden snapper") ||
+      s.includes("red emperor") || s.includes("mangrove jack")) return 3;
+  return 4;
 }
 
 function trendIcon(t: HotSpecies["trend"]) {
@@ -86,6 +101,7 @@ const INSIGHTS_POLL_MS = 5 * 60_000; // 5 minutes
 export default function CommunityScreen() {
   const colors  = useColors();
   const insets  = useSafeAreaInsets();
+  const router  = useRouter();
   const topPad  = Platform.OS === "web" ? 0 : insets.top;
   const botPad  = Platform.OS === "web" ? 70 : insets.bottom + 24;
 
@@ -94,7 +110,9 @@ export default function CommunityScreen() {
   const [totalReports, setTotalReports] = useState<number>(0);
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [insightsError, setInsightsError]     = useState<string | null>(null);
-  const [newCount, setNewCount]         = useState(0);  // badge: new since last visit
+  const [newCount, setNewCount]         = useState(0);
+  const [expandedIdx, setExpandedIdx]   = useState<number | null>(null);
+  const [analysingIdx, setAnalysingIdx] = useState<number | null>(null);
 
   const feedTimer     = useRef<ReturnType<typeof setInterval> | null>(null);
   const insightsTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -160,6 +178,34 @@ export default function CommunityScreen() {
       if (insightsTimer.current) clearInterval(insightsTimer.current);
     };
   }, [fetchFeed, fetchInsights, insights]));
+
+  // ── Send community species demo to Analyzer ────────────────────────────────
+  const sendToAnalyzer = useCallback(async (speciesName: string, idx: number) => {
+    try {
+      setAnalysingIdx(idx);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const demoNum = speciesDemoNum(speciesName);
+      const url = `${BASE_URL}/api/demos/sonar-demo-${demoNum}.png`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Could not load demo image");
+      const blob  = await res.blob();
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload  = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      DemoStore.pendingUri    = url;
+      DemoStore.pendingBase64 = base64;
+      SpeciesCompareStore.expectedSpecies = speciesName;
+      SpeciesCompareStore.demoNum         = demoNum;
+      router.navigate("/(tabs)");
+    } catch (e) {
+      Alert.alert("Error", "Could not load sonar image. Try again.");
+    } finally {
+      setAnalysingIdx(null);
+    }
+  }, [router]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -281,21 +327,70 @@ export default function CommunityScreen() {
               ) : null}
             </View>
 
-            {/* Hot Species */}
+            {/* Hot Species — expandable with sonar image + Analyse This */}
             {insights.hotSpecies?.length > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>HOT SPECIES</Text>
                 {insights.hotSpecies.map((s, i) => {
-                  const t = trendIcon(s.trend);
+                  const t        = trendIcon(s.trend);
+                  const expanded = expandedIdx === i;
+                  const demoNum  = speciesDemoNum(s.species);
+                  const imgUri   = `${BASE_URL}/api/demos/sonar-demo-${demoNum}.png`;
+                  const isLoading = analysingIdx === i;
                   return (
-                    <View key={i} style={[styles.rowCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                      <MaterialCommunityIcons name="fish" size={17} color={C.teal} />
-                      <Text style={[styles.rowTitle, { color: colors.foreground }]}>{s.species}</Text>
-                      <View style={styles.rowRight}>
-                        <Text style={[styles.rowCount, { color: colors.mutedForeground }]}>{s.count} scans</Text>
-                        <Feather name={t.name} size={15} color={t.color} />
+                    <TouchableOpacity
+                      key={i}
+                      activeOpacity={0.85}
+                      onPress={() => setExpandedIdx(expanded ? null : i)}
+                      style={[
+                        styles.rowCard,
+                        { backgroundColor: colors.card, borderColor: expanded ? C.teal + "80" : colors.border, flexDirection: "column", padding: 0, overflow: "hidden" },
+                      ]}
+                    >
+                      {/* ── Collapsed row ── */}
+                      <View style={styles.speciesRow}>
+                        <MaterialCommunityIcons name="fish" size={17} color={C.teal} />
+                        <Text style={[styles.rowTitle, { color: colors.foreground }]}>{s.species}</Text>
+                        <View style={styles.rowRight}>
+                          <Text style={[styles.rowCount, { color: colors.mutedForeground }]}>{s.count} scans</Text>
+                          <Feather name={t.name} size={15} color={t.color} />
+                          <Feather name={expanded ? "chevron-up" : "chevron-down"} size={14} color={colors.mutedForeground} />
+                        </View>
                       </View>
-                    </View>
+
+                      {/* ── Expanded panel ── */}
+                      {expanded && (
+                        <View style={styles.speciesExpanded}>
+                          <Image
+                            source={{ uri: imgUri }}
+                            style={styles.speciesSonar}
+                            resizeMode="cover"
+                          />
+                          <View style={styles.speciesExpandBody}>
+                            <Text style={[styles.speciesExpandLabel, { color: colors.mutedForeground }]}>
+                              {demoNum === 1 && "Classic barra arch signatures · 5.2m depth range"}
+                              {demoNum === 2 && "Mid-water school formation · 3.1m depth range"}
+                              {demoNum === 3 && "Hard-bottom reef arch · 8m depth range"}
+                              {demoNum === 4 && "Dual-layer suspension · 7m depth range"}
+                            </Text>
+                            <TouchableOpacity
+                              style={[styles.analyseBtn, { backgroundColor: C.teal, opacity: isLoading ? 0.7 : 1 }]}
+                              onPress={() => sendToAnalyzer(s.species, i)}
+                              activeOpacity={0.8}
+                              disabled={isLoading}
+                            >
+                              {isLoading
+                                ? <ActivityIndicator size="small" color="#0a1628" />
+                                : <>
+                                    <MaterialCommunityIcons name="fish" size={15} color="#0a1628" />
+                                    <Text style={styles.analyseBtnText}>Analyse This →</Text>
+                                  </>
+                              }
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -472,6 +567,21 @@ const styles = StyleSheet.create({
   rowNotes: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
   rowRight: { flexDirection: "row", alignItems: "center", gap: 7 },
   rowCount: { fontSize: 11, fontFamily: "Inter_400Regular" },
+
+  // ── Expandable species cards ──────────────────────────────────────────────
+  speciesRow: {
+    flexDirection: "row", alignItems: "center", gap: 9,
+    padding: 11,
+  },
+  speciesExpanded: { borderTopWidth: 1, borderTopColor: "#00d4aa30" },
+  speciesSonar: { width: "100%", height: 160 },
+  speciesExpandBody: { padding: 12, gap: 10 },
+  speciesExpandLabel: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  analyseBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 7, borderRadius: 10, paddingVertical: 11, paddingHorizontal: 18,
+  },
+  analyseBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#0a1628" },
 
   timeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   timeBox:  { width: "47%", borderRadius: 10, borderWidth: 1, padding: 11, gap: 3, alignItems: "flex-start" },
