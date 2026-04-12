@@ -7,9 +7,19 @@ import React, {
   useState,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
 import { Platform } from "react-native";
+
+// expo-audio (replaces deprecated expo-av)
+let _createAudioPlayer: any = null;
+let _setAudioModeAsync: any = null;
+if (Platform.OS !== "web") {
+  try {
+    const ea = require("expo-audio");
+    _createAudioPlayer = ea.createAudioPlayer;
+    _setAudioModeAsync = ea.setAudioModeAsync;
+  } catch {}
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type NarratorCharacter = "AUSSIE" | "BENAUD" | "CHOPPER" | "ATTENBOROUGH";
@@ -69,13 +79,39 @@ interface NarratorCtx {
 
 const NarratorContext = createContext<NarratorCtx | null>(null);
 
-// ─── Native Audio (expo-av, module-level) ─────────────────────────────────────
-let _nativeSound: Audio.Sound | null = null;
+// ─── Native Audio (expo-audio, module-level) ──────────────────────────────────
+let _nativePlayer: any = null;
+let _nativeListener: any = null;
 
-async function stopNativeAudio() {
-  if (_nativeSound) {
-    try { await _nativeSound.stopAsync(); await _nativeSound.unloadAsync(); } catch {}
-    _nativeSound = null;
+function stopNativeAudio() {
+  if (_nativeListener) {
+    try { _nativeListener.remove(); } catch {}
+    _nativeListener = null;
+  }
+  if (_nativePlayer) {
+    try { _nativePlayer.pause(); _nativePlayer.remove(); } catch {}
+    _nativePlayer = null;
+  }
+}
+
+async function playNativeUrl(url: string, onDone: () => void): Promise<boolean> {
+  if (!_createAudioPlayer) return false;
+  try {
+    stopNativeAudio();
+    const player = _createAudioPlayer({ uri: url });
+    _nativePlayer = player;
+    _nativeListener = player.addListener("playbackStatusUpdate", (status: any) => {
+      if (status?.didJustFinish) {
+        stopNativeAudio();
+        onDone();
+      }
+    });
+    player.play();
+    return true;
+  } catch (err) {
+    console.warn("[Narrator] expo-audio failed:", err);
+    stopNativeAudio();
+    return false;
   }
 }
 
@@ -109,13 +145,13 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { languageRef.current = language; }, [language]);
 
-  // Configure expo-av audio session (native only)
+  // Configure expo-audio session (native only)
   useEffect(() => {
-    if (Platform.OS !== "web") {
-      Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        allowsRecordingIOS: false,
-        staysActiveInBackground: false,
+    if (Platform.OS !== "web" && _setAudioModeAsync) {
+      _setAudioModeAsync({
+        playsInSilentMode: true,
+        interruptionMode: "doNotMix",
+        shouldPlayInBackground: false,
       }).catch(() => {});
     }
   }, []);
@@ -163,6 +199,8 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ─── Web: play via HTMLAudioElement → speechSynthesis fallback ────────────
+  // NOTE: We use document.createElement("audio") — NOT "new Audio()" which would
+  // reference the expo-av Audio class imported at module level.
   const playTTSWeb = useCallback(async (text: string, audioEl: HTMLAudioElement) => {
     setSpeaking(true);
     stopWebAudio();
@@ -188,7 +226,6 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!audioWorked) {
-      // Fallback: window.speechSynthesis
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
@@ -197,46 +234,20 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
         u.onend  = () => setSpeaking(false);
         u.onerror = () => setSpeaking(false);
         window.speechSynthesis.speak(u);
-        return; // setSpeaking(false) handled by onend
+        return;
       }
     }
 
     setSpeaking(false);
   }, [ttsUrl]);
 
-  // ─── Native: expo-av → expo-speech fallback ───────────────────────────────
+  // ─── Native: expo-audio → expo-speech fallback ────────────────────────────
   const playTTSNative = useCallback(async (text: string) => {
     setSpeaking(true);
-    await stopNativeAudio();
 
-    let avWorked = false;
-    try {
-      const url = ttsUrl(text);
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: url },
-        { shouldPlay: false, volume: 1.0 }
-      );
-      _nativeSound = sound;
-      await sound.playAsync();
-      avWorked = true;
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (!status.isLoaded) return;
-        if (status.didJustFinish) {
-          setSpeaking(false);
-          sound.unloadAsync().catch(() => {});
-          if (_nativeSound === sound) _nativeSound = null;
-        }
-      });
-    } catch (err) {
-      console.warn("[Narrator] expo-av failed, falling back to expo-speech:", err);
-      if (_nativeSound) {
-        try { await _nativeSound.unloadAsync(); } catch {}
-        _nativeSound = null;
-      }
-    }
+    const worked = await playNativeUrl(ttsUrl(text), () => setSpeaking(false));
 
-    if (!avWorked) {
-      // Fallback: expo-speech
+    if (!worked) {
       try {
         Speech.speak(text, {
           language: languageRef.current,
@@ -244,7 +255,7 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
           onDone:  () => setSpeaking(false),
           onError: () => setSpeaking(false),
         });
-        return; // setSpeaking(false) via onDone
+        return;
       } catch {
         setSpeaking(false);
       }
@@ -257,7 +268,8 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
       stop();
       setTranscript(text);
       if (Platform.OS === "web") {
-        const audioEl = new Audio();
+        // CRITICAL: use document.createElement, NOT "new Audio()" which references expo-av
+        const audioEl = document.createElement("audio") as HTMLAudioElement;
         playTTSWeb(text, audioEl);
       } else {
         playTTSNative(text);
@@ -273,11 +285,12 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       stop();
 
-      // On web: create Audio element + unlock speechSynthesis synchronously
-      // within the user gesture BEFORE any async work, so autoplay policy allows it.
+      // On web: create audio element + unlock speechSynthesis synchronously
+      // within the user gesture BEFORE any async work (autoplay policy).
       let audioEl: HTMLAudioElement | null = null;
       if (Platform.OS === "web") {
-        audioEl = new Audio();
+        // CRITICAL: use document.createElement, NOT "new Audio()" which references expo-av
+        audioEl = document.createElement("audio") as HTMLAudioElement;
         unlockSpeechSynthesis();
       }
 
