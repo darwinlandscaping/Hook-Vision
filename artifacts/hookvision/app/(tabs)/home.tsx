@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { useColors } from "@/hooks/useColors";
+import { LilyPadCard, LP_BG, LP_BORDER } from "@/components/LilyPadCard";
 import { NarratorButton } from "@/components/NarratorButton";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 
@@ -135,30 +136,31 @@ export default function HomeScreen() {
       <Text style={[styles.sectionHead, { color: colors.mutedForeground }]}>QUICK ACCESS</Text>
       <View style={styles.tileGrid}>
         {TILES.map((t) => (
-          <TouchableOpacity
+          <LilyPadCard
             key={t.route}
-            style={[styles.tile, { backgroundColor: colors.card, borderColor: t.border }]}
             onPress={() => router.push(t.route as any)}
-            activeOpacity={0.75}
+            borderColor={t.border}
+            style={styles.tile}
+            innerStyle={styles.tileInner}
           >
             <Text style={styles.tileEmoji}>{t.emoji}</Text>
             <Text style={[styles.tileLabel, { color: colors.foreground }]}>{t.label}</Text>
-          </TouchableOpacity>
+          </LilyPadCard>
         ))}
       </View>
 
       {/* ── TIP OF THE DAY ── */}
       <Text style={[styles.sectionHead, { color: colors.mutedForeground }]}>TIP OF THE DAY</Text>
-      <View style={[styles.tipCard, { backgroundColor: "#0b1d0e", borderColor: "#1f4827" }]}>
+      <LilyPadCard innerStyle={styles.tipInner}>
         <View style={styles.tipIconRow}>
           <Feather name="zap" size={16} color="#00d4aa" />
           <Text style={styles.tipHeading}>FISHING TIP</Text>
         </View>
         <Text style={[styles.tipText, { color: colors.foreground }]}>{tip}</Text>
-      </View>
+      </LilyPadCard>
 
       {/* ── SEASON BADGE ── */}
-      <View style={[styles.seasonCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <LilyPadCard innerStyle={styles.seasonInner}>
         <View style={styles.seasonRow}>
           <View style={[styles.seasonBadge, { backgroundColor: `${season.color}22`, borderColor: `${season.color}55` }]}>
             <Text style={[styles.seasonBadgeText, { color: season.color }]}>{season.short}</Text>
@@ -173,7 +175,7 @@ export default function HomeScreen() {
             </Text>
           </View>
         </View>
-      </View>
+      </LilyPadCard>
 
       <NarratorButton
         pageType="home"
@@ -204,26 +206,17 @@ const styles = StyleSheet.create({
   sectionHead: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, marginTop: 4 },
 
   tileGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  tile: {
-    width: "22%",
-    flexGrow: 1,
-    aspectRatio: 0.9,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    padding: 8,
-  },
+  tile: { width: "22%", flexGrow: 1, aspectRatio: 0.9 },
+  tileInner: { flex: 1, alignItems: "center", justifyContent: "center", padding: 8, gap: 6 },
   tileEmoji: { fontSize: 24 },
   tileLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", textAlign: "center", lineHeight: 13 },
 
-  tipCard: { borderRadius: 18, borderWidth: 1.5, padding: 14, gap: 8 },
+  tipInner: { padding: 14, gap: 8 },
   tipIconRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   tipHeading: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#00d4aa", letterSpacing: 0.8 },
   tipText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
 
-  seasonCard: { borderRadius: 14, borderWidth: 1, padding: 12 },
+  seasonInner: { padding: 12 },
   seasonRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   seasonBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
   seasonBadgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },

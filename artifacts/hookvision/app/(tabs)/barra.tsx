@@ -22,6 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { HVHeader } from "@/components/HVHeader";
+import { LilyPadCard, LP_BG, LP_BORDER } from "@/components/LilyPadCard";
 import { useColors } from "@/hooks/useColors";
 import { NarratorButton } from "@/components/NarratorButton";
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
@@ -302,10 +303,6 @@ function TacticBox({ icon, label, value, colors, full }: { icon: string; label: 
   );
 }
 
-// ─── Lily pad constants ────────────────────────────────────────────────────────
-const LP_BG     = "#0b1d0e";
-const LP_BORDER = "#1f4827";
-
 // ─── Million Dollar Fish Card ──────────────────────────────────────────────────
 function MDFCard({ colors }: { colors: ReturnType<typeof useColors> }) {
   const { season, active, daysUntil, daysLeft } = useMemo(getMDFStatus, []);
@@ -372,49 +369,6 @@ function MDFCard({ colors }: { colors: ReturnType<typeof useColors> }) {
           <Text style={styles.mdfBtnText}>Register & Learn More →</Text>
         </TouchableOpacity>
       </View>
-    </Animated.View>
-  );
-}
-
-// ─── Lily Pad Card ─────────────────────────────────────────────────────────────
-function LilyPadCard({
-  children, onPress, borderColor, borderLeftColor, borderLeftWidth = 3, innerStyle,
-}: {
-  children: React.ReactNode; onPress?: () => void;
-  borderColor?: string; borderLeftColor?: string; borderLeftWidth?: number; innerStyle?: any;
-}) {
-  const scale  = useSharedValue(1);
-  const rotate = useSharedValue(0);
-  const wobble = useCallback(() => {
-    scale.value = withSequence(
-      withTiming(0.968, { duration: 75 }),
-      withSpring(1.014, { damping: 4, stiffness: 280 }),
-      withSpring(1, { damping: 12 })
-    );
-    rotate.value = withSequence(
-      withTiming(-2.5, { duration: 65 }),
-      withTiming(2.5, { duration: 65 }),
-      withTiming(-1.2, { duration: 50 }),
-      withTiming(1.2, { duration: 50 }),
-      withSpring(0, { damping: 14, stiffness: 180 })
-    );
-    onPress?.();
-  }, [onPress]);
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }, { rotate: `${rotate.value}deg` }],
-  }));
-  return (
-    <Animated.View
-      style={[
-        styles.lilyPadCard,
-        { borderColor: borderColor ?? LP_BORDER },
-        borderLeftColor ? { borderLeftColor, borderLeftWidth } : null,
-        animStyle,
-      ]}
-    >
-      <TouchableOpacity onPress={wobble} activeOpacity={0.92} style={innerStyle}>
-        {children}
-      </TouchableOpacity>
     </Animated.View>
   );
 }
@@ -770,9 +724,6 @@ const styles = StyleSheet.create({
   tacticValue: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 16, marginTop: 2 },
   rerunBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 12, borderRadius: 10, borderWidth: 1 },
   rerunText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-
-  // Lily pad card (shared container for all panels)
-  lilyPadCard: { borderRadius: 22, borderWidth: 1.5, backgroundColor: LP_BG, overflow: "hidden" },
 
   // Hot spots
   hotSpotCard: { padding: 12, gap: 8 },
