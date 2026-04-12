@@ -16,6 +16,8 @@ import { useQuery } from "@tanstack/react-query";
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
+import { NarratorButton } from "@/components/NarratorButton";
+import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 import {
   NT_TIDE_REGIONS,
   TYPE_LABELS,
@@ -67,6 +69,31 @@ function formatDate(dateStr: string): string {
   if (date.getDate() === tomorrow.getDate() && date.getMonth() === tomorrow.getMonth())
     return "Tomorrow";
   return date.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
+}
+
+// ─── Narrator content builders ─────────────────────────────────────────────────
+function buildRegionNarratorText(region: TideRegion): string {
+  const starSpots = region.locations.filter((l) => l.star).map((l) => l.name);
+  const intro = `${region.name} has ${region.locations.length} fishing locations. ${starSpots.length ? `Iconic spots include ${starSpots.join(" and ")}.` : ""}`;
+  const tips = region.locations
+    .slice(0, 6)
+    .map((l) => `${l.name}: ${l.tip}`)
+    .join(". ");
+  return `${intro} Here are the highlights. ${tips}.`;
+}
+
+function buildTideNarratorText(loc: TideLocation, data: TideResponse): string {
+  let text = `${loc.name} tide predictions. Fishing tip: ${loc.tip} `;
+  for (const day of data.data) {
+    text += `${formatDate(day.date)}: `;
+    for (const t of day.tides) {
+      text += `${t.type === "HW" ? "High" : "Low"} tide at ${t.time}, height ${t.height.toFixed(1)} metres. `;
+    }
+  }
+  if (data.isSecondary) {
+    text += `These times are corrected from the ${data.refPort === "darwin" ? "Darwin" : data.refPort === "gove" ? "Gove" : "Groote Eylandt"} BOM reference station. Always verify before heading out.`;
+  }
+  return text.trim();
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
@@ -286,6 +313,11 @@ function TideDetailView({
             </View>
           ))}
 
+          <NarratorButton
+            pageType="tide predictions"
+            content={buildTideNarratorText(loc, data)}
+          />
+
           <View style={[styles.disclaimer, { backgroundColor: colors.secondary }]}>
             <Feather name="info" size={12} color={colors.mutedForeground} />
             <Text style={[styles.disclaimerText, { color: colors.mutedForeground }]}>
@@ -332,7 +364,10 @@ export default function TidesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Fixed header + region tabs */}
       <View style={{ paddingTop: topPad + 12, paddingHorizontal: 14, gap: 10, paddingBottom: 8 }}>
-        <HVHeader subtitle="NT Tide Predictions" />
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <HVHeader subtitle="NT Tide Predictions" />
+          <NarratorSettingsTrigger />
+        </View>
 
         {/* Region tabs — horizontal scroll */}
         <ScrollView
@@ -364,12 +399,19 @@ export default function TidesScreen() {
           })}
         </ScrollView>
 
-        {/* Region subtitle */}
-        <View style={styles.regionInfo}>
-          <View style={[styles.regionDot, { backgroundColor: selectedRegion.color }]} />
-          <Text style={[styles.regionInfoText, { color: colors.mutedForeground }]}>
-            {selectedRegion.locations.length} locations · {selectedRegion.refNote}
-          </Text>
+        {/* Region subtitle + narrator trigger */}
+        <View style={styles.regionInfoRow}>
+          <View style={styles.regionInfo}>
+            <View style={[styles.regionDot, { backgroundColor: selectedRegion.color }]} />
+            <Text style={[styles.regionInfoText, { color: colors.mutedForeground }]}>
+              {selectedRegion.locations.length} locations · {selectedRegion.refNote}
+            </Text>
+          </View>
+          <NarratorButton
+            compact
+            pageType="tide region"
+            content={buildRegionNarratorText(selectedRegion)}
+          />
         </View>
       </View>
 
@@ -413,6 +455,7 @@ const styles = StyleSheet.create({
   regionTabEmoji: { fontSize: 14 },
   regionTabText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 
+  regionInfoRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   regionInfo: { flexDirection: "row", alignItems: "center", gap: 6 },
   regionDot: { width: 6, height: 6, borderRadius: 3 },
   regionInfoText: { fontSize: 11, fontFamily: "Inter_400Regular" },
