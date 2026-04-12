@@ -515,6 +515,122 @@ Reading what's happening INSIDE and AROUND a bait school is one of the most adva
 | Arch shape | Thick complete U | Clean U, slightly off bottom | Dot or very short | Half-arch/bump | Clean U, mid-column |
 | Activity tell | Gap from bottom = active | Risen above reef = feeding | Brief flash from structure | Brightness pulse in structure | Multiple arches at creek mouth |
 
+---
+
+## ★★★ SWIM BLADDER SONAR PHYSICS — THE PRIMARY SPECIES ID TOOL ★★★
+
+> The swim bladder is a gas-filled organ that reflects sonar with near-perfect efficiency. It is the SINGLE MOST IMPORTANT factor in determining arch brightness and thickness. Always assess brightness FIRST, then cross-check with depth and habitat.
+
+### SWIM BLADDER TYPES
+
+**PHYSOSTOMOUS** — Connected to the gut. Fish can GULP AIR to actively inflate the bladder. Result: bladder is ALWAYS maximally inflated regardless of depth changes. Maximum sonar return at ALL depths.
+
+**PHYSOCLISTOUS** — Closed system. Bladder inflated only by gas secretion (slow). Size is fixed. At depth they are fully inflated; when rapidly brought up the bladder expands (can rupture). Return is strong but cannot exceed the fixed gas volume.
+
+**NONE / VESTIGIAL** — No swim bladder or tiny vestigial organ. Fish are near-INVISIBLE on 2D sonar. Only a fleeting faint smear or nothing at all.
+
+---
+
+### SWIM BLADDER SIGNAL STRENGTH RANKING — NT SPECIES (BRIGHTEST TO DIMMEST)
+
+> Use this as a brightness decoder. When you see an arch, its BRIGHTNESS tells you which group it belongs to BEFORE you even look at depth or habitat.
+
+#### TIER 1 — MAXIMUM BRIGHTNESS (physostomous / massive physoclistous)
+
+| Rank | Species | Bladder Type | Bladder Size | Sonar Return | Arch Appearance |
+|---|---|---|---|---|---|
+| #1 | **Barramundi** (Lates calcarifer) | PHYSOSTOMOUS | MASSIVE — one of the largest bladders relative to body size of any NT fish | NEAR-MAXIMUM. Brightest arch on screen in most NT waters. Deep red/orange on Lowrance; white/aqua on Garmin; deep orange-red on Humminbird. Even a 60cm barra produces a blazing arch at 12m. | Fat, thick U-arch right on structure. VERY BRIGHT. |
+| #2 | **Jewfish / Mulloway** (Argyrosomus japonicus) | PHYSOCLISTOUS | VERY LARGE — whole-body cavity bladder | Very strong, near-barra brightness. Often appears as the biggest arch in murky harbour water where barra are absent. | Single huge arch mid-column in turbid water, 6–18m. |
+| #3 | **Fingermark / Golden Snapper** (Lutjanus johnii) | PHYSOCLISTOUS | LARGE — well-developed for a snapperid | Strong, clean arch. Slightly dimmer than barra at the same depth. Very clean U-shape above rocky reef. | Clean U-arch floating 0.5–2m above rocky bottom at 8–30m. |
+| #4 | **Threadfin Salmon** (Polydactylus macrochir / sheridani) | PHYSOCLISTOUS | LARGE relative to body size | Bright, clean arch. Similar brightness to fingermark. Key difference is habitat (soft muddy bottom, shallower). | Clean U-arch hovering over soft mud/sand at 2–8m. Multiple in schools. |
+| #5 | **Mangrove Jack** (Lutjanus argentimaculatus) | PHYSOCLISTOUS | LARGE — bright bladder | Very bright signal BUT fish never fully exposes itself (tight to snag). Only a brief bright PARTIAL arch or bump appears. Brightness is high but duration is short. | Short bright partial arch embedded in/on hard structure at 2–12m. |
+
+#### TIER 2 — MODERATE BRIGHTNESS (physoclistous, moderate bladder)
+
+| Rank | Species | Bladder Type | Notes | Depth |
+|---|---|---|---|---|
+| #6 | **Rock Cod / Grouper** (Epinephelus spp.) | PHYSOCLISTOUS | Moderate bladder. BUT near-total stillness = only dots/very short marks, not full arches. Brightness is moderate but duration near zero. | 5–60m on hard reef |
+| #7 | **Coral Trout** (Plectropomus spp.) | PHYSOCLISTOUS | Moderate-to-good bladder. More active than rock cod so cleaner short arches above reef. | 10–50m reef |
+| #8 | **Red Emperor** (Lutjanus sebae) | PHYSOCLISTOUS | Large bladder for size; often seen as loose school arches well off deep reef bottom. | 25–80m |
+| #9 | **Queenfish** (Scomberoides commersonnianus) | SMALL PHYSOCLISTOUS | Reduced bladder — faint, fleeting marks. Often diagonal smears not clean arches. Surface-oriented. | 1–15m |
+
+#### TIER 3 — WEAK / INVISIBLE (no swim bladder or vestigial)
+
+| Species | Bladder | Sonar Reality |
+|---|---|---|
+| **Giant Trevally / GT** (Caranx ignobilis) | NONE | Near-INVISIBLE on 2D sonar. GT show only as faint fleeting speck at best. Do NOT call a big bright arch a GT. |
+| **Spanish Mackerel** (Scomberomorus commerson) | TINY vestgial | Near-invisible. Fast-moving = very faint diagonal smear or nothing. |
+| **Flathead** (all species) | NONE | COMPLETELY INVISIBLE. Lie flat on soft bottom, zero sonar return. NEVER identify flathead from a sonar arch. |
+| **Baitfish** (mullet, sardines, hardyheads, herrings) | Each individual tiny | Appear ONLY as a fuzzy CLOUD or blob — never as individual clean arches. The cloud is the mass effect of thousands of tiny bladders. |
+| **Prawns** | NONE | Invisible. |
+
+---
+
+### ★ CRITICAL RULE: BRIGHTNESS = BLADDER SIZE = SPECIES TIER ★
+
+> **If the arch is VERY BRIGHT (deep red/orange/white):**
+> → It is a Tier 1 species: Barramundi, Jewfish, Fingermark, Threadfin, or Jack.
+> → Use DEPTH and HABITAT to separate them (see depth table below).
+>
+> **If the arch is MEDIUM brightness (yellow/green on Lowrance, aqua/green on Garmin):**
+> → It is a Tier 2 species: Rock Cod, Coral Trout, Red Emperor, Queenfish.
+> → Use DEPTH and REEF TYPE to confirm.
+>
+> **If you cannot see a clear bright arch:**
+> → It may be baitfish (cloud) OR a Tier 3 no-bladder species (GT, mackerel, flathead).
+> → Do NOT force a Tier 1 ID onto a dim/faint mark.
+
+---
+
+## ★★★ SPECIES DEPTH ZONES — NT FISHING BIBLE ★★★
+
+> Depth is the SECOND most powerful species discriminator after swim bladder brightness. Cross-check the arch depth on screen against this table before committing to a species ID.
+
+### PRIMARY DEPTH ZONE TABLE
+
+| Species | **Primary NT Depth Zone** | Absolute Min | Absolute Max | Habitat Type at That Depth |
+|---|---|---|---|---|
+| **Barramundi** | **2–8m** | 0.5m | 15m | Estuarine tidal: mangrove creeks, rock bars, submerged timber, bridge pylons, riprap walls |
+| **Mangrove Jack** (juvenile/legal) | **2–12m** | 1m | 20m | Estuarine snags, oyster rock, timber; large adults move to 30–100m reef |
+| **Threadfin Salmon** | **2–7m** | 0.5m | 15m | Turbid tidal estuaries, creek mouths, mangrove-lined rivers, over soft mud/sand |
+| **Jewfish / Mulloway** | **6–18m** | 4m | 30m | Turbid murky harbour channels, deep holes, muddy estuaries — NOT clear water |
+| **Fingermark / Golden Snapper** | **8–25m** | 5m | 50m | Hard rocky reef, rubble, submerged rock bars, coastal headlands — NOT estuarine |
+| **Rock Cod / Grouper** | **15–40m** | 5m | 60m | Complex hard reef, ledges, caves, boulders — outer coastal reef |
+| **Coral Trout** | **10–45m** | 5m | 55m | Coral/rocky reef formations, clear water reef systems |
+| **Red Emperor** | **30–80m** | 20m | 100m+ | Deep offshore hard bottom reef — deep water only |
+| **Spanish Mackerel** | **5–30m** | 2m | 50m | Open pelagic water, offshore and mid-water column |
+| **Giant Trevally (GT)** | **2–20m** | 1m | 40m | Reef channels, passes, outer reef edges — but near-invisible on sonar |
+| **Queenfish** | **1–8m** | 0.5m | 20m | Surface-oriented, channels, creek mouths — often seen attacking surface |
+
+### CRITICAL DEPTH RULES FOR SPECIES SEPARATION
+
+> **Arch at 0–5m depth:** Primary candidates = Barra, Mangrove Jack, Threadfin, Queenfish. Rule out Fingermark, Jewfish, Rock Cod (too shallow for those species).
+>
+> **Arch at 5–12m depth:** Could be Barra (if hard estuarine structure), Mangrove Jack, Threadfin, Jewfish (if turbid), or Fingermark (if rocky reef). HABITAT is the separator at this depth range.
+>
+> **Arch at 12–25m depth:** Primary candidates = Fingermark, Jewfish, Rock Cod. Barra are EXTREMELY UNLIKELY at this depth in open water. Threadfin also very unlikely below 12m.
+>
+> **Arch at 25–80m depth:** Primary candidates = Fingermark (lower range), Rock Cod, Coral Trout, Red Emperor. No barra, no threadfin, no mangrove jack (juvenile) at these depths.
+>
+> **Arch below 80m:** Red Emperor, deep reef species only.
+
+### THE DEPTH + BRIGHTNESS + HABITAT TRIPLE-CHECK
+
+Before committing to any species ID, run this check in order:
+
+1. **Brightness** → Which Tier? (Tier 1 = barra/jewfish/fingermark/thready/jack)
+2. **Depth** → Which species in that Tier can be at this depth?
+3. **Habitat/bottom** → Hard estuarine (barra/jack), rocky reef (fingermark), soft mud (thready), murky harbour (jewfish)?
+
+If all three align → high confidence ID. If any one contradicts → lower confidence, note the conflict.
+
+**Example:**
+- Very bright arch at 3m, hard estuarine structure with submerged timber = BARRAMUNDI (all three align: Tier 1, 3m = barra depth, estuarine timber = barra habitat)
+- Same brightness at 3m but soft muddy bottom, no structure = THREADFIN SALMON (Tier 1, 3m = threadfin depth, soft mud = threadfin habitat — not barra, barra need hard structure)
+- Same brightness at 18m over rocky irregular bottom = FINGERMARK (Tier 1, 18m = fingermark depth, rocky reef = fingermark habitat — cannot be barra or threadfin at 18m)
+
+---
+
 ## BAITFISH / NON-TARGET IDENTIFICATION (to rule out false readings)
 - **Baitfish cloud (mullet, sardines, hardyheads)**: Dense irregular fuzzy blob — no individual clean arches. No consistent depth. Appears as a mass rather than distinct marks.
 - **Catfish**: Small arches VERY close to bottom in schools — multiple tiny marks just sitting on the bottom line. Weaker return than target species.
@@ -657,6 +773,8 @@ Apply this exact 13-step reasoning sequence:
 2. SCREEN TYPE: 2D traditional sonar, DownScan/Down Imaging, SideImaging, or split-screen?
 3. BOTTOM: Hard or soft? Thickness + colour + double echo = rock/bedrock. Fuzzy/thin = mud/sand. Ragged = reef.
 4. STRUCTURE: Any snags, timber, pylons, rock bars, ledges visible rising from bottom?
+4b. SWIM BLADDER BRIGHTNESS CHECK (PRIMARY ID STEP): How bright are the arches? Deep red/orange/white = TIER 1 (barra, jewfish, fingermark, thready, jack). Medium yellow/green = TIER 2 (rock cod, coral trout, queenfish). Faint/dim = TIER 3 (GT, mackerel) or baitfish cloud. This step NARROWS your species list to a tier before anything else.
+4c. DEPTH ZONE CHECK (SECOND PRIMARY ID STEP): Read the depth scale carefully. What depth are the arches at? Apply the Species Depth Zone Table: arches at 0–5m (barra/thready/jack), 5–12m (barra if estuarine/fingermark if rocky reef/thready if turbid), 12–25m (fingermark/jewfish/rock cod), 25m+ (fingermark/red emperor/rock cod). Eliminate species outside their depth range immediately.
 5. ARCH ANALYSIS: Count distinct arches. Judge THICKNESS (vertical height = size). Check COLOUR BRIGHTNESS. Gap from bottom = active; merged = lethargic.
 5b. SHADOW CHECK ⚠️ CRITICAL: Look DIRECTLY BELOW each arch for a dark void/shadow zone. A shadow beneath an arch = large solid fish with big swim bladder. The DARKER and WIDER the shadow zone beneath the arch, the BIGGER the fish. Clearly visible shadow → barramundi or large predator (90%+ confidence). If you see thick bright arches with obvious dark voids below them (like the Humminbird Demo 5 reference image), these ARE barramundi. No shadow = small fish/baitfish. Always explicitly note shadow presence in your species reasoning.
 6. POSITION: Arches ON hard structure (barra/jack) | above rocky reef (fingermark) | mid-column over soft bottom with shadows (barra chasing bait) | near surface (croc check)?
