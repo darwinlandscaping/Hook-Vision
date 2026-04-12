@@ -55,9 +55,10 @@ function buildSpeechText(a: FishAnalysis): string {
   const nick = speciesNickname(a.species);
   const count = a.fishCount;
 
-  // Croc alert — always first if present
+  // Croc alert — safety warning only, no fishing advice
   if (a.crocAlert) {
     parts.push("CROCODILE ALERT! There is a saltwater crocodile on the sonar! Do NOT enter the water, do NOT lean over the side. Move away from this area immediately!");
+    return parts.join(" ");
   }
 
   // Fish count opener
@@ -391,8 +392,8 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
         />
       )}
 
-      {/* How to catch it */}
-      {(analysis.lure || analysis.technique || analysis.rig) && (
+      {/* How to catch it — suppressed when croc alert is active */}
+      {!analysis.crocAlert && (analysis.lure || analysis.technique || analysis.rig) && (
         <>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.sectionHeader}>
@@ -453,15 +454,18 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
         </>
       )}
 
-      <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-      {/* Overall plan */}
-      <View style={[styles.suggestionBox, { backgroundColor: colors.secondary }]}>
-        <Feather name="target" size={14} color={colors.primary} style={styles.suggestionIcon} />
-        <Text style={[styles.suggestionText, { color: colors.foreground }]}>
-          {analysis.suggestion}
-        </Text>
-      </View>
+      {/* Overall plan — suppressed when croc alert is active */}
+      {!analysis.crocAlert && (
+        <>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <View style={[styles.suggestionBox, { backgroundColor: colors.secondary }]}>
+            <Feather name="target" size={14} color={colors.primary} style={styles.suggestionIcon} />
+            <Text style={[styles.suggestionText, { color: colors.foreground }]}>
+              {analysis.suggestion}
+            </Text>
+          </View>
+        </>
+      )}
     </Animated.View>
   );
 }
