@@ -16,10 +16,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: W, height: H } = Dimensions.get("window");
 
-const BUFFALO = require("@/assets/images/splash-buffalo.png");
-const BARRA = require("@/assets/images/splash-barra.png");
+const BUFFALO  = require("@/assets/images/splash-buffalo.png");
+const BARRA    = require("@/assets/images/splash-barra.png");
+const HV_LOGO  = require("@/assets/images/hv-logo-nobg.png");
+const NT_FLAG  = require("@/assets/images/nt-flag-nobg.png");
 
-const BG = "#0a1628";
+const BG   = "#0a1628";
 const TEAL = "#00d4aa";
 const GOLD = "#ffd700";
 
@@ -27,12 +29,12 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const titleOpacity = useRef(new Animated.Value(0)).current;
-  const titleY = useRef(new Animated.Value(30)).current;
-  const tagOpacity = useRef(new Animated.Value(0)).current;
-  const btnOpacity = useRef(new Animated.Value(0)).current;
-  const btnScale = useRef(new Animated.Value(0.9)).current;
-  const barraY = useRef(new Animated.Value(60)).current;
+  const logoOpacity  = useRef(new Animated.Value(0)).current;
+  const logoY        = useRef(new Animated.Value(20)).current;
+  const flagOpacity  = useRef(new Animated.Value(0)).current;
+  const btnOpacity   = useRef(new Animated.Value(0)).current;
+  const btnScale     = useRef(new Animated.Value(0.9)).current;
+  const barraY       = useRef(new Animated.Value(60)).current;
   const barraOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -42,13 +44,13 @@ export default function WelcomeScreen() {
       Animated.sequence([
         Animated.delay(150),
         Animated.parallel([
-          Animated.timing(titleOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
-          Animated.timing(titleY, { toValue: 0, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(tagOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.timing(logoOpacity, { toValue: 1, duration: 550, useNativeDriver: true }),
+          Animated.timing(logoY, { toValue: 0, duration: 550, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(flagOpacity, { toValue: 1, duration: 700, useNativeDriver: true }),
         ]),
       ]),
       Animated.sequence([
-        Animated.delay(300),
+        Animated.delay(400),
         Animated.parallel([
           Animated.timing(btnOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
           Animated.spring(btnScale, { toValue: 1, tension: 120, friction: 8, useNativeDriver: true }),
@@ -57,102 +59,68 @@ export default function WelcomeScreen() {
     ]).start();
   }, []);
 
-  const enter = () => {
-    router.replace("/(tabs)");
-  };
+  const enter = () => router.replace("/(tabs)");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
+  const logoW  = Math.min(W - 32, 400);
+  const logoH  = logoW * (9 / 16);
 
   return (
     <View style={styles.root}>
-      {/* ── Buffalo image — top half ── */}
-      <Image
-        source={BUFFALO}
-        style={styles.buffaloImg}
-        resizeMode="cover"
-      />
+      {/* ── Buffalo — top half ── */}
+      <Image source={BUFFALO} style={styles.buffaloImg} resizeMode="cover" />
+      <LinearGradient colors={["transparent", BG]} style={styles.buffaloFade} pointerEvents="none" />
 
-      {/* Fade buffalo into dark center */}
-      <LinearGradient
-        colors={["transparent", BG]}
-        style={styles.buffaloFade}
-        pointerEvents="none"
-      />
-
-      {/* ── Barra image — bottom half, slides up on load ── */}
-      <Animated.View
-        style={[
-          styles.barraContainer,
-          { opacity: barraOpacity, transform: [{ translateY: barraY }] },
-        ]}
-      >
-        <Image
-          source={BARRA}
-          style={styles.barraImg}
-          resizeMode="cover"
-        />
-        {/* Fade barra into dark center */}
-        <LinearGradient
-          colors={[BG, "transparent", "transparent"]}
-          locations={[0, 0.35, 1]}
-          style={styles.barraFade}
-          pointerEvents="none"
-        />
+      {/* ── Barra — bottom half, slides up ── */}
+      <Animated.View style={[styles.barraContainer, { opacity: barraOpacity, transform: [{ translateY: barraY }] }]}>
+        <Image source={BARRA} style={styles.barraImg} resizeMode="cover" />
+        <LinearGradient colors={[BG, "transparent", "transparent"]} locations={[0, 0.35, 1]} style={styles.barraFade} pointerEvents="none" />
       </Animated.View>
 
-      {/* ── Full dark gradient overlay for center readability ── */}
+      {/* ── Centre dark overlay for readability ── */}
       <LinearGradient
-        colors={["transparent", `${BG}cc`, `${BG}ee`, `${BG}cc`, "transparent"]}
-        locations={[0.25, 0.4, 0.5, 0.62, 0.78]}
+        colors={["transparent", `${BG}cc`, `${BG}f0`, `${BG}cc`, "transparent"]}
+        locations={[0.22, 0.38, 0.5, 0.64, 0.8]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
 
-      {/* ── Branding — center ── */}
+      {/* ── NT Flag — top-right corner ── */}
+      <Animated.Image
+        source={NT_FLAG}
+        style={[styles.ntFlag, { top: topPad + 14, opacity: flagOpacity }]}
+        resizeMode="contain"
+      />
+
+      {/* ── HookVision logo — centre ── */}
       <View style={[styles.brandCenter, { top: topPad }]}>
-        <Animated.View
-          style={[styles.brandBlock, { opacity: titleOpacity, transform: [{ translateY: titleY }] }]}
-        >
-          <Text style={styles.title}>HOOKVISION</Text>
-        </Animated.View>
+        <Animated.Image
+          source={HV_LOGO}
+          style={[styles.logo, { width: logoW, height: logoH, opacity: logoOpacity, transform: [{ translateY: logoY }] }]}
+          resizeMode="contain"
+        />
       </View>
 
       {/* ── Enter button — bottom ── */}
       <Animated.View
-        style={[
-          styles.btnWrap,
-          {
-            bottom: Math.max(insets.bottom + 40, 56),
-            opacity: btnOpacity,
-            transform: [{ scale: btnScale }],
-          },
-        ]}
+        style={[styles.btnWrap, { bottom: Math.max(insets.bottom + 36, 52), opacity: btnOpacity, transform: [{ scale: btnScale }] }]}
       >
-        <Pressable
-          style={({ pressed }) => [styles.enterBtn, pressed && styles.enterBtnPressed]}
-          onPress={enter}
-        >
-          <LinearGradient
-            colors={[TEAL, "#00a8d4"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.enterGradient}
-          >
+        <Pressable style={({ pressed }) => [styles.enterBtn, pressed && styles.enterBtnPressed]} onPress={enter}>
+          <LinearGradient colors={[TEAL, "#00a8d4"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.enterGradient}>
             <Text style={styles.enterText}>ENTER THE TERRITORY</Text>
             <Text style={styles.enterArrow}>→</Text>
           </LinearGradient>
         </Pressable>
-        <Text style={styles.versionTag}>Northern Territory · Australia</Text>
       </Animated.View>
 
-      {/* ── Gold accent corner marks ── */}
-      <View style={[styles.corner, styles.cornerTL, { top: topPad + 16, left: 16 }]}>
+      {/* ── Gold corner marks — bottom-left only (flag occupies top-right) ── */}
+      <View style={[styles.corner, { top: topPad + 16, left: 16 }]}>
         <View style={[styles.cornerH, { backgroundColor: GOLD }]} />
         <View style={[styles.cornerV, { backgroundColor: GOLD }]} />
       </View>
-      <View style={[styles.corner, styles.cornerTR, { top: topPad + 16, right: 16 }]}>
-        <View style={[styles.cornerH, { backgroundColor: GOLD }]} />
-        <View style={[styles.cornerV, { backgroundColor: GOLD }]} />
+      <View style={[styles.corner, { bottom: Math.max(insets.bottom + 36, 52) + 70, left: 16 }]}>
+        <View style={[styles.cornerH, { backgroundColor: GOLD, bottom: 0, top: "auto" }]} />
+        <View style={[styles.cornerV, { backgroundColor: GOLD, bottom: 0, top: "auto" }]} />
       </View>
     </View>
   );
@@ -189,7 +157,6 @@ const styles = StyleSheet.create({
   barraImg: {
     width: "100%",
     height: "100%",
-    objectFit: "cover",
   },
   barraFade: {
     position: "absolute",
@@ -197,6 +164,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: H * 0.32,
+  },
+
+  ntFlag: {
+    position: "absolute",
+    right: 16,
+    width: 88,
+    height: 62,
   },
 
   brandCenter: {
@@ -208,38 +182,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  brandBlock: {
-    alignItems: "center",
-    gap: 6,
-  },
-  lineAccent: {
-    width: 48,
-    height: 3,
-    backgroundColor: GOLD,
-    borderRadius: 2,
-    marginBottom: 6,
-  },
-  eyebrow: {
-    fontSize: 11,
-    color: TEAL,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 3,
-  },
-  title: {
-    fontSize: 52,
-    color: "#ffffff",
-    fontFamily: "Oswald_700Bold",
-    letterSpacing: 6,
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 12,
-  },
-  tagline: {
-    fontSize: 10,
-    color: "#aac8d8",
-    fontFamily: "Inter_500Medium",
-    letterSpacing: 1.5,
-    marginTop: 4,
+  logo: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
   },
 
   btnWrap: {
@@ -247,17 +194,11 @@ const styles = StyleSheet.create({
     left: 24,
     right: 24,
     alignItems: "center",
-    gap: 10,
   },
   enterBtn: {
     width: "100%",
     borderRadius: 14,
     overflow: "hidden",
-    shadowColor: TEAL,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 10,
   },
   enterBtnPressed: {
     opacity: 0.85,
@@ -281,20 +222,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: "#000000",
   },
-  versionTag: {
-    fontSize: 11,
-    color: "#506070",
-    fontFamily: "Inter_400Regular",
-    letterSpacing: 1,
-  },
 
   corner: {
     position: "absolute",
     width: 18,
     height: 18,
   },
-  cornerTL: {},
-  cornerTR: {},
   cornerH: {
     position: "absolute",
     top: 0,

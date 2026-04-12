@@ -48,3 +48,15 @@ id = "aAHH4G4jq4ETMTV5-j0uI"
 uri = "file://artifacts/hookvision/assets/images/splash-barra.png"
 type = "image"
 title = "barra jumping NT river dawn"
+
+[[generated]]
+id = "w9VeBNDRGveTTO6ANHgh-"
+uri = "file://artifacts/hookvision/assets/images/nt-flag.png"
+type = "image"
+title = "NT Northern Territory Australia flag"
+
+[[generated]]
+id = "lPENuSVl7Ia5CwHiE8phm"
+uri = "file://artifacts/hookvision/assets/images/hv-logo.png"
+type = "image"
+title = "HookVision wordmark logo hook fish"
