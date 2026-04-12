@@ -336,6 +336,37 @@ Models: Zeus3S, Vulcan series. Similar to Simrad (same parent).
 - **Flathead**: INVISIBLE on sonar — no swim bladder. Lie flat on the bottom. Echo merges completely with bottom return. Never report flathead from sonar reading.
 - **Jewfish/Butterfish**: Massive single bright arch in turbid harbour water at 5–12m. Biggest arch on screen in murky conditions. Secondary target only.
 
+---
+
+## ⚠️ DANGER — SALTWATER CROCODILE DETECTION (Crocodylus porosus)
+
+### LIFE-SAFETY PRIORITY — ALWAYS CHECK FOR CROCS BEFORE IDENTIFYING FISH
+
+In NT waters, saltwater crocodiles (salties) are a lethal danger. THIS MUST BE CHECKED FIRST on every scan. A missed croc alert could cost a life.
+
+### What a Crocodile Looks Like on Sonar — Key Signatures
+
+Crocodiles are NOT fish. They produce an entirely different sonar return:
+
+1. **Shape — THE DEFINING TELL**: Large, SOLID, DENSE, elongated horizontal BLOB. NOT an arch. NOT hollow. Completely solid fill. Think a thick "torpedo" or "log" shape. Size range: 0.8m (juvenile) to 5m+ (large adult). The blob will be substantially LONGER than any fish arch.
+2. **Signal strength**: MAXIMUM — among the very brightest returns on screen. Air-filled lungs + dense muscle/bone = near-maximum sonar reflection. As bright or brighter than a double echo bottom. Bright red/orange on Lowrance. White/bright on Garmin. Deep orange on Humminbird.
+3. **Depth**: ALWAYS SHALLOW — 0.2m to 3m depth. Crocodiles are air-breathing reptiles. They must surface to breathe. Very rarely below 4m. Look for large solid blobs in the TOP THIRD of the water column.
+4. **Irregular edges**: Unlike a smooth fish arch, the croc body return may have slight irregularity at edges (legs, tail). Still essentially a solid horizontal mass.
+5. **Movement**: Crocs move slowly — the blob may persist across multiple sonar sweeps (appears as a long continuous mark scrolling across the screen), unlike fish arches which appear as discrete U shapes.
+6. **Position on screen**: Near the surface — near river banks, mangrove edges, snag areas, points. Commonly seen in the shallows.
+7. **On DownScan/DI**: Unmistakable — very clear large cigar-shaped horizontal streak with a VERY LONG shadow underneath. The shadow is much longer than any fish shadow.
+8. **On SideImaging**: Large bright elongated mark with prominent long shadow trailing away from boat.
+
+### Distinguishing Croc from Look-alikes
+- vs A submerged log: Wood has LOWER signal than living tissue + air-filled lungs. A croc return is significantly BRIGHTER than a log. Also a croc may slowly move between screen sweeps.
+- vs A large barra arch: Barra arch = hollow U/C shape with dark centre. Croc = SOLID filled blob, no hollow, much larger.
+- vs Jewfish arch: Jewfish = hollow arch mid-column, deep water. Croc = solid blob, shallow water near surface.
+- vs Large bait school: Bait school = irregular fuzzy cloud, many tiny marks. Croc = single solid elongated mark, very bright.
+
+### Crocodile Alert Rule
+**If there is ANY sign of a crocodile sonar signature — set crocAlert to true. DO NOT miss this. It is a life-safety field.**
+- Note: fish and croc may be on the same sonar simultaneously — still report all fish data.
+
 ## Your Analysis Task
 
 Apply ALL of the expert sonar reading principles above to analyse the screenshot. Follow this expert reasoning process:
@@ -363,6 +394,8 @@ Return ONLY a valid JSON object with these exact fields:
 - \`waterTemp\` (string | null): water temp displayed on screen, e.g. "28.2°C", or null if not shown
 - \`bottomType\` (string | null): substrate — "hard rock", "sand", "soft mud", "reef/coral", "weed", "bedrock (double echo)", "rubble/reef mix", or null
 - \`sonarModel\` (string | null): detected brand AND model from UI colours/chrome/layout — e.g. "Lowrance HDS Live", "Garmin Striker Vivid 7", "Humminbird Helix 9 SI", "Simrad NSS evo3S", "Raymarine Axiom 9", "Deeper PRO+" — or null if unclear
+- \`crocAlert\` (boolean): true if a crocodile sonar signature is detected — large solid dense elongated blob near the surface (0–3m depth), very strong signal, NOT a hollow arch, substantially larger than any fish mark. Default false. When in doubt and the mark is ambiguous but large and solid near the surface in shallow NT water — set true.
+- \`crocWarning\` (string | null): if crocAlert is true, describe exactly what was detected, its approximate size, depth and position on screen, and include a safety warning. E.g. "DANGER: Large solid 2–3m elongated blob detected at 1.5m depth near the surface — consistent with saltwater crocodile. DO NOT enter the water or lean over the gunwale. Relocate before fishing." If crocAlert is false, set null.
 
 Return ONLY valid JSON. No markdown fences. No explanation. No surrounding text. Just the raw JSON object starting with { and ending with }.`;
 
@@ -377,7 +410,7 @@ router.post("/analyze", async (req, res) => {
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5.2",
-      max_completion_tokens: 900,
+      max_completion_tokens: 1100,
       messages: [
         {
           role: "system",

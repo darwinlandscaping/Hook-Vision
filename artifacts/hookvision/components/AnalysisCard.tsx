@@ -19,6 +19,8 @@ interface FishAnalysis {
   waterTemp?: string;
   bottomType?: string;
   sonarModel?: string | null;
+  crocAlert?: boolean;
+  crocWarning?: string | null;
 }
 
 interface AnalysisCardProps {
@@ -52,6 +54,11 @@ function buildSpeechText(a: FishAnalysis): string {
   const parts: string[] = [];
   const nick = speciesNickname(a.species);
   const count = a.fishCount;
+
+  // Croc alert — always first if present
+  if (a.crocAlert) {
+    parts.push("CROCODILE ALERT! There is a saltwater crocodile on the sonar! Do NOT enter the water, do NOT lean over the side. Move away from this area immediately!");
+  }
 
   // Fish count opener
   if (count === 0) {
@@ -185,10 +192,22 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
   const colors = useColors();
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(0.95)).current;
+  const crocPulse = useRef(new Animated.Value(1)).current;
   const { speak, stop, speaking } = useVoice();
   const fishImageUrl = useFishImage(analysis.species);
   const [lureImageUrl, setLureImageUrl] = useState<string | null>(null);
   const lureCategory = analysis.lure ? getLureCategory(analysis.lure) : null;
+
+  useEffect(() => {
+    if (analysis.crocAlert) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(crocPulse, { toValue: 0.55, duration: 500, useNativeDriver: true }),
+          Animated.timing(crocPulse, { toValue: 1, duration: 500, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [analysis.crocAlert, crocPulse]);
 
   useEffect(() => {
     if (analysis.lure) {
@@ -249,6 +268,23 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
         },
       ]}
     >
+      {/* ⚠️ CROCODILE ALERT — shown above everything else */}
+      {analysis.crocAlert && (
+        <Animated.View style={[styles.crocAlertBanner, { opacity: crocPulse }]}>
+          <Text style={styles.crocAlertTitle}>🐊  CROCODILE DETECTED</Text>
+          <Text style={styles.crocAlertSub}>DO NOT ENTER THE WATER</Text>
+        </Animated.View>
+      )}
+      {analysis.crocAlert && analysis.crocWarning && (
+        <View style={styles.crocWarningBox}>
+          <Text style={styles.crocWarningLabel}>⚠️  SONAR READING</Text>
+          <Text style={styles.crocWarningText}>{analysis.crocWarning}</Text>
+          <Text style={styles.crocSafetyText}>
+            🚨 NT Croc Safety: Stay 5m from the water's edge. Never clean fish or wash hands at the water. Saltwater crocs can be submerged and undetected. Relocate immediately.
+          </Text>
+        </View>
+      )}
+
       {/* Header — fish count + confidence + voice */}
       <View style={styles.cardHeader}>
         <View style={styles.fishCountSection}>
@@ -606,5 +642,56 @@ const styles = StyleSheet.create({
   lureImageFull: {
     width: "100%",
     height: "100%",
+  },
+
+  crocAlertBanner: {
+    backgroundColor: "#cc0000",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    gap: 4,
+    marginBottom: -4,
+  },
+  crocAlertTitle: {
+    fontSize: 20,
+    fontFamily: "Oswald_700Bold",
+    color: "#ffffff",
+    letterSpacing: 2,
+  },
+  crocAlertSub: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: "#ffcccc",
+    letterSpacing: 1.5,
+  },
+  crocWarningBox: {
+    backgroundColor: "#1a0000",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#cc000066",
+    padding: 14,
+    gap: 8,
+    marginBottom: -4,
+  },
+  crocWarningLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: "#ff4444",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  crocWarningText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#ffaaaa",
+    lineHeight: 19,
+  },
+  crocSafetyText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "#ff8888",
+    lineHeight: 17,
+    marginTop: 2,
   },
 });

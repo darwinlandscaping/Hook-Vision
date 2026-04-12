@@ -38,6 +38,8 @@ interface FishAnalysis {
   waterTemp?: string;
   bottomType?: string;
   sonarModel?: string | null;
+  crocAlert?: boolean;
+  crocWarning?: string | null;
 }
 
 export default function AnalyzeScreen() {
