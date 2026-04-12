@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import {
   FlatList,
+  Image,
   Platform,
   StyleSheet,
   Text,
@@ -12,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
+import { useFishImage } from "@/hooks/useFishImage";
 import { NT_SPECIES, CATEGORIES, type NTSpecies, type FishCategory } from "@/data/ntSpecies";
 
 function EatingStars({ rating, colors }: { rating: number; colors: ReturnType<typeof useColors> }) {
@@ -31,6 +33,7 @@ function EatingStars({ rating, colors }: { rating: number; colors: ReturnType<ty
 
 function SpeciesCard({ species, colors }: { species: NTSpecies; colors: ReturnType<typeof useColors> }) {
   const [expanded, setExpanded] = useState(false);
+  const fishImageUrl = useFishImage(species.name);
 
   const categoryColor: Record<FishCategory, string> = {
     estuary: colors.primary,
@@ -118,6 +121,17 @@ function SpeciesCard({ species, colors }: { species: NTSpecies; colors: ReturnTy
       {expanded && (
         <View style={styles.expandedContent}>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          {/* Fish photo */}
+          {fishImageUrl && (
+            <View style={[styles.fishPhotoWrap, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
+              <Image
+                source={{ uri: fishImageUrl }}
+                style={styles.fishPhoto}
+                resizeMode="cover"
+              />
+            </View>
+          )}
 
           <View style={[styles.seasonBadge, { backgroundColor: species.seasonOpen ? `${colors.primary}18` : `${colors.destructive}18` }]}>
             <Feather
@@ -348,6 +362,16 @@ const styles = StyleSheet.create({
   stars: { flexDirection: "row", gap: 1 },
   expandedContent: { gap: 10 },
   divider: { height: 1 },
+  fishPhotoWrap: {
+    borderRadius: 10,
+    overflow: "hidden",
+    borderWidth: 1,
+    height: 160,
+  },
+  fishPhoto: {
+    width: "100%",
+    height: "100%",
+  },
   seasonBadge: {
     flexDirection: "row",
     alignItems: "center",

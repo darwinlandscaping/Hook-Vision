@@ -3,7 +3,7 @@ import { Animated, Easing, Image, Linking, StyleSheet, Text, TouchableOpacity, V
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useVoice } from "@/hooks/useVoice";
-import { useFishImage } from "@/hooks/useFishImage";
+import { useFishImage, getSpeciesLabel } from "@/hooks/useFishImage";
 import { useCraigsLure } from "@/hooks/useCraigsLure";
 
 interface FishAnalysis {
@@ -196,7 +196,7 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
   const cardScale = useRef(new Animated.Value(0.95)).current;
   const crocPulse = useRef(new Animated.Value(1)).current;
   const { speak, stop, speaking } = useVoice();
-  const fishImageUrl = useFishImage(analysis.species);
+  const fishImageUrl = useFishImage(analysis.crocAlert ? "saltwater crocodile" : analysis.species);
   const { result: craigsResult, loading: craigsLoading } = useCraigsLure(
     analysis.crocAlert ? undefined : analysis.lure
   );
@@ -334,11 +334,13 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
           </View>
         )}
         <View style={[styles.fishImageLabel, { backgroundColor: `${colors.background}dd` }]}>
-          <Text style={[styles.fishImageLabelText, { color: colors.primary }]}>
-            {analysis.species.replace(/\s*\(\d+%\)/, "")}
+          <Text style={[styles.fishImageLabelText, { color: analysis.crocAlert ? "#ff4444" : colors.primary }]}>
+            {analysis.crocAlert
+              ? "⚠ SALTWATER CROCODILE"
+              : (getSpeciesLabel(analysis.species) ?? analysis.species.replace(/\s*\(\d+%\)/, ""))}
           </Text>
           <Text style={[styles.fishImageConfidence, { color: colors.mutedForeground }]}>
-            {analysis.confidence}% confidence
+            {analysis.crocAlert ? "DO NOT ENTER WATER" : `${analysis.confidence}% confidence`}
           </Text>
         </View>
       </View>
