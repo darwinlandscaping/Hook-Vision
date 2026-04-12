@@ -64,11 +64,11 @@ const PRODUCTS: Product[] = [
   { id:"ln4", name:"Unitika Gyogun 80lb",   desc:"Heavy leader for XL barra season.",       price:"$39.95", emoji:"〰️", category:"LINE", hot:true,  color:C.red  },
 
   // ── Buffs (shirts) ────────────────────────────────────────────────────────
-  { id:"b1", name:"Barra Hunter Buff",      desc:"UV-block cooling neck gaiter. Croc red.",   price:"$39.95", emoji:"👕", category:"BUFFS", hot:true, color:C.red  },
-  { id:"b2", name:"Territory Tough Buff",   desc:"Crimson & gold — 100% UV50+ shield.",       price:"$39.95", emoji:"👕", category:"BUFFS",           color:C.gold },
-  { id:"b3", name:"Sunrise Session Buff",   desc:"Pink & gold NT sunrise print. Unisex.",     price:"$39.95", emoji:"👕", category:"BUFFS",           color:C.pink },
-  { id:"b4", name:"Stealth Barra Buff",     desc:"Tactical black-on-black NT design.",         price:"$39.95", emoji:"👕", category:"BUFFS", hot:true, color:C.red  },
-  { id:"b5", name:"Barramundi Nation Buff", desc:"Full-sublimation trophy barra art.",         price:"$44.95", emoji:"👕", category:"BUFFS",           color:C.gold },
+  { id:"b1", name:"Barra Hunter Boof",      desc:"UV-block cooling neck gaiter. Croc red.",   price:"$39.95", emoji:"👕", category:"BUFFS", hot:true, color:C.red  },
+  { id:"b2", name:"Territory Tough Boof",   desc:"Crimson & gold — 100% UV50+ shield.",       price:"$39.95", emoji:"👕", category:"BUFFS",           color:C.gold },
+  { id:"b3", name:"Sunrise Session Boof",   desc:"Pink & gold NT sunrise print. Unisex.",     price:"$39.95", emoji:"👕", category:"BUFFS",           color:C.pink },
+  { id:"b4", name:"Stealth Barra Boof",     desc:"Tactical black-on-black NT design.",         price:"$39.95", emoji:"👕", category:"BUFFS", hot:true, color:C.red  },
+  { id:"b5", name:"Barramundi Nation Boof", desc:"Full-sublimation trophy barra art.",         price:"$44.95", emoji:"👕", category:"BUFFS",           color:C.gold },
 
   // ── Hats ─────────────────────────────────────────────────────────────────
   { id:"h1", name:"Barra Nation Cap",       desc:"Embroidered gold barra. Snapback.",         price:"$49.95", emoji:"🧢", category:"HATS", hot:true, color:C.gold },
@@ -83,7 +83,7 @@ const CATS: { key: Category; label: string; color: string }[] = [
   { key:"RODS",  label:"🎯 RODS",    color:C.red  },
   { key:"REELS", label:"⚙️ REELS",  color:C.gold },
   { key:"LINE",  label:"〰️ LINE",   color:C.pink },
-  { key:"BUFFS", label:"👕 BUFFS",   color:C.red  },
+  { key:"BUFFS", label:"👕 BOOFS",   color:C.red  },
   { key:"HATS",  label:"🧢 HATS",    color:C.gold },
 ];
 
@@ -93,7 +93,7 @@ const SECTION_TITLES: Record<Category, string> = {
   RODS:  "BARRA RODS",
   REELS: "PRECISION REELS",
   LINE:  "LINE & LEADER",
-  BUFFS: "BUFF APPAREL",
+  BUFFS: "BOOF APPAREL",
   HATS:  "HEADWEAR",
 };
 
@@ -123,7 +123,7 @@ export default function BuffScreen() {
         <View style={styles.headerInner}>
           <Text style={styles.headerBrand}>HOOK<Text style={{ color: C.gold }}>VISION</Text></Text>
           <View style={styles.headerRow}>
-            <Text style={styles.headerTitle}>BUFF</Text>
+            <Text style={styles.headerTitle}>BOOF</Text>
             <View style={styles.headerBadge}>
               <Text style={styles.headerBadgeText}>ACCESSORIES</Text>
             </View>
@@ -218,7 +218,7 @@ export default function BuffScreen() {
 
         {/* Footer flame */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>🔥 HOOKVISION BUFF GEAR 🔥</Text>
+          <Text style={styles.footerText}>🔥 HOOKVISION BOOF GEAR 🔥</Text>
           <Text style={styles.footerSub}>NT's most dangerous tackle store</Text>
         </View>
       </ScrollView>

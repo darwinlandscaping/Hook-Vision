@@ -22,7 +22,7 @@ function NativeTabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="buff">
         <Icon sf={{ default: "bag.fill", selected: "bag.fill" }} />
-        <Label>Buff</Label>
+        <Label>Boof</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="live">
         <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
@@ -124,7 +124,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="buff"
         options={{
-          title: "Buff",
+          title: "Boof",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="bag.fill" tintColor={color} size={22} />
