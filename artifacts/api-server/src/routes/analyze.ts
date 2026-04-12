@@ -734,40 +734,37 @@ router.post("/analyze", async (req, res) => {
     const demoRefs = getDemoRefs();
     type ContentBlock =
       | { type: "text"; text: string }
-      | { type: "image_url"; image_url: { url: string; detail: "high" } };
+      | { type: "image_url"; image_url: { url: string; detail: "high" | "low" | "auto" } };
+
+    // Send only the 3 most critical calibration demos (1=barra estuarine,
+    // 3=fingermark rocky reef, 5=barra mid-water with shadows).
+    // Use detail:"low" — 85 tokens/image vs ~1100 tokens/image at "high".
+    // This cuts reference-image token cost from ~5500 to ~255 tokens.
+    const KEY_DEMOS = [1, 3, 5];
+    const keyRefs = demoRefs.filter((r) => KEY_DEMOS.includes(r.num));
 
     const referenceBlocks: ContentBlock[] = [];
-    if (demoRefs.length > 0) {
+    if (keyRefs.length > 0) {
       referenceBlocks.push({
         type: "text",
-        text: `═══════════════════════════════════════════
-VISUAL REFERENCE LIBRARY — ${demoRefs.length} LABELED EXAMPLES
-Study each image and its ground-truth label BEFORE you analyse the unknown image below.
-Use these as your visual calibration anchors. Compare the unknown image's arch shape,
-position, brightness, bottom type, and scale against these known examples.
-═══════════════════════════════════════════`,
+        text: `VISUAL REFERENCE LIBRARY — ${keyRefs.length} KEY CALIBRATION EXAMPLES
+Study each labeled image then analyse the unknown scan below.`,
       });
-      for (const ref of demoRefs) {
+      for (const ref of keyRefs) {
         referenceBlocks.push(
           {
             type: "image_url",
             image_url: {
               url: `data:image/png;base64,${ref.base64}`,
-              detail: "high",
+              detail: "low",           // ← was "high" — 13× fewer tokens
             },
           },
-          {
-            type: "text",
-            text: ref.label,
-          }
+          { type: "text", text: ref.label }
         );
       }
       referenceBlocks.push({
         type: "text",
-        text: `═══════════════════════════════════════════
-END OF REFERENCE LIBRARY. Now analyse the UNKNOWN IMAGE below.
-Compare its arch characteristics, bottom type, and fish position against the reference examples above.
-═══════════════════════════════════════════`,
+        text: `END OF REFERENCES. Now analyse the UNKNOWN IMAGE below.`,
       });
     }
 
@@ -793,74 +790,57 @@ Apply this exact 13-step reasoning sequence:
 
 Return ONLY the raw JSON object.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 1200,
+    // ── Streaming OpenAI call ─────────────────────────────────────────────
+    const stream = await openai.chat.completions.create({
+      model: 'gpt-5.2',
+      max_completion_tokens: 900,
+      stream: true,
       messages: [
-        {
-          role: "system",
-          content: SYSTEM_PROMPT,
-        },
-        // Reference library message (known labeled examples for calibration)
+        { role: 'system', content: SYSTEM_PROMPT },
         ...(referenceBlocks.length > 0
           ? [
+              { role: 'user' as const, content: referenceBlocks },
               {
-                role: "user" as const,
-                content: referenceBlocks,
-              },
-              {
-                role: "assistant" as const,
+                role: 'assistant' as const,
                 content:
-                  "Reference library received and studied. I have memorised all 5 labeled sonar examples:\n\nDemo 1 (Lowrance HDS Live) = 3 Barramundi at 5.2m — thick bright orange arches sitting ON hard bottom structure. Full U-shape arches, clearly individual fish.\n\nDemo 2 (Garmin ECHOMAP UHD) = Threadfin Salmon school at 3.1m — multiple arches MID-WATER COLUMN over SOFT muddy bottom. Fish are NOT on structure. Thinner, smaller arches than barra.\n\nDemo 3 (Humminbird HELIX 10) = Single trophy Barramundi at 8m — ONE massive, very THICK arch directly on hard structure. The vertical height of this arch is exceptional — big fish.\n\nDemo 4 (Simrad GO9 XSE) = Dual-layer multi-species — baitfish cloud upper layer, larger predator arches in deeper layer near structure.\n\nDemo 5 (Humminbird HELIX/SOLIX Split-Screen) = 5–6 Barramundi mid-column in 34.5ft open water over SOFT sandy bottom. The LEFT side shows the circular flasher wheel with spike returns. The RIGHT side shows 5–6 ENORMOUS thick orange/red U-shaped arches at various depths — these are the biggest, brightest arches in the library. NOT on hard structure — barra suspending/chasing bait in open water. 68.2°F water temp. ⚠️ CRITICAL SHADOW FEATURE: Each of the 5–6 orange arches in Demo 5 has a CLEARLY VISIBLE DARK SHADOW zone directly beneath it. The shadow appears as a noticeably darker blue/black void immediately below each arch — this is the acoustic shadow from the barra's massive swim bladder blocking the sonar beam. These shadows are large and unmistakable — they confirm BARRAMUNDI. Any future image showing thick orange arches with dark voids beneath them = barra with 90%+ confidence.\n\nKey calibration notes: (1) Arch thickness = fish size. Fat arch = big barra. Thin arch = small fish. (2) Position ON hard structure = barra/jack. Mid-column over soft bottom WITH SHADOWS = barra chasing bait. (3) Humminbird split-screen has the circular flasher wheel on the left — unique identifier. (4) SHADOW below arch = large fish. Dark wide shadow = barramundi. No shadow = small fish/baitfish. Always check for shadows. Ready to analyse the unknown image.",
+                  'Reference library received. Demo 1 (Lowrance HDS Live) = 3 Barramundi at 5.2m, thick bright arches ON hard bottom. Demo 3 (Humminbird HELIX 10) = Fingermark at 8m, clean arch ABOVE rocky rubble. Demo 5 (Humminbird split-screen) = 5-6 Barramundi mid-column, each arch has clear DARK SHADOW beneath it. Key: thick arch ON hard estuarine structure = barra; school of medium arches above rocky rubble = fingermark; arch with shadow mid-column = barra chasing bait.',
               },
             ]
           : []),
-        // Unknown image for analysis
         {
-          role: "user",
+          role: 'user',
           content: [
             {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`,
-                detail: "high",
-              },
+              type: 'image_url',
+              image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: 'auto' },
             },
-            {
-              type: "text",
-              text: analysisPrompt,
-            },
+            { type: 'text', text: analysisPrompt },
           ],
         },
       ],
     });
 
-    const raw = response.choices[0]?.message?.content ?? "{}";
+    // Stream each chunk directly to the HTTP response — client sees first byte in ~1s
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
 
-    let parsed: unknown;
-    try {
-      const cleaned = raw
-        .replace(/```json\n?/gi, "")
-        .replace(/```\n?/g, "")
-        .trim();
-
-      let jsonStr = cleaned;
-      if (!jsonStr.startsWith("{")) {
-        const match = jsonStr.match(/\{[\s\S]*\}/);
-        if (match) jsonStr = match[0];
+    let raw = '';
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content ?? '';
+      if (delta) {
+        raw += delta;
+        res.write(delta);
       }
-
-      parsed = JSON.parse(jsonStr);
-    } catch {
-      req.log.error({ raw }, "Failed to parse AI response as JSON");
-      res.status(500).json({ error: "Failed to parse analysis. The AI returned an unexpected response." });
-      return;
     }
+    res.end();
 
-    res.json(parsed);
+    // Server-side log only — client already parsed the streamed JSON
+    req.log.info({ chars: raw.length }, 'Streaming analysis complete');
   } catch (err) {
-    req.log.error({ err }, "OpenAI analyze request failed");
-    res.status(500).json({ error: "Analysis failed. Check your connection and try again." });
+    req.log.error({ err }, 'OpenAI analyze request failed');
+    res.status(500).json({ error: 'Analysis failed. Check your connection and try again.' });
   }
 });
 

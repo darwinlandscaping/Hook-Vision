@@ -133,6 +133,8 @@ export default function HomeScreen() {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<FishAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [streamChars, setStreamChars] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [imageLayout, setImageLayout] = useState({ width: SCREEN_W - 32, height: 240 });
   const autoAnalyzeRef = useRef(false);
@@ -194,6 +196,8 @@ export default function HomeScreen() {
     if (!imageBase64) return;
     analyzeScale.value = withSpring(0.96, {}, () => { analyzeScale.value = withSpring(1); });
     setLoading(true);
+    setStreaming(false);
+    setStreamChars(0);
     setError(null);
     setAnalysis(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -210,7 +214,30 @@ export default function HomeScreen() {
         try { const b = await response.json(); if (b?.error) errMsg = b.error; } catch { /* noop */ }
         throw new Error(errMsg);
       }
-      const data: FishAnalysis = await response.json();
+
+      // ── Streaming read ────────────────────────────────────────────────────────
+      // First bytes arrive in ~1-2s; we accumulate the full JSON then parse once.
+      let accumulated = "";
+      if (response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        setStreaming(true);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          accumulated += chunk;
+          setStreamChars(accumulated.length);
+        }
+        setStreaming(false);
+      } else {
+        // Fallback for environments without ReadableStream
+        accumulated = await response.text();
+      }
+
+      const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
+      const jsonStr = cleaned.startsWith("{") ? cleaned : (cleaned.match(/\{[\s\S]*\}/) ?? ["{}", "{}"])[0];
+      const data: FishAnalysis = JSON.parse(jsonStr);
       setAnalysis(data);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Hands-free: narrate the result summary
@@ -235,6 +262,7 @@ export default function HomeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setLoading(false);
+      setStreaming(false);
     }
   }, [imageBase64, imageUri, addEntry, analyzeScale, autoSpeak]);
 
@@ -294,6 +322,17 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+
+        {loading && (
+          <View style={styles.streamingPill}>
+            <SonarPulse size={18} active />
+            <Text style={[styles.streamingLabel, { color: colors.primary }]}>
+              {streaming
+                ? `Receiving AI scan… ${streamChars} chars`
+                : "Sending to AI…"}
+            </Text>
+          </View>
+        )}
 
         {!analysis && !loading && (
           <Animated.View style={animatedAnalyzeStyle}>
@@ -498,6 +537,8 @@ const styles = StyleSheet.create({
   analyzeBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   loadingContainer: { alignItems: "center", gap: 12, paddingVertical: 20 },
   loadingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  streamingPill: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 30, backgroundColor: "#00d4aa18", borderWidth: 1, borderColor: "#00d4aa44" },
+  streamingLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
   errorBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 14, borderRadius: 10, borderWidth: 1 },
   errorText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   newBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
