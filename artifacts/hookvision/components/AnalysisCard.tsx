@@ -55,9 +55,10 @@ function buildSpeechText(a: FishAnalysis): string {
   const nick = speciesNickname(a.species);
   const count = a.fishCount;
 
-  // Croc alert — safety warning only, no fishing advice
+  // Croc alert — safety warning only, repeated 3 times, no fishing advice
   if (a.crocAlert) {
-    parts.push("CROCODILE ALERT! There is a saltwater crocodile on the sonar! Do NOT enter the water, do NOT lean over the side. Move away from this area immediately!");
+    const warning = "CROCODILE ALERT! There is a saltwater crocodile on the sonar! Do NOT enter the water, do NOT lean over the side. Move away from this area immediately!";
+    parts.push(warning, warning, warning);
     return parts.join(" ");
   }
 
