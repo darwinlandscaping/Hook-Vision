@@ -113,12 +113,7 @@ export default function WelcomeScreen() {
         <Animated.View
           style={[styles.brandBlock, { opacity: titleOpacity, transform: [{ translateY: titleY }] }]}
         >
-          <View style={styles.lineAccent} />
-          <Text style={styles.eyebrow}>AI FISHING ASSISTANT</Text>
           <Text style={styles.title}>HOOKVISION</Text>
-          <Animated.Text style={[styles.tagline, { opacity: tagOpacity }]}>
-            NT AUSTRALIA · SONAR · TIDES · TROPHY BARRA
-          </Animated.Text>
         </Animated.View>
       </View>
 
