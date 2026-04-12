@@ -249,6 +249,8 @@ function ClassicTabLayout() {
             ),
         }}
       />
+      {/* Hidden screen — accessible from Intel tab map button */}
+      <Tabs.Screen name="map" options={{ href: null }} />
     </Tabs>
   );
 }

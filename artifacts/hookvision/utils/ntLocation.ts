@@ -4,7 +4,7 @@ import * as Location from "expo-location";
  * Known NT fishing spots with their GPS coordinates.
  * Used to map a user's GPS to a meaningful fishing location name.
  */
-const NT_SPOTS: { name: string; lat: number; lng: number }[] = [
+export const NT_SPOTS: { name: string; lat: number; lng: number }[] = [
   { name: "Darwin Harbour",        lat: -12.4634, lng: 130.8456 },
   { name: "East Arm",              lat: -12.484,  lng: 130.879  },
   { name: "Channel Island",        lat: -12.596,  lng: 130.904  },

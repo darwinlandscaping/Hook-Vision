@@ -307,9 +307,21 @@ export default function CommunityScreen() {
                   <Text style={[styles.hotspotSub, { color: colors.mutedForeground }]}>Top spots · last 24h</Text>
                 </View>
               </View>
-              <View style={[styles.livePill, { borderColor: "#ff990050", backgroundColor: "#ff990015" }]}>
-                <View style={[styles.liveDot, { backgroundColor: "#ff9900" }]} />
-                <Text style={[styles.livePillText, { color: "#ff9900" }]}>LIVE</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {/* Live scan map button */}
+                <TouchableOpacity
+                  onPress={() => router.push("/(tabs)/map" as any)}
+                  style={[styles.mapBtn, { borderColor: "#00d4aa40", backgroundColor: "#00d4aa10" }]}
+                  hitSlop={10}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="map-pin" size={13} color="#00d4aa" />
+                  <Text style={[styles.mapBtnText, { color: "#00d4aa" }]}>MAP</Text>
+                </TouchableOpacity>
+                <View style={[styles.livePill, { borderColor: "#ff990050", backgroundColor: "#ff990015" }]}>
+                  <View style={[styles.liveDot, { backgroundColor: "#ff9900" }]} />
+                  <Text style={[styles.livePillText, { color: "#ff9900" }]}>LIVE</Text>
+                </View>
               </View>
             </View>
 
@@ -752,6 +764,12 @@ const styles = StyleSheet.create({
   hotspotFire:   { fontSize: 26 },
   hotspotTitle:  { fontSize: 16, fontFamily: "Oswald_700Bold", letterSpacing: 0.5 },
   hotspotSub:    { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  mapBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    borderWidth: 1, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4,
+  },
+  mapBtnText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
+
   livePill: {
     flexDirection: "row", alignItems: "center", gap: 5,
     borderWidth: 1, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4,
