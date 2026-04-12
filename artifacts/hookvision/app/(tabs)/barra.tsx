@@ -480,10 +480,7 @@ export default function BarraScreen() {
             <Text style={styles.titleRed}>BARRA</Text>
             <Text style={styles.titleGold}>NATION</Text>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <NarratorButton compact pageType="barra nation" content={`Barra Nation — NT barramundi hub. ${season.name}, ${moon.name}. Top hot spot right now: ${hotSpots[0].name} on the ${hotSpots[0].river}. Million Dollar Fish: ${getMDFStatus().active ? "ACTIVE — season ends in " + getMDFStatus().daysLeft + " days" : "off season — next season in " + getMDFStatus().daysUntil + " days"}. Upcoming comps: NT Barra Nationals in July-August. Fun fact: ${BARRA_FACTS[0].fact}`} />
-            <NarratorSettingsTrigger />
-          </View>
+          <NarratorSettingsTrigger />
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           NT's complete barramundi hub · AI predictions · live hot spots · comps · records
@@ -611,6 +608,7 @@ export default function BarraScreen() {
         ))}
       </View>
 
+      <NarratorButton pageType="barra nation" content={`Barra Nation — NT barramundi hub. ${season.name}, ${moon.name}. Top hot spot right now: ${hotSpots[0].name} on the ${hotSpots[0].river}. Million Dollar Fish: ${getMDFStatus().active ? "ACTIVE — season ends in " + getMDFStatus().daysLeft + " days" : "off season — next season in " + getMDFStatus().daysUntil + " days"}. Upcoming comps: NT Barra Nationals in July-August. Fun fact: ${BARRA_FACTS[0].fact}`} />
     </ScrollView>
   );
 }

@@ -419,16 +419,7 @@ export default function ForecastScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <NarratorButton
-              compact
-              pageType="fishing forecast"
-              content={forecast
-                ? `${forecast.headline}. Top spots: ${forecast.spots.map((s, i) => `${i + 1}. ${s.name} — ${s.species}, ${s.urgency}. ${s.why}`).join(" ")}`
-                : `Here Fishy Fishy — conditions-based NT fishing guide. ${season.name}, ${moon.name} moon. ${tideLabel}. Water temperature ${season.waterTemp}. Tap the button below to get your personalised spot guide.`}
-            />
-            <NarratorSettingsTrigger />
-          </View>
+          <NarratorSettingsTrigger />
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           Conditions-based NT spot guide
@@ -517,6 +508,14 @@ export default function ForecastScreen() {
           {forecast.spots.map((spot, i) => (
             <SpotCard key={i} spot={spot} index={i} colors={colors} />
           ))}
+
+          {/* Narrator */}
+          {forecast && (
+            <NarratorButton
+              pageType="fishing forecast"
+              content={`${forecast.headline}. Top spots: ${forecast.spots.map((s, i) => `${i + 1}. ${s.name} — ${s.species}, ${s.urgency}. ${s.why}`).join(" ")}`}
+            />
+          )}
 
           {/* Re-read button */}
           <TouchableOpacity

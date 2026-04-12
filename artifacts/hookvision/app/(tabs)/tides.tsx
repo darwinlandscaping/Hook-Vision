@@ -356,14 +356,11 @@ function TideDetailView({ loc, region, onBack, colors, topPad, bottomPad }: {
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
     >
-      {/* Back button + narrator */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.secondary, borderColor: colors.border, flex: 1 }]} onPress={onBack} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={16} color={colors.foreground} />
-          <Text style={[styles.backBtnText, { color: colors.foreground }]}>{region.name}</Text>
-        </TouchableOpacity>
-        <NarratorButton compact pageType="tide predictions" content={buildTideNarratorText(loc, data)} />
-      </View>
+      {/* Back button */}
+      <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]} onPress={onBack} activeOpacity={0.7}>
+        <Feather name="arrow-left" size={16} color={colors.foreground} />
+        <Text style={[styles.backBtnText, { color: colors.foreground }]}>{region.name}</Text>
+      </TouchableOpacity>
 
       {/* Location header */}
       <View style={[styles.detailHeader, { backgroundColor: colors.card, borderColor: region.color + "55" }]}>
@@ -447,6 +444,8 @@ function TideDetailView({ loc, region, onBack, colors, topPad, bottomPad }: {
               </View>
             </View>
           ))}
+
+          <NarratorButton pageType="tide predictions" content={buildTideNarratorText(loc, data)} />
 
           <View style={[styles.disclaimer, { backgroundColor: colors.secondary }]}>
             <Feather name="info" size={12} color={colors.mutedForeground} />
