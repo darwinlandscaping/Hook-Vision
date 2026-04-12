@@ -28,72 +28,87 @@ const GOLD = "#ffd700";
 // ── Particle data (deterministic, module-level) ──────────────────────────────
 
 const SPLASH_X = W * 0.48;
-const SPLASH_Y = H * 0.36;
+const SPLASH_Y = H * 0.37;
 
-// Water: dx/dy = total travel in px over lifetime, delay = ms phase offset
+// Water particles — large bright drops fanning out from fish splash
 const WATER: Array<{ dx: number; dy: number; size: number; dur: number; delay: number }> = [
-  { dx:  72, dy: -95, size: 5, dur: 900,  delay:   0 },
-  { dx: -58, dy: -82, size: 4, dur: 850,  delay: 130 },
-  { dx:  96, dy: -52, size: 6, dur: 800,  delay: 260 },
-  { dx: -84, dy: -64, size: 5, dur: 950,  delay:  65 },
-  { dx:  32, dy:-112, size: 4, dur: 750,  delay: 195 },
-  { dx: -34, dy:-108, size: 3, dur: 820,  delay: 325 },
-  { dx:  62, dy: -42, size: 6, dur: 780,  delay: 100 },
-  { dx: -68, dy: -38, size: 5, dur: 870,  delay: 215 },
-  { dx: 114, dy: -72, size: 4, dur: 730,  delay: 380 },
-  { dx:-102, dy: -78, size: 4, dur: 810,  delay: 290 },
-  { dx:  48, dy:-134, size: 3, dur: 700,  delay: 445 },
-  { dx: -44, dy:-122, size: 3, dur: 760,  delay: 510 },
-  { dx:  82, dy: -22, size: 5, dur: 840,  delay: 155 },
-  { dx: -72, dy: -20, size: 5, dur: 890,  delay: 405 },
+  { dx:  90, dy:-110, size:10, dur: 900, delay:   0 },
+  { dx: -70, dy: -95, size: 8, dur: 850, delay: 110 },
+  { dx: 120, dy: -60, size:12, dur: 800, delay: 220 },
+  { dx:-105, dy: -75, size:10, dur: 950, delay:  55 },
+  { dx:  40, dy:-140, size: 8, dur: 750, delay: 170 },
+  { dx: -45, dy:-130, size: 7, dur: 820, delay: 300 },
+  { dx:  75, dy: -50, size:11, dur: 780, delay:  90 },
+  { dx: -80, dy: -45, size: 9, dur: 870, delay: 200 },
+  { dx: 140, dy: -85, size: 7, dur: 730, delay: 360 },
+  { dx:-130, dy: -90, size: 8, dur: 810, delay: 270 },
+  { dx:  55, dy:-155, size: 6, dur: 700, delay: 430 },
+  { dx: -50, dy:-145, size: 6, dur: 760, delay: 490 },
+  { dx: 100, dy: -28, size:10, dur: 840, delay: 140 },
+  { dx: -90, dy: -25, size: 9, dur: 890, delay: 390 },
+  { dx:  20, dy:-120, size: 7, dur: 720, delay: 540 },
+  { dx: -22, dy:-115, size: 7, dur: 770, delay: 620 },
 ];
 
-const DUST_Y = H * 0.73;
+const DUST_Y = H * 0.72;
 const DUST: Array<{ x: number; dy: number; dx: number; w: number; h: number; dur: number; delay: number; color: string }> = [
-  { x: W*0.04, dy:-38, dx: 22, w:26, h:16, dur:1600, delay:   0, color:"rgba(180,140, 80,0.22)" },
-  { x: W*0.16, dy:-26, dx:-18, w:20, h:12, dur:1800, delay: 220, color:"rgba(160,120, 60,0.18)" },
-  { x: W*0.28, dy:-48, dx: 32, w:30, h:18, dur:1400, delay: 110, color:"rgba(190,150, 90,0.24)" },
-  { x: W*0.40, dy:-20, dx:-14, w:16, h:10, dur:2000, delay: 370, color:"rgba(150,110, 55,0.16)" },
-  { x: W*0.52, dy:-42, dx: 28, w:28, h:17, dur:1500, delay: 520, color:"rgba(175,135, 75,0.20)" },
-  { x: W*0.64, dy:-32, dx:-22, w:22, h:14, dur:1700, delay: 165, color:"rgba(165,125, 65,0.19)" },
-  { x: W*0.76, dy:-54, dx: 38, w:32, h:20, dur:1300, delay: 430, color:"rgba(195,155, 95,0.26)" },
-  { x: W*0.88, dy:-24, dx:-16, w:18, h:11, dur:1900, delay: 275, color:"rgba(155,115, 58,0.17)" },
-  { x: W*0.10, dy:-60, dx: 20, w:14, h: 9, dur:1200, delay: 650, color:"rgba(200,160,100,0.14)" },
-  { x: W*0.22, dy:-36, dx:-28, w:25, h:15, dur:1550, delay: 475, color:"rgba(170,130, 70,0.21)" },
-  { x: W*0.46, dy:-28, dx: 24, w:21, h:13, dur:1750, delay:  90, color:"rgba(160,120, 60,0.18)" },
-  { x: W*0.60, dy:-44, dx:-20, w:29, h:18, dur:1450, delay: 730, color:"rgba(185,145, 85,0.23)" },
-  { x: W*0.72, dy:-18, dx: 30, w:15, h: 9, dur:1850, delay: 340, color:"rgba(145,105, 52,0.15)" },
-  { x: W*0.84, dy:-50, dx:-34, w:31, h:19, dur:1350, delay: 580, color:"rgba(192,152, 92,0.25)" },
-  { x: W*0.34, dy:-65, dx: 12, w:12, h: 8, dur:1100, delay: 800, color:"rgba(205,165,105,0.13)" },
-  { x: W*0.56, dy:-15, dx:-10, w:22, h:14, dur:2100, delay: 690, color:"rgba(155,115, 58,0.16)" },
+  { x: W*0.04, dy:-55, dx: 28, w:40, h:24, dur:1600, delay:   0, color:"rgba(200,160, 90,0.38)" },
+  { x: W*0.16, dy:-38, dx:-24, w:32, h:18, dur:1800, delay: 220, color:"rgba(185,140, 70,0.32)" },
+  { x: W*0.28, dy:-68, dx: 40, w:48, h:28, dur:1400, delay: 110, color:"rgba(210,165,100,0.40)" },
+  { x: W*0.40, dy:-30, dx:-18, w:26, h:15, dur:2000, delay: 370, color:"rgba(175,130, 65,0.30)" },
+  { x: W*0.52, dy:-60, dx: 35, w:45, h:26, dur:1500, delay: 520, color:"rgba(200,155, 85,0.36)" },
+  { x: W*0.64, dy:-45, dx:-28, w:36, h:22, dur:1700, delay: 165, color:"rgba(190,145, 78,0.34)" },
+  { x: W*0.76, dy:-75, dx: 45, w:52, h:32, dur:1300, delay: 430, color:"rgba(215,170,105,0.42)" },
+  { x: W*0.88, dy:-35, dx:-20, w:30, h:18, dur:1900, delay: 275, color:"rgba(180,135, 68,0.30)" },
+  { x: W*0.10, dy:-80, dx: 22, w:22, h:14, dur:1200, delay: 650, color:"rgba(220,175,110,0.28)" },
+  { x: W*0.22, dy:-50, dx:-35, w:42, h:25, dur:1550, delay: 475, color:"rgba(195,150, 82,0.36)" },
+  { x: W*0.46, dy:-42, dx: 30, w:35, h:20, dur:1750, delay:  90, color:"rgba(185,140, 72,0.34)" },
+  { x: W*0.60, dy:-62, dx:-25, w:46, h:28, dur:1450, delay: 730, color:"rgba(205,160, 95,0.38)" },
+  { x: W*0.72, dy:-28, dx: 38, w:24, h:14, dur:1850, delay: 340, color:"rgba(170,125, 60,0.28)" },
+  { x: W*0.84, dy:-70, dx:-42, w:50, h:30, dur:1350, delay: 580, color:"rgba(212,168,102,0.40)" },
+  { x: W*0.34, dy:-88, dx: 15, w:18, h:12, dur:1100, delay: 800, color:"rgba(222,178,112,0.26)" },
+  { x: W*0.56, dy:-22, dx:-12, w:36, h:22, dur:2100, delay: 690, color:"rgba(178,132, 62,0.30)" },
 ];
 
 // ── Particle layer components ─────────────────────────────────────────────────
 
 function easeOutQuad(t: number) { return 1 - (1 - t) * (1 - t); }
-function easeInQuad(t: number)  { return t * t; }
 
-function WaterParticles() {
+function useAnimClock(fps = 25) {
   const [ms, setMs] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setMs(t => t + 40), 40);
-    return () => clearInterval(id);
+    let raf: number;
+    let last = performance.now();
+    const interval = 1000 / fps;
+    function tick(now: number) {
+      raf = requestAnimationFrame(tick);
+      if (now - last >= interval) {
+        setMs(t => t + interval);
+        last = now;
+      }
+    }
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, []);
+  return ms;
+}
+
+function WaterParticles() {
+  const ms = useAnimClock(30);
 
   return (
     <>
       {WATER.map((p, i) => {
-        const period = p.dur;
-        const t = ((ms - p.delay) % (period + 400) + (period + 400)) % (period + 400);
-        if (t > period) return null; // rest phase
-        const phase = t / period;
+        const cycle = p.dur + 350;
+        const t = ((ms - p.delay) % cycle + cycle) % cycle;
+        if (t >= p.dur) return null;
+        const phase = t / p.dur;
         const e = easeOutQuad(phase);
-        const fallPhase = phase * phase; // gravity
+        const gravity = phase * phase * 80;
         const ox = p.dx * e;
-        const oy = p.dy * e + 60 * fallPhase; // arc up then gravity pulls down
-        const opRaw = phase < 0.12 ? phase / 0.12 : phase > 0.65 ? 1 - (phase - 0.65) / 0.35 : 1;
-        const op = opRaw * 0.9;
-        const col = i % 3 === 0 ? "#e8f6ff" : i % 3 === 1 ? "#b0dcf5" : "#ffffff";
+        const oy = p.dy * e + gravity;
+        const opRaw = phase < 0.1 ? phase / 0.1 : phase > 0.6 ? (1 - phase) / 0.4 : 1;
+        const col = i % 3 === 0 ? "#ffffff" : i % 3 === 1 ? "#c8eeff" : "#e0f6ff";
         return (
           <View
             key={i}
@@ -101,12 +116,12 @@ function WaterParticles() {
             style={{
               position: "absolute",
               left: SPLASH_X + ox - p.size / 2,
-              top: SPLASH_Y + oy - p.size / 2,
+              top:  SPLASH_Y + oy - p.size / 2,
               width: p.size,
               height: p.size,
               borderRadius: p.size / 2,
               backgroundColor: col,
-              opacity: op,
+              opacity: opRaw,
             }}
           />
         );
@@ -116,24 +131,19 @@ function WaterParticles() {
 }
 
 function DustParticles() {
-  const [ms, setMs] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setMs(t => t + 40), 40);
-    return () => clearInterval(id);
-  }, []);
+  const ms = useAnimClock(25);
 
   return (
     <>
       {DUST.map((p, i) => {
-        const period = p.dur;
-        const t = ((ms - p.delay) % (period + 600) + (period + 600)) % (period + 600);
-        if (t > period) return null;
-        const phase = t / period;
-        const e = easeInQuad(phase);
+        const cycle = p.dur + 500;
+        const t = ((ms - p.delay) % cycle + cycle) % cycle;
+        if (t >= p.dur) return null;
+        const phase = t / p.dur;
         const ox = p.dx * phase;
         const oy = p.dy * phase;
-        const scale = 0.3 + phase * 1.4; // grows from small to large
-        const opRaw = phase < 0.18 ? phase / 0.18 : phase > 0.6 ? 1 - (phase - 0.6) / 0.4 : 1;
+        const scale = 0.2 + phase * 1.6;
+        const opRaw = phase < 0.15 ? phase / 0.15 : phase > 0.55 ? (1 - phase) / 0.45 : 1;
         const w = p.w * scale;
         const h = p.h * scale;
         return (
@@ -143,7 +153,7 @@ function DustParticles() {
             style={{
               position: "absolute",
               left: p.x + ox - w / 2,
-              top: DUST_Y + (i % 3) * H * 0.04 + oy - h / 2,
+              top:  DUST_Y + (i % 4) * H * 0.03 + oy - h / 2,
               width: w,
               height: h,
               borderRadius: w,
