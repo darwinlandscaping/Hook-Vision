@@ -37,6 +37,7 @@ export default function WelcomeScreen() {
   const btnScale     = useRef(new Animated.Value(0.9)).current;
   const barraY       = useRef(new Animated.Value(60)).current;
   const barraOpacity = useRef(new Animated.Value(0)).current;
+  const windAnim     = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -57,10 +58,30 @@ export default function WelcomeScreen() {
           Animated.spring(btnScale, { toValue: 1, tension: 120, friction: 8, useNativeDriver: true }),
         ]),
       ]),
-    ]).start();
+    ]).start(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(windAnim, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(windAnim, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        ])
+      ).start();
+    });
   }, []);
 
   const enter = () => router.replace("/(tabs)");
+
+  const flagRotate = windAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: ["-2deg", "2.5deg", "-2deg"],
+  });
+  const flagScaleX = windAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 0.88, 1],
+  });
+  const flagTranslateY = windAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, -3, 0],
+  });
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   const logoW  = Math.min(W - 32, 400);
@@ -86,7 +107,7 @@ export default function WelcomeScreen() {
         pointerEvents="none"
       />
 
-      {/* ── NT Flag — bottom-right corner of logo ── */}
+      {/* ── NT Flag — bottom-right corner of logo, waving in wind ── */}
       <Animated.Image
         source={NT_FLAG}
         style={[
@@ -95,9 +116,14 @@ export default function WelcomeScreen() {
             top: H * 0.37 + logoH * 0.58,
             right: Math.max((W - logoW) / 2, 16),
             opacity: flagOpacity,
+            transform: [
+              { rotate: flagRotate },
+              { scaleX: flagScaleX },
+              { translateY: flagTranslateY },
+            ],
           },
         ]}
-        resizeMode="contain"
+        resizeMode="cover"
       />
 
       {/* ── HookVision logo — upper section of dark band ── */}
