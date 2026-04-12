@@ -177,7 +177,7 @@ export default function HomeScreen() {
       return;
     }
     cameraScale.value = withSpring(0.92, {}, () => { cameraScale.value = withSpring(1); });
-    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.7, base64: true, allowsEditing: false });
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.65, base64: true, allowsEditing: false, exif: false });
     if (!result.canceled && result.assets[0]) handleImageSelected(result.assets[0].uri, result.assets[0].base64);
   }, [cameraScale, handleImageSelected]);
 
@@ -188,7 +188,7 @@ export default function HomeScreen() {
       return;
     }
     galleryScale.value = withSpring(0.92, {}, () => { galleryScale.value = withSpring(1); });
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8, base64: true, allowsEditing: false });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.65, base64: true, allowsEditing: false, exif: false });
     if (!result.canceled && result.assets[0]) handleImageSelected(result.assets[0].uri, result.assets[0].base64);
   }, [galleryScale, handleImageSelected]);
 
@@ -328,8 +328,8 @@ export default function HomeScreen() {
             <SonarPulse size={18} active />
             <Text style={[styles.streamingLabel, { color: colors.primary }]}>
               {streaming
-                ? `Receiving AI scan… ${streamChars} chars`
-                : "Sending to AI…"}
+                ? `AI reading sonar… ${Math.min(99, Math.round((streamChars / 680) * 100))}%`
+                : "Uploading scan…"}
             </Text>
           </View>
         )}
