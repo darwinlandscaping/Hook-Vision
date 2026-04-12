@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
   Image,
@@ -25,6 +24,7 @@ import Animated, {
 
 import { AnalysisCard } from "@/components/AnalysisCard";
 import { HVHeader } from "@/components/HVHeader";
+import { SonarOverlay } from "@/components/SonarOverlay";
 import { SonarPulse } from "@/components/SonarPulse";
 import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/context/HistoryContext";
@@ -133,6 +133,7 @@ export default function HomeScreen() {
   const [analysis, setAnalysis] = useState<FishAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageLayout, setImageLayout] = useState({ width: SCREEN_W - 32, height: 240 });
   const autoAnalyzeRef = useRef(false);
 
   // Pick up demo image loaded from the Demo tab and auto-analyse it
@@ -256,18 +257,41 @@ export default function HomeScreen() {
       >
         <HVHeader subtitle="AI Sonar Analysis" />
 
-        <View style={[styles.imageContainer, { borderColor: colors.border }]}>
-          <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
-          <View style={styles.imageActions}>
-            <TouchableOpacity style={[styles.overlayBtn, { backgroundColor: colors.secondary }]} onPress={openCamera} activeOpacity={0.8}>
-              <Feather name="camera" size={14} color={colors.primary} />
-              <Text style={[styles.overlayBtnText, { color: colors.primary }]}>Camera</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.overlayBtn, { backgroundColor: colors.secondary }]} onPress={openGallery} activeOpacity={0.8}>
-              <Feather name="image" size={14} color={colors.primary} />
-              <Text style={[styles.overlayBtnText, { color: colors.primary }]}>Gallery</Text>
-            </TouchableOpacity>
-          </View>
+        {/* ── Sonar image + AI interpretation overlay ── */}
+        <View
+          style={[styles.imageContainer, { borderColor: loading ? colors.primary + "88" : analysis?.crocAlert ? "#ff1744" : colors.border }]}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            setImageLayout({ width, height });
+          }}
+        >
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+
+          {/* AI interpretation layer */}
+          <SonarOverlay
+            imageWidth={imageLayout.width}
+            imageHeight={imageLayout.height}
+            loading={loading}
+            analysis={analysis}
+          />
+
+          {/* Camera / Gallery swap buttons */}
+          {!loading && (
+            <View style={styles.imageActions}>
+              <TouchableOpacity style={[styles.overlayBtn, { backgroundColor: colors.secondary }]} onPress={openCamera} activeOpacity={0.8}>
+                <Feather name="camera" size={14} color={colors.primary} />
+                <Text style={[styles.overlayBtnText, { color: colors.primary }]}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.overlayBtn, { backgroundColor: colors.secondary }]} onPress={openGallery} activeOpacity={0.8}>
+                <Feather name="image" size={14} color={colors.primary} />
+                <Text style={[styles.overlayBtnText, { color: colors.primary }]}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {!analysis && !loading && (
@@ -277,14 +301,6 @@ export default function HomeScreen() {
               <Text style={[styles.analyzeBtnText, { color: colors.primaryForeground }]}>Analyze Sonar</Text>
             </TouchableOpacity>
           </Animated.View>
-        )}
-
-        {loading && (
-          <View style={styles.loadingContainer}>
-            <SonarPulse size={80} active />
-            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Reading your sonar...</Text>
-            <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} />
-          </View>
         )}
 
         {error && (
@@ -472,8 +488,8 @@ const styles = StyleSheet.create({
   tileDesc: { fontSize: 10, fontFamily: "Inter_400Regular", lineHeight: 14 },
 
   /* Analyze view */
-  imageContainer: { borderRadius: 16, overflow: "hidden", borderWidth: 1, position: "relative" },
-  image: { width: "100%", height: 220 },
+  imageContainer: { borderRadius: 16, overflow: "hidden", borderWidth: 1, position: "relative", minHeight: 260 },
+  image: { width: "100%", height: 260 },
   imageActions: { position: "absolute", top: 10, right: 10, flexDirection: "row", gap: 6 },
   overlayBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
   overlayBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
