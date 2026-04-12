@@ -137,7 +137,7 @@ export default function WelcomeScreen() {
     });
   }, []);
 
-  const enter = () => router.replace("/(tabs)");
+  const enter = () => router.replace("/(tabs)/home");
 
   const flagRotate     = windAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: ["-2deg", "2.5deg", "-2deg"] });
   const flagScaleX     = windAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.88, 1] });
