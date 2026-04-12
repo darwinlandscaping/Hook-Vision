@@ -6,6 +6,7 @@ import forecastRouter from "./forecast";
 import barraRouter from "./barra";
 import narrateRouter from "./narrate";
 import ttsRouter from "./tts";
+import demosRouter from "./demos";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(forecastRouter);
 router.use(barraRouter);
 router.use(narrateRouter);
 router.use(ttsRouter);
+router.use(demosRouter);
 
 export default router;

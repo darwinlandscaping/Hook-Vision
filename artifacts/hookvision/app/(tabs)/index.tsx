@@ -196,7 +196,7 @@ export default function AnalyzeScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const domain = process.env.EXPO_PUBLIC_DOMAIN;
       const baseUrl = domain ? `https://${domain}` : "";
-      const url = `${baseUrl}/public/demos/sonar-demo-${num}.png`;
+      const url = `${baseUrl}/api/demos/sonar-demo-${num}.png`;
       const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to load demo");
       const blob = await response.blob();
@@ -305,7 +305,7 @@ export default function AnalyzeScreen() {
               {DEMOS.map(({ num, label, sub }) => {
                 const domain = process.env.EXPO_PUBLIC_DOMAIN;
                 const baseUrl = domain ? `https://${domain}` : "";
-                const thumbUri = `${baseUrl}/public/demos/sonar-demo-${num}.png`;
+                const thumbUri = `${baseUrl}/api/demos/sonar-demo-${num}.png`;
                 const isLoading = demoLoading === num;
                 return (
                   <TouchableOpacity
