@@ -86,10 +86,17 @@ export default function WelcomeScreen() {
         pointerEvents="none"
       />
 
-      {/* ── NT Flag — top-right corner ── */}
+      {/* ── NT Flag — bottom-right corner of logo ── */}
       <Animated.Image
         source={NT_FLAG}
-        style={[styles.ntFlag, { top: topPad + 14, opacity: flagOpacity }]}
+        style={[
+          styles.ntFlag,
+          {
+            top: H * 0.37 + logoH * 0.58,
+            right: Math.max((W - logoW) / 2, 16),
+            opacity: flagOpacity,
+          },
+        ]}
         resizeMode="contain"
       />
 
@@ -177,7 +184,6 @@ const styles = StyleSheet.create({
 
   ntFlag: {
     position: "absolute",
-    right: 16,
     width: 88,
     height: 62,
   },
