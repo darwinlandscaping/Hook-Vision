@@ -12,3 +12,27 @@ id = "GsLZe-EsG-s1BKnUztsEg"
 uri = "file://artifacts/hookvision/assets/images/sonar-sample.png"
 type = "image"
 title = "sonar sample screen"
+
+[[generated]]
+id = "iNsZ7ZC6ioPGjepJ5Jrez"
+uri = "file://artifacts/hookvision/assets/sonar-demo-1.png"
+type = "image"
+title = "lowrance barra sonar"
+
+[[generated]]
+id = "haoEQP2MT1BoTRjebsmlY"
+uri = "file://artifacts/hookvision/assets/sonar-demo-2.png"
+type = "image"
+title = "garmin tidal channel sonar"
+
+[[generated]]
+id = "YiWZxrP6GUdYK6BJVdxw9"
+uri = "file://artifacts/hookvision/assets/sonar-demo-3.png"
+type = "image"
+title = "humminbird deep hole sonar"
+
+[[generated]]
+id = "_pcKkKh3mxUK_waPa3L2J"
+uri = "file://artifacts/hookvision/assets/sonar-demo-4.png"
+type = "image"
+title = "simrad dual layer sonar"
