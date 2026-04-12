@@ -9,11 +9,13 @@ import { HistoryItem } from "@/components/HistoryItem";
 import type { HistoryEntry } from "@/components/HistoryItem";
 import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/context/HistoryContext";
+import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 
 export default function HistoryScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { history, removeEntry, clearHistory } = useHistory();
+  useAutoNarrate(() => `Fishing History. You have ${history.length} saved sonar scan${history.length === 1 ? "" : "s"}.`);
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 

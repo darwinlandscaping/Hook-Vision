@@ -17,6 +17,7 @@ import { router } from "expo-router";
 
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
+import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 
 const DEMOS = [
   {
@@ -57,6 +58,7 @@ export default function DemoScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [loadingNum, setLoadingNum] = useState<number | null>(null);
+  useAutoNarrate(() => "Demo Sonar Scans. Four real sonar screenshots from Lowrance, Garmin, Humminbird and Simrad. Tap any card to run instant AI analysis.");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 

@@ -3,6 +3,7 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -26,7 +27,7 @@ interface Props {
 export function NarratorSettings({ visible, onClose }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { character, language, setCharacter, setLanguage, speak } = useNarrator();
+  const { character, language, handsFree, setCharacter, setLanguage, setHandsFree, speak } = useNarrator();
 
   const DEMOS: Record<NarratorCharacter, string> = {
     AUSSIE:       "She's on, mate! Deadset ripper conditions — tide's dropping and the barra are stacked against the rock bar. Chuck on a white hardbody and work it slow. Let's smash 'em!",
@@ -74,6 +75,25 @@ export function NarratorSettings({ visible, onClose }: Props) {
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Hands-free mode toggle */}
+          <View style={[styles.handsFreeRow, { backgroundColor: colors.card, borderColor: handsFree ? "#00d4aa88" : colors.border }]}>
+            <View style={styles.handsFreeLeft}>
+              <Text style={styles.handsFreeIcon}>🤲</Text>
+              <View style={styles.handsFreeTextCol}>
+                <Text style={[styles.handsFreeTitle, { color: colors.foreground }]}>Hands-Free Mode</Text>
+                <Text style={[styles.handsFreeDesc, { color: colors.mutedForeground }]}>
+                  Auto-narrates each page so you can fish without touching the screen
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={handsFree}
+              onValueChange={setHandsFree}
+              trackColor={{ false: colors.border, true: "#00d4aa" }}
+              thumbColor={handsFree ? "#ffffff" : colors.mutedForeground}
+            />
+          </View>
+
           {/* Character selection */}
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>CHOOSE YOUR NARRATOR</Text>
           <View style={styles.charGrid}>
@@ -147,7 +167,7 @@ export function NarratorSettings({ visible, onClose }: Props) {
           <View style={[styles.infoBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="info" size={13} color={colors.mutedForeground} />
             <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
-              Tap a character card above to hear a demo, or tap any narrator button on any page to hear the AI describe what's on screen.
+              Enable Hands-Free Mode above to auto-narrate every page — perfect for when your hands are busy fishing. Tap a character card to hear a demo voice.
             </Text>
           </View>
         </ScrollView>
@@ -196,6 +216,16 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1,
   },
+
+  handsFreeRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    padding: 14, borderRadius: 14, borderWidth: 1.5, gap: 12,
+  },
+  handsFreeLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  handsFreeIcon: { fontSize: 28 },
+  handsFreeTextCol: { flex: 1 },
+  handsFreeTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  handsFreeDesc: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16, marginTop: 2 },
 
   charGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   charCard: {

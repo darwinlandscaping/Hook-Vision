@@ -14,6 +14,7 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
+import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 
 const NT_PORTS = [
   { key: "darwin", label: "Darwin" },
@@ -175,6 +176,7 @@ export default function TidesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [selectedPort, setSelectedPort] = useState("darwin");
+  useAutoNarrate(() => "NT Tides. Darwin, Gove and Groote Eylandt tide predictions from the Bureau of Meteorology. Check your next high or low tide.");
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery<TideResponse>({
     queryKey: ["tides", selectedPort],

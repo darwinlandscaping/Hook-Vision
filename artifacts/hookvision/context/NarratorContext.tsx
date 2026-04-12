@@ -154,9 +154,12 @@ interface NarratorCtx {
   speaking: boolean;
   loading: boolean;
   transcript: string;
+  handsFree: boolean;
   setCharacter: (c: NarratorCharacter) => void;
   setLanguage: (l: NarratorLanguage) => void;
+  setHandsFree: (on: boolean) => void;
   speak: (text: string) => void;
+  autoSpeak: (text: string) => void;
   narratePage: (pageType: string, content: string) => Promise<void>;
   stop: () => void;
 }
@@ -262,11 +265,14 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
   const [speaking, setSpeaking]         = useState(false);
   const [loading, setLoading]           = useState(false);
   const [transcript, setTranscript]     = useState("");
+  const [handsFree, setHandsFreeState]  = useState(false);
   const languageRef   = useRef(language);
   const characterRef  = useRef(character);
+  const handsFreeRef  = useRef(handsFree);
 
   useEffect(() => { languageRef.current = language; }, [language]);
   useEffect(() => { characterRef.current = character; }, [character]);
+  useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
 
   // Configure expo-audio session (native only)
   useEffect(() => {
@@ -281,12 +287,14 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
 
   // Persist preferences
   useEffect(() => {
-    AsyncStorage.multiGet(["narrator_character", "narrator_language"]).then(
+    AsyncStorage.multiGet(["narrator_character", "narrator_language", "narrator_handsfree"]).then(
       (pairs) => {
         const c = pairs[0][1] as NarratorCharacter | null;
         const l = pairs[1][1] as NarratorLanguage | null;
+        const hf = pairs[2][1];
         if (c) setCharacterState(c);
         if (l) setLanguageState(l);
+        if (hf === "1") setHandsFreeState(true);
       }
     );
   }, []);
@@ -299,6 +307,11 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
   const setLanguage = useCallback((l: NarratorLanguage) => {
     setLanguageState(l);
     AsyncStorage.setItem("narrator_language", l);
+  }, []);
+
+  const setHandsFree = useCallback((on: boolean) => {
+    setHandsFreeState(on);
+    AsyncStorage.setItem("narrator_handsfree", on ? "1" : "0");
   }, []);
 
   const stop = useCallback(() => {
@@ -409,6 +422,14 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     [stop, playTTSWeb, playTTSNative]
   );
 
+  // ─── autoSpeak(): only fires when hands-free mode is on ───────────────────
+  const autoSpeak = useCallback(
+    (text: string) => {
+      if (handsFreeRef.current) speak(text);
+    },
+    [speak]
+  );
+
   // ─── narratePage(): AI narration then speaks ──────────────────────────────
   const narratePage = useCallback(
     async (pageType: string, content: string) => {
@@ -450,7 +471,7 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <NarratorContext.Provider
-      value={{ character, language, speaking, loading, transcript, setCharacter, setLanguage, speak, narratePage, stop }}
+      value={{ character, language, speaking, loading, transcript, handsFree, setCharacter, setLanguage, setHandsFree, speak, autoSpeak, narratePage, stop }}
     >
       {children}
     </NarratorContext.Provider>

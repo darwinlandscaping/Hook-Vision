@@ -13,6 +13,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
+import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { RIVER_SYSTEMS, type DepthZone, type RiverSystem } from "@/data/depthZones";
 
 // ─── Hotness config ───────────────────────────────────────────────────────────
@@ -328,6 +329,7 @@ export default function ZonesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 0 : insets.top;
+  useAutoNarrate(() => "Depth Strike Zones. Find the optimal fishing depth for barramundi, threadfin, mangrove jack and more based on current NT conditions.");
 
   const [selectedId, setSelectedId] = useState<string>("all");
 

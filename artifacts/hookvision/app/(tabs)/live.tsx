@@ -14,6 +14,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { HVHeader } from "@/components/HVHeader";
 import { SonarPulse } from "@/components/SonarPulse";
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
+import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/context/HistoryContext";
 import { CHARACTERS, useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
@@ -90,6 +91,7 @@ export default function LiveScreen() {
   const insets   = useSafeAreaInsets();
   const { addEntry } = useHistory();
   const { character, speak, stop: stopSpeaking, speaking } = useNarrator();
+  useAutoNarrate(() => "Live Camera mode. Point your phone at a sonar screen for real-time AI fish detection and depth overlay.");
 
   // Native-only camera permissions
   const [nativePermission, requestNativePermission] =

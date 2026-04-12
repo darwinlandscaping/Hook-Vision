@@ -24,6 +24,7 @@ import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { NarratorButton } from "@/components/NarratorButton";
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
+import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 
 // ─── Moon Phase (reuse same algorithm) ───────────────────────────────────────
 function getMoonPhase(date: Date): { name: string; day: number; tideType: string } {
@@ -256,6 +257,7 @@ export default function BarraScreen() {
   const colors  = useColors();
   const insets  = useSafeAreaInsets();
   const topPad  = Platform.OS === "web" ? 0 : insets.top;
+  useAutoNarrate(() => "Trophy Barra Predictor. AI analysis of moon phase, tides, season and water temperature to find your best shot at a 70-centimetre barramundi.");
 
   const now    = new Date();
   const month  = now.getMonth() + 1;

@@ -14,6 +14,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { useFishImage } from "@/hooks/useFishImage";
+import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { NT_SPECIES, CATEGORIES, type NTSpecies, type FishCategory } from "@/data/ntSpecies";
 
 function EatingStars({ rating, colors }: { rating: number; colors: ReturnType<typeof useColors> }) {
@@ -192,6 +193,7 @@ export default function SpeciesScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<FishCategory | "all">("all");
+  useAutoNarrate(() => "NT Species Guide. Browse bag limits, minimum sizes, and fishing seasons for over 30 species found in NT waters.");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 

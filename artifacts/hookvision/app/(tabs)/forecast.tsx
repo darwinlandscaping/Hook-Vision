@@ -25,6 +25,7 @@ import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { NarratorButton } from "@/components/NarratorButton";
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
+import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 
 // ─── Moon Phase Calculation ───────────────────────────────────────────────────
 function getMoonPhase(date: Date): {
@@ -304,6 +305,7 @@ export default function ForecastScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 0 : insets.top;
+  useAutoNarrate(() => "Here Fishy Fishy. AI bite forecast based on moon phase, NT season, tide stage and water temperature.");
 
   const now = new Date();
   const month = now.getMonth() + 1;

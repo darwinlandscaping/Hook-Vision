@@ -28,6 +28,8 @@ import { HVHeader } from "@/components/HVHeader";
 import { SonarPulse } from "@/components/SonarPulse";
 import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/context/HistoryContext";
+import { useNarrator } from "@/context/NarratorContext";
+import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 
 interface FishAnalysis {
   fishCount: number;
@@ -122,6 +124,9 @@ export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { addEntry } = useHistory();
+  const { autoSpeak } = useNarrator();
+
+  useAutoNarrate(() => "Sonar Analyser. Load a photo of your sonar screen, or tap the camera button to scan and get instant AI fish detection.");
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -206,6 +211,11 @@ export default function HomeScreen() {
       const data: FishAnalysis = await response.json();
       setAnalysis(data);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Hands-free: narrate the result summary
+      autoSpeak(
+        `Scan complete. ${data.fishCount} fish detected at ${data.depth}. ` +
+        `Species: ${data.species}. Confidence ${data.confidence} percent. ${data.suggestion}`
+      );
       if (imageUri) {
         addEntry({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
@@ -224,7 +234,7 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
-  }, [imageBase64, imageUri, addEntry, analyzeScale]);
+  }, [imageBase64, imageUri, addEntry, analyzeScale, autoSpeak]);
 
   // Auto-analyse when a demo image is injected from the Demo tab
   useEffect(() => {
