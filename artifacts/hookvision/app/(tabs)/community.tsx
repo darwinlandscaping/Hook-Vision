@@ -296,6 +296,65 @@ export default function CommunityScreen() {
           />
         }
       >
+        {/* ── BEST GO'S — HOTSPOT TRACKER ──────────────────────────────── */}
+        {hotspots.length > 0 && (
+          <View style={[styles.hotspotCard, { backgroundColor: colors.card, borderColor: "#ff990040" }]}>
+            <View style={styles.hotspotHeader}>
+              <View style={styles.hotspotTitleRow}>
+                <Text style={styles.hotspotFire}>🎯</Text>
+                <View>
+                  <Text style={[styles.hotspotTitle, { color: colors.foreground }]}>BEST GO'S</Text>
+                  <Text style={[styles.hotspotSub, { color: colors.mutedForeground }]}>Top spots · last 24h</Text>
+                </View>
+              </View>
+              <View style={[styles.livePill, { borderColor: "#ff990050", backgroundColor: "#ff990015" }]}>
+                <View style={[styles.liveDot, { backgroundColor: "#ff9900" }]} />
+                <Text style={[styles.livePillText, { color: "#ff9900" }]}>LIVE</Text>
+              </View>
+            </View>
+
+            {hotspots.map((spot, i) => {
+              const isFirst = i === 0;
+              const heatCol = spot.heat === "firing" ? "#ff4400" : spot.heat === "hot" ? "#ffd700" : C.teal;
+              const heatLabel = spot.heat === "firing" ? "🔥 FIRING" : spot.heat === "hot" ? "🌡 HOT" : "✓ ACTIVE";
+              return (
+                <View
+                  key={spot.locationName}
+                  style={[
+                    styles.spotRow,
+                    {
+                      borderColor: heatCol + (isFirst ? "60" : "30"),
+                      backgroundColor: isFirst ? heatCol + "12" : "transparent",
+                    },
+                  ]}
+                >
+                  <View style={[styles.spotRank, { backgroundColor: heatCol + "25" }]}>
+                    <Text style={[styles.spotRankText, { color: heatCol }]}>#{i + 1}</Text>
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[styles.spotName, { color: colors.foreground }]} numberOfLines={1}>
+                      {spot.locationName}
+                    </Text>
+                    <Text style={[styles.spotDetail, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      {spot.topSpecies ?? "Mixed species"}
+                      {spot.avgFishCount > 0 ? ` · avg ${spot.avgFishCount} fish` : ""}
+                      {spot.speciesCount > 1 ? ` · ${spot.speciesCount} species` : ""}
+                    </Text>
+                  </View>
+                  <View style={[styles.heatBadge, { borderColor: heatCol + "60", backgroundColor: heatCol + "20" }]}>
+                    <Text style={[styles.heatBadgeText, { color: heatCol }]}>{heatLabel}</Text>
+                    <Text style={[styles.spotScans, { color: heatCol + "cc" }]}>{spot.reportCount} scans</Text>
+                  </View>
+                </View>
+              );
+            })}
+
+            <Text style={[styles.pollNote, { color: colors.mutedForeground + "70", marginTop: 6 }]}>
+              Updates every 2 min · Heat = recency × fish count
+            </Text>
+          </View>
+        )}
+
         {/* ── LIVE FEED ─────────────────────────────────────────────────── */}
         <View style={[styles.feedCard, { backgroundColor: colors.card, borderColor: C.teal + "35" }]}>
           <View style={styles.feedHeader}>
@@ -344,72 +403,6 @@ export default function CommunityScreen() {
             Refreshes every 30s · All data anonymous
           </Text>
         </View>
-
-        {/* ── BEST GO'S — HOTSPOT TRACKER ──────────────────────────────── */}
-        {hotspots.length > 0 && (
-          <View style={[styles.hotspotCard, { backgroundColor: colors.card, borderColor: "#ff990040" }]}>
-            {/* Header */}
-            <View style={styles.hotspotHeader}>
-              <View style={styles.hotspotTitleRow}>
-                <Text style={styles.hotspotFire}>🎯</Text>
-                <View>
-                  <Text style={[styles.hotspotTitle, { color: colors.foreground }]}>BEST GO'S</Text>
-                  <Text style={[styles.hotspotSub, { color: colors.mutedForeground }]}>Top spots · last 24h</Text>
-                </View>
-              </View>
-              <View style={[styles.livePill, { borderColor: "#ff990050", backgroundColor: "#ff990015" }]}>
-                <View style={[styles.liveDot, { backgroundColor: "#ff9900" }]} />
-                <Text style={[styles.livePillText, { color: "#ff9900" }]}>LIVE</Text>
-              </View>
-            </View>
-
-            {/* Spot rows */}
-            {hotspots.map((spot, i) => {
-              const isFirst = i === 0;
-              const heatCol = spot.heat === "firing" ? "#ff4400" : spot.heat === "hot" ? "#ffd700" : C.teal;
-              const heatLabel = spot.heat === "firing" ? "🔥 FIRING" : spot.heat === "hot" ? "🌡 HOT" : "✓ ACTIVE";
-              return (
-                <View
-                  key={spot.locationName}
-                  style={[
-                    styles.spotRow,
-                    {
-                      borderColor: heatCol + (isFirst ? "60" : "30"),
-                      backgroundColor: isFirst ? heatCol + "12" : "transparent",
-                    },
-                  ]}
-                >
-                  {/* Rank */}
-                  <View style={[styles.spotRank, { backgroundColor: heatCol + "25" }]}>
-                    <Text style={[styles.spotRankText, { color: heatCol }]}>#{i + 1}</Text>
-                  </View>
-
-                  {/* Details */}
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[styles.spotName, { color: colors.foreground }]} numberOfLines={1}>
-                      {spot.locationName}
-                    </Text>
-                    <Text style={[styles.spotDetail, { color: colors.mutedForeground }]} numberOfLines={1}>
-                      {spot.topSpecies ?? "Mixed species"}
-                      {spot.avgFishCount > 0 ? ` · avg ${spot.avgFishCount} fish` : ""}
-                      {spot.speciesCount > 1 ? ` · ${spot.speciesCount} species` : ""}
-                    </Text>
-                  </View>
-
-                  {/* Heat badge */}
-                  <View style={[styles.heatBadge, { borderColor: heatCol + "60", backgroundColor: heatCol + "20" }]}>
-                    <Text style={[styles.heatBadgeText, { color: heatCol }]}>{heatLabel}</Text>
-                    <Text style={[styles.spotScans, { color: heatCol + "cc" }]}>{spot.reportCount} scans</Text>
-                  </View>
-                </View>
-              );
-            })}
-
-            <Text style={[styles.pollNote, { color: colors.mutedForeground + "70", marginTop: 6 }]}>
-              Updates every 2 min · Heat = recency × fish count
-            </Text>
-          </View>
-        )}
 
         {/* ── INSIGHTS ──────────────────────────────────────────────────── */}
         {loadingInsights && !insights ? (
