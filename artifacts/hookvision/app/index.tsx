@@ -72,98 +72,64 @@ const DUST: Array<{ x: number; dy: number; dx: number; w: number; h: number; dur
 
 // ── Particle layer components ─────────────────────────────────────────────────
 
-function easeOutQuad(t: number) { return 1 - (1 - t) * (1 - t); }
+// ── CSS keyframe injection (web only — compositor-driven, never throttled) ────
 
-function useAnimClock(fps = 25) {
-  const [ms, setMs] = useState(0);
-  useEffect(() => {
-    let raf: number;
-    let last = performance.now();
-    const interval = 1000 / fps;
-    function tick(now: number) {
-      raf = requestAnimationFrame(tick);
-      if (now - last >= interval) {
-        setMs(t => t + interval);
-        last = now;
+function injectParticleCSS() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById("hv-particles")) return;
+  const css = [
+    ...WATER.map((p, i) => `
+      @keyframes wd${i} {
+        0%   { transform: translate(0px, 0px) scale(1);   opacity: 0; }
+        10%  { opacity: 1; }
+        70%  { opacity: 0.9; }
+        100% { transform: translate(${p.dx}px, ${p.dy + 70}px) scale(0.6); opacity: 0; }
       }
-    }
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  return ms;
+      .wd${i} {
+        position: absolute;
+        left: ${SPLASH_X - p.size / 2}px;
+        top:  ${SPLASH_Y - p.size / 2}px;
+        width: ${p.size}px; height: ${p.size}px;
+        border-radius: 50%;
+        background: ${i % 3 === 0 ? "#fff" : i % 3 === 1 ? "#c8eeff" : "#e0f8ff"};
+        animation: wd${i} ${p.dur}ms cubic-bezier(0.25,0.46,0.45,0.94) ${p.delay}ms infinite;
+        pointer-events: none;
+      }
+    `),
+    ...DUST.map((p, i) => `
+      @keyframes dd${i} {
+        0%   { transform: translate(0px, 0px) scale(0.2); opacity: 0; }
+        15%  { opacity: 1; }
+        60%  { opacity: 0.85; }
+        100% { transform: translate(${p.dx}px, ${p.dy}px) scale(1.8); opacity: 0; }
+      }
+      .dd${i} {
+        position: absolute;
+        left: ${p.x}px;
+        top:  ${DUST_Y + (i % 4) * H * 0.03}px;
+        width: ${p.w}px; height: ${p.h}px;
+        border-radius: 50%;
+        background: ${p.color};
+        animation: dd${i} ${p.dur}ms ease-in ${p.delay}ms infinite;
+        pointer-events: none;
+      }
+    `),
+  ].join("\n");
+  const tag = document.createElement("style");
+  tag.id = "hv-particles";
+  tag.textContent = css;
+  document.head.appendChild(tag);
 }
 
-function WaterParticles() {
-  const ms = useAnimClock(30);
-
+function WebParticles() {
+  useEffect(() => { injectParticleCSS(); }, []);
+  if (Platform.OS !== "web" || typeof document === "undefined") return null;
   return (
-    <>
-      {WATER.map((p, i) => {
-        const cycle = p.dur + 350;
-        const t = ((ms - p.delay) % cycle + cycle) % cycle;
-        if (t >= p.dur) return null;
-        const phase = t / p.dur;
-        const e = easeOutQuad(phase);
-        const gravity = phase * phase * 80;
-        const ox = p.dx * e;
-        const oy = p.dy * e + gravity;
-        const opRaw = phase < 0.1 ? phase / 0.1 : phase > 0.6 ? (1 - phase) / 0.4 : 1;
-        const col = i % 3 === 0 ? "#ffffff" : i % 3 === 1 ? "#c8eeff" : "#e0f6ff";
-        return (
-          <View
-            key={i}
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              left: SPLASH_X + ox - p.size / 2,
-              top:  SPLASH_Y + oy - p.size / 2,
-              width: p.size,
-              height: p.size,
-              borderRadius: p.size / 2,
-              backgroundColor: col,
-              opacity: opRaw,
-            }}
-          />
-        );
-      })}
-    </>
-  );
-}
-
-function DustParticles() {
-  const ms = useAnimClock(25);
-
-  return (
-    <>
-      {DUST.map((p, i) => {
-        const cycle = p.dur + 500;
-        const t = ((ms - p.delay) % cycle + cycle) % cycle;
-        if (t >= p.dur) return null;
-        const phase = t / p.dur;
-        const ox = p.dx * phase;
-        const oy = p.dy * phase;
-        const scale = 0.2 + phase * 1.6;
-        const opRaw = phase < 0.15 ? phase / 0.15 : phase > 0.55 ? (1 - phase) / 0.45 : 1;
-        const w = p.w * scale;
-        const h = p.h * scale;
-        return (
-          <View
-            key={i}
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              left: p.x + ox - w / 2,
-              top:  DUST_Y + (i % 4) * H * 0.03 + oy - h / 2,
-              width: w,
-              height: h,
-              borderRadius: w,
-              backgroundColor: p.color,
-              opacity: opRaw,
-            }}
-          />
-        );
-      })}
-    </>
+    // @ts-ignore — native div for web, guaranteed no RN style interference
+    <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 99 }}>
+      {WATER.map((_, i) => <div key={`w${i}`} className={`wd${i}`} />)}
+      {DUST.map((_, i) => <div key={`d${i}`} className={`dd${i}`} />)}
+    </div>
   );
 }
 
@@ -241,11 +207,8 @@ export default function WelcomeScreen() {
         pointerEvents="none"
       />
 
-      {/* ── Water spray particles ── */}
-      <WaterParticles />
-
-      {/* ── Dust cloud particles ── */}
-      <DustParticles />
+      {/* ── Particles — CSS keyframe driven, works in all iframe contexts ── */}
+      <WebParticles />
 
       {/* ── NT Flag ── */}
       <Animated.Image
