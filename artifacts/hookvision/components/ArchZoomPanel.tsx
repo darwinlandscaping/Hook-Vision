@@ -30,7 +30,7 @@ import { useColors } from "@/hooks/useColors";
 interface Props {
   imageUri: string;
   depth: string;
-  distance: string;
+  distance?: string;
   species: string;
   confidence: number;
   bottomType?: string | null;
@@ -52,7 +52,8 @@ function depthFraction(depthM: number): number {
   return Math.min(0.86, Math.max(0.14, depthM / colM));
 }
 
-function horizontalFraction(distance: string): number {
+function horizontalFraction(distance: string | undefined | null): number {
+  if (!distance) return 0.50;
   const d = distance.toLowerCase();
   if (d.includes("right") || d.includes("ahead") || d.includes("starboard")) return 0.70;
   if (d.includes("port") || d.includes("left")) return 0.30;

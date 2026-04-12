@@ -10,7 +10,7 @@ import { ArchZoomPanel } from "@/components/ArchZoomPanel";
 interface FishAnalysis {
   fishCount: number;
   depth: string;
-  distance: string;
+  distance?: string;
   species: string;
   confidence: number;
   suggestion: string;
@@ -45,7 +45,8 @@ const SPECIES_SLANG: Record<string, string> = {
   "red emperor": "emperor",
 };
 
-function speciesNickname(raw: string): string {
+function speciesNickname(raw: string | undefined): string {
+  if (!raw) return "unknown";
   const clean = raw.replace(/\s*\(\d+%\)/, "").toLowerCase();
   for (const [key, nick] of Object.entries(SPECIES_SLANG)) {
     if (clean.includes(key)) return nick;
@@ -55,7 +56,7 @@ function speciesNickname(raw: string): string {
 
 function buildSpeechText(a: FishAnalysis): string {
   const parts: string[] = [];
-  const nick = speciesNickname(a.species);
+  const nick = speciesNickname(a.species ?? "Unknown species");
   const count = a.fishCount;
 
   // Croc alert — safety warning only, repeated 3 times, no fishing advice
@@ -77,7 +78,7 @@ function buildSpeechText(a: FishAnalysis): string {
   }
 
   // Species + position
-  parts.push(`Reckon they're ${nick} — sitting about ${a.depth}, ${a.distance}.`);
+  parts.push(`Reckon they're ${nick} — sitting about ${a.depth}${a.distance ? `, ${a.distance}` : ""}.`);
 
   // Confidence qualifier
   if (a.confidence < 60) {
@@ -345,7 +346,7 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true }: AnalysisC
           <Text style={[styles.fishImageLabelText, { color: analysis.crocAlert ? "#ff4444" : colors.primary }]}>
             {analysis.crocAlert
               ? "⚠ SALTWATER CROCODILE"
-              : (getSpeciesLabel(analysis.species) ?? analysis.species.replace(/\s*\(\d+%\)/, ""))}
+              : (getSpeciesLabel(analysis.species) ?? analysis.species?.replace(/\s*\(\d+%\)/, "") ?? "Unknown species")}
           </Text>
           <Text style={[styles.fishImageConfidence, { color: colors.mutedForeground }]}>
             {analysis.crocAlert ? "DO NOT ENTER WATER" : `${analysis.confidence}% confidence`}
@@ -381,12 +382,14 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true }: AnalysisC
         value={analysis.depth}
         delay={200}
       />
-      <StatRow
-        icon={<Feather name="navigation" size={16} color={colors.depth} />}
-        label="Position"
-        value={analysis.distance}
-        delay={300}
-      />
+      {analysis.distance && (
+        <StatRow
+          icon={<Feather name="navigation" size={16} color={colors.depth} />}
+          label="Position"
+          value={analysis.distance}
+          delay={300}
+        />
+      )}
       {analysis.waterTemp && (
         <StatRow
           icon={<Feather name="thermometer" size={16} color={colors.sonar} />}

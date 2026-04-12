@@ -236,8 +236,12 @@ export default function HomeScreen() {
       }
 
       const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
-      const jsonStr = cleaned.startsWith("{") ? cleaned : (cleaned.match(/\{[\s\S]*\}/) ?? ["{}", "{}"])[0];
-      const data: FishAnalysis = JSON.parse(jsonStr);
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("Incomplete response from AI — please try again.");
+      const data: FishAnalysis = JSON.parse(jsonMatch[0]);
+      if (!data.species || typeof data.fishCount !== "number") {
+        throw new Error("AI response was cut off — please try again.");
+      }
       setAnalysis(data);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Hands-free: narrate the result summary

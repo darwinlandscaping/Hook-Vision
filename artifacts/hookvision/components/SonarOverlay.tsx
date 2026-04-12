@@ -13,7 +13,7 @@ import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 export interface SonarAnalysis {
   fishCount: number;
   depth: string;
-  distance: string;
+  distance?: string;
   species: string;
   confidence: number;
   suggestion?: string;
@@ -53,7 +53,8 @@ function depthFraction(depthM: number): number {
 }
 
 /** Fraction 0–1 from left based on distance description */
-function horizontalFraction(distance: string): number {
+function horizontalFraction(distance: string | undefined | null): number {
+  if (!distance) return 0.5;
   const d = distance.toLowerCase();
   if (d.includes("right") || d.includes("ahead") || d.includes("starboard")) return 0.72;
   if (d.includes("port") || d.includes("left")) return 0.28;
