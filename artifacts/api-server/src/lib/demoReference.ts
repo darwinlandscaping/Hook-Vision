@@ -83,6 +83,13 @@ KEY DISTINCTION — FINGERMARK vs BARRA:
 • Fingermark = coastal rock reef/rubble at 8–30m with arch FLOATING 0.5–2m ABOVE the reef echo
 • This image = rocky reef substrate + arch above bottom = FINGERMARK, NOT barra
 
+FINGERMARK SCHOOLING BEHAVIOUR (important context for this image):
+• Fingermark ALWAYS school — 3–15+ fish clustered tight over hard ground
+• This single arch represents ONE fish from a school below — the rest are resting tight to the bottom (hard to see when inactive)
+• In NT: the school is there even if only 1–2 arches are visible at any moment — fingermark hug the bottom when not actively feeding
+• When feeding, the whole school rises off the hard bottom and multiple arches appear clearly
+• Fingermark also occur in deep estuarine holes (pylons, creek ledges, deep pinnacles) — not ONLY coastal reef
+
 SPECIES CONFIRMATION: Fingermark / Golden Snapper (Lutjanus johnii). Confidence should be 85%+. Size: 45–65cm based on arch brightness and thickness. This is a legal-size fish over the NT minimum.`,
   },
   4: {

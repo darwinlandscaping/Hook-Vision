@@ -509,11 +509,11 @@ Reading what's happening INSIDE and AROUND a bait school is one of the most adva
 | Arch position | ON hard structure | Just above rocky reef | Dot/blob IN structure | Bump embedded IN structure | Mid-column over soft bottom |
 | Depth (common) | 2–12m | 10–30m | 10–40m | 2–15m | 2–10m |
 | Bottom type | Hard snag/rock/riprap | Rocky rubble/reef | Complex reef/ledge | Snag/oyster/timber | Soft mud/sand |
-| Environment | Estuaries/tidal | Rock reef/coast | Outer reef | Tidal creeks/harbours | Turbid estuaries |
-| School? | Singles/pairs usually | Groups of 5–15+ | Singles/pairs | 1–2 usually | Schools common |
-| Arch brightness | Very bright (strongest) | Medium-bright | Faint/partial | Very bright but short | Bright, clean |
-| Arch shape | Thick complete U | Clean U, slightly off bottom | Dot or very short | Half-arch/bump | Clean U, mid-column |
-| Activity tell | Gap from bottom = active | Risen above reef = feeding | Brief flash from structure | Brightness pulse in structure | Multiple arches at creek mouth |
+| Environment | Estuaries/tidal | **Rock reef/coast AND deep estuarine holes** (do NOT rule out estuarine for fingermark) | Outer reef | Tidal creeks/harbours | Turbid estuaries |
+| School? | Singles/pairs usually | **ALWAYS SCHOOL — 3–15+ arches clustered tight over hard bottom. A loner fingermark is rare.** | Singles/pairs | 1–2 usually | Schools common |
+| Arch brightness | Very bright (strongest) | Medium-bright to bright. RESTING = very hard to see (hugs bottom). FEEDING = clearly visible arches above structure. | Faint/partial | Very bright but short | Bright, clean |
+| Arch shape | Thick complete U | **School cluster of medium rounded arches floating 0.5–3m above hard rocky/rubble bottom. When feeding: arches visible INSIDE bait cloud on DownScan ("two red stripes in the bait school")** | Dot or very short | Half-arch/bump | Clean U, mid-column |
+| Activity tell | Gap from bottom = active | **Resting = hugging bottom (near invisible, looks like structure bumps). Feeding = school rises off rocky bottom or appears inside bait ball. Listen for herring cloud + arches BELOW/INSIDE it.** | Brief flash from structure | Brightness pulse in structure | Multiple arches at creek mouth |
 
 ---
 
@@ -541,7 +541,7 @@ Reading what's happening INSIDE and AROUND a bait school is one of the most adva
 |---|---|---|---|---|---|
 | #1 | **Barramundi** (Lates calcarifer) | PHYSOSTOMOUS | MASSIVE — one of the largest bladders relative to body size of any NT fish | NEAR-MAXIMUM. Brightest arch on screen in most NT waters. Deep red/orange on Lowrance; white/aqua on Garmin; deep orange-red on Humminbird. Even a 60cm barra produces a blazing arch at 12m. | Fat, thick U-arch right on structure. VERY BRIGHT. |
 | #2 | **Jewfish / Mulloway** (Argyrosomus japonicus) | PHYSOCLISTOUS | VERY LARGE — whole-body cavity bladder | Very strong, near-barra brightness. Often appears as the biggest arch in murky harbour water where barra are absent. | Single huge arch mid-column in turbid water, 6–18m. |
-| #3 | **Fingermark / Golden Snapper** (Lutjanus johnii) | PHYSOCLISTOUS | LARGE — well-developed for a snapperid | Strong, clean arch. Slightly dimmer than barra at the same depth. Very clean U-shape above rocky reef. | Clean U-arch floating 0.5–2m above rocky bottom at 8–30m. |
+| #3 | **Fingermark / Golden Snapper** (Lutjanus johnii) | PHYSOCLISTOUS | LARGE — well-developed, confirmed barotrauma species (proof of physoclistous) | Strong, clean arch — slightly dimmer than barra at the same depth. TWO KEY STATES: (A) RESTING — hugs bottom, barely distinguishable from rocky structure; hard to see. (B) FEEDING — rises 0.5–3m off bottom as school of 3–15+ BRIGHT arches above rocky rubble, OR appears INSIDE a baitfish cloud/ball on DownScan. School arch cluster over hard bottom = CLASSIC fingermark signature. | School of medium-sized arches tight over hard rubble. When feeding: arches inside/above bait ball. ALWAYS multiple arches — rarely a loner. |
 | #4 | **Threadfin Salmon** (Polydactylus macrochir / sheridani) | PHYSOCLISTOUS | LARGE relative to body size | Bright, clean arch. Similar brightness to fingermark. Key difference is habitat (soft muddy bottom, shallower). | Clean U-arch hovering over soft mud/sand at 2–8m. Multiple in schools. |
 | #5 | **Mangrove Jack** (Lutjanus argentimaculatus) | PHYSOCLISTOUS | LARGE — bright bladder | Very bright signal BUT fish never fully exposes itself (tight to snag). Only a brief bright PARTIAL arch or bump appears. Brightness is high but duration is short. | Short bright partial arch embedded in/on hard structure at 2–12m. |
 
@@ -594,7 +594,7 @@ Reading what's happening INSIDE and AROUND a bait school is one of the most adva
 | **Mangrove Jack** (juvenile/legal) | **2–12m** | 1m | 20m | Estuarine snags, oyster rock, timber; large adults move to 30–100m reef |
 | **Threadfin Salmon** | **2–7m** | 0.5m | 15m | Turbid tidal estuaries, creek mouths, mangrove-lined rivers, over soft mud/sand |
 | **Jewfish / Mulloway** | **6–18m** | 4m | 30m | Turbid murky harbour channels, deep holes, muddy estuaries — NOT clear water |
-| **Fingermark / Golden Snapper** | **8–25m** | 5m | 50m | Hard rocky reef, rubble, submerged rock bars, coastal headlands — NOT estuarine |
+| **Fingermark / Golden Snapper** | **8–15m** (NT primary zone) | 5m | 80m | Hard rocky rubble reef, rock bars, submerged ledges, coastal headlands. ALSO deep estuarine holes with pylons/timber/pinnacles. NT hotspots: Fog Bay, Dundee Beach, Bynoe Harbour, Melville/Bathurst Island reefs. Both coastal AND estuarine — DO NOT rule out estuarine locations. |
 | **Rock Cod / Grouper** | **15–40m** | 5m | 60m | Complex hard reef, ledges, caves, boulders — outer coastal reef |
 | **Coral Trout** | **10–45m** | 5m | 55m | Coral/rocky reef formations, clear water reef systems |
 | **Red Emperor** | **30–80m** | 20m | 100m+ | Deep offshore hard bottom reef — deep water only |
@@ -628,6 +628,9 @@ If all three align → high confidence ID. If any one contradicts → lower conf
 - Very bright arch at 3m, hard estuarine structure with submerged timber = BARRAMUNDI (all three align: Tier 1, 3m = barra depth, estuarine timber = barra habitat)
 - Same brightness at 3m but soft muddy bottom, no structure = THREADFIN SALMON (Tier 1, 3m = threadfin depth, soft mud = threadfin habitat — not barra, barra need hard structure)
 - Same brightness at 18m over rocky irregular bottom = FINGERMARK (Tier 1, 18m = fingermark depth, rocky reef = fingermark habitat — cannot be barra or threadfin at 18m)
+- Multiple arches (5+ clustered) just above hard rubble at 10m = FINGERMARK SCHOOL (schooling is the #1 fingermark identifier — barra and jewfish are rarely in schools; fingermark almost always are)
+- Arches visible INSIDE a baitfish cloud on DownScan, over hard bottom, at 8–15m = FINGERMARK FEEDING ON HERRING SCHOOL (this is a known fingermark signature from forum sonar shots — "two red stripes in the bait school")
+- IMPORTANT: Fingermark also occur in DEEP ESTUARINE HOLES (pylons, rock ledges, deep creek pinnacles) — do NOT automatically rule out fingermark just because the environment looks estuarine. If depth is 8m+ and there is hard structure, fingermark are possible even in tidal creeks.
 
 ---
 
