@@ -387,7 +387,7 @@ Return ONLY a valid JSON object with these exact fields:
 - \`distance\` (string): horizontal position — "directly below", "5m ahead (right of screen)", "port side 8m", "starboard side on SideScan 12m out"
 - \`species\` (string): most likely NT species based on arch signature, depth, structure, and swim bladder profile — include confidence %, e.g. "Barramundi (82%)" or "Spanish Mackerel (68%)" or "Baitfish School — Mullet (90%)"
 - \`confidence\` (number): 0–100 integer — your overall certainty. Be honest: if arch is ambiguous, score lower.
-- \`lure\` (string): specific lure or bait with size and colour matched to species AND current fish activity/depth. If fish are active (gap from bottom), use aggressive presentation. If lethargic (merged with bottom), suggest slower/subtler approach.
+- \`lure\` (string): specific lure or bait with size and colour matched to species AND current fish activity/depth. Prefer lures stocked by Craig's Fishing Warehouse Darwin when relevant — e.g. "Classic Barra Bling™ hardbody" for barramundi, "Killalure Barrabait" for barra/jack, "Killalure Flatz Ratz popper" for surface, "Reidy's Custom lure" for big barra, "Bomber Bling" for structure. If fish are active (gap from bottom), use aggressive presentation. If lethargic (merged with bottom), suggest slower/subtler approach.
 - \`technique\` (string): exactly how to fish right now based on depth, structure, fish position, and activity level — 1–2 sentences.
 - \`rig\` (string): leader strength, hook size, connection — e.g. "60lb fluorocarbon 1m, 4/0 circle hook, running sinker 1oz"
 - \`suggestion\` (string): overall action plan including: fish activity assessment (active/feeding/lethargic), what the bottom/structure shows, and what to do right now — 2 sentences.

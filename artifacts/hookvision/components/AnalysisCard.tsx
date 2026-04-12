@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, Easing, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useVoice } from "@/hooks/useVoice";
 import { useFishImage } from "@/hooks/useFishImage";
-import { fetchLureImage, getLureCategory } from "@/data/lureImages";
+import { useCraigsLure } from "@/hooks/useCraigsLure";
 
 interface FishAnalysis {
   fishCount: number;
@@ -197,8 +197,10 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
   const crocPulse = useRef(new Animated.Value(1)).current;
   const { speak, stop, speaking } = useVoice();
   const fishImageUrl = useFishImage(analysis.species);
-  const [lureImageUrl, setLureImageUrl] = useState<string | null>(null);
-  const lureCategory = analysis.lure ? getLureCategory(analysis.lure) : null;
+  const { result: craigsResult, loading: craigsLoading } = useCraigsLure(
+    analysis.crocAlert ? undefined : analysis.lure
+  );
+  const craigsProduct = craigsResult?.products[0] ?? null;
 
   useEffect(() => {
     if (analysis.crocAlert) {
@@ -210,12 +212,6 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
       ).start();
     }
   }, [analysis.crocAlert, crocPulse]);
-
-  useEffect(() => {
-    if (analysis.lure) {
-      fetchLureImage(analysis.lure).then(setLureImageUrl);
-    }
-  }, [analysis.lure]);
 
   useEffect(() => {
     Animated.parallel([
@@ -403,28 +399,6 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
           </View>
           {analysis.lure && (
             <>
-              {/* Lure image — full width, large */}
-              <View style={[styles.lureImageContainer, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
-                {lureImageUrl ? (
-                  <Image
-                    source={{ uri: lureImageUrl }}
-                    style={styles.lureImageFull}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.fishImageSkeleton}>
-                    <MaterialCommunityIcons name="hook" size={40} color={colors.border} />
-                    <Text style={[styles.fishSkeletonText, { color: colors.mutedForeground }]}>Loading lure photo…</Text>
-                  </View>
-                )}
-                {lureCategory && (
-                  <View style={[styles.fishImageLabel, { backgroundColor: `${colors.background}dd` }]}>
-                    <Text style={[styles.fishImageLabelText, { color: colors.accent }]}>
-                      {lureCategory.label}
-                    </Text>
-                  </View>
-                )}
-              </View>
               <TacticBox
                 icon={<MaterialCommunityIcons name="hook" size={13} color={colors.accent} />}
                 label="LURE / BAIT"
@@ -432,6 +406,55 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
                 colors={colors}
                 delay={200}
               />
+              {/* Craig's Fishing Warehouse product card */}
+              {craigsLoading ? (
+                <View style={[styles.craigsCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                  <MaterialCommunityIcons name="hook" size={24} color={colors.border} />
+                  <Text style={[styles.craigsLoadingText, { color: colors.mutedForeground }]}>
+                    Searching Craig's Fishing Warehouse…
+                  </Text>
+                </View>
+              ) : craigsProduct ? (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => Linking.openURL(craigsProduct.productUrl)}
+                  style={[styles.craigsCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                >
+                  <View style={[styles.craigsImageWrap, { backgroundColor: colors.card }]}>
+                    <Image
+                      source={{ uri: craigsProduct.imageUrl }}
+                      style={styles.craigsImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                  <View style={styles.craigsInfo}>
+                    <View style={styles.craigsHeader}>
+                      <Text style={[styles.craigsStoreBadge, { color: colors.primary, backgroundColor: `${colors.primary}18` }]}>
+                        CRAIG'S FISHING WAREHOUSE
+                      </Text>
+                    </View>
+                    <Text style={[styles.craigsProductName, { color: colors.foreground }]} numberOfLines={2}>
+                      {craigsProduct.name}
+                    </Text>
+                    <View style={styles.craigsFooter}>
+                      <Text style={[styles.craigsViewBtn, { color: colors.accent }]}>
+                        View Product →
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ) : craigsResult ? (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => Linking.openURL(craigsResult.searchUrl)}
+                  style={[styles.craigsSearchBtn, { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}44` }]}
+                >
+                  <MaterialCommunityIcons name="fish" size={15} color={colors.primary} />
+                  <Text style={[styles.craigsSearchText, { color: colors.primary }]}>
+                    Search for this lure at Craig's Fishing Warehouse →
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
             </>
           )}
           {analysis.technique && (
@@ -637,16 +660,74 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_400Regular",
   },
-  lureImageContainer: {
-    borderRadius: 14,
-    overflow: "hidden",
+  craigsCard: {
+    borderRadius: 12,
     borderWidth: 1,
-    height: 180,
-    position: "relative",
+    flexDirection: "row",
+    overflow: "hidden",
+    gap: 0,
   },
-  lureImageFull: {
-    width: "100%",
-    height: "100%",
+  craigsImageWrap: {
+    width: 110,
+    height: 100,
+  },
+  craigsImage: {
+    width: 110,
+    height: 100,
+  },
+  craigsInfo: {
+    flex: 1,
+    padding: 10,
+    gap: 4,
+    justifyContent: "space-between",
+  },
+  craigsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  craigsStoreBadge: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  craigsProductName: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: 17,
+    flex: 1,
+  },
+  craigsFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  craigsViewBtn: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  craigsLoadingText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    padding: 14,
+    textAlign: "center",
+    flex: 1,
+  },
+  craigsSearchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  craigsSearchText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
   },
 
   crocAlertBanner: {

@@ -7,6 +7,7 @@ import barraRouter from "./barra";
 import narrateRouter from "./narrate";
 import ttsRouter from "./tts";
 import demosRouter from "./demos";
+import lureSearchRouter from "./lureSearch";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(barraRouter);
 router.use(narrateRouter);
 router.use(ttsRouter);
 router.use(demosRouter);
+router.use(lureSearchRouter);
 
 export default router;
