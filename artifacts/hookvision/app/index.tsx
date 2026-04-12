@@ -50,25 +50,6 @@ const WATER: Array<{ dx: number; dy: number; size: number; dur: number; delay: n
   { dx: -22, dy:-115, size: 7, dur: 770, delay: 620 },
 ];
 
-const DUST_Y = H * 0.72;
-const DUST: Array<{ x: number; dy: number; dx: number; w: number; h: number; dur: number; delay: number; color: string }> = [
-  { x: W*0.04, dy:-55, dx: 28, w:40, h:24, dur:1600, delay:   0, color:"rgba(200,160, 90,0.38)" },
-  { x: W*0.16, dy:-38, dx:-24, w:32, h:18, dur:1800, delay: 220, color:"rgba(185,140, 70,0.32)" },
-  { x: W*0.28, dy:-68, dx: 40, w:48, h:28, dur:1400, delay: 110, color:"rgba(210,165,100,0.40)" },
-  { x: W*0.40, dy:-30, dx:-18, w:26, h:15, dur:2000, delay: 370, color:"rgba(175,130, 65,0.30)" },
-  { x: W*0.52, dy:-60, dx: 35, w:45, h:26, dur:1500, delay: 520, color:"rgba(200,155, 85,0.36)" },
-  { x: W*0.64, dy:-45, dx:-28, w:36, h:22, dur:1700, delay: 165, color:"rgba(190,145, 78,0.34)" },
-  { x: W*0.76, dy:-75, dx: 45, w:52, h:32, dur:1300, delay: 430, color:"rgba(215,170,105,0.42)" },
-  { x: W*0.88, dy:-35, dx:-20, w:30, h:18, dur:1900, delay: 275, color:"rgba(180,135, 68,0.30)" },
-  { x: W*0.10, dy:-80, dx: 22, w:22, h:14, dur:1200, delay: 650, color:"rgba(220,175,110,0.28)" },
-  { x: W*0.22, dy:-50, dx:-35, w:42, h:25, dur:1550, delay: 475, color:"rgba(195,150, 82,0.36)" },
-  { x: W*0.46, dy:-42, dx: 30, w:35, h:20, dur:1750, delay:  90, color:"rgba(185,140, 72,0.34)" },
-  { x: W*0.60, dy:-62, dx:-25, w:46, h:28, dur:1450, delay: 730, color:"rgba(205,160, 95,0.38)" },
-  { x: W*0.72, dy:-28, dx: 38, w:24, h:14, dur:1850, delay: 340, color:"rgba(170,125, 60,0.28)" },
-  { x: W*0.84, dy:-70, dx:-42, w:50, h:30, dur:1350, delay: 580, color:"rgba(212,168,102,0.40)" },
-  { x: W*0.34, dy:-88, dx: 15, w:18, h:12, dur:1100, delay: 800, color:"rgba(222,178,112,0.26)" },
-  { x: W*0.56, dy:-22, dx:-12, w:36, h:22, dur:2100, delay: 690, color:"rgba(178,132, 62,0.30)" },
-];
 
 // ── Particle layer components ─────────────────────────────────────────────────
 
@@ -77,13 +58,12 @@ const DUST: Array<{ x: number; dy: number; dx: number; w: number; h: number; dur
 function injectParticleCSS() {
   if (typeof document === "undefined") return;
   if (document.getElementById("hv-particles")) return;
-  const css = [
-    ...WATER.map((p, i) => `
+  const css = WATER.map((p, i) => `
       @keyframes wd${i} {
         0%   { transform: translate(0px, 0px) scale(1);   opacity: 0; }
-        10%  { opacity: 1; }
-        70%  { opacity: 0.9; }
-        100% { transform: translate(${p.dx}px, ${p.dy + 70}px) scale(0.6); opacity: 0; }
+        12%  { opacity: 0.85; }
+        75%  { opacity: 0.7; }
+        100% { transform: translate(${p.dx}px, ${p.dy + 70}px) scale(0.5); opacity: 0; }
       }
       .wd${i} {
         position: absolute;
@@ -91,30 +71,11 @@ function injectParticleCSS() {
         top:  ${SPLASH_Y - p.size / 2}px;
         width: ${p.size}px; height: ${p.size}px;
         border-radius: 50%;
-        background: ${i % 3 === 0 ? "#fff" : i % 3 === 1 ? "#c8eeff" : "#e0f8ff"};
+        background: ${i % 3 === 0 ? "rgba(255,255,255,0.9)" : i % 3 === 1 ? "rgba(200,238,255,0.8)" : "rgba(224,248,255,0.75)"};
         animation: wd${i} ${p.dur}ms cubic-bezier(0.25,0.46,0.45,0.94) ${p.delay}ms infinite;
         pointer-events: none;
       }
-    `),
-    ...DUST.map((p, i) => `
-      @keyframes dd${i} {
-        0%   { transform: translate(0px, 0px) scale(0.2); opacity: 0; }
-        15%  { opacity: 1; }
-        60%  { opacity: 0.85; }
-        100% { transform: translate(${p.dx}px, ${p.dy}px) scale(1.8); opacity: 0; }
-      }
-      .dd${i} {
-        position: absolute;
-        left: ${p.x}px;
-        top:  ${DUST_Y + (i % 4) * H * 0.03}px;
-        width: ${p.w}px; height: ${p.h}px;
-        border-radius: 50%;
-        background: ${p.color};
-        animation: dd${i} ${p.dur}ms ease-in ${p.delay}ms infinite;
-        pointer-events: none;
-      }
-    `),
-  ].join("\n");
+    `).join("\n");
   const tag = document.createElement("style");
   tag.id = "hv-particles";
   tag.textContent = css;
@@ -128,7 +89,6 @@ function WebParticles() {
     // @ts-ignore — native div for web, guaranteed no RN style interference
     <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 99 }}>
       {WATER.map((_, i) => <div key={`w${i}`} className={`wd${i}`} />)}
-      {DUST.map((_, i) => <div key={`d${i}`} className={`dd${i}`} />)}
     </div>
   );
 }
@@ -201,8 +161,8 @@ export default function WelcomeScreen() {
 
       {/* ── Centre dark band ── */}
       <LinearGradient
-        colors={["transparent", `${BG}cc`, `${BG}f0`, `${BG}cc`, "transparent"]}
-        locations={[0.22, 0.38, 0.5, 0.64, 0.8]}
+        colors={["transparent", `${BG}99`, `${BG}cc`, `${BG}99`, "transparent"]}
+        locations={[0.24, 0.38, 0.5, 0.63, 0.78]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
@@ -216,7 +176,7 @@ export default function WelcomeScreen() {
         style={[
           styles.ntFlag,
           {
-            top: H * 0.37 + logoH * 0.58,
+            top: H * 0.36 + logoH * 0.54,
             right: Math.max((W - logoW) / 2, 16),
             opacity: flagOpacity,
             transform: [{ rotate: flagRotate }, { scaleX: flagScaleX }, { translateY: flagTranslateY }],
@@ -225,25 +185,28 @@ export default function WelcomeScreen() {
         resizeMode="cover"
       />
 
-      {/* ── HookVision logo ── */}
-      <Animated.Image
-        source={HV_LOGO}
-        style={[
-          styles.logo,
-          {
-            width: logoW,
-            height: logoH,
-            top: H * 0.37,
-            left: (W - logoW) / 2,
-            opacity: logoOpacity,
-            transform: [{ translateY: logoY }],
-          },
-        ]}
-        resizeMode="contain"
-      />
+      {/* ── HookVision logo + tagline ── */}
+      <Animated.View
+        style={{
+          position: "absolute",
+          top: H * 0.36,
+          left: (W - logoW) / 2,
+          width: logoW,
+          alignItems: "center",
+          opacity: logoOpacity,
+          transform: [{ translateY: logoY }],
+        }}
+      >
+        <Image
+          source={HV_LOGO}
+          style={{ width: logoW, height: logoH }}
+          resizeMode="contain"
+        />
+        <Text style={styles.tagline}>NT'S AI FISHING GUIDE</Text>
+      </Animated.View>
 
       {/* ── Enter button ── */}
-      <Animated.View style={[styles.btnWrap, { bottom: Math.max(insets.bottom + 36, 52), opacity: btnOpacity, transform: [{ scale: btnScale }] }]}>
+      <Animated.View style={[styles.btnWrap, { bottom: insets.bottom > 0 ? insets.bottom + 24 : 40, opacity: btnOpacity, transform: [{ scale: btnScale }] }]}>
         <Pressable style={({ pressed }) => [styles.enterBtn, pressed && styles.enterBtnPressed]} onPress={enter}>
           <LinearGradient colors={[TEAL, "#00a8d4"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.enterGradient}>
             <Text style={styles.enterText}>ENTER THE TERRITORY</Text>
@@ -257,7 +220,7 @@ export default function WelcomeScreen() {
         <View style={[styles.cornerH, { backgroundColor: GOLD }]} />
         <View style={[styles.cornerV, { backgroundColor: GOLD }]} />
       </View>
-      <View style={[styles.corner, { bottom: Math.max(insets.bottom + 36, 52) + 70, left: 16 }]}>
+      <View style={[styles.corner, { bottom: (insets.bottom > 0 ? insets.bottom + 24 : 40) + 70, left: 16 }]}>
         <View style={[styles.cornerH, { backgroundColor: GOLD, bottom: 0, top: "auto" }]} />
         <View style={[styles.cornerV, { backgroundColor: GOLD, bottom: 0, top: "auto" }]} />
       </View>
@@ -289,4 +252,13 @@ const styles = StyleSheet.create({
   corner: { position: "absolute", width: 18, height: 18 },
   cornerH: { position: "absolute", top: 0, left: 0, width: 18, height: 2 },
   cornerV: { position: "absolute", top: 0, left: 0, width: 2, height: 18 },
+
+  tagline: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    letterSpacing: 3,
+    color: "rgba(255,255,255,0.70)",
+    textAlign: "center",
+    marginTop: -8,
+  },
 });
