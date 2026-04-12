@@ -549,7 +549,22 @@ Crocodiles are NOT fish. They produce an entirely different sonar return:
 - vs Large bait school: Bait school = irregular fuzzy cloud, many tiny marks. Croc = single solid elongated mark, very bright.
 
 ### Crocodile Alert Rule
-**If there is ANY sign of a crocodile sonar signature — set crocAlert to true. DO NOT miss this. It is a life-safety field.**
+**STRICT CRITERIA — ALL FOUR must be met before setting crocAlert=true:**
+1. ✅ Shape is SOLID and FILLED — not a hollow arch, not a U-shape, not curved
+2. ✅ Mark is ELONGATED horizontally — cigar/torpedo/log shape, substantially wider than tall
+3. ✅ Depth is 0–3m — top of the water column only
+4. ✅ Signal is MAXIMUM brightness — as bright or brighter than the hard bottom echo
+
+**AUTOMATIC DISQUALIFIERS — if ANY of these are true → crocAlert MUST be false:**
+- ❌ The mark has an ARCH or CURVED shape (U/C shape = FISH, never a croc)
+- ❌ The mark has a SHADOW BENEATH IT (shadow = fish with swim bladder, not a croc)
+- ❌ The mark is at mid-column or near the bottom (crocs are always shallow 0–3m)
+- ❌ There are multiple similar marks (crocs are solitary — multiple arches = fish school)
+- ❌ The mark is BELOW 4m depth (crocs cannot dive this deep for extended periods)
+- ❌ You are uncertain — when in doubt, crocAlert = FALSE
+
+**DEFAULT IS FALSE**: crocAlert must default to false unless you are highly certain ALL 4 criteria above are met simultaneously. A large barramundi arch — even a very big, bright, thick arch — is NOT a crocodile. A crocodile mark has NO arch shape whatsoever. It is a flat, solid, horizontal blob.
+
 - Note: fish and croc may be on the same sonar simultaneously — still report all fish data.
 
 ## Your Analysis Task
@@ -579,7 +594,7 @@ Return ONLY a valid JSON object with these exact fields:
 - \`waterTemp\` (string | null): water temp displayed on screen, e.g. "28.2°C", or null if not shown
 - \`bottomType\` (string | null): substrate — "hard rock", "sand", "soft mud", "reef/coral", "weed", "bedrock (double echo)", "rubble/reef mix", or null
 - \`sonarModel\` (string | null): detected brand AND model from UI colours/chrome/layout — e.g. "Lowrance HDS Live", "Garmin Striker Vivid 7", "Humminbird Helix 9 SI", "Simrad NSS evo3S", "Raymarine Axiom 9", "Deeper PRO+" — or null if unclear
-- \`crocAlert\` (boolean): true if a crocodile sonar signature is detected — large solid dense elongated blob near the surface (0–3m depth), very strong signal, NOT a hollow arch, substantially larger than any fish mark. Default false. When in doubt and the mark is ambiguous but large and solid near the surface in shallow NT water — set true.
+- \`crocAlert\` (boolean): true ONLY if ALL criteria are met: (1) mark is a SOLID FILLED HORIZONTAL BLOB — no arch shape, no curve, no hollow centre; (2) mark is elongated like a cigar/torpedo, NOT arch-shaped; (3) depth is 0–3m; (4) maximum brightness. DEFAULT FALSE. A fish arch — even a very large, thick, bright barra arch — is NEVER a croc. Any arch/U-shape = fish = crocAlert false. When in doubt → false.
 - \`crocWarning\` (string | null): if crocAlert is true, describe exactly what was detected, its approximate size, depth and position on screen, and include a safety warning. E.g. "DANGER: Large solid 2–3m elongated blob detected at 1.5m depth near the surface — consistent with saltwater crocodile. DO NOT enter the water or lean over the gunwale. Relocate before fishing." If crocAlert is false, set null.
 
 Return ONLY valid JSON. No markdown fences. No explanation. No surrounding text. Just the raw JSON object starting with { and ending with }.`;
@@ -648,7 +663,7 @@ Apply this exact 13-step reasoning sequence:
 7. SCHOOL vs SINGLES: Bait cloud or individual arches? Predator arches at edge of bait ball?
 8. TIDAL READ: Arches lifted with gap (tide running, active) or merged with bottom (slack tide, resting)?
 9. TURBIDITY: Sediment haze through water column?
-10. CROC CHECK: Any large SOLID DENSE elongated blob in the top 3m? If yes → crocAlert=true.
+10. CROC CHECK: Is there a SOLID FILLED HORIZONTAL BLOB (NOT an arch, NOT curved) in the top 0–3m that is elongated like a cigar/torpedo? ALL FOUR must be true: solid+filled, elongated, 0–3m depth, maximum brightness. If ANY disqualifier applies (arch shape, shadow beneath it, below 3m, multiple marks, uncertainty) → crocAlert=false. DEFAULT IS FALSE. A large bright barra arch is NEVER a croc.
 11. SPECIES ID: Match all clues to species reference table AND compare visual pattern to the labeled reference images above. Did the shadow check confirm large fish?
 12. LURE & TECHNIQUE: Match to fish activity, depth, and structure.
 13. CONFIDENCE CHECK: Does the shadow analysis support or change the species ID? Shadow present + thick bright arch = barra confidence should be ≥85%.
