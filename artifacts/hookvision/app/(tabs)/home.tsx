@@ -55,7 +55,7 @@ interface DailyConditions {
 // ─── Quick nav tiles ──────────────────────────────────────────────────────────
 
 const TILES = [
-  { label: "Barra\nNation",   emoji: "🎯", route: "/(tabs)/barra",    border: "#ff220055" },
+  { label: "Savage\nBarra Nation", emoji: "🎯", route: "/(tabs)/barra",    border: "#ff220055" },
   { label: "NT\nTides",       emoji: "🌊", route: "/(tabs)/tides",    border: "#00a8ff55" },
   { label: "Species\nGuide",  emoji: "🐟", route: "/(tabs)/species",  border: "#00d4aa55" },
   { label: "Fishy\nForecast", emoji: "🎣", route: "/(tabs)/forecast", border: "#ffd70055" },

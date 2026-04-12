@@ -71,7 +71,7 @@ const PRODUCTS: Product[] = [
   { id:"b5", name:"Barramundi Nation Boof", desc:"Full-sublimation trophy barra art.",         price:"$44.95", emoji:"👕", category:"BUFFS",           color:C.gold },
 
   // ── Hats ─────────────────────────────────────────────────────────────────
-  { id:"h1", name:"Barra Nation Cap",       desc:"Embroidered gold barra. Snapback.",         price:"$49.95", emoji:"🧢", category:"HATS", hot:true, color:C.gold },
+  { id:"h1", name:"Savage Barra Nation Cap",       desc:"Embroidered gold barra. Snapback.",         price:"$49.95", emoji:"🧢", category:"HATS", hot:true, color:C.gold },
   { id:"h2", name:"Wide-Brim NT Hat",       desc:"360° sun protection for all-day sessions.", price:"$59.95", emoji:"🧢", category:"HATS",            color:C.red  },
   { id:"h3", name:"Buff Trucker Cap",       desc:"Mesh back, hot pink barra print.",          price:"$44.95", emoji:"🧢", category:"HATS",            color:C.pink },
   { id:"h4", name:"Hookvision Low-Crown",   desc:"Structured low-crown in crimson/gold.",     price:"$54.95", emoji:"🧢", category:"HATS", hot:true,  color:C.gold },

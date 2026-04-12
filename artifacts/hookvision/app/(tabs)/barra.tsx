@@ -440,7 +440,7 @@ export default function BarraScreen() {
 
   useAutoNarrate(() => {
     const top = hotSpots[0];
-    return `Barra Nation. Your complete NT barramundi hub. Top hot spot right now: ${top.name} on the ${top.river}. ${moon.emoji} ${moon.name}, ${season.name}. ${isGoldHour ? "Golden hour — get out there now!" : "Fish are feeding. Check the hot spots."}`;
+    return `Savage Barra Nation. Your complete NT barramundi hub. Top hot spot right now: ${top.name} on the ${top.river}. ${moon.emoji} ${moon.name}, ${season.name}. ${isGoldHour ? "Golden hour — get out there now!" : "Fish are feeding. Check the hot spots."}`;
   });
 
   useEffect(() => {
@@ -484,14 +484,14 @@ export default function BarraScreen() {
       contentContainerStyle={[styles.content, { paddingTop: topPad + 16, paddingBottom: Platform.OS === "web" ? 70 : insets.bottom + 24 }]}
       showsVerticalScrollIndicator={false}
     >
-      <HVHeader subtitle="Barra Nation — NT's Barramundi Hub" />
+      <HVHeader subtitle="Savage Barra Nation — NT's Barramundi Hub" />
 
       {/* Page title */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.titleRed}>BARRA</Text>
-            <Text style={styles.titleGold}>NATION</Text>
+            <Text style={styles.titleRed}>SAVAGE</Text>
+            <Text style={styles.titleGold}>BARRA NATION</Text>
           </View>
           <NarratorSettingsTrigger />
         </View>
@@ -627,7 +627,7 @@ export default function BarraScreen() {
         ))}
       </LilyPadCard>
 
-      <NarratorButton pageType="barra nation" content={`Barra Nation — NT barramundi hub. ${season.name}, ${moon.name}. Top hot spot right now: ${hotSpots[0].name} on the ${hotSpots[0].river}. Million Dollar Fish: ${getMDFStatus().active ? "ACTIVE — season ends in " + getMDFStatus().daysLeft + " days" : "off season — next season in " + getMDFStatus().daysUntil + " days"}. Upcoming comps: NT Barra Nationals in July-August. Fun fact: ${BARRA_FACTS[0].fact}`} />
+      <NarratorButton pageType="barra nation" content={`Savage Barra Nation — NT barramundi hub. ${season.name}, ${moon.name}. Top hot spot right now: ${hotSpots[0].name} on the ${hotSpots[0].river}. Million Dollar Fish: ${getMDFStatus().active ? "ACTIVE — season ends in " + getMDFStatus().daysLeft + " days" : "off season — next season in " + getMDFStatus().daysUntil + " days"}. Upcoming comps: NT Barra Nationals in July-August. Fun fact: ${BARRA_FACTS[0].fact}`} />
     </ScrollView>
   );
 }
