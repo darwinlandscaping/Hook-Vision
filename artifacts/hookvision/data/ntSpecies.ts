@@ -100,7 +100,7 @@ export const NT_SPECIES: NTSpecies[] = [
   {
     id: "red-emperor",
     name: "Red Emperor",
-    otherNames: ["Government Bream", "Queenfish"],
+    otherNames: ["Government Bream", "Red Kelp"],
     scientificName: "Lutjanus sebae",
     category: "reef",
     bagLimit: 5,
@@ -269,9 +269,9 @@ export const NT_SPECIES: NTSpecies[] = [
     icon: "fish",
   },
   {
-    id: "blue-salmon",
-    name: "Blue Salmon",
-    otherNames: ["Papuan Black Snapper", "Bohar Snapper"],
+    id: "red-bass",
+    name: "Red Bass",
+    otherNames: ["Bohar Snapper", "Two-spot Red Snapper"],
     scientificName: "Lutjanus bohar",
     category: "reef",
     bagLimit: 10,
@@ -282,7 +282,7 @@ export const NT_SPECIES: NTSpecies[] = [
     seasonOpen: true,
     bestMonths: [5, 6, 7, 8, 9],
     description:
-      "Aggressive reef fish often found in schools around coral and rocky outcrops. Responds readily to lures and bait. Good table fish.",
+      "A deep-bodied reef snapper identified by two white spots on the back. Aggressive around coral bommies and outer reef structures. Note: large Red Bass can carry ciguatera toxin — caution advised eating fish over 4kg.",
     eatingRating: 3,
     catchAndRelease: false,
     icon: "fish",

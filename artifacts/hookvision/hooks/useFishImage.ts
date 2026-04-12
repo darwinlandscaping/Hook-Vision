@@ -12,7 +12,7 @@ const SPECIES_PHOTOS: Array<{ keywords: string[]; url: string; label: string }> 
     label: "Barramundi",
   },
   {
-    keywords: ["mangrove jack", "jack", "lutjanus argentimaculatus"],
+    keywords: ["mangrove jack", "red bream", "lutjanus argentimaculatus"],
     url: "https://inaturalist-open-data.s3.amazonaws.com/photos/42950611/medium.jpeg",
     label: "Mangrove Jack",
   },
@@ -120,6 +120,26 @@ const SPECIES_PHOTOS: Array<{ keywords: string[]; url: string; label: string }> 
     keywords: ["crocodile", "croc", "saltwater croc", "estuarine crocodile", "crocodylus porosus"],
     url: "https://static.inaturalist.org/photos/175699742/medium.jpg",
     label: "Saltwater Crocodile",
+  },
+  {
+    keywords: ["mud crab", "scylla serrata", "mangrove crab", "green crab"],
+    url: "https://inaturalist-open-data.s3.amazonaws.com/photos/5883138/medium.jpeg",
+    label: "Mud Crab",
+  },
+  {
+    keywords: ["sailfish", "istiophorus platypterus", "indo-pacific sailfish"],
+    url: "https://inaturalist-open-data.s3.amazonaws.com/photos/152543/medium.jpg",
+    label: "Sailfish",
+  },
+  {
+    keywords: ["black marlin", "istiompax indica", "white marlin"],
+    url: "https://static.inaturalist.org/photos/5662220/medium.jpeg",
+    label: "Black Marlin",
+  },
+  {
+    keywords: ["red bass", "bohar snapper", "lutjanus bohar", "two-spot red snapper", "papuan black snapper"],
+    url: "https://inaturalist-open-data.s3.amazonaws.com/photos/43074435/medium.jpeg",
+    label: "Red Bass",
   },
 ];
 
