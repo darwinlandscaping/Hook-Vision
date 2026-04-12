@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   },
   crocImg: {
     width: "100%",
-    height: 130,
+    height: 190,
   },
   crocTextWrap: {
     position: "absolute",
@@ -232,10 +232,10 @@ const styles = StyleSheet.create({
     paddingBottom: "6%",
   },
   crocText: {
-    fontSize: 13,
+    fontSize: 15,
     fontFamily: "Oswald_700Bold",
     color: "#000000",
-    letterSpacing: 2,
+    letterSpacing: 2.5,
   },
 
   corner: {
