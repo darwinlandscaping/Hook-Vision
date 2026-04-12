@@ -32,6 +32,7 @@ const queryClient = new QueryClient();
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>
   );

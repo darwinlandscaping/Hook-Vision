@@ -36,3 +36,15 @@ id = "_pcKkKh3mxUK_waPa3L2J"
 uri = "file://artifacts/hookvision/assets/sonar-demo-4.png"
 type = "image"
 title = "simrad dual layer sonar"
+
+[[generated]]
+id = "sIRC5CNEQ8RUEW-XZui3u"
+uri = "file://artifacts/hookvision/assets/images/splash-buffalo.png"
+type = "image"
+title = "NT buffalo red dust golden hour"
+
+[[generated]]
+id = "aAHH4G4jq4ETMTV5-j0uI"
+uri = "file://artifacts/hookvision/assets/images/splash-barra.png"
+type = "image"
+title = "barra jumping NT river dawn"
