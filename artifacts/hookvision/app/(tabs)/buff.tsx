@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -8,7 +9,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 // ─── Brand palette ────────────────────────────────────────────────────────────
 const C = {
@@ -29,52 +29,83 @@ interface Product {
   name: string;
   desc: string;
   price: string;
-  emoji: string;
   category: Category;
   hot?: boolean;
   color: string;
 }
 
+// ─── Static image map (all resolved at bundle time) ──────────────────────────
+const PRODUCT_IMAGES: Record<string, any> = {
+  l1:  require("../../assets/images/store/l1-roosta-popper.png"),
+  l2:  require("../../assets/images/store/l2-sorcerer.png"),
+  l3:  require("../../assets/images/store/l3-bent-minnow.png"),
+  l4:  require("../../assets/images/store/l4-twitchbait.png"),
+  l5:  require("../../assets/images/store/l5-fish-trap.png"),
+  l6:  require("../../assets/images/store/l6-pencil.png"),
+  l7:  require("../../assets/images/store/l7-xrap.png"),
+  r1:  require("../../assets/images/store/r1-daiwa-tatula.png"),
+  r2:  require("../../assets/images/store/r2-expride.png"),
+  r3:  require("../../assets/images/store/r3-sick-stick.png"),
+  r4:  require("../../assets/images/store/r4-nomad-tidal.png"),
+  re1: require("../../assets/images/store/re1-curado-dc.png"),
+  re2: require("../../assets/images/store/re2-steez.png"),
+  re3: require("../../assets/images/store/re3-revo-beast.png"),
+  re4: require("../../assets/images/store/re4-slx-dc.png"),
+  ln1: require("../../assets/images/store/ln1-sunline-braid.png"),
+  ln2: require("../../assets/images/store/ln2-seaguar-fluoro.png"),
+  ln3: require("../../assets/images/store/ln3-powerpro.png"),
+  ln4: require("../../assets/images/store/ln4-unitika.png"),
+  b1:  require("../../assets/images/store/b1-barra-hunter.png"),
+  b2:  require("../../assets/images/store/b2-territory-tough.png"),
+  b3:  require("../../assets/images/store/b3-sunrise-session.png"),
+  b4:  require("../../assets/images/store/b4-stealth-barra.png"),
+  b5:  require("../../assets/images/store/b5-barra-nation.png"),
+  h1:  require("../../assets/images/store/h1-barra-nation-cap.png"),
+  h2:  require("../../assets/images/store/h2-wide-brim.png"),
+  h3:  require("../../assets/images/store/h3-trucker-cap.png"),
+  h4:  require("../../assets/images/store/h4-hookvision-cap.png"),
+};
+
 const PRODUCTS: Product[] = [
   // ── Lures ────────────────────────────────────────────────────────────────
-  { id:"l1", name:"Roosta Popper 105",      desc:"Surface carnage. Barra magnet.",          price:"$34.95", emoji:"🎣", category:"LURES", hot:true, color:C.red  },
-  { id:"l2", name:"Halco Sorcerer 150DD",   desc:"Deep-diving bibbed minnow destroyer.",    price:"$28.95", emoji:"🎣", category:"LURES",          color:C.pink },
-  { id:"l3", name:"OSP Bent Minnow 130",    desc:"Subsurface jerkbait — irresistible twitch.", price:"$42.00", emoji:"🎣", category:"LURES", hot:true, color:C.gold },
-  { id:"l4", name:"Storm 65 Twitchbait",    desc:"Slow-sink rattler for timber structure.",  price:"$19.95", emoji:"🎣", category:"LURES",          color:C.red  },
-  { id:"l5", name:"Zerek Fish Trap 95",     desc:"Paddle-tail soft plastic on jig head.",   price:"$14.99", emoji:"🎣", category:"LURES",          color:C.pink },
-  { id:"l6", name:"Lucky Craft PT 75",      desc:"Walk-the-dog topwater pencil bait.",      price:"$38.50", emoji:"🎣", category:"LURES",          color:C.gold },
-  { id:"l7", name:"Rapala X-Rap 10",        desc:"Aggressive slash-bait, mid-water column.", price:"$24.95", emoji:"🎣", category:"LURES", hot:true, color:C.red  },
+  { id:"l1", name:"Roosta Popper 105",      desc:"Surface carnage. Barra magnet.",              price:"$34.95", category:"LURES", hot:true, color:C.red  },
+  { id:"l2", name:"Halco Sorcerer 150DD",   desc:"Deep-diving bibbed minnow destroyer.",        price:"$28.95", category:"LURES",           color:C.pink },
+  { id:"l3", name:"OSP Bent Minnow 130",    desc:"Subsurface jerkbait — irresistible twitch.",  price:"$42.00", category:"LURES", hot:true, color:C.gold },
+  { id:"l4", name:"Storm 65 Twitchbait",    desc:"Slow-sink rattler for timber structure.",     price:"$19.95", category:"LURES",           color:C.red  },
+  { id:"l5", name:"Zerek Fish Trap 95",     desc:"Paddle-tail soft plastic on jig head.",      price:"$14.99", category:"LURES",           color:C.pink },
+  { id:"l6", name:"Lucky Craft PT 75",      desc:"Walk-the-dog topwater pencil bait.",         price:"$38.50", category:"LURES",           color:C.gold },
+  { id:"l7", name:"Rapala X-Rap 10",        desc:"Aggressive slash-bait, mid-water column.",   price:"$24.95", category:"LURES", hot:true, color:C.red  },
 
   // ── Rods ─────────────────────────────────────────────────────────────────
-  { id:"r1", name:"Daiwa Tatula 7'4\" MH",  desc:"Barra casting specialist, fast action.",  price:"$249.00", emoji:"🎯", category:"RODS", hot:true, color:C.red  },
-  { id:"r2", name:"Shimano Expride 7'6\"",  desc:"Jerkbait & heavy lure precision rod.",    price:"$319.00", emoji:"🎯", category:"RODS",           color:C.gold },
-  { id:"r3", name:"Berkley Sick Stick 7'",  desc:"Medium-heavy NT all-rounder.",            price:"$179.95", emoji:"🎯", category:"RODS",           color:C.pink },
-  { id:"r4", name:"Nomad Tidal 7'2\" H",    desc:"Brutal power for big structure barra.",   price:"$299.00", emoji:"🎯", category:"RODS", hot:true, color:C.red  },
+  { id:"r1", name:"Daiwa Tatula 7'4\" MH",  desc:"Barra casting specialist, fast action.",     price:"$249.00", category:"RODS", hot:true, color:C.red  },
+  { id:"r2", name:"Shimano Expride 7'6\"",  desc:"Jerkbait & heavy lure precision rod.",       price:"$319.00", category:"RODS",            color:C.gold },
+  { id:"r3", name:"Berkley Sick Stick 7'",  desc:"Medium-heavy NT all-rounder.",               price:"$179.95", category:"RODS",            color:C.pink },
+  { id:"r4", name:"Nomad Tidal 7'2\" H",    desc:"Brutal power for big structure barra.",      price:"$299.00", category:"RODS", hot:true, color:C.red  },
 
   // ── Reels ─────────────────────────────────────────────────────────────────
-  { id:"re1", name:"Shimano Curado 200 DC", desc:"Digital cast control — zero backlash.",   price:"$399.00", emoji:"⚙️", category:"REELS", hot:true, color:C.gold },
-  { id:"re2", name:"Daiwa Steez CT SV TW",  desc:"Low-profile, lightning-fast retrieve.",   price:"$549.00", emoji:"⚙️", category:"REELS",           color:C.red  },
-  { id:"re3", name:"Abu Garcia Revo Beast", desc:"Max drag for big fish in heavy cover.",   price:"$299.00", emoji:"⚙️", category:"REELS",           color:C.pink },
-  { id:"re4", name:"Shimano SLX DC 150",    desc:"Budget digital control, no compromise.",  price:"$229.00", emoji:"⚙️", category:"REELS", hot:true, color:C.gold },
+  { id:"re1", name:"Shimano Curado 200 DC", desc:"Digital cast control — zero backlash.",      price:"$399.00", category:"REELS", hot:true, color:C.gold },
+  { id:"re2", name:"Daiwa Steez CT SV TW",  desc:"Low-profile, lightning-fast retrieve.",      price:"$549.00", category:"REELS",            color:C.red  },
+  { id:"re3", name:"Abu Garcia Revo Beast", desc:"Max drag for big fish in heavy cover.",      price:"$299.00", category:"REELS",            color:C.pink },
+  { id:"re4", name:"Shimano SLX DC 150",    desc:"Budget digital control, no compromise.",     price:"$229.00", category:"REELS", hot:true, color:C.gold },
 
   // ── Line ──────────────────────────────────────────────────────────────────
-  { id:"ln1", name:"Sunline PE Braid 50lb", desc:"Zero stretch, high-vis green. Boss braid.", price:"$64.95", emoji:"〰️", category:"LINE", hot:true, color:C.red  },
-  { id:"ln2", name:"Seaguar Fluoro 60lb",   desc:"Tough invisible leader for structure.",   price:"$49.95", emoji:"〰️", category:"LINE",            color:C.gold },
-  { id:"ln3", name:"PowerPro Super 8 40lb", desc:"8-carrier ultra-smooth casting braid.",   price:"$54.95", emoji:"〰️", category:"LINE",            color:C.pink },
-  { id:"ln4", name:"Unitika Gyogun 80lb",   desc:"Heavy leader for XL barra season.",       price:"$39.95", emoji:"〰️", category:"LINE", hot:true,  color:C.red  },
+  { id:"ln1", name:"Sunline PE Braid 50lb", desc:"Zero stretch, high-vis green. Boss braid.",  price:"$64.95", category:"LINE", hot:true, color:C.red  },
+  { id:"ln2", name:"Seaguar Fluoro 60lb",   desc:"Tough invisible leader for structure.",      price:"$49.95", category:"LINE",            color:C.gold },
+  { id:"ln3", name:"PowerPro Super 8 40lb", desc:"8-carrier ultra-smooth casting braid.",      price:"$54.95", category:"LINE",            color:C.pink },
+  { id:"ln4", name:"Unitika Gyogun 80lb",   desc:"Heavy leader for XL barra season.",          price:"$39.95", category:"LINE", hot:true,  color:C.red  },
 
-  // ── Buffs (shirts) ────────────────────────────────────────────────────────
-  { id:"b1", name:"Barra Hunter Boof",      desc:"UV-block cooling neck gaiter. Croc red.",   price:"$39.95", emoji:"👕", category:"BUFFS", hot:true, color:C.red  },
-  { id:"b2", name:"Territory Tough Boof",   desc:"Crimson & gold — 100% UV50+ shield.",       price:"$39.95", emoji:"👕", category:"BUFFS",           color:C.gold },
-  { id:"b3", name:"Sunrise Session Boof",   desc:"Pink & gold NT sunrise print. Unisex.",     price:"$39.95", emoji:"👕", category:"BUFFS",           color:C.pink },
-  { id:"b4", name:"Stealth Barra Boof",     desc:"Tactical black-on-black NT design.",         price:"$39.95", emoji:"👕", category:"BUFFS", hot:true, color:C.red  },
-  { id:"b5", name:"Barramundi Nation Boof", desc:"Full-sublimation trophy barra art.",         price:"$44.95", emoji:"👕", category:"BUFFS",           color:C.gold },
+  // ── Buffs (neck gaiters) ──────────────────────────────────────────────────
+  { id:"b1", name:"Barra Hunter Boof",      desc:"UV-block cooling neck gaiter. Croc red.",    price:"$39.95", category:"BUFFS", hot:true, color:C.red  },
+  { id:"b2", name:"Territory Tough Boof",   desc:"Crimson & gold — 100% UV50+ shield.",        price:"$39.95", category:"BUFFS",           color:C.gold },
+  { id:"b3", name:"Sunrise Session Boof",   desc:"Pink & gold NT sunrise print. Unisex.",      price:"$39.95", category:"BUFFS",           color:C.pink },
+  { id:"b4", name:"Stealth Barra Boof",     desc:"Tactical black-on-black NT design.",          price:"$39.95", category:"BUFFS", hot:true, color:C.red  },
+  { id:"b5", name:"Barramundi Nation Boof", desc:"Full-sublimation trophy barra art.",          price:"$44.95", category:"BUFFS",           color:C.gold },
 
   // ── Hats ─────────────────────────────────────────────────────────────────
-  { id:"h1", name:"Savage Barra Nation Cap",       desc:"Embroidered gold barra. Snapback.",         price:"$49.95", emoji:"🧢", category:"HATS", hot:true, color:C.gold },
-  { id:"h2", name:"Wide-Brim NT Hat",       desc:"360° sun protection for all-day sessions.", price:"$59.95", emoji:"🧢", category:"HATS",            color:C.red  },
-  { id:"h3", name:"Buff Trucker Cap",       desc:"Mesh back, hot pink barra print.",          price:"$44.95", emoji:"🧢", category:"HATS",            color:C.pink },
-  { id:"h4", name:"Hookvision Low-Crown",   desc:"Structured low-crown in crimson/gold.",     price:"$54.95", emoji:"🧢", category:"HATS", hot:true,  color:C.gold },
+  { id:"h1", name:"Savage Barra Nation Cap", desc:"Embroidered gold barra. Snapback.",         price:"$49.95", category:"HATS", hot:true, color:C.gold },
+  { id:"h2", name:"Wide-Brim NT Hat",        desc:"360° sun protection for all-day sessions.", price:"$59.95", category:"HATS",            color:C.red  },
+  { id:"h3", name:"Buff Trucker Cap",        desc:"Mesh back, hot pink barra print.",          price:"$44.95", category:"HATS",            color:C.pink },
+  { id:"h4", name:"Hookvision Low-Crown",    desc:"Structured low-crown in crimson/gold.",     price:"$54.95", category:"HATS", hot:true,  color:C.gold },
 ];
 
 const CATS: { key: Category; label: string; color: string }[] = [
@@ -104,16 +135,13 @@ export default function BuffScreen() {
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   const botPad = Platform.OS === "web" ? 80 : insets.bottom + 70;
 
-  const filtered = cat === "ALL" ? PRODUCTS : PRODUCTS.filter((p) => p.category === cat);
-
-  // Group by category for ALL view
   const sections =
     cat === "ALL"
       ? (["LURES","RODS","REELS","LINE","BUFFS","HATS"] as Category[]).map((k) => ({
           key: k,
           items: PRODUCTS.filter((p) => p.category === k),
         }))
-      : [{ key: cat, items: filtered }];
+      : [{ key: cat, items: PRODUCTS.filter((p) => p.category === cat) }];
 
   return (
     <View style={[styles.bg, { paddingTop: topPad }]}>
@@ -170,7 +198,6 @@ export default function BuffScreen() {
       >
         {sections.map((sec) => (
           <View key={sec.key}>
-            {/* Section header */}
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionBar, { backgroundColor: CATS.find(c=>c.key===sec.key)?.color ?? C.red }]} />
               <Text style={styles.sectionTitle}>{SECTION_TITLES[sec.key]}</Text>
@@ -179,19 +206,21 @@ export default function BuffScreen() {
               </Text>
             </View>
 
-            {/* Cards */}
             {sec.items.map((p) => (
               <TouchableOpacity
                 key={p.id}
                 style={[styles.card, { borderColor: p.color + "55" }]}
-                activeOpacity={0.85}
+                activeOpacity={0.82}
               >
-                {/* Left color bar */}
-                <View style={[styles.cardBar, { backgroundColor: p.color }]} />
-
-                {/* Emoji icon */}
-                <View style={[styles.iconWrap, { backgroundColor: p.color + "22" }]}>
-                  <Text style={styles.iconEmoji}>{p.emoji}</Text>
+                {/* Product image */}
+                <View style={[styles.imgWrap, { borderColor: p.color + "40" }]}>
+                  <Image
+                    source={PRODUCT_IMAGES[p.id]}
+                    style={styles.img}
+                    resizeMode="cover"
+                  />
+                  {/* Colour tint overlay at bottom */}
+                  <View style={[styles.imgOverlay, { backgroundColor: p.color + "18" }]} />
                 </View>
 
                 {/* Info */}
@@ -204,19 +233,16 @@ export default function BuffScreen() {
                       </View>
                     )}
                   </View>
-                  <Text style={styles.cardDesc} numberOfLines={1}>{p.desc}</Text>
-                </View>
-
-                {/* Price */}
-                <View style={[styles.priceBadge, { borderColor: p.color + "66" }]}>
-                  <Text style={[styles.priceText, { color: p.color }]}>{p.price}</Text>
+                  <Text style={styles.cardDesc} numberOfLines={2}>{p.desc}</Text>
+                  <View style={[styles.pricePill, { borderColor: p.color + "80", backgroundColor: p.color + "15" }]}>
+                    <Text style={[styles.priceText, { color: p.color }]}>{p.price}</Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             ))}
           </View>
         ))}
 
-        {/* Footer flame */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>🔥 HOOKVISION BOOF GEAR 🔥</Text>
           <Text style={styles.footerSub}>NT's most dangerous tackle store</Text>
@@ -264,32 +290,42 @@ const styles = StyleSheet.create({
 
   // ── Card ──
   card: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    marginHorizontal: 12, marginBottom: 8,
-    backgroundColor: C.card, borderRadius: 14, borderWidth: 1,
+    flexDirection: "row", alignItems: "stretch",
+    marginHorizontal: 12, marginBottom: 10,
+    backgroundColor: C.card, borderRadius: 16, borderWidth: 1,
+    overflow: "hidden",
+    minHeight: 96,
+  },
+  imgWrap: {
+    width: 96, borderRightWidth: 1,
+    position: "relative",
     overflow: "hidden",
   },
-  cardBar: { width: 5, alignSelf: "stretch" },
-  iconWrap: {
-    width: 52, height: 52, borderRadius: 10,
-    alignItems: "center", justifyContent: "center",
-    marginVertical: 10,
+  img: {
+    width: 96, height: "100%",
+    minHeight: 96,
   },
-  iconEmoji: { fontSize: 26 },
-  cardInfo: { flex: 1, paddingVertical: 12, gap: 3 },
-  cardNameRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  imgOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  cardInfo: {
+    flex: 1, paddingHorizontal: 14, paddingVertical: 12,
+    justifyContent: "space-between",
+  },
+  cardNameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   cardName: { fontSize: 14, fontFamily: "Inter_700Bold", color: C.white, flex: 1 },
-  cardDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: C.muted },
-  hotBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
+  cardDesc: { fontSize: 11, fontFamily: "Inter_400Regular", color: C.muted, marginTop: 3, lineHeight: 16 },
+  hotBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, flexShrink: 0 },
   hotText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 1 },
-  priceBadge: {
-    marginRight: 12, paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: 8, borderWidth: 1.5,
+  pricePill: {
+    alignSelf: "flex-start", marginTop: 8,
+    paddingHorizontal: 12, paddingVertical: 5,
+    borderRadius: 20, borderWidth: 1.5,
   },
-  priceText: { fontSize: 13, fontFamily: "Oswald_700Bold", letterSpacing: 0.5 },
+  priceText: { fontSize: 14, fontFamily: "Oswald_700Bold", letterSpacing: 0.5 },
 
   // ── Footer ──
-  footer: { alignItems: "center", paddingVertical: 24, gap: 4 },
+  footer: { alignItems: "center", paddingVertical: 28, gap: 4 },
   footerText: { fontSize: 14, fontFamily: "Oswald_700Bold", color: C.gold, letterSpacing: 2 },
   footerSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: C.muted },
 });
