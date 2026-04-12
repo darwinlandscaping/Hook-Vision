@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getConditionsContext } from "../lib/dailyBriefing";
-import { getDemoRefs } from "../lib/demoReference";
 
 const router = Router();
 
@@ -112,22 +111,24 @@ Return ONLY valid JSON — no markdown fences, no explanation, no surrounding te
   "structure": "hard rocky rubble",
   "crocAlert": false,
   "crocWarning": null,
-  "archReasoning": "Sentence 1: brightness tier observed and which species it includes/excludes. Sentence 2: exact depth from scale and which species match/are eliminated. Sentence 3: bottom type, position, schooling pattern — confirms final ID and rules out alternatives."
+  "archReasoning": "Sentence 1: brightness tier and depth zone — species included/excluded. Sentence 2: position and bottom type — final ID confirmed."
 }`;
 
-const ANALYSIS_STEP_PROMPT = `You are reading the sonar image below. Apply these 6 steps in order, then output JSON only:
+const ANALYSIS_STEP_PROMPT = `Analyse the sonar image. Apply steps in order, output JSON only.
 
-STEP 1 — SONAR BRAND: Identify brand from UI chrome, colour palette, bezel style. Circular flasher wheel on left = Humminbird split-screen.
-STEP 2 — BRIGHTNESS TIER: Are arches deep red/orange (Tier 1), yellow/green (Tier 2), or dim/invisible (Tier 3)? Tier eliminates most wrong species immediately.
-STEP 3 — DEPTH: Read the depth scale carefully. Exact depth of arches in metres. Eliminate species outside that depth zone.
-STEP 4 — SHADOW CHECK: Is there a dark void/shadow directly BELOW any arch? Shadow = barra or large physostomous predator, 90%+ confidence.
-STEP 5 — POSITION + BOTTOM: Are arches ON hard structure (barra/jack), floating 1–4m ABOVE ragged rubble (fingermark), mid-column over soft bottom (thready), or embedded IN structure echo (jack)?
-STEP 6 — FINAL ID: Apply species signatures. The 3 most common confusions to avoid:
-  • Barra vs Fingermark: barra sits ON structure; fingermark floats ABOVE rocky rubble in a school.
-  • Barra vs Jack: jack arch is buried IN the structure echo; barra arch sits on top cleanly.
-  • Thready vs Barra: thready is mid-column over SOFT bottom, NOT on structure; barra is on structure or has shadow.
+CALIBRATION CONTEXT (text only — apply these ID rules):
+Demo A: Lowrance HDS Live — 3 Barramundi at 5.2m, thick bright red/orange arches sitting ON hard bottom structure.
+Demo B: Humminbird HELIX 10 — Fingermark school at 8m, clean medium arches floating ABOVE ragged rocky rubble, NOT touching bottom.
+Demo C: Humminbird split-screen — 5–6 Barramundi mid-column, each arch has a clear DARK SHADOW void beneath it.
+Rule: thick arch ON hard structure = barra; school above rocky rubble = fingermark; arch with shadow mid-column = barra chasing bait.
 
-Output ONLY the JSON object. No text before or after.`;
+STEPS:
+1. BRAND: UI chrome, palette, bezel. Circular flasher wheel on left = Humminbird split-screen.
+2. TIER: red/orange arch = Tier 1 (barra/fingermark/jack); yellow/green = Tier 2; faint/invisible = Tier 3.
+3. DEPTH: read scale exactly. Eliminate species outside that zone.
+4. SHADOW: dark void BELOW arch = barra/big predator 90%+.
+5. POSITION: ON hard structure (barra/jack) | floating 1–4m ABOVE rubble (fingermark) | mid-column soft bottom (thready) | buried IN echo (jack).
+6. FINAL ID: apply species signatures. Output ONLY the JSON object.`;
 
 router.post("/analyze", async (req, res) => {
   const { imageBase64 } = req.body as { imageBase64?: string };
@@ -138,65 +139,19 @@ router.post("/analyze", async (req, res) => {
   }
 
   try {
-    // Build reference image content blocks from the preloaded demo library.
-    // These let GPT directly compare the unknown scan against known labeled examples.
-    const demoRefs = getDemoRefs();
-    type ContentBlock =
-      | { type: "text"; text: string }
-      | { type: "image_url"; image_url: { url: string; detail: "high" | "low" | "auto" } };
-
-    // Send only the 3 most critical calibration demos (1=barra estuarine,
-    // 3=fingermark rocky reef, 5=barra mid-water with shadows).
-    // Use detail:"low" — 85 tokens/image vs ~1100 tokens/image at "high".
-    // This cuts reference-image token cost from ~5500 to ~255 tokens.
-    const KEY_DEMOS = [1, 3, 5];
-    const keyRefs = demoRefs.filter((r) => KEY_DEMOS.includes(r.num));
-
-    const referenceBlocks: ContentBlock[] = [];
-    if (keyRefs.length > 0) {
-      referenceBlocks.push({
-        type: "text",
-        text: `VISUAL REFERENCE LIBRARY — ${keyRefs.length} KEY CALIBRATION EXAMPLES
-Study each labeled image then analyse the unknown scan below.`,
-      });
-      for (const ref of keyRefs) {
-        referenceBlocks.push(
-          {
-            type: "image_url",
-            image_url: {
-              url: `data:image/png;base64,${ref.base64}`,
-              detail: "low",           // ← was "high" — 13× fewer tokens
-            },
-          },
-          { type: "text", text: ref.label }
-        );
-      }
-      referenceBlocks.push({
-        type: "text",
-        text: `END OF REFERENCES. Now analyse the UNKNOWN IMAGE below.`,
-      });
-    }
-
     const condCtx = getConditionsContext();
     const analysisPrompt = `${condCtx ? condCtx + "\n\n" : ""}${ANALYSIS_STEP_PROMPT}`;
 
     // ── Streaming OpenAI call ─────────────────────────────────────────────
+    // Reference images removed — calibration context is now text-only in the
+    // analysis prompt. This eliminates ~150–500KB of upload payload and
+    // ~255 tokens of processing overhead per request, targeting <3s total.
     const stream = await openai.chat.completions.create({
       model: "gpt-4.1",
-      max_completion_tokens: 750,
+      max_completion_tokens: 400,
       stream: true,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        ...(referenceBlocks.length > 0
-          ? [
-              { role: 'user' as const, content: referenceBlocks },
-              {
-                role: 'assistant' as const,
-                content:
-                  'Reference library received. Demo 1 (Lowrance HDS Live) = 3 Barramundi at 5.2m, thick bright arches ON hard bottom. Demo 3 (Humminbird HELIX 10) = Fingermark at 8m, clean arch ABOVE rocky rubble. Demo 5 (Humminbird split-screen) = 5-6 Barramundi mid-column, each arch has clear DARK SHADOW beneath it. Key: thick arch ON hard estuarine structure = barra; school of medium arches above rocky rubble = fingermark; arch with shadow mid-column = barra chasing bait.',
-              },
-            ]
-          : []),
         {
           role: 'user',
           content: [
