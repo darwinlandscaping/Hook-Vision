@@ -252,6 +252,42 @@ uri = "file://artifacts/hookvision/assets/images/store/h4-hookvision-cap.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "7AIFErdXV7pB1M-HSVTOq"
+uri = "file://artifacts/hookvision/assets/images/store/op1-moment-cpl.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "WWV0zJfLdkOzcaEt5pifj"
+uri = "file://artifacts/hookvision/assets/images/store/op2-sandmarc-polariser.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "BGM08AyQuurWSBv3aIE8Z"
+uri = "file://artifacts/hookvision/assets/images/store/op3-xenvo-kit.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ojFwQv_xCwz68JEWdWMZ3"
+uri = "file://artifacts/hookvision/assets/images/store/op4-phone-shade.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kNw7HcbKn7REKXRgjqtFG"
+uri = "file://artifacts/hookvision/assets/images/store/op5-neewer-cpl.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "MWvd6rspT-7k6PKkqo9CO"
+uri = "file://artifacts/hookvision/assets/images/store/op6-antiglare-film.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "56ji2_AK1cz0SSgKggKpF"
 uri = "file://hookvision-qr.png"

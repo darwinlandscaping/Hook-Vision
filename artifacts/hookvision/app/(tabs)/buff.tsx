@@ -26,7 +26,7 @@ const C = {
 
 const EXPAND_SECS = 5;
 
-type Category = "ALL" | "LURES" | "RODS" | "REELS" | "LINE" | "BUFFS" | "HATS";
+type Category = "ALL" | "LURES" | "RODS" | "REELS" | "LINE" | "BUFFS" | "HATS" | "OPTICS";
 
 interface Product {
   id: string;
@@ -68,6 +68,12 @@ const PRODUCT_IMAGES: Record<string, any> = {
   h2:  require("../../assets/images/store/h2-wide-brim.png"),
   h3:  require("../../assets/images/store/h3-trucker-cap.png"),
   h4:  require("../../assets/images/store/h4-hookvision-cap.png"),
+  op1: require("../../assets/images/store/op1-moment-cpl.png"),
+  op2: require("../../assets/images/store/op2-sandmarc-polariser.png"),
+  op3: require("../../assets/images/store/op3-xenvo-kit.png"),
+  op4: require("../../assets/images/store/op4-phone-shade.png"),
+  op5: require("../../assets/images/store/op5-neewer-cpl.png"),
+  op6: require("../../assets/images/store/op6-antiglare-film.png"),
 };
 
 const PRODUCTS: Product[] = [
@@ -104,6 +110,13 @@ const PRODUCTS: Product[] = [
   { id:"h2", name:"Wide-Brim NT Hat",        desc:"360-degree sun protection for all-day sessions. Breathable UPF50+ fabric. Works the flats, the boat, and the bank.", price:"$59.95", category:"HATS",            color:C.red  },
   { id:"h3", name:"Buff Trucker Cap",        desc:"Mesh-back trucker cap with hot pink barramundi print. Light, breathable, and unmistakably NT fishing culture.",          price:"$44.95", category:"HATS",            color:C.pink },
   { id:"h4", name:"Hookvision Low-Crown",    desc:"Structured low-crown in crimson and gold. The official cap of the HookVision faithful. Limited seasonal run.",     price:"$54.95", category:"HATS", hot:true,  color:C.gold },
+
+  { id:"op1", name:"Moment CPL Mobile Lens",    desc:"Circular polarising clip-on for any phone. Cuts glare off sonar screens and water surface. Rotate the ring to dial out reflections instantly — sonar colours pop like never before.", price:"$89.95", category:"OPTICS", hot:true,  color:C.gold },
+  { id:"op2", name:"Sandmarc Polariser 58mm",   desc:"Premium universal CPL clip lens. Aircraft-grade aluminium housing, multi-coated HD glass. Eliminates reflected glare from fish finder screens so the AI scan reads clean every time.", price:"$69.95", category:"OPTICS",           color:C.pink },
+  { id:"op3", name:"Xenvo Pro Lens Kit CPL",    desc:"Dual lens set: CPL polariser + wide angle. Captures the full sonar display in one shot without stepping back. Includes hard-shell carry case and clip mount.",                        price:"$79.95", category:"OPTICS", hot:true,  color:C.red  },
+  { id:"op4", name:"Phone Screen Shade Hood",   desc:"Collapsible foam sunshade that clips around your phone. Blocks direct NT sun from washing out sonar screens on the boat. Folds flat in seconds, fits phones up to 7 inches.",          price:"$34.95", category:"OPTICS",           color:C.gold },
+  { id:"op5", name:"Neewer CPL Clip 18mm",      desc:"Budget-friendly circular polariser for tablets and large-screen phones. Rotatable glass element, rubber no-scratch clamp. Get cleaner sonar grabs without spending big.",              price:"$29.95", category:"OPTICS",           color:C.pink },
+  { id:"op6", name:"Matte Anti-Glare Film",     desc:"Cut-to-size matte screen film for your capture device. Kills mirror reflections and fingerprint smear without losing screen brightness. The easiest glare fix money can buy.",         price:"$19.95", category:"OPTICS",           color:C.red  },
 ];
 
 const CATS: { key: Category; label: string; color: string }[] = [
@@ -113,7 +126,8 @@ const CATS: { key: Category; label: string; color: string }[] = [
   { key:"REELS", label:"⚙️ REELS",  color:C.gold },
   { key:"LINE",  label:"〰️ LINE",   color:C.pink },
   { key:"BUFFS", label:"👕 BOOFS",   color:C.red  },
-  { key:"HATS",  label:"🧢 HATS",    color:C.gold },
+  { key:"HATS",   label:"🧢 HATS",    color:C.gold },
+  { key:"OPTICS", label:"🔭 OPTICS",  color:C.gold },
 ];
 
 const SECTION_TITLES: Record<Category, string> = {
@@ -123,7 +137,8 @@ const SECTION_TITLES: Record<Category, string> = {
   REELS: "PRECISION REELS",
   LINE:  "LINE & LEADER",
   BUFFS: "BOOF APPAREL",
-  HATS:  "HEADWEAR",
+  HATS:   "HEADWEAR",
+  OPTICS: "VISION ENHANCERS",
 };
 
 // ─── Animated product card ────────────────────────────────────────────────────
@@ -287,7 +302,7 @@ export default function BuffScreen() {
 
   const sections =
     cat === "ALL"
-      ? (["LURES","RODS","REELS","LINE","BUFFS","HATS"] as Category[]).map((k) => ({
+      ? (["LURES","RODS","REELS","LINE","BUFFS","HATS","OPTICS"] as Category[]).map((k) => ({
           key: k,
           items: PRODUCTS.filter((p) => p.category === k),
         }))
