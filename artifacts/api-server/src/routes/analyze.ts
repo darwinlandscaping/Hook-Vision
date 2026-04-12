@@ -111,6 +111,38 @@ Models: Zeus3S, Vulcan series. Similar to Simrad (same parent).
 - **Game fish**: Clean, distinct individual arches separated from each other. Larger and brighter than surrounding baitfish marks.
 - **Mixed school**: Baitfish cloud with occasional larger bright arches at the edges or below = predator feeding situation — CAST NOW.
 
+#### SONAR SHADOW (ACOUSTIC SHADOW) — CRITICAL IDENTIFICATION TOOL
+
+> A sonar shadow in **2D sonar** is the dark/void zone that appears **directly BELOW a fish arch**. It forms because the fish's solid body (especially the swim bladder) reflects the sonar beam upward, preventing the signal from passing through the fish to anything beneath it. This creates a "dead zone" — a darker, emptier patch below the arch.
+
+**Why sonar shadows matter:**
+- Shadow present below an arch = the fish is a **large, solid-bodied species** with a significant swim bladder — definitively a big fish (barramundi, jewfish, fingermark, large GT)
+- Shadow SIZE (how dark and deep the void is) is proportional to fish body mass. **Bigger shadow = bigger fish.**
+- Small fish (baitfish, thin-bodied species) produce **NO visible shadow** — they are not solid enough to block the beam
+- Threadfin Salmon produce small or partial shadows (medium swim bladder). A shadow that's noticeably smaller/lighter than the arch = medium fish
+- **Barramundi produce the LARGEST shadows** in NT freshwater/estuarine sonar — their physostomous swim bladder is massive. If you see a deep, dark, wide void under an arch, it is almost certainly a barra or large jewfish
+
+**What the shadow looks like in 2D sonar:**
+- Appears as a DARKER (blue/black/void) zone directly beneath the bright arch
+- The shadow zone sits between the bottom of the arch curve and the actual bottom echo
+- It looks like a "hollow" or "dip" in the colour gradient immediately below the arch
+- In the Humminbird Demo 5 image: each of the 5–6 enormous orange arches has a visible darker zone beneath it — THESE ARE BARRA SHADOWS
+- On Lowrance: shadow appears as a darker blue/green void below the orange arch
+- On Garmin: darker teal/blue void below the bright white/aqua arch
+- On Humminbird: darker blue-black void below the deep orange arch
+
+**Shadow vs No Shadow — The Species Test:**
+| Shadow Present? | Shadow Size | Species Probability |
+|---|---|---|
+| NO shadow visible | n/a | Baitfish, threadfin (small), mullet — discard as big predator |
+| YES — faint/small shadow | Small void | Threadfin Salmon, juvenile barra, medium fingermark |
+| YES — clear/medium shadow | Medium void | Good-sized fingermark, mangrove jack, large threadfin |
+| YES — DEEP/WIDE/DARK shadow | Large void | **BARRAMUNDI**, large jewfish, trophy fingermark — ID with 85%+ confidence |
+
+**IMPORTANT**: When you see an arch WITH a clear shadow below it in 2D sonar, always note it. This is a definitive large-fish confirmation.
+
+---
+
 #### DOWN IMAGING / DOWNSCAN READING
 - Shows a near-photographic slice of what is DIRECTLY beneath the boat.
 - Fish appear as **bright horizontal streaks with a shadow BELOW** them (not arches).
@@ -123,12 +155,13 @@ Models: Zeus3S, Vulcan series. Similar to Simrad (same parent).
 - Distance from centre line = how far the fish is from the boat.
 - Use Side Imaging for SCOUTING wide areas quickly; use 2D for targeting specific fish.
 
-#### 5 EXPERT RULES FOR ACCURATE ANALYSIS
+#### 6 EXPERT RULES FOR ACCURATE ANALYSIS
 1. **Arch thickness = size** — ignore arch length completely when judging fish size.
 2. **Gap from bottom = feeding posture** — a feeding fish has lifted off the bottom slightly.
 3. **Bait cloud + nearby arches = predator feeding** — always note bait-predator combos.
 4. **Double echo bottom = hardest substrate = best structure** — rock, bedrock, concrete.
 5. **Fish ID mode can misidentify debris, jigs, and weed as fish** — always analyse raw arches, not Fish ID icons.
+6. **SHADOW below an arch = large solid fish** — a dark void directly beneath the arch confirms a big-bodied fish with a large swim bladder. Deep/wide shadow = barramundi. No shadow = small fish or baitfish. Always look for shadows.
 
 #### SONAR FREQUENCY IMPACT ON WHAT YOU SEE
 - **Low frequency (50–83 kHz)**: Wider cone, deeper penetration, less detail. Fish arches may be wider/fuzzier but cover more area. Use for deep water (>20m).
@@ -311,6 +344,7 @@ Reading what's happening INSIDE and AROUND a bait school is one of the most adva
 7. **Multiples**: Multiple large bright arches at same depth near structure = barra school. This is gold — they're all there together.
 8. **On DownScan/DI**: Horizontal bright streak with a shadow below. Very defined edges. Shadow tells you the fish is off the bottom.
 9. **After heavy rain**: Barra move shallower (1–5m) and into freshwater inflows. Arch position moves higher on screen.
+10. **⚠️ SHADOW DETECTION — KEY BARRA IDENTIFIER**: A barramundi's physostomous swim bladder is one of the largest and most reflective swim bladders in NT waters. In 2D sonar, this creates a **distinct DARK VOID / SHADOW directly BELOW the arch**. Look for: a darker blue/black zone beneath the peak of the arch before the next mark or the bottom echo. This shadow is the dead zone where the barra's body blocked the sonar beam from penetrating further. **If you see an arch WITH a clear dark shadow beneath it → barramundi or very large fish. Confidence jumps to 90%+.** In open water (not on structure), barra mid-column with shadows = active feeding fish chasing bait — cast immediately with a mid-water lure.
 
 ### How to Distinguish Barra from Other Species
 - vs Threadfin: Barra arch is ON the structure echo. Threadfin arch is mid-column, away from hard structure.
@@ -603,19 +637,21 @@ Compare its arch characteristics, bottom type, and fish position against the ref
 
     const analysisPrompt = `${getConditionsContext() ? getConditionsContext() + "\n\n" : ""}UNKNOWN SONAR IMAGE — IDENTIFY AND ANALYSE:
 
-Apply this exact 12-step reasoning sequence:
-1. SONAR BRAND: Identify brand/model from UI chrome, colour palette, layout. Compare UI style against the reference images above.
+Apply this exact 13-step reasoning sequence:
+1. SONAR BRAND: Identify brand/model from UI chrome, colour palette, layout. Compare UI style against the reference images above. Is there a circular flasher wheel on the left? That is Humminbird split-screen.
 2. SCREEN TYPE: 2D traditional sonar, DownScan/Down Imaging, SideImaging, or split-screen?
 3. BOTTOM: Hard or soft? Thickness + colour + double echo = rock/bedrock. Fuzzy/thin = mud/sand. Ragged = reef.
 4. STRUCTURE: Any snags, timber, pylons, rock bars, ledges visible rising from bottom?
 5. ARCH ANALYSIS: Count distinct arches. Judge THICKNESS (vertical height = size). Check COLOUR BRIGHTNESS. Gap from bottom = active; merged = lethargic.
-6. POSITION: Arches ON hard structure (barra/jack) | above rocky reef (fingermark) | mid-column over soft bottom (thready) | near surface (croc check)?
+5b. SHADOW CHECK ⚠️ CRITICAL: Look DIRECTLY BELOW each arch for a dark void/shadow zone. A shadow beneath an arch = large solid fish with big swim bladder. The DARKER and WIDER the shadow zone beneath the arch, the BIGGER the fish. Clearly visible shadow → barramundi or large predator (90%+ confidence). If you see thick bright arches with obvious dark voids below them (like the Humminbird Demo 5 reference image), these ARE barramundi. No shadow = small fish/baitfish. Always explicitly note shadow presence in your species reasoning.
+6. POSITION: Arches ON hard structure (barra/jack) | above rocky reef (fingermark) | mid-column over soft bottom with shadows (barra chasing bait) | near surface (croc check)?
 7. SCHOOL vs SINGLES: Bait cloud or individual arches? Predator arches at edge of bait ball?
 8. TIDAL READ: Arches lifted with gap (tide running, active) or merged with bottom (slack tide, resting)?
 9. TURBIDITY: Sediment haze through water column?
 10. CROC CHECK: Any large SOLID DENSE elongated blob in the top 3m? If yes → crocAlert=true.
-11. SPECIES ID: Match all clues to species reference table AND compare visual pattern to the labeled reference images above.
+11. SPECIES ID: Match all clues to species reference table AND compare visual pattern to the labeled reference images above. Did the shadow check confirm large fish?
 12. LURE & TECHNIQUE: Match to fish activity, depth, and structure.
+13. CONFIDENCE CHECK: Does the shadow analysis support or change the species ID? Shadow present + thick bright arch = barra confidence should be ≥85%.
 
 Return ONLY the raw JSON object.`;
 
@@ -637,7 +673,7 @@ Return ONLY the raw JSON object.`;
               {
                 role: "assistant" as const,
                 content:
-                  "Reference library received and studied. I have memorised all 5 labeled sonar examples:\n\nDemo 1 (Lowrance HDS Live) = 3 Barramundi at 5.2m — thick bright orange arches sitting ON hard bottom structure. Full U-shape arches, clearly individual fish.\n\nDemo 2 (Garmin ECHOMAP UHD) = Threadfin Salmon school at 3.1m — multiple arches MID-WATER COLUMN over SOFT muddy bottom. Fish are NOT on structure. Thinner, smaller arches than barra.\n\nDemo 3 (Humminbird HELIX 10) = Single trophy Barramundi at 8m — ONE massive, very THICK arch directly on hard structure. The vertical height of this arch is exceptional — big fish.\n\nDemo 4 (Simrad GO9 XSE) = Dual-layer multi-species — baitfish cloud upper layer, larger predator arches in deeper layer near structure.\n\nDemo 5 (Humminbird HELIX/SOLIX Split-Screen) = 5–6 Barramundi mid-column in 34.5ft open water over SOFT sandy bottom. The LEFT side shows the circular flasher wheel with spike returns. The RIGHT side shows 5–6 ENORMOUS thick orange/red U-shaped arches at various depths — these are the biggest, brightest arches in the library. NOT on hard structure — barra suspending/chasing bait in open water. 68.2°F water temp. This is what a full barra blitz looks like on Humminbird split-screen.\n\nKey calibration notes: (1) Arch thickness = fish size. Fat arch = big barra. Thin arch = small fish. (2) Position ON hard structure = barra/jack. Mid-column over soft bottom = threadfin. (3) Humminbird split-screen has the circular flasher wheel on the left — unique identifier. Ready to analyse the unknown image.",
+                  "Reference library received and studied. I have memorised all 5 labeled sonar examples:\n\nDemo 1 (Lowrance HDS Live) = 3 Barramundi at 5.2m — thick bright orange arches sitting ON hard bottom structure. Full U-shape arches, clearly individual fish.\n\nDemo 2 (Garmin ECHOMAP UHD) = Threadfin Salmon school at 3.1m — multiple arches MID-WATER COLUMN over SOFT muddy bottom. Fish are NOT on structure. Thinner, smaller arches than barra.\n\nDemo 3 (Humminbird HELIX 10) = Single trophy Barramundi at 8m — ONE massive, very THICK arch directly on hard structure. The vertical height of this arch is exceptional — big fish.\n\nDemo 4 (Simrad GO9 XSE) = Dual-layer multi-species — baitfish cloud upper layer, larger predator arches in deeper layer near structure.\n\nDemo 5 (Humminbird HELIX/SOLIX Split-Screen) = 5–6 Barramundi mid-column in 34.5ft open water over SOFT sandy bottom. The LEFT side shows the circular flasher wheel with spike returns. The RIGHT side shows 5–6 ENORMOUS thick orange/red U-shaped arches at various depths — these are the biggest, brightest arches in the library. NOT on hard structure — barra suspending/chasing bait in open water. 68.2°F water temp. ⚠️ CRITICAL SHADOW FEATURE: Each of the 5–6 orange arches in Demo 5 has a CLEARLY VISIBLE DARK SHADOW zone directly beneath it. The shadow appears as a noticeably darker blue/black void immediately below each arch — this is the acoustic shadow from the barra's massive swim bladder blocking the sonar beam. These shadows are large and unmistakable — they confirm BARRAMUNDI. Any future image showing thick orange arches with dark voids beneath them = barra with 90%+ confidence.\n\nKey calibration notes: (1) Arch thickness = fish size. Fat arch = big barra. Thin arch = small fish. (2) Position ON hard structure = barra/jack. Mid-column over soft bottom WITH SHADOWS = barra chasing bait. (3) Humminbird split-screen has the circular flasher wheel on the left — unique identifier. (4) SHADOW below arch = large fish. Dark wide shadow = barramundi. No shadow = small fish/baitfish. Always check for shadows. Ready to analyse the unknown image.",
               },
             ]
           : []),

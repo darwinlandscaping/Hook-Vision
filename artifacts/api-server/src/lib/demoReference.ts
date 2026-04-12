@@ -111,6 +111,14 @@ WHAT THE FISH ARCHES LOOK LIKE (RIGHT PANEL):
 • Arches are NOT touching hard structure — fish are suspended/free-swimming mid-column or slightly above soft bottom
 • Bottom echo visible at ~34ft: relatively thin orange line — soft/sandy substrate (NOT hard rock)
 
+⚠️ SHADOW DETECTION — CRITICAL FEATURE OF THIS IMAGE:
+• Look DIRECTLY BELOW each orange arch — you will see a DARKER BLUE/VOID ZONE beneath each arch
+• This darker zone is the SONAR ACOUSTIC SHADOW — created because each barramundi's large body and massive physostomous swim bladder ABSORBS and REFLECTS the sonar beam, preventing it from passing below the fish
+• The shadow appears as: a noticeably darker (deeper blue or near-black) region directly beneath the peak of each orange arch, before the next arch or the bottom echo
+• The shadows in this image are LARGE and CLEARLY VISIBLE — matching the size of the fish (65–90cm barra)
+• RULE: If you see a bright orange/red arch WITH a dark shadow zone beneath it on Humminbird = BARRAMUNDI. 90%+ confidence.
+• Small fish and baitfish produce NO visible shadow. Threadfin produce only a faint partial shadow. THESE shadows (large and dark) = trophy-class barra.
+
 IDENTIFYING FEATURES OF THIS SONAR STYLE:
 • The Humminbird circular flasher on the left is UNIQUE — no other brand does this split-screen
 • The dual-scale on the right side of the sonar panel is a Humminbird trademark
