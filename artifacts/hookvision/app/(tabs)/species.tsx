@@ -57,6 +57,29 @@ function SpeciesCard({ species, colors }: { species: NTSpecies; colors: ReturnTy
       onPress={() => setExpanded(!expanded)}
       activeOpacity={0.85}
     >
+      {/* Always-visible fish photo banner */}
+      <View style={[styles.photoBanner, { backgroundColor: colors.secondary }]}>
+        {fishImageUrl ? (
+          <Image
+            source={{ uri: fishImageUrl }}
+            style={styles.bannerImg}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.bannerPlaceholder, { backgroundColor: colors.secondary }]}>
+            <MaterialCommunityIcons name="fish" size={36} color={colors.border} />
+          </View>
+        )}
+        {/* Category chip overlaid on photo */}
+        <View style={[styles.photoCategoryChip, { backgroundColor: categoryBg[species.category], borderColor: categoryColor[species.category] + "55" }]}>
+          <Text style={[styles.categoryText, { color: categoryColor[species.category] }]}>
+            {species.category.charAt(0).toUpperCase() + species.category.slice(1)}
+          </Text>
+        </View>
+        {/* Season indicator dot */}
+        <View style={[styles.seasonDot, { backgroundColor: species.seasonOpen ? colors.primary : colors.destructive }]} />
+      </View>
+
       <View style={styles.cardHeader}>
         <View style={styles.cardTitleBlock}>
           <View style={styles.nameRow}>
@@ -76,14 +99,7 @@ function SpeciesCard({ species, colors }: { species: NTSpecies; colors: ReturnTy
             </Text>
           )}
         </View>
-        <View style={styles.cardRight}>
-          <View style={[styles.categoryChip, { backgroundColor: categoryBg[species.category] }]}>
-            <Text style={[styles.categoryText, { color: categoryColor[species.category] }]}>
-              {species.category.charAt(0).toUpperCase() + species.category.slice(1)}
-            </Text>
-          </View>
-          <Feather name={expanded ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
-        </View>
+        <Feather name={expanded ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
       </View>
 
       <View style={styles.statsRow}>
@@ -121,17 +137,6 @@ function SpeciesCard({ species, colors }: { species: NTSpecies; colors: ReturnTy
       {expanded && (
         <View style={styles.expandedContent}>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          {/* Fish photo */}
-          {fishImageUrl && (
-            <View style={[styles.fishPhotoWrap, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
-              <Image
-                source={{ uri: fishImageUrl }}
-                style={styles.fishPhoto}
-                resizeMode="cover"
-              />
-            </View>
-          )}
 
           <View style={[styles.seasonBadge, { backgroundColor: species.seasonOpen ? `${colors.primary}18` : `${colors.destructive}18` }]}>
             <Feather
@@ -338,8 +343,28 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   disclaimerText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15 },
-  card: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10 },
+  card: { borderRadius: 14, borderWidth: 1, overflow: "hidden", gap: 0 },
+  photoBanner: { width: "100%", height: 160, position: "relative" },
+  bannerImg: { width: "100%", height: "100%" },
+  bannerPlaceholder: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
+  photoCategoryChip: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  seasonDot: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10, padding: 12, paddingBottom: 0 },
   cardTitleBlock: { flex: 1, gap: 2 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   commonName: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
@@ -347,31 +372,22 @@ const styles = StyleSheet.create({
   crText: { fontSize: 10, fontFamily: "Inter_700Bold" },
   sciName: { fontSize: 12, fontFamily: "Inter_400Regular", fontStyle: "italic" },
   otherNames: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  cardRight: { alignItems: "flex-end", gap: 8 },
   categoryChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   categoryText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "transparent",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   statItem: { flex: 1, alignItems: "center", gap: 3 },
   statLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5 },
   statVal: { fontSize: 14, fontFamily: "Inter_700Bold" },
   statDivider: { width: 1, height: 28 },
   stars: { flexDirection: "row", gap: 1 },
-  expandedContent: { gap: 10 },
+  expandedContent: { gap: 10, paddingHorizontal: 12, paddingBottom: 12 },
   divider: { height: 1 },
-  fishPhotoWrap: {
-    borderRadius: 10,
-    overflow: "hidden",
-    borderWidth: 1,
-    height: 160,
-  },
-  fishPhoto: {
-    width: "100%",
-    height: "100%",
-  },
   seasonBadge: {
     flexDirection: "row",
     alignItems: "center",
