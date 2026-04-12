@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getConditionsContext } from "../lib/dailyBriefing";
 
 const router = Router();
 
@@ -577,7 +578,7 @@ router.post("/analyze", async (req, res) => {
             },
             {
               type: "text",
-              text: `Analyse this sonar/fish finder screenshot using the full expert framework above. Apply this exact reasoning sequence:
+              text: `${getConditionsContext() ? getConditionsContext() + "\n\n" : ""}Analyse this sonar/fish finder screenshot using the full expert framework above. Apply this exact reasoning sequence:
 
 1. SONAR BRAND: Identify brand/model from UI chrome, colour palette, layout.
 2. SCREEN TYPE: Is this 2D traditional sonar, DownScan/Down Imaging, SideImaging, or a split-screen?

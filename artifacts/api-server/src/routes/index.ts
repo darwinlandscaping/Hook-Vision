@@ -8,6 +8,7 @@ import narrateRouter from "./narrate";
 import ttsRouter from "./tts";
 import demosRouter from "./demos";
 import lureSearchRouter from "./lureSearch";
+import dataStatusRouter from "./dataStatus";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(narrateRouter);
 router.use(ttsRouter);
 router.use(demosRouter);
 router.use(lureSearchRouter);
+router.use(dataStatusRouter);
 
 export default router;

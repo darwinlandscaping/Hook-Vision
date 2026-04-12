@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { refreshDailyConditions } from "./lib/dailyBriefing";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,10 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Kick off the daily data refresh immediately on startup,
+  // then it auto-schedules itself at midnight Darwin time (ACST UTC+9:30).
+  refreshDailyConditions().catch((err) =>
+    logger.error({ err }, "Initial daily conditions refresh failed")
+  );
 });
