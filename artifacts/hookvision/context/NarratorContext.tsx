@@ -50,6 +50,40 @@ export const CHARACTERS: CharacterInfo[] = [
   { id: "WIFE",         name: "The Nagging Wife",      emoji: "👩", tagline: "Knows the tides. Not impressed.", color: "#ff69b4" },
 ];
 
+// Which characters use a male voice
+const CHARACTER_GENDER: Record<NarratorCharacter, "male" | "female"> = {
+  AUSSIE:       "male",
+  BENAUD:       "male",
+  CHOPPER:      "male",
+  ATTENBOROUGH: "male",
+  WIFE:         "female",
+};
+
+// Voice tuning per character (pitch & rate)
+const CHARACTER_VOICE_TUNING: Record<NarratorCharacter, { pitch: number; rate: number }> = {
+  AUSSIE:       { pitch: 0.80, rate: 0.95 },  // laconic, relaxed
+  BENAUD:       { pitch: 0.70, rate: 0.82 },  // measured, authoritative, slow
+  CHOPPER:      { pitch: 0.65, rate: 1.00 },  // gravelly, direct
+  ATTENBOROUGH: { pitch: 0.72, rate: 0.78 },  // reverent, slow, deep
+  WIFE:         { pitch: 1.15, rate: 1.05 },  // energetic, slightly higher
+};
+
+// iOS male/female voice IDs tried in order
+const IOS_MALE_VOICES = [
+  "com.apple.voice.enhanced.en-AU.Lee",
+  "com.apple.ttsbundle.Lee-compact",
+  "com.apple.voice.enhanced.en-GB.Daniel",
+  "com.apple.ttsbundle.Daniel-compact",
+  "com.apple.voice.enhanced.en-US.Aaron",
+];
+const IOS_FEMALE_VOICES = [
+  "com.apple.voice.enhanced.en-AU.Karen",
+  "com.apple.ttsbundle.Karen-compact",
+  "com.apple.voice.enhanced.en-GB.Kate",
+  "com.apple.ttsbundle.Kate-compact",
+  "com.apple.voice.enhanced.en-US.Samantha",
+];
+
 export const LANGUAGES: LanguageInfo[] = [
   { code: "en-AU", name: "English",    flag: "🇦🇺" },
   { code: "ja-JP", name: "日本語",     flag: "🇯🇵" },
@@ -116,14 +150,51 @@ async function playNativeUrl(url: string, onDone: () => void): Promise<boolean> 
   }
 }
 
-// ─── Web Audio element (module-level) ─────────────────────────────────────────
-let _webAudio: HTMLAudioElement | null = null;
+// ─── Web: pick a voice matching gender + language ─────────────────────────────
+async function getWebVoice(lang: string, gender: "male" | "female"): Promise<SpeechSynthesisVoice | undefined> {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return undefined;
 
-function stopWebAudio() {
-  if (_webAudio) {
-    try { _webAudio.pause(); _webAudio.src = ""; } catch {}
-    _webAudio = null;
+  const voices = await new Promise<SpeechSynthesisVoice[]>((resolve) => {
+    const v = window.speechSynthesis.getVoices();
+    if (v.length > 0) return resolve(v);
+    window.speechSynthesis.onvoiceschanged = () => resolve(window.speechSynthesis.getVoices());
+    setTimeout(() => resolve(window.speechSynthesis.getVoices()), 1500);
+  });
+
+  const base = lang.split("-")[0];
+
+  if (gender === "male") {
+    const matchers = [
+      (v: SpeechSynthesisVoice) => /en.AU/i.test(v.lang) && /lee|bruce|male|man/i.test(v.name),
+      (v: SpeechSynthesisVoice) => /en.GB/i.test(v.lang) && /daniel|george|oliver|male|man/i.test(v.name),
+      (v: SpeechSynthesisVoice) => /en.AU/i.test(v.lang) && !/karen|victoria|female|woman/i.test(v.name),
+      (v: SpeechSynthesisVoice) => /en/i.test(v.lang) && /aaron|alex|fred|tom|male|man/i.test(v.name),
+      (v: SpeechSynthesisVoice) => /en.US/i.test(v.lang) && !/samantha|victoria|female|woman/i.test(v.name),
+      (v: SpeechSynthesisVoice) => v.lang.startsWith(base),
+    ];
+    for (const m of matchers) { const found = voices.find(m); if (found) return found; }
+  } else {
+    const matchers = [
+      (v: SpeechSynthesisVoice) => /en.AU/i.test(v.lang) && /karen|victoria|female|woman/i.test(v.name),
+      (v: SpeechSynthesisVoice) => /en.AU/i.test(v.lang),
+      (v: SpeechSynthesisVoice) => /en.GB/i.test(v.lang) && /kate|emily|female|woman/i.test(v.name),
+      (v: SpeechSynthesisVoice) => /en.GB/i.test(v.lang),
+      (v: SpeechSynthesisVoice) => v.lang.startsWith(base),
+    ];
+    for (const m of matchers) { const found = voices.find(m); if (found) return found; }
   }
+
+  return voices.find(v => v.lang.startsWith(base));
+}
+
+// ─── Web: play via speechSynthesis with gender + character tuning ─────────────
+let _webUtterance: SpeechSynthesisUtterance | null = null;
+
+function stopWebSpeech() {
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+  _webUtterance = null;
 }
 
 // ─── Web: unlock speechSynthesis inside user gesture ─────────────────────────
@@ -142,9 +213,11 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
   const [speaking, setSpeaking]         = useState(false);
   const [loading, setLoading]           = useState(false);
   const [transcript, setTranscript]     = useState("");
-  const languageRef = useRef(language);
+  const languageRef   = useRef(language);
+  const characterRef  = useRef(character);
 
   useEffect(() => { languageRef.current = language; }, [language]);
+  useEffect(() => { characterRef.current = character; }, [character]);
 
   // Configure expo-audio session (native only)
   useEffect(() => {
@@ -181,10 +254,7 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
 
   const stop = useCallback(() => {
     if (Platform.OS === "web") {
-      stopWebAudio();
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
+      stopWebSpeech();
     } else {
       stopNativeAudio();
       Speech.stop().catch(() => {});
@@ -192,74 +262,86 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     setSpeaking(false);
   }, []);
 
-  // ─── Build TTS URL ─────────────────────────────────────────────────────────
+  // ─── Build TTS URL (native only) ───────────────────────────────────────────
   const ttsUrl = useCallback((text: string) => {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
     return `${baseUrl}/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(languageRef.current)}`;
   }, []);
 
-  // ─── Web: play via HTMLAudioElement → speechSynthesis fallback ────────────
-  // NOTE: We use document.createElement("audio") — NOT "new Audio()" which would
-  // reference the expo-av Audio class imported at module level.
-  const playTTSWeb = useCallback(async (text: string, audioEl: HTMLAudioElement) => {
+  // ─── Web: speechSynthesis with character-matched voice + tuning ───────────
+  const playTTSWeb = useCallback(async (text: string, char: NarratorCharacter) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      setSpeaking(false);
+      return;
+    }
+
     setSpeaking(true);
-    stopWebAudio();
-    _webAudio = audioEl;
+    stopWebSpeech();
 
-    let audioWorked = false;
-    try {
-      const url = ttsUrl(text);
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`TTS HTTP ${resp.status}`);
-      const blob = await resp.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      audioEl.src = objectUrl;
-      await new Promise<void>((resolve, reject) => {
-        audioEl.onended = () => { URL.revokeObjectURL(objectUrl); if (_webAudio === audioEl) _webAudio = null; resolve(); };
-        audioEl.onerror = () => { URL.revokeObjectURL(objectUrl); if (_webAudio === audioEl) _webAudio = null; reject(new Error("audio element error")); };
-        audioEl.play().then(resolve).catch(reject);
-      });
-      audioWorked = true;
-    } catch (err) {
-      console.warn("[Narrator] Audio element failed:", err);
-      if (_webAudio === audioEl) _webAudio = null;
+    const gender = CHARACTER_GENDER[char];
+    const tuning = CHARACTER_VOICE_TUNING[char];
+
+    const voice = await getWebVoice(languageRef.current, gender);
+
+    const utt = new SpeechSynthesisUtterance(text);
+    if (voice) {
+      utt.voice = voice;
+      utt.lang  = voice.lang;
+    } else {
+      utt.lang = languageRef.current;
     }
+    utt.pitch  = tuning.pitch;
+    utt.rate   = tuning.rate;
+    utt.volume = 1.0;
 
-    if (!audioWorked) {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = languageRef.current;
-        u.rate = 0.9;
-        u.onend  = () => setSpeaking(false);
-        u.onerror = () => setSpeaking(false);
-        window.speechSynthesis.speak(u);
-        return;
-      }
-    }
+    utt.onend  = () => { _webUtterance = null; setSpeaking(false); };
+    utt.onerror = () => { _webUtterance = null; setSpeaking(false); };
 
-    setSpeaking(false);
-  }, [ttsUrl]);
+    _webUtterance = utt;
+    window.speechSynthesis.speak(utt);
+  }, []);
 
-  // ─── Native: expo-audio → expo-speech fallback ────────────────────────────
-  const playTTSNative = useCallback(async (text: string) => {
+  // ─── Native: expo-audio (TTS URL) → expo-speech fallback ─────────────────
+  const playTTSNative = useCallback(async (text: string, char: NarratorCharacter) => {
     setSpeaking(true);
 
     const worked = await playNativeUrl(ttsUrl(text), () => setSpeaking(false));
 
     if (!worked) {
-      try {
-        Speech.speak(text, {
-          language: languageRef.current,
-          rate: 0.9,
-          onDone:  () => setSpeaking(false),
-          onError: () => setSpeaking(false),
-        });
-        return;
-      } catch {
-        setSpeaking(false);
-      }
+      const gender  = CHARACTER_GENDER[char];
+      const tuning  = CHARACTER_VOICE_TUNING[char];
+      const iosVoices = gender === "male" ? IOS_MALE_VOICES : IOS_FEMALE_VOICES;
+
+      const tryVoice = async (voices: string[]): Promise<void> => {
+        if (voices.length === 0) {
+          Speech.speak(text, {
+            language: languageRef.current,
+            rate: tuning.rate,
+            pitch: tuning.pitch,
+            onDone:  () => setSpeaking(false),
+            onError: () => setSpeaking(false),
+          });
+          return;
+        }
+        const [voiceId, ...rest] = voices;
+        try {
+          await new Promise<void>((resolve, reject) => {
+            Speech.speak(text, {
+              voice: voiceId,
+              rate: tuning.rate,
+              pitch: tuning.pitch,
+              onDone:   () => { setSpeaking(false); resolve(); },
+              onError:  () => reject(new Error("voice unavailable")),
+              onStopped: () => { setSpeaking(false); resolve(); },
+            });
+          });
+        } catch {
+          await tryVoice(rest);
+        }
+      };
+
+      try { await tryVoice([...iosVoices]); } catch { setSpeaking(false); }
     }
   }, [ttsUrl]);
 
@@ -268,12 +350,11 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     (text: string) => {
       stop();
       setTranscript(text);
+      const char = characterRef.current;
       if (Platform.OS === "web") {
-        // CRITICAL: use document.createElement, NOT "new Audio()" which references expo-av
-        const audioEl = document.createElement("audio") as HTMLAudioElement;
-        playTTSWeb(text, audioEl);
+        playTTSWeb(text, char);
       } else {
-        playTTSNative(text);
+        playTTSNative(text, char);
       }
     },
     [stop, playTTSWeb, playTTSNative]
@@ -286,12 +367,8 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       stop();
 
-      // On web: create audio element + unlock speechSynthesis synchronously
-      // within the user gesture BEFORE any async work (autoplay policy).
-      let audioEl: HTMLAudioElement | null = null;
+      // Unlock speechSynthesis inside the user gesture before any async work
       if (Platform.OS === "web") {
-        // CRITICAL: use document.createElement, NOT "new Audio()" which references expo-av
-        audioEl = document.createElement("audio") as HTMLAudioElement;
         unlockSpeechSynthesis();
       }
 
@@ -307,10 +384,10 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
         const { text } = await resp.json();
         if (text) {
           setTranscript(text);
-          if (Platform.OS === "web" && audioEl) {
-            await playTTSWeb(text, audioEl);
+          if (Platform.OS === "web") {
+            await playTTSWeb(text, character);
           } else {
-            await playTTSNative(text);
+            await playTTSNative(text, character);
           }
         }
       } catch (err) {
