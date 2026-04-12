@@ -302,11 +302,22 @@ function TacticBox({ icon, label, value, colors, full }: { icon: string; label: 
   );
 }
 
+// ─── Lily pad constants ────────────────────────────────────────────────────────
+const LP_BG     = "#0b1d0e";
+const LP_BORDER = "#1f4827";
+
 // ─── Million Dollar Fish Card ──────────────────────────────────────────────────
 function MDFCard({ colors }: { colors: ReturnType<typeof useColors> }) {
   const { season, active, daysUntil, daysLeft } = useMemo(getMDFStatus, []);
+  const scale  = useSharedValue(1);
+  const rotate = useSharedValue(0);
+  const wobble = useCallback(() => {
+    scale.value = withSequence(withTiming(0.97, { duration: 75 }), withSpring(1.01, { damping: 4, stiffness: 280 }), withSpring(1, { damping: 12 }));
+    rotate.value = withSequence(withTiming(-2.2, { duration: 65 }), withTiming(2.2, { duration: 65 }), withTiming(-1, { duration: 50 }), withTiming(1, { duration: 50 }), withSpring(0, { damping: 14 }));
+  }, []);
+  const mdfAnim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }, { rotate: `${rotate.value}deg` }] }));
   return (
-    <View style={[styles.mdfCard, { borderColor: "#ffd700" }]}>
+    <Animated.View style={[styles.mdfCard, { borderColor: "#ffd700" }, mdfAnim]} onTouchStart={wobble}>
       <View style={styles.mdfGradient}>
         <View style={styles.mdfHeader}>
           <Text style={styles.mdfEmoji}>💰</Text>
@@ -361,7 +372,50 @@ function MDFCard({ colors }: { colors: ReturnType<typeof useColors> }) {
           <Text style={styles.mdfBtnText}>Register & Learn More →</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </Animated.View>
+  );
+}
+
+// ─── Lily Pad Card ─────────────────────────────────────────────────────────────
+function LilyPadCard({
+  children, onPress, borderColor, borderLeftColor, borderLeftWidth = 3, innerStyle,
+}: {
+  children: React.ReactNode; onPress?: () => void;
+  borderColor?: string; borderLeftColor?: string; borderLeftWidth?: number; innerStyle?: any;
+}) {
+  const scale  = useSharedValue(1);
+  const rotate = useSharedValue(0);
+  const wobble = useCallback(() => {
+    scale.value = withSequence(
+      withTiming(0.968, { duration: 75 }),
+      withSpring(1.014, { damping: 4, stiffness: 280 }),
+      withSpring(1, { damping: 12 })
+    );
+    rotate.value = withSequence(
+      withTiming(-2.5, { duration: 65 }),
+      withTiming(2.5, { duration: 65 }),
+      withTiming(-1.2, { duration: 50 }),
+      withTiming(1.2, { duration: 50 }),
+      withSpring(0, { damping: 14, stiffness: 180 })
+    );
+    onPress?.();
+  }, [onPress]);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }, { rotate: `${rotate.value}deg` }],
+  }));
+  return (
+    <Animated.View
+      style={[
+        styles.lilyPadCard,
+        { borderColor: borderColor ?? LP_BORDER },
+        borderLeftColor ? { borderLeftColor, borderLeftWidth } : null,
+        animStyle,
+      ]}
+    >
+      <TouchableOpacity onPress={wobble} activeOpacity={0.92} style={innerStyle}>
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -370,7 +424,12 @@ function HotSpotsSection({ hotSpots, colors }: { hotSpots: HotSpot[]; colors: Re
   return (
     <View style={{ gap: 8 }}>
       {hotSpots.map((spot, i) => (
-        <View key={spot.name} style={[styles.hotSpotCard, { backgroundColor: colors.card, borderColor: i === 0 ? "#00d4aa" : colors.border, borderLeftColor: i === 0 ? "#00d4aa" : spot.isSpring ? "#ffd700" : colors.border, borderLeftWidth: 3 }]}>
+        <LilyPadCard
+          key={spot.name}
+          borderColor={i === 0 ? "#00d4aa55" : LP_BORDER}
+          borderLeftColor={i === 0 ? "#00d4aa" : spot.isSpring ? "#ffd700" : LP_BORDER}
+          innerStyle={{ padding: 12, gap: 8 }}
+        >
           <View style={styles.hotSpotHeader}>
             <View style={[styles.hotSpotRank, { backgroundColor: i === 0 ? "#00d4aa22" : "#ffffff11" }]}>
               <Text style={[styles.hotSpotRankNum, { color: i === 0 ? "#00d4aa" : colors.mutedForeground }]}>#{i + 1}</Text>
@@ -398,7 +457,7 @@ function HotSpotsSection({ hotSpots, colors }: { hotSpots: HotSpot[]; colors: Re
               <Text style={[styles.hotSpotReasonText, { color: "#00d4aa" }]}>Hot because: {spot.reason}</Text>
             </View>
           )}
-        </View>
+        </LilyPadCard>
       ))}
     </View>
   );
@@ -575,7 +634,13 @@ export default function BarraScreen() {
       {/* ── COMPETITIONS ── */}
       <SectionTitle emoji="🏆" label="NT BARRA COMPS" sub="Tournaments, cash prizes & glory" color="#ffd700" />
       {BARRA_COMPS.map((comp, i) => (
-        <TouchableOpacity key={i} style={[styles.compCard, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: comp.color, borderLeftWidth: 3 }]} onPress={() => Linking.openURL(comp.website)} activeOpacity={0.8}>
+        <LilyPadCard
+          key={i}
+          onPress={() => Linking.openURL(comp.website)}
+          borderColor={LP_BORDER}
+          borderLeftColor={comp.color}
+          innerStyle={{ padding: 12, gap: 8 }}
+        >
           <View style={styles.compHeader}>
             <Text style={styles.compEmoji}>{comp.emoji}</Text>
             <View style={{ flex: 1 }}>
@@ -591,22 +656,22 @@ export default function BarraScreen() {
             </View>
             <Text style={[styles.compHighlight, { color: comp.color }]}>{comp.highlight}</Text>
           </View>
-        </TouchableOpacity>
+        </LilyPadCard>
       ))}
 
       {/* ── BARRA FACTS ── */}
       <SectionTitle emoji="🐟" label="DID YOU KNOW?" sub="Barramundi biology & behaviour" color="#7986cb" />
-      <View style={[styles.factsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <LilyPadCard>
         {BARRA_FACTS.map((f, i) => (
           <View key={i}>
-            {i > 0 && <View style={[styles.factDivider, { backgroundColor: colors.border }]} />}
+            {i > 0 && <View style={[styles.factDivider, { backgroundColor: LP_BORDER }]} />}
             <View style={styles.factRow}>
               <Text style={styles.factEmoji}>{f.emoji}</Text>
               <Text style={[styles.factText, { color: colors.foreground }]}>{f.fact}</Text>
             </View>
           </View>
         ))}
-      </View>
+      </LilyPadCard>
 
       <NarratorButton pageType="barra nation" content={`Barra Nation — NT barramundi hub. ${season.name}, ${moon.name}. Top hot spot right now: ${hotSpots[0].name} on the ${hotSpots[0].river}. Million Dollar Fish: ${getMDFStatus().active ? "ACTIVE — season ends in " + getMDFStatus().daysLeft + " days" : "off season — next season in " + getMDFStatus().daysUntil + " days"}. Upcoming comps: NT Barra Nationals in July-August. Fun fact: ${BARRA_FACTS[0].fact}`} />
     </ScrollView>
@@ -706,8 +771,11 @@ const styles = StyleSheet.create({
   rerunBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 12, borderRadius: 10, borderWidth: 1 },
   rerunText: { fontSize: 13, fontFamily: "Inter_500Medium" },
 
+  // Lily pad card (shared container for all panels)
+  lilyPadCard: { borderRadius: 22, borderWidth: 1.5, backgroundColor: LP_BG, overflow: "hidden" },
+
   // Hot spots
-  hotSpotCard: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 8 },
+  hotSpotCard: { padding: 12, gap: 8 },
   hotSpotHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   hotSpotRank: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   hotSpotRankNum: { fontSize: 12, fontFamily: "Inter_700Bold" },
