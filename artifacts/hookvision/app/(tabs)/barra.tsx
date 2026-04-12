@@ -117,17 +117,6 @@ function calcHotSpots(moon: ReturnType<typeof getMoonPhase>, season: ReturnType<
     .slice(0, 6);
 }
 
-// ─── Famous catches gallery ────────────────────────────────────────────────────
-const FAMOUS_CATCHES = [
-  { emoji: "🐟", size: "102cm", weight: "~18kg", location: "Woolianna, Daly River", year: "2022", desc: "Dry season dawn raid on surface lures — the 'Daly River Donkey'", angler: "NT angler" },
-  { emoji: "🐟", size: "97cm",  weight: "~15kg", location: "Shady Camp Rock Bar, Mary River", year: "2024", desc: "Run-out king at NT's most famous rock bar on a Hedgehog lure", angler: "NT angler" },
-  { emoji: "🐟", size: "1.1m",  weight: "~21kg", location: "King Ash Bay, McArthur River", year: "2023", desc: "Gulf monster smashed a surface walker on the first cast of the morning", angler: "Borroloola local" },
-  { emoji: "🐟", size: "1.05m", weight: "~19kg", location: "Roper Bar, Roper River", year: "2024", desc: "Iconic rock bar giant taken on the run-out, fought for 25 minutes", angler: "NT angler" },
-  { emoji: "🐟", size: "94cm",  weight: "~13kg", location: "Cahills Crossing, East Alligator", year: "2023", desc: "Legendary Kakadu barra from the bank — with crocs watching from 10m away", angler: "QLD visitor" },
-  { emoji: "🐟", size: "88cm",  weight: "~11kg", location: "Darwin Harbour", year: "2025", desc: "Urban barra on soft plastics under the wharf lights at midnight", angler: "Darwin local" },
-  { emoji: "🐟", size: "1.18m", weight: "~26kg", location: "Victoria River", year: "2021", desc: "Massive tidal fish on a suspending jerkbait — one of the territory's biggest ever reported", angler: "Remote fisho" },
-];
-
 // ─── Barra Nationals ──────────────────────────────────────────────────────────
 const BARRA_COMPS = [
   {
@@ -170,18 +159,6 @@ const BARRA_COMPS = [
     website: "https://www.kingashbayfishingclub.com.au",
     highlight: "Most remote NT comp — 1000km from Darwin",
   },
-];
-
-// ─── Barra records ─────────────────────────────────────────────────────────────
-const BARRA_RECORDS = [
-  { title: "Australian Record", value: "~118cm / 26.5kg", location: "NT Waters", year: "Multiple contenders", emoji: "🇦🇺" },
-  { title: "NT Barra Nationals Record", value: "99.5cm", location: "Darwin Region", year: "2019 season", emoji: "🏆" },
-  { title: "Darwin Harbour Record", value: "~92cm", location: "Darwin Harbour", year: "2024", emoji: "🌅" },
-  { title: "Mary River Record", value: "~97cm", location: "Shady Camp area", year: "2024", emoji: "🪨" },
-  { title: "Gulf (Borroloola) Record", value: "~1.1m", location: "King Ash Bay", year: "2023", emoji: "🌊" },
-  { title: "Legal Minimum Size (NT)", value: "55cm", location: "All NT waters", year: "Current regulation", emoji: "📏" },
-  { title: "Trophy Size", value: "70cm+", location: "NT standard", year: "Widely recognised", emoji: "🎯" },
-  { title: "Legendary Trophy", value: "90cm+", location: "NT bragging rights", year: "Bucket list fish", emoji: "👑" },
 ];
 
 // ─── Barra facts ───────────────────────────────────────────────────────────────
@@ -427,42 +404,6 @@ function HotSpotsSection({ hotSpots, colors }: { hotSpots: HotSpot[]; colors: Re
   );
 }
 
-// ─── Famous catches gallery ────────────────────────────────────────────────────
-function CatchGallery({ colors }: { colors: ReturnType<typeof useColors> }) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>
-      {FAMOUS_CATCHES.map((c, i) => (
-        <View key={i} style={[styles.catchCard, { backgroundColor: colors.card, borderColor: i < 2 ? "#ffd700" : colors.border }]}>
-          <Text style={styles.catchFish}>{c.emoji}</Text>
-          <View style={[styles.catchSizeBadge, { backgroundColor: "#ffd70022" }]}>
-            <Text style={styles.catchSize}>{c.size}</Text>
-          </View>
-          <Text style={[styles.catchWeight, { color: colors.mutedForeground }]}>{c.weight}</Text>
-          <Text style={[styles.catchLocation, { color: "#00d4aa" }]} numberOfLines={2}>{c.location}</Text>
-          <Text style={[styles.catchYear, { color: colors.mutedForeground }]}>{c.year}</Text>
-          <Text style={[styles.catchDesc, { color: colors.foreground }]} numberOfLines={3}>{c.desc}</Text>
-        </View>
-      ))}
-    </ScrollView>
-  );
-}
-
-// ─── Records grid ──────────────────────────────────────────────────────────────
-function RecordsGrid({ colors }: { colors: ReturnType<typeof useColors> }) {
-  return (
-    <View style={styles.recordsGrid}>
-      {BARRA_RECORDS.map((r, i) => (
-        <View key={i} style={[styles.recordCard, { backgroundColor: colors.card, borderColor: i < 2 ? "#ffd70066" : colors.border }]}>
-          <Text style={styles.recordEmoji}>{r.emoji}</Text>
-          <Text style={[styles.recordTitle, { color: colors.mutedForeground }]}>{r.title}</Text>
-          <Text style={[styles.recordValue, { color: i < 2 ? "#ffd700" : colors.foreground }]}>{r.value}</Text>
-          <Text style={[styles.recordSub, { color: colors.mutedForeground }]}>{r.year}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 // ─── Main screen ───────────────────────────────────────────────────────────────
 export default function BarraScreen() {
   const colors = useColors();
@@ -653,14 +594,6 @@ export default function BarraScreen() {
         </TouchableOpacity>
       ))}
 
-      {/* ── FAMOUS CATCHES ── */}
-      <SectionTitle emoji="📸" label="FAMOUS NT CATCHES" sub="Legendary barramundi from NT waters" color="#ff8f00" />
-      <CatchGallery colors={colors} />
-
-      {/* ── RECORDS ── */}
-      <SectionTitle emoji="🏅" label="NT BARRA RECORDS" sub="Trophy benchmarks & size guides" color="#ffd700" />
-      <RecordsGrid colors={colors} />
-
       {/* ── BARRA FACTS ── */}
       <SectionTitle emoji="🐟" label="DID YOU KNOW?" sub="Barramundi biology & behaviour" color="#7986cb" />
       <View style={[styles.factsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -800,25 +733,6 @@ const styles = StyleSheet.create({
   compBadge: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20, borderWidth: 1 },
   compBadgeText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   compHighlight: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-
-  // Gallery
-  gallery: { gap: 10, paddingRight: 14, paddingLeft: 2, paddingTop: 2, paddingBottom: 4 },
-  catchCard: { width: 180, borderRadius: 14, borderWidth: 1, padding: 12, gap: 4 },
-  catchFish: { fontSize: 32 },
-  catchSizeBadge: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  catchSize: { fontSize: 14, fontFamily: "Oswald_700Bold", color: "#ffd700" },
-  catchWeight: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  catchLocation: { fontSize: 12, fontFamily: "Inter_600SemiBold", lineHeight: 16 },
-  catchYear: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  catchDesc: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, marginTop: 2 },
-
-  // Records
-  recordsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  recordCard: { width: "47.5%", borderRadius: 12, borderWidth: 1, padding: 12, gap: 4 },
-  recordEmoji: { fontSize: 22 },
-  recordTitle: { fontSize: 10, fontFamily: "Inter_500Medium" },
-  recordValue: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  recordSub: { fontSize: 10, fontFamily: "Inter_400Regular" },
 
   // Facts
   factsCard: { borderRadius: 12, borderWidth: 1, overflow: "hidden" },
