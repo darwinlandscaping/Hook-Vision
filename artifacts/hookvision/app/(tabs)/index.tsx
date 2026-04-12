@@ -97,7 +97,7 @@ function SquareTile({ item, colors }: { item: GridItem; colors: any }) {
 
         <View style={styles.tileBody}>
           {/* Icon circle */}
-          <View style={[styles.tileIconCircle, { backgroundColor: item.accent + "20" }]}>
+          <View style={[styles.tileIconCircle, { backgroundColor: item.accent + "22", borderWidth: 1.5, borderColor: item.accent + "99" }]}>
             <Icon name={item.icon} size={26} color={item.accent} />
           </View>
 

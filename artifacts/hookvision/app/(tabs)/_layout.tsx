@@ -206,6 +206,10 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="fishy"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
         name="demo"
         options={{
           title: "Demo",
