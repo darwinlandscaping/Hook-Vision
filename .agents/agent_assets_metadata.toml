@@ -72,3 +72,15 @@ id = "kIm12IuwjgT7hBaoDqrgn"
 uri = "file://artifacts/hookvision/assets/images/croc-btn.png"
 type = "image"
 title = "crocodile silhouette teal button shape"
+
+[[generated]]
+id = "e8MUk4SZ3RiyHqWmqyPda"
+uri = "file://artifacts/hookvision/assets/images/nt-flag-v2.png"
+type = "image"
+title = "NT flag correct"
+
+[[generated]]
+id = "NgSfyMZABhx2PqL57SDY9"
+uri = "file://artifacts/hookvision/assets/images/nt-flag-raw.png"
+type = "image"
+title = "NT flag raw"

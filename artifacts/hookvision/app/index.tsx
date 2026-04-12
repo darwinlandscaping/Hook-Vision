@@ -19,7 +19,7 @@ const { width: W, height: H } = Dimensions.get("window");
 const BUFFALO  = require("@/assets/images/splash-buffalo.png");
 const BARRA    = require("@/assets/images/splash-barra.png");
 const HV_LOGO  = require("@/assets/images/hv-logo2-nobg.png");
-const NT_FLAG  = require("@/assets/images/nt-flag-nobg.png");
+const NT_FLAG  = require("@/assets/images/nt-flag-v2-nobg.png");
 const CROC_BTN = require("@/assets/images/croc-btn-nobg.png");
 
 const BG   = "#0a1628";
@@ -110,18 +110,15 @@ export default function WelcomeScreen() {
         resizeMode="contain"
       />
 
-      {/* ── Croc-shaped enter button — bottom ── */}
+      {/* ── Enter button — bottom ── */}
       <Animated.View
-        style={[styles.btnWrap, { bottom: Math.max(insets.bottom + 20, 36), opacity: btnOpacity, transform: [{ scale: btnScale }] }]}
+        style={[styles.btnWrap, { bottom: Math.max(insets.bottom + 36, 52), opacity: btnOpacity, transform: [{ scale: btnScale }] }]}
       >
-        <Pressable
-          style={({ pressed }) => [styles.crocBtn, pressed && styles.crocBtnPressed]}
-          onPress={enter}
-        >
-          <Image source={CROC_BTN} style={styles.crocImg} resizeMode="contain" />
-          <View style={styles.crocTextWrap} pointerEvents="none">
-            <Text style={styles.crocText}>ENTER THE TERRITORY</Text>
-          </View>
+        <Pressable style={({ pressed }) => [styles.enterBtn, pressed && styles.enterBtnPressed]} onPress={enter}>
+          <LinearGradient colors={[TEAL, "#00a8d4"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.enterGradient}>
+            <Text style={styles.enterText}>ENTER THE TERRITORY</Text>
+            <Text style={styles.enterArrow}>→</Text>
+          </LinearGradient>
         </Pressable>
       </Animated.View>
 
@@ -203,39 +200,36 @@ const styles = StyleSheet.create({
 
   btnWrap: {
     position: "absolute",
-    left: 8,
-    right: 8,
+    left: 24,
+    right: 24,
     alignItems: "center",
   },
-  crocBtn: {
+  enterBtn: {
     width: "100%",
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  enterBtnPressed: {
+    opacity: 0.85,
+  },
+  enterGradient: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    gap: 10,
   },
-  crocBtnPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.97 }],
-  },
-  crocImg: {
-    width: "100%",
-    height: 190,
-  },
-  crocTextWrap: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingLeft: "10%",
-    paddingBottom: "6%",
-  },
-  crocText: {
+  enterText: {
     fontSize: 15,
     fontFamily: "Oswald_700Bold",
     color: "#000000",
     letterSpacing: 2.5,
+  },
+  enterArrow: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: "#000000",
   },
 
   corner: {
