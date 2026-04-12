@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "fgSxsSde1O-BOyWFHq9Tm"
@@ -84,3 +83,9 @@ id = "NgSfyMZABhx2PqL57SDY9"
 uri = "file://artifacts/hookvision/assets/images/nt-flag-raw.png"
 type = "image"
 title = "NT flag raw"
+
+[[outputs]]
+id = "56ji2_AK1cz0SSgKggKpF"
+uri = "file://hookvision-qr.png"
+type = "image"
+title = "HookVision — Expo Go QR Code"
