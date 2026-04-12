@@ -260,6 +260,22 @@ export default function HomeScreen() {
           suggestion: data.suggestion,
         });
       }
+      // Fire-and-forget: contribute to community data bank
+      try {
+        const reportDomain = process.env.EXPO_PUBLIC_DOMAIN;
+        const reportBase = reportDomain ? `https://${reportDomain}` : "";
+        fetch(`${reportBase}/api/community/report`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            species: data.species,
+            fishCount: data.fishCount,
+            depth: data.depth,
+            lureSuggestion: data.suggestion,
+            rawAnalysis: data,
+          }),
+        }).catch(() => {});
+      } catch {}
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       setError(msg);

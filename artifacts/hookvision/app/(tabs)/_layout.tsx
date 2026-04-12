@@ -56,6 +56,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "clock", selected: "clock.fill" }} />
         <Label>History</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="community">
+        <Icon sf={{ default: "brain.head.profile", selected: "brain.head.profile" }} />
+        <Label>Intel</Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -230,6 +234,18 @@ function ClassicTabLayout() {
               <SymbolView name="clock" tintColor={color} size={22} />
             ) : (
               <Feather name="clock" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: "Intel",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="brain.head.profile" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="brain" size={22} color={color} />
             ),
         }}
       />

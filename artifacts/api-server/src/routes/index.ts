@@ -9,6 +9,7 @@ import ttsRouter from "./tts";
 import demosRouter from "./demos";
 import lureSearchRouter from "./lureSearch";
 import dataStatusRouter from "./dataStatus";
+import communityRouter from "./community";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(ttsRouter);
 router.use(demosRouter);
 router.use(lureSearchRouter);
 router.use(dataStatusRouter);
+router.use(communityRouter);
 
 export default router;
