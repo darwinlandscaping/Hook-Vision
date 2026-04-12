@@ -9,8 +9,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { StyleSheet } from "react-native";
 
-export const LP_BG     = "#0b1d0e";
-export const LP_BORDER = "#1f4827";
+export const LP_BG     = "#0e3018";   // rich dark emerald — clearly green
+export const LP_BORDER = "#2d8c47";   // vivid grass green border
 
 interface LilyPadCardProps {
   children: React.ReactNode;
@@ -77,7 +77,7 @@ export function LilyPadCard({
 const styles = StyleSheet.create({
   lilyPad: {
     borderRadius: 22,
-    borderWidth: 1.5,
+    borderWidth: 2,
     backgroundColor: LP_BG,
     overflow: "hidden",
   },
