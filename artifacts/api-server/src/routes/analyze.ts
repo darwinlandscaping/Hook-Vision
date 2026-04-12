@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getConditionsContext } from "../lib/dailyBriefing";
+import { getDemoRefs } from "../lib/demoReference";
 
 const router = Router();
 
@@ -558,14 +559,89 @@ router.post("/analyze", async (req, res) => {
   }
 
   try {
+    // Build reference image content blocks from the preloaded demo library.
+    // These let GPT directly compare the unknown scan against known labeled examples.
+    const demoRefs = getDemoRefs();
+    type ContentBlock =
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string; detail: "high" } };
+
+    const referenceBlocks: ContentBlock[] = [];
+    if (demoRefs.length > 0) {
+      referenceBlocks.push({
+        type: "text",
+        text: `═══════════════════════════════════════════
+VISUAL REFERENCE LIBRARY — ${demoRefs.length} LABELED EXAMPLES
+Study each image and its ground-truth label BEFORE you analyse the unknown image below.
+Use these as your visual calibration anchors. Compare the unknown image's arch shape,
+position, brightness, bottom type, and scale against these known examples.
+═══════════════════════════════════════════`,
+      });
+      for (const ref of demoRefs) {
+        referenceBlocks.push(
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:image/png;base64,${ref.base64}`,
+              detail: "high",
+            },
+          },
+          {
+            type: "text",
+            text: ref.label,
+          }
+        );
+      }
+      referenceBlocks.push({
+        type: "text",
+        text: `═══════════════════════════════════════════
+END OF REFERENCE LIBRARY. Now analyse the UNKNOWN IMAGE below.
+Compare its arch characteristics, bottom type, and fish position against the reference examples above.
+═══════════════════════════════════════════`,
+      });
+    }
+
+    const analysisPrompt = `${getConditionsContext() ? getConditionsContext() + "\n\n" : ""}UNKNOWN SONAR IMAGE — IDENTIFY AND ANALYSE:
+
+Apply this exact 12-step reasoning sequence:
+1. SONAR BRAND: Identify brand/model from UI chrome, colour palette, layout. Compare UI style against the reference images above.
+2. SCREEN TYPE: 2D traditional sonar, DownScan/Down Imaging, SideImaging, or split-screen?
+3. BOTTOM: Hard or soft? Thickness + colour + double echo = rock/bedrock. Fuzzy/thin = mud/sand. Ragged = reef.
+4. STRUCTURE: Any snags, timber, pylons, rock bars, ledges visible rising from bottom?
+5. ARCH ANALYSIS: Count distinct arches. Judge THICKNESS (vertical height = size). Check COLOUR BRIGHTNESS. Gap from bottom = active; merged = lethargic.
+6. POSITION: Arches ON hard structure (barra/jack) | above rocky reef (fingermark) | mid-column over soft bottom (thready) | near surface (croc check)?
+7. SCHOOL vs SINGLES: Bait cloud or individual arches? Predator arches at edge of bait ball?
+8. TIDAL READ: Arches lifted with gap (tide running, active) or merged with bottom (slack tide, resting)?
+9. TURBIDITY: Sediment haze through water column?
+10. CROC CHECK: Any large SOLID DENSE elongated blob in the top 3m? If yes → crocAlert=true.
+11. SPECIES ID: Match all clues to species reference table AND compare visual pattern to the labeled reference images above.
+12. LURE & TECHNIQUE: Match to fish activity, depth, and structure.
+
+Return ONLY the raw JSON object.`;
+
     const response = await openai.chat.completions.create({
       model: "gpt-5.2",
-      max_completion_tokens: 1100,
+      max_completion_tokens: 1200,
       messages: [
         {
           role: "system",
           content: SYSTEM_PROMPT,
         },
+        // Reference library message (known labeled examples for calibration)
+        ...(referenceBlocks.length > 0
+          ? [
+              {
+                role: "user" as const,
+                content: referenceBlocks,
+              },
+              {
+                role: "assistant" as const,
+                content:
+                  "Reference library received and studied. I have memorised the 4 labeled sonar examples: Demo 1 = 3 Barramundi at 5.2m on Lowrance (thick bright arches on hard structure), Demo 2 = Threadfin Salmon school at 3.1m on Garmin (multiple arches mid-column over soft bottom), Demo 3 = single trophy Barramundi at 8m on Humminbird (massive single thick arch on structure), Demo 4 = dual-layer multi-species on Simrad (baitfish upper layer + predators deeper). Ready to analyse the unknown image using these as calibration references.",
+              },
+            ]
+          : []),
+        // Unknown image for analysis
         {
           role: "user",
           content: [
@@ -578,22 +654,7 @@ router.post("/analyze", async (req, res) => {
             },
             {
               type: "text",
-              text: `${getConditionsContext() ? getConditionsContext() + "\n\n" : ""}Analyse this sonar/fish finder screenshot using the full expert framework above. Apply this exact reasoning sequence:
-
-1. SONAR BRAND: Identify brand/model from UI chrome, colour palette, layout.
-2. SCREEN TYPE: Is this 2D traditional sonar, DownScan/Down Imaging, SideImaging, or a split-screen?
-3. BOTTOM: Hard or soft? Thickness + colour + double echo = rock/bedrock. Fuzzy/thin = mud/sand. Ragged = reef.
-4. STRUCTURE: Any snags, timber, pylons, rock bars, ledges visible rising from bottom?
-5. ARCH ANALYSIS: Count distinct arches. Judge THICKNESS (=size), not length. Check COLOUR BRIGHTNESS. Check gap from bottom — gap = active feeding, merged = lethargic.
-6. POSITION: Are arches on hard structure (barra/jack), above rocky reef (fingermark), mid-column over soft bottom (thready), or near surface in shallow (croc check)?
-7. SCHOOL vs SINGLES: Bait cloud or individual arches? Any predator arches at the edge of a bait ball?
-8. TIDAL READ: Are arches lifted with gap (tide running, fish active) or merged with bottom (slack/peak tide, fish resting)?
-9. TURBIDITY: Is there sediment haze through the water column? Adjust confidence accordingly.
-10. CROC CHECK: Any large SOLID DENSE elongated blob in the top 3m of the water column? If yes, crocAlert=true.
-11. SPECIES ID: Match all clues to the species reference table.
-12. LURE & TECHNIQUE: Match to fish activity (active vs lethargic), depth, and structure.
-
-Return ONLY the raw JSON object.`,
+              text: analysisPrompt,
             },
           ],
         },

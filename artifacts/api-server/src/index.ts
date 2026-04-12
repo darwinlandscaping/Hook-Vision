@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { refreshDailyConditions } from "./lib/dailyBriefing";
+import { loadDemoReferences } from "./lib/demoReference";
 
 const rawPort = process.env["PORT"];
 
@@ -23,6 +24,9 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Load demo reference images for AI visual comparison (fish ID accuracy boost)
+  loadDemoReferences();
 
   // Kick off the daily data refresh immediately on startup,
   // then it auto-schedules itself at midnight Darwin time (ACST UTC+9:30).
