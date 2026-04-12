@@ -10,6 +10,13 @@ import {
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 
 import { HVHeader } from "@/components/HVHeader";
 import { SonarPulse } from "@/components/SonarPulse";
@@ -83,6 +90,91 @@ function buildSpeech(a: FishAnalysis, character: NarratorCharacter): string {
       if (count === 0) return "Oi mate, sonar's drawing a blank — nothing showing down there right now.";
       return `${count <= 1 ? "Got a lone unit" : count <= 3 ? `Ripper — got ${count} fish showing` : `Bloody hell, ${count} fish stacked up`}! Reckon they're ${nick} — about ${a.depth}, ${a.distance}.${lureNote} Smash 'em!`;
   }
+}
+
+// ─── Barra sketch background ──────────────────────────────────────────────────
+const BARRA_POSITIONS = [
+  { size: 140, top: 30,  left: -30, rotate: "12deg",  opacity: 0.09 },
+  { size: 80,  top: 160, right:-15, rotate: "-22deg", opacity: 0.07 },
+  { size: 180, top: 270, left: -40, rotate: "6deg",   opacity: 0.06 },
+  { size: 100, top: 390, right:-10, rotate: "28deg",  opacity: 0.08 },
+  { size: 160, top: 510, left: -5,  rotate: "-8deg",  opacity: 0.07 },
+  { size: 90,  top: 650, right: 15, rotate: "-35deg", opacity: 0.08 },
+  { size: 120, top: 180, left: 160, rotate: "-5deg",  opacity: 0.05 },
+  { size: 70,  top: 560, left: 200, rotate: "18deg",  opacity: 0.06 },
+];
+function BarraSketches({ opacity = 1 }: { opacity?: number }) {
+  return (
+    <View style={[StyleSheet.absoluteFill, { overflow: "hidden" }]} pointerEvents="none">
+      {BARRA_POSITIONS.map((f, i) => (
+        <View
+          key={i}
+          style={{
+            position: "absolute",
+            top: f.top,
+            ...(f.left !== undefined ? { left: f.left } : {}),
+            ...(f.right !== undefined ? { right: f.right } : {}),
+            opacity: f.opacity * opacity,
+            transform: [{ rotate: f.rotate }],
+          }}
+        >
+          <MaterialCommunityIcons name="fish" size={f.size} color="#00d4aa" />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ─── Big glowing scan button ──────────────────────────────────────────────────
+function GlowButton({
+  onPress, scanning, mountMode, ready,
+}: {
+  onPress: () => void; scanning: boolean; mountMode: boolean; ready: boolean;
+}) {
+  const ring1 = useSharedValue(1);
+  const ring2 = useSharedValue(1);
+
+  useEffect(() => {
+    const speed = scanning ? 600 : 1400;
+    ring1.value = withRepeat(withTiming(1.45, { duration: speed }), -1, true);
+    ring2.value = withRepeat(withTiming(1.85, { duration: speed * 1.5 }), -1, true);
+  }, [scanning]);
+
+  const color = scanning ? "#ffd700" : mountMode ? "#ff4500" : "#00d4aa";
+
+  const r1Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring1.value }],
+    opacity: interpolate(ring1.value, [1, 1.45], [0.38, 0]),
+  }));
+  const r2Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring2.value }],
+    opacity: interpolate(ring2.value, [1, 1.85], [0.2, 0]),
+  }));
+
+  return (
+    <View style={styles.glowWrap}>
+      <Animated.View style={[styles.glowRing, { borderColor: color }, r2Style]} />
+      <Animated.View style={[styles.glowRing, { borderColor: color }, r1Style]} />
+      <TouchableOpacity
+        style={[styles.glowBtn, { backgroundColor: color, opacity: ready ? 1 : 0.45 }]}
+        onPress={onPress}
+        disabled={!ready || scanning}
+        activeOpacity={0.8}
+      >
+        {scanning ? (
+          <>
+            <SonarPulse size={38} active />
+            <Text style={styles.glowBtnSub}>READING…</Text>
+          </>
+        ) : (
+          <>
+            <Feather name="zap" size={44} color="#fff" />
+            <Text style={styles.glowBtnLabel}>{!ready ? "LOADING" : mountMode ? "AUTO ON" : "SCAN"}</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
 }
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
@@ -161,7 +253,7 @@ export default function LiveScreen() {
       } else {
         if (!nativeCamRef.current) throw new Error("Camera not ready.");
         const photo = await nativeCamRef.current.takePictureAsync({
-          base64: true, quality: 0.75, skipProcessing: true,
+          base64: true, quality: 1, skipProcessing: false,
         });
         if (!photo?.base64) throw new Error("Failed to capture photo.");
         base64 = photo.base64;
@@ -236,24 +328,31 @@ export default function LiveScreen() {
     if (webPermission === "unknown" || webPermission === "requesting") {
       return (
         <View style={[styles.permContainer, { backgroundColor: colors.background }]}>
-          <HVHeader subtitle="Live Camera" />
-          <MaterialCommunityIcons name="video" size={52} color={colors.primary} />
-          <Text style={[styles.permTitle, { color: colors.foreground }]}>Live Sonar Camera</Text>
-          <Text style={[styles.permDesc, { color: colors.mutedForeground }]}>
-            Mount your phone facing the sonar screen for continuous hands-free analysis with voice readout.
-          </Text>
-          {webPermission === "requesting" ? (
-            <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} />
-          ) : (
-            <TouchableOpacity
-              style={[styles.permBtn, { backgroundColor: colors.primary }]}
-              onPress={requestWebCamera}
-              activeOpacity={0.85}
-            >
-              <Feather name="video" size={16} color={colors.primaryForeground} />
-              <Text style={[styles.permBtnText, { color: colors.primaryForeground }]}>Allow Camera</Text>
-            </TouchableOpacity>
-          )}
+          <BarraSketches opacity={1.3} />
+          <View style={styles.permContent}>
+            <Text style={styles.permLogo}>HOOK<Text style={{ color: "#00d4aa" }}>VISION</Text></Text>
+            <Text style={[styles.permSubtitle, { color: "#00d4aa" }]}>LIVE SONAR CAMERA</Text>
+            <Text style={[styles.permDesc, { color: colors.mutedForeground }]}>
+              Point your phone at the sonar screen.{"\n"}AI reads fish, depth & species in real-time.
+            </Text>
+            {webPermission === "requesting" ? (
+              <View style={styles.glowWrap}>
+                <ActivityIndicator color="#00d4aa" size="large" />
+              </View>
+            ) : (
+              <View style={styles.glowWrap}>
+                <Animated.View style={[styles.glowRing, { borderColor: "#00d4aa" }]} />
+                <TouchableOpacity
+                  style={[styles.glowBtn, { backgroundColor: "#00d4aa" }]}
+                  onPress={requestWebCamera}
+                  activeOpacity={0.85}
+                >
+                  <Feather name="camera" size={44} color="#fff" />
+                  <Text style={styles.glowBtnLabel}>ALLOW</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
       );
     }
@@ -261,12 +360,14 @@ export default function LiveScreen() {
     if (webPermission === "denied") {
       return (
         <View style={[styles.permContainer, { backgroundColor: colors.background }]}>
-          <HVHeader subtitle="Live Camera" />
-          <Feather name="video-off" size={52} color={colors.destructive} />
-          <Text style={[styles.permTitle, { color: colors.foreground }]}>Camera Blocked</Text>
-          <Text style={[styles.permDesc, { color: colors.mutedForeground }]}>
-            Camera access was denied. In your browser settings, allow camera access for this site, then reload.
-          </Text>
+          <BarraSketches opacity={1.3} />
+          <View style={styles.permContent}>
+            <Feather name="video-off" size={64} color={colors.destructive} />
+            <Text style={[styles.permTitle, { color: colors.foreground }]}>Camera Blocked</Text>
+            <Text style={[styles.permDesc, { color: colors.mutedForeground }]}>
+              Allow camera access in your browser settings, then reload.
+            </Text>
+          </View>
         </View>
       );
     }
@@ -281,6 +382,9 @@ export default function LiveScreen() {
             onReady={() => setWebReady(true)}
           />
         )}
+
+        {/* Barra sketches ghost overlay */}
+        <BarraSketches opacity={0.7} />
 
         {/* Mount mode tint */}
         {mountMode && (
@@ -386,25 +490,9 @@ export default function LiveScreen() {
 
         {/* Bottom bar */}
         <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
-          {scanning ? (
-            <View style={styles.scanningState}>
-              <SonarPulse size={60} active />
-              <Text style={[styles.scanningText, { color: colors.primary }]}>Analysing sonar…</Text>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={[styles.scanBtn, { backgroundColor: mountMode ? "#cc3300" : colors.primary, opacity: webReady ? 1 : 0.5 }]}
-              onPress={scanNow}
-              disabled={!webReady}
-            >
-              <Feather name="zap" size={22} color="#fff" />
-              <Text style={styles.scanBtnText}>
-                {webReady ? (mountMode ? "Scan Now (Auto ON)" : "Scan Now") : "Starting camera…"}
-              </Text>
-            </TouchableOpacity>
-          )}
-          <Text style={[styles.hint, { color: "#ffffffaa" }]}>
-            {mountMode ? "📡 Sonar mount — scanning automatically" : "Point at sonar screen and tap Scan"}
+          <GlowButton onPress={scanNow} scanning={scanning} mountMode={mountMode} ready={webReady} />
+          <Text style={[styles.hint, { color: "#ffffffcc" }]}>
+            {mountMode ? "📡 Auto-scanning every 12s" : "Point at sonar — tap to scan"}
           </Text>
         </View>
       </View>
@@ -415,34 +503,44 @@ export default function LiveScreen() {
   if (!nativePermission) {
     return (
       <View style={[styles.permContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator color={colors.primary} />
+        <BarraSketches opacity={1.3} />
+        <ActivityIndicator color="#00d4aa" size="large" />
       </View>
     );
   }
 
   if (!nativePermission.granted) {
     return (
-      <View style={[styles.permContainer, { backgroundColor: colors.background, paddingTop: insets.top + 20 }]}>
-        <MaterialCommunityIcons name="video-off" size={52} color={colors.mutedForeground} />
-        <Text style={[styles.permTitle, { color: colors.foreground }]}>Camera Access Needed</Text>
-        <Text style={[styles.permDesc, { color: colors.mutedForeground }]}>
-          Mount your phone facing the sonar screen for continuous hands-free analysis with voice readout.
-        </Text>
-        <TouchableOpacity
-          style={[styles.permBtn, { backgroundColor: colors.primary }]}
-          onPress={requestNativePermission}
-          activeOpacity={0.85}
-        >
-          <Feather name="camera" size={16} color={colors.primaryForeground} />
-          <Text style={[styles.permBtnText, { color: colors.primaryForeground }]}>Allow Camera</Text>
-        </TouchableOpacity>
+      <View style={[styles.permContainer, { backgroundColor: colors.background }]}>
+        <BarraSketches opacity={1.3} />
+        <View style={styles.permContent}>
+          <Text style={styles.permLogo}>HOOK<Text style={{ color: "#00d4aa" }}>VISION</Text></Text>
+          <Text style={[styles.permSubtitle, { color: "#00d4aa" }]}>LIVE SONAR CAMERA</Text>
+          <Text style={[styles.permDesc, { color: colors.mutedForeground }]}>
+            Point your phone at the sonar screen.{"\n"}AI reads fish, depth & species in real-time.
+          </Text>
+          <View style={styles.glowWrap}>
+            <Animated.View style={[styles.glowRing, { borderColor: "#00d4aa" }]} />
+            <TouchableOpacity
+              style={[styles.glowBtn, { backgroundColor: "#00d4aa" }]}
+              onPress={requestNativePermission}
+              activeOpacity={0.85}
+            >
+              <Feather name="camera" size={44} color="#fff" />
+              <Text style={styles.glowBtnLabel}>ALLOW</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: "#000" }]}>
       <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
+
+      {/* Barra sketches ghost overlay */}
+      <BarraSketches opacity={0.7} />
 
       {mountMode && <View style={[StyleSheet.absoluteFill, styles.mountTint]} pointerEvents="none" />}
 
@@ -545,25 +643,9 @@ export default function LiveScreen() {
 
       {/* Bottom bar */}
       <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
-        {scanning ? (
-          <View style={styles.scanningState}>
-            <SonarPulse size={60} active />
-            <Text style={[styles.scanningText, { color: colors.primary }]}>Analysing sonar…</Text>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={[styles.scanBtn, { backgroundColor: mountMode ? "#cc3300" : colors.primary }]}
-            onPress={scanNow}
-            activeOpacity={0.85}
-          >
-            <Feather name="zap" size={22} color="#fff" />
-            <Text style={styles.scanBtnText}>
-              {mountMode ? "Scan Now (Auto ON)" : "Scan Now"}
-            </Text>
-          </TouchableOpacity>
-        )}
-        <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-          {mountMode ? "📡 Sonar mount — scanning automatically" : "Point at sonar screen and tap Scan"}
+        <GlowButton onPress={scanNow} scanning={scanning} mountMode={mountMode} ready={true} />
+        <Text style={[styles.hint, { color: "#ffffffcc" }]}>
+          {mountMode ? "📡 Auto-scanning every 12s" : "Point at sonar — tap to scan"}
         </Text>
       </View>
     </View>
@@ -572,12 +654,32 @@ export default function LiveScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  permContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 16 },
-  permTitle:   { fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center" },
-  permDesc:    { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
-  permBtn:     { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 30, marginTop: 8 },
-  permBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
 
+  // ─── Permission screens ────────────────────────────────────────────────────
+  permContainer: { flex: 1, backgroundColor: "#0a1628" },
+  permContent: {
+    flex: 1, alignItems: "center", justifyContent: "center",
+    paddingHorizontal: 36, gap: 18,
+  },
+  permLogo:    { fontSize: 32, fontFamily: "Oswald_700Bold", color: "#fff", letterSpacing: 1 },
+  permSubtitle:{ fontSize: 13, fontFamily: "Inter_600SemiBold", letterSpacing: 3, marginTop: -10 },
+  permTitle:   { fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center", color: "#fff" },
+  permDesc:    { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22, color: "#ffffffaa" },
+
+  // ─── Glow button ──────────────────────────────────────────────────────────
+  glowWrap: { width: 190, height: 190, alignItems: "center", justifyContent: "center", marginTop: 12 },
+  glowRing: {
+    position: "absolute", width: 145, height: 145, borderRadius: 72.5,
+    borderWidth: 2.5,
+  },
+  glowBtn: {
+    width: 145, height: 145, borderRadius: 72.5,
+    alignItems: "center", justifyContent: "center", gap: 5,
+  },
+  glowBtnLabel: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 2 },
+  glowBtnSub:   { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#fff", letterSpacing: 1.5 },
+
+  // ─── Camera overlay ───────────────────────────────────────────────────────
   mountTint: { backgroundColor: "#ff450008" },
 
   topBar: {
@@ -598,7 +700,7 @@ const styles = StyleSheet.create({
   cdBadge:  { marginTop: 12, width: 52, height: 52, borderRadius: 26, backgroundColor: "#ff450022", borderWidth: 2, alignItems: "center", justifyContent: "center" },
   cdText:   { fontSize: 18, fontFamily: "Inter_700Bold", color: "#ff4500" },
 
-  resultOverlay: { position: "absolute", left: 16, right: 16, bottom: 140, borderRadius: 16, borderWidth: 1, padding: 16, gap: 6, zIndex: 20 },
+  resultOverlay: { position: "absolute", left: 16, right: 16, bottom: 220, borderRadius: 16, borderWidth: 1, padding: 16, gap: 6, zIndex: 20 },
   resultRow:     { flexDirection: "row", alignItems: "center", gap: 8 },
   charBadge:     { fontSize: 16 },
   resultSpecies: { fontSize: 16, fontFamily: "Inter_700Bold", flex: 1 },
@@ -611,13 +713,9 @@ const styles = StyleSheet.create({
   replayText:    { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   clearBtn:      { width: 30, height: 30, borderRadius: 15, borderWidth: 1, alignItems: "center", justifyContent: "center" },
 
-  errorOverlay: { position: "absolute", left: 16, right: 16, bottom: 140, borderRadius: 12, borderWidth: 1, padding: 12, flexDirection: "row", alignItems: "center", gap: 8, zIndex: 20 },
+  errorOverlay: { position: "absolute", left: 16, right: 16, bottom: 220, borderRadius: 12, borderWidth: 1, padding: 12, flexDirection: "row", alignItems: "center", gap: 8, zIndex: 20 },
   errorText:    { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
 
-  bottomBar: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center", paddingTop: 16, gap: 10, zIndex: 10 },
-  scanBtn:   { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingHorizontal: 44, paddingVertical: 18, borderRadius: 50 },
-  scanBtnText: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff" },
-  scanningState: { alignItems: "center", gap: 8 },
-  scanningText:  { fontSize: 14, fontFamily: "Inter_400Regular" },
-  hint: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  bottomBar: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center", paddingTop: 12, gap: 6, zIndex: 10 },
+  hint: { fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 4 },
 });
