@@ -60,3 +60,9 @@ id = "lPENuSVl7Ia5CwHiE8phm"
 uri = "file://artifacts/hookvision/assets/images/hv-logo.png"
 type = "image"
 title = "HookVision wordmark logo hook fish"
+
+[[generated]]
+id = "TxeT8i0ZLCwwSa8gM97ms"
+uri = "file://artifacts/hookvision/assets/images/hv-logo2.png"
+type = "image"
+title = "HookVision gold wordmark hook only"

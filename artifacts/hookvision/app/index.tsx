@@ -18,7 +18,7 @@ const { width: W, height: H } = Dimensions.get("window");
 
 const BUFFALO  = require("@/assets/images/splash-buffalo.png");
 const BARRA    = require("@/assets/images/splash-barra.png");
-const HV_LOGO  = require("@/assets/images/hv-logo-nobg.png");
+const HV_LOGO  = require("@/assets/images/hv-logo2-nobg.png");
 const NT_FLAG  = require("@/assets/images/nt-flag-nobg.png");
 
 const BG   = "#0a1628";
@@ -92,14 +92,22 @@ export default function WelcomeScreen() {
         resizeMode="contain"
       />
 
-      {/* ── HookVision logo — centre ── */}
-      <View style={[styles.brandCenter, { top: topPad }]}>
-        <Animated.Image
-          source={HV_LOGO}
-          style={[styles.logo, { width: logoW, height: logoH, opacity: logoOpacity, transform: [{ translateY: logoY }] }]}
-          resizeMode="contain"
-        />
-      </View>
+      {/* ── HookVision logo — upper section of dark band ── */}
+      <Animated.Image
+        source={HV_LOGO}
+        style={[
+          styles.logo,
+          {
+            width: logoW,
+            height: logoH,
+            top: H * 0.37,
+            left: (W - logoW) / 2,
+            opacity: logoOpacity,
+            transform: [{ translateY: logoY }],
+          },
+        ]}
+        resizeMode="contain"
+      />
 
       {/* ── Enter button — bottom ── */}
       <Animated.View
