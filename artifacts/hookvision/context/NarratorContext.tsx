@@ -22,7 +22,7 @@ if (Platform.OS !== "web") {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-export type NarratorCharacter = "AUSSIE" | "BENAUD" | "CHOPPER" | "ATTENBOROUGH";
+export type NarratorCharacter = "AUSSIE" | "BENAUD" | "CHOPPER" | "ATTENBOROUGH" | "WIFE";
 export type NarratorLanguage =
   | "en-AU" | "ja-JP" | "zh-CN" | "id-ID"
   | "de-DE" | "fr-FR" | "es-ES" | "ko-KR"
@@ -43,10 +43,11 @@ export interface LanguageInfo {
 }
 
 export const CHARACTERS: CharacterInfo[] = [
-  { id: "AUSSIE",       name: "NT Fishing Guide", emoji: "🎣", tagline: "Laconic, slang-heavy barra expert", color: "#00d4aa" },
-  { id: "BENAUD",       name: "Richie Benaud",    emoji: "🏏", tagline: "Legendary cricket commentator",      color: "#ffd700" },
-  { id: "CHOPPER",      name: "Chopper Read",     emoji: "🔪", tagline: "Melbourne's most colourful narrator", color: "#ff4500" },
-  { id: "ATTENBOROUGH", name: "David Attenborough", emoji: "🌿", tagline: "Nature documentary reverence",    color: "#4a9eff" },
+  { id: "AUSSIE",       name: "Blue the Guide",      emoji: "🎣", tagline: "Sun-leathered NT barra legend", color: "#00d4aa" },
+  { id: "BENAUD",       name: "Richie Benaud",        emoji: "🏏", tagline: "Cricket's voice, fishing's poet", color: "#ffd700" },
+  { id: "CHOPPER",      name: "Chopper Read",          emoji: "🪖", tagline: "Melbourne's most dangerous narrator", color: "#ff4500" },
+  { id: "ATTENBOROUGH", name: "David Attenborough",   emoji: "🌿", tagline: "BBC natural history legend",    color: "#4a9eff" },
+  { id: "WIFE",         name: "The Nagging Wife",      emoji: "👩", tagline: "Knows the tides. Not impressed.", color: "#ff69b4" },
 ];
 
 export const LANGUAGES: LanguageInfo[] = [

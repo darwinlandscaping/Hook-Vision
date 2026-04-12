@@ -75,6 +75,9 @@ function buildSpeech(a: FishAnalysis, character: NarratorCharacter): string {
     case "ATTENBOROUGH":
       if (count === 0) return "The ancient waters yield nothing to our instruments at this moment. We must seek them elsewhere.";
       return `Here, in the remarkable Northern Territory waters, ${count === 1 ? "a solitary" : `${count}`} ${nick} ${count === 1 ? "rests" : "rest"} at ${a.depth}.${lureNote}`;
+    case "WIFE":
+      if (count === 0) return "Nothing on the sonar. Honestly. I told you to move the boat twenty minutes ago. The gutters still need cleaning when you get home.";
+      return `Okay fine — ${count === 1 ? "there's one" : `there are ${count} fish`} showing, ${nick} at ${a.depth}. Don't stuff it up.${lureNote ? ` And ${lureNote.trim()}` : ""} You better bring something home.`;
     default:
       if (count === 0) return "Oi mate, sonar's drawing a blank — nothing showing down there right now.";
       return `${count <= 1 ? "Got a lone unit" : count <= 3 ? `Ripper — got ${count} fish showing` : `Bloody hell, ${count} fish stacked up`}! Reckon they're ${nick} — about ${a.depth}, ${a.distance}.${lureNote} Smash 'em!`;

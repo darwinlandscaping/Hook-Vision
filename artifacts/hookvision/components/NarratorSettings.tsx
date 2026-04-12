@@ -29,10 +29,11 @@ export function NarratorSettings({ visible, onClose }: Props) {
   const { character, language, setCharacter, setLanguage, speak } = useNarrator();
 
   const DEMOS: Record<NarratorCharacter, string> = {
-    AUSSIE:       "G'day mate! Bloody ripper conditions out there today — let's go find us a big barra!",
-    BENAUD:       "Marvellous. The conditions today are simply magnificent. One ball, perfectly delivered to the tidal zone.",
-    CHOPPER:      "Listen here ya mug — I'll tell ya exactly where the fish are, and ya better be grateful.",
-    ATTENBOROUGH: "Here, in the ancient waters of the Northern Territory, a magnificent barramundi awaits.",
+    AUSSIE:       "She's on, mate! Deadset ripper conditions — tide's dropping and the barra are stacked up against the rock bar. Chuck on a white hardbody and work it slow. Let's go smash 'em!",
+    BENAUD:       "Marvellous. Simply marvellous. The tide has delivered the conditions — one of those mornings where the barramundi simply cannot resist. Oh, I say.",
+    CHOPPER:      "Listen to me. I've fished these waters and I'll tell ya something for nothing, ya mug — the fish are right there. Don't be weak. Get in there.",
+    ATTENBOROUGH: "Here, in the ancient flood plains of the Northern Territory, the barramundi has waited... patiently. And now — the moment of truth.",
+    WIFE:         "Honestly, I cannot believe you're out there again. The gutters are full, your mother is coming over Sunday, and — fine, FINE. The tide's turning, fish the drop. But you better bring something home this time.",
   };
 
   const handleCharacter = (c: NarratorCharacter) => {
@@ -61,13 +62,15 @@ export function NarratorSettings({ visible, onClose }: Props) {
           {/* Character selection */}
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>CHOOSE YOUR NARRATOR</Text>
           <View style={styles.charGrid}>
-            {CHARACTERS.map((c) => {
+            {CHARACTERS.map((c, idx) => {
               const selected = character === c.id;
+              const isLastOdd = idx === CHARACTERS.length - 1 && CHARACTERS.length % 2 !== 0;
               return (
                 <TouchableOpacity
                   key={c.id}
                   style={[
                     styles.charCard,
+                    isLastOdd && styles.charCardFull,
                     {
                       backgroundColor: selected ? `${c.color}18` : colors.card,
                       borderColor: selected ? c.color : colors.border,
@@ -190,6 +193,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     position: "relative",
+  },
+  charCardFull: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    gap: 14,
+    paddingHorizontal: 20,
   },
   charEmoji: { fontSize: 28 },
   charName: { fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" },
