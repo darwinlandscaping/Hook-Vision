@@ -19,7 +19,7 @@ const { width: W, height: H } = Dimensions.get("window");
 const BUFFALO  = require("@/assets/images/splash-buffalo.png");
 const BARRA    = require("@/assets/images/splash-barra.png");
 const HV_LOGO  = require("@/assets/images/hv-logo2-nobg.png");
-const NT_FLAG  = require("@/assets/images/nt-flag-v2-nobg.png");
+const NT_FLAG  = require("@/assets/images/nt-flag-real.png");
 const CROC_BTN = require("@/assets/images/croc-btn-nobg.png");
 
 const BG   = "#0a1628";
@@ -184,8 +184,10 @@ const styles = StyleSheet.create({
 
   ntFlag: {
     position: "absolute",
-    width: 88,
-    height: 62,
+    width: 100,
+    height: 50,
+    borderRadius: 3,
+    overflow: "hidden",
   },
 
   brandCenter: {
