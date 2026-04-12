@@ -46,6 +46,7 @@ interface FishAnalysis {
   sonarModel?: string | null;
   crocAlert?: boolean;
   crocWarning?: string | null;
+  archReasoning?: string;
 }
 
 const SCREEN_W = Dimensions.get("window").width;
@@ -310,7 +311,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {analysis && <AnalysisCard analysis={analysis} />}
+        {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} />}
 
         {analysis && (
           <TouchableOpacity style={[styles.newBtn, { borderColor: colors.border }]} onPress={() => { setImageUri(null); setImageBase64(null); setAnalysis(null); setError(null); }} activeOpacity={0.7}>

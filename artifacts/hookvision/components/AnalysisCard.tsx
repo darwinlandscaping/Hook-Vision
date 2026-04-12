@@ -5,6 +5,7 @@ import { useColors } from "@/hooks/useColors";
 import { useVoice } from "@/hooks/useVoice";
 import { useFishImage, getSpeciesLabel } from "@/hooks/useFishImage";
 import { useCraigsLure } from "@/hooks/useCraigsLure";
+import { ArchZoomPanel } from "@/components/ArchZoomPanel";
 
 interface FishAnalysis {
   fishCount: number;
@@ -21,10 +22,12 @@ interface FishAnalysis {
   sonarModel?: string | null;
   crocAlert?: boolean;
   crocWarning?: string | null;
+  archReasoning?: string;
 }
 
 interface AnalysisCardProps {
   analysis: FishAnalysis;
+  imageUri?: string;
   autoSpeak?: boolean;
 }
 
@@ -96,6 +99,11 @@ function buildSpeechText(a: FishAnalysis): string {
   // Rig
   if (a.rig) {
     parts.push(`Rig up with ${a.rig}.`);
+  }
+
+  // Arch reasoning — how the AI made the call (spoken after the main result)
+  if (a.archReasoning) {
+    parts.push(`Here's how I read it. ${a.archReasoning}`);
   }
 
   // Outro
@@ -190,7 +198,7 @@ function TacticBox({ icon, label, value, colors, delay }: TacticBoxProps) {
   );
 }
 
-export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) {
+export function AnalysisCard({ analysis, imageUri, autoSpeak = true }: AnalysisCardProps) {
   const colors = useColors();
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(0.95)).current;
@@ -344,6 +352,19 @@ export function AnalysisCard({ analysis, autoSpeak = true }: AnalysisCardProps) 
           </Text>
         </View>
       </View>
+
+      {/* ── Arch zoom panel — shown only when we have the source image ── */}
+      {imageUri && !analysis.crocAlert && (
+        <ArchZoomPanel
+          imageUri={imageUri}
+          depth={analysis.depth}
+          distance={analysis.distance}
+          species={analysis.species}
+          confidence={analysis.confidence}
+          bottomType={analysis.bottomType}
+          archReasoning={analysis.archReasoning}
+        />
+      )}
 
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
