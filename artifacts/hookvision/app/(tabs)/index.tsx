@@ -16,6 +16,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DemoStore } from "@/app/(tabs)/demo";
 import { SpeciesCompareStore } from "@/stores/SpeciesCompareStore";
+import { getNTLocationName } from "@/utils/ntLocation";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -145,6 +146,12 @@ export default function HomeScreen() {
   const [compareExp, setCompareExp]   = useState<string | null>(null);
   const [loadingCompare, setLoadingCompare] = useState(false);
 
+  // ── Background location fetch (starts when photo is selected) ─────────────
+  // Runs in parallel with user reviewing the image + pressing Analyze.
+  // By the time the AI finishes, location is almost always ready.
+  const locationPromiseRef = useRef<Promise<string | null> | null>(null);
+  const [capturedLocation, setCapturedLocation] = useState<string | null>(null);
+
   // Pick up demo image loaded from the Demo tab and auto-analyse it
   useFocusEffect(
     useCallback(() => {
@@ -156,6 +163,8 @@ export default function HomeScreen() {
         setError(null);
         DemoStore.pendingUri = null;
         DemoStore.pendingBase64 = null;
+        // Start location grab in parallel with auto-analysis
+        locationPromiseRef.current = getNTLocationName(10_000);
       }
     }, [])
   );
@@ -173,7 +182,10 @@ export default function HomeScreen() {
     setImageBase64(base64 ?? null);
     setAnalysis(null);
     setError(null);
+    setCapturedLocation(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Kick off location grab in the background — runs while user taps "Analyze Sonar"
+    locationPromiseRef.current = getNTLocationName(10_000);
   }, []);
 
   const openCamera = useCallback(async () => {
@@ -278,10 +290,15 @@ export default function HomeScreen() {
           suggestion: data.suggestion,
         });
       }
-      // Fire-and-forget: contribute to community data bank
+      // Fire-and-forget: contribute to community data bank (with real location)
       try {
         const reportDomain = process.env.EXPO_PUBLIC_DOMAIN;
         const reportBase = reportDomain ? `https://${reportDomain}` : "";
+        // Await location — it's been fetching since the photo was selected
+        // so this is usually instant (already resolved) by the time AI finishes
+        const locationName = await (locationPromiseRef.current ?? Promise.resolve(null));
+        locationPromiseRef.current = null;
+        setCapturedLocation(locationName);
         fetch(`${reportBase}/api/community/report`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -291,6 +308,7 @@ export default function HomeScreen() {
             depth: data.depth,
             lureSuggestion: data.suggestion,
             rawAnalysis: data,
+            locationName: locationName ?? undefined,
           }),
         }).catch(() => {});
       } catch {}
@@ -410,6 +428,21 @@ export default function HomeScreen() {
 
         {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} />}
 
+        {/* ── Scan logged location chip ─────────────────────────────────── */}
+        {analysis && (
+          <View style={[styles.locationChip, {
+            borderColor: capturedLocation ? "#00d4aa44" : colors.border,
+            backgroundColor: capturedLocation ? "#00d4aa10" : colors.card + "80",
+          }]}>
+            <Feather name="map-pin" size={12} color={capturedLocation ? "#00d4aa" : colors.mutedForeground} />
+            <Text style={[styles.locationChipText, { color: capturedLocation ? "#00d4aa" : colors.mutedForeground }]}>
+              {capturedLocation
+                ? `Logged · ${capturedLocation}`
+                : "Location not shared · enable in settings to improve hotspot data"}
+            </Text>
+          </View>
+        )}
+
         {/* ── Species comparison card ─────────────────────────────────────── */}
         {analysis && compareCard && (
           <View style={[styles.compareCard, { backgroundColor: colors.card, borderColor: "#ffd70055" }]}>
@@ -450,7 +483,7 @@ export default function HomeScreen() {
         )}
 
         {analysis && (
-          <TouchableOpacity style={[styles.newBtn, { borderColor: colors.border }]} onPress={() => { setImageUri(null); setImageBase64(null); setAnalysis(null); setError(null); setCompareCard(null); setCompareExp(null); }} activeOpacity={0.7}>
+          <TouchableOpacity style={[styles.newBtn, { borderColor: colors.border }]} onPress={() => { setImageUri(null); setImageBase64(null); setAnalysis(null); setError(null); setCompareCard(null); setCompareExp(null); setCapturedLocation(null); locationPromiseRef.current = null; }} activeOpacity={0.7}>
             <Feather name="plus" size={16} color={colors.mutedForeground} />
             <Text style={[styles.newBtnText, { color: colors.mutedForeground }]}>New analysis</Text>
           </TouchableOpacity>
@@ -640,6 +673,14 @@ const styles = StyleSheet.create({
   errorText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   newBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
   newBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+
+  /* Location logged chip */
+  locationChip: {
+    flexDirection: "row", alignItems: "center", gap: 7,
+    borderWidth: 1, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  locationChipText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular" },
 
   /* Species comparison card */
   compareCard: {
