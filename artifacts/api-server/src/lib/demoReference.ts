@@ -1,7 +1,7 @@
 /**
  * Demo Reference Library
  *
- * Loads the 4 labeled demo sonar images at server startup.
+ * Loads the 5 labeled demo sonar images at server startup.
  * These are injected into every analyze call as visual ground-truth references,
  * so the AI can compare the unknown scan against known labeled examples.
  */
@@ -91,13 +91,53 @@ WHAT TO SEE IN THIS IMAGE:
 • The predator arches in the deeper layer are on or near hard structure = barra most likely
 SPECIES CONFIRMATION: Multi-species — Baitfish school (upper layer) + Barramundi or Fingermark (lower layer near structure). Report both layers. Confidence 75%+ for multi-species scenario.`,
   },
+  5: {
+    brand: "Humminbird",
+    model: "HELIX / SOLIX Split-Screen",
+    label: `DEMO 5 — HUMMINBIRD SPLIT-SCREEN (FLASHER + 2D SONAR) — ANSWER: MULTIPLE BARRAMUNDI, 5–6 FISH, open water mid-column, ~34.5ft (10.5m) total depth.
+
+THIS IS THE MOST IMPORTANT REFERENCE IMAGE. Study it carefully.
+
+LAYOUT OF THIS SCREEN (Humminbird split-screen):
+• LEFT SIDE: Circular "flasher" wheel — a round sonar display showing current depth in real-time. The wheel has concentric colour rings (yellow/red/blue). Multiple sharp SPIKE RETURNS appear as tall orange/red/yellow vertical bars pointing outward from the wheel centre — each spike = a fish.
+• RIGHT SIDE: Traditional 2D scroll sonar. The depth scale is shown on the RIGHT edge of the sonar panel (60ft, 30ft, 20ft, 40ft, 50ft, 40ft — dual scale showing depth history). Water temp shown top-right: 68.2°F. Total depth shown top-centre: 34,5 FT (34.5 feet = 10.5m).
+
+WHAT THE FISH ARCHES LOOK LIKE (RIGHT PANEL):
+• 5–6 ENORMOUS THICK BRIGHT ARCHES arranged at various depths throughout the water column
+• Arch shape: wide, full U-shaped curve — very tall vertically (thick = BIG FISH)
+• Arch colour: DEEP ORANGE/RED core with bright YELLOW halo — maximum signal strength — very large swim bladder
+• The arches fill the water column from shallow to near-bottom (~5ft down to ~28ft)
+• These are INDIVIDUAL FISH ARCHES, not a school blob — each arch is a single large fish
+• Arches are NOT touching hard structure — fish are suspended/free-swimming mid-column or slightly above soft bottom
+• Bottom echo visible at ~34ft: relatively thin orange line — soft/sandy substrate (NOT hard rock)
+
+IDENTIFYING FEATURES OF THIS SONAR STYLE:
+• The Humminbird circular flasher on the left is UNIQUE — no other brand does this split-screen
+• The dual-scale on the right side of the sonar panel is a Humminbird trademark
+• The colour palette: deep orange/amber tones for strong returns, fading to blue/teal for water
+• Water background on the right panel: gradient from teal (shallow) to blue/dark blue (deep) — typical Humminbird
+
+SPECIES CONFIRMATION — WHY THESE ARE BARRAMUNDI:
+• Arch thickness (vertical height): VERY THICK = large fish 65cm+ (barramundi size)
+• Arch brightness: Maximum orange-red return = large swim bladder = barra (threadfin would be smaller/thinner arches)
+• Number: 5–6 individual large fish arches = a small aggregation, not a tight school
+• Depth: 5–28ft in a 34.5ft water column — barra often suspend in the water column when chasing bait
+• Temperature 68.2°F (20°C): cool for barra — suggests they may be slightly lethargic, holding mid-column
+• Soft bottom beneath them — open water or sand flat habitat, barra over bait on sand
+• The flasher spikes on the LEFT match the arch count on the RIGHT — 5+ strong returns = 5+ big fish
+• NOT threadfin: too large (arches too thick/tall), threadfin would show thinner, more compressed arches
+• NOT baitfish school: individual separated arches, not a cloud/blob
+SPECIES CONFIRMATION: Barramundi (Lates calcarifer) — 5 to 6 fish at 5–28ft depth in open water over soft bottom. All fish are legal size 65–90cm based on arch thickness. Confidence should be 90%+.
+
+TECHNIQUE FOR THIS SITUATION: Fish are mid-column/open water — use a mid-water lure or livebait suspended at the fish depth. Try 50g vibes or deep-diving hardbodies at 8–15ft. If fish are slightly lethargic (68°F is cool), slow down the retrieve.`,
+  },
 };
 
 /** Load all demo images from disk into memory as base64 */
 export function loadDemoReferences(): void {
   const demosDir = path.join(process.cwd(), "public", "demos");
 
-  for (let i = 1; i <= 4; i++) {
+  for (let i = 1; i <= 5; i++) {
     const filePath = path.join(demosDir, `sonar-demo-${i}.png`);
     try {
       const buf = fs.readFileSync(filePath);
