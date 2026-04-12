@@ -181,7 +181,6 @@ export default function HomeScreen() {
   const [analysis, setAnalysis] = useState<FishAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [demoLoading, setDemoLoading] = useState<number | null>(null);
 
   const cameraScale = useSharedValue(1);
   const galleryScale = useSharedValue(1);
@@ -264,36 +263,6 @@ export default function HomeScreen() {
     }
   }, [imageBase64, imageUri, addEntry, analyzeScale]);
 
-  const DEMOS = [
-    { num: 1, label: "Lowrance", sub: "3 barra · 5.2m" },
-    { num: 2, label: "Garmin", sub: "School · 3.1m" },
-    { num: 3, label: "Humminbird", sub: "Trophy · 8m" },
-    { num: 4, label: "Simrad", sub: "Dual · 7m" },
-  ];
-
-  const loadDemoImage = useCallback(async (num: number) => {
-    try {
-      setDemoLoading(num);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
-      const baseUrl = domain ? `https://${domain}` : "";
-      const url = `${baseUrl}/api/demos/sonar-demo-${num}.png`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to load demo");
-      const blob = await response.blob();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      handleImageSelected(url, base64);
-    } catch {
-      Alert.alert("Error", "Could not load demo image.");
-    } finally {
-      setDemoLoading(null);
-    }
-  }, [handleImageSelected]);
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 
@@ -406,35 +375,16 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Demo thumbnails */}
-          <View style={styles.demoRow}>
-            <Text style={[styles.demoRowLabel, { color: colors.mutedForeground }]}>TRY A DEMO SCAN</Text>
-            <View style={styles.demoThumbs}>
-              {DEMOS.map(({ num, label }) => {
-                const domain = process.env.EXPO_PUBLIC_DOMAIN;
-                const baseUrl = domain ? `https://${domain}` : "";
-                const thumbUri = `${baseUrl}/api/demos/sonar-demo-${num}.png`;
-                const isLoading = demoLoading === num;
-                return (
-                  <TouchableOpacity
-                    key={num}
-                    style={[styles.demoThumb, { borderColor: colors.primary + "44", backgroundColor: colors.background }]}
-                    onPress={() => loadDemoImage(num)}
-                    activeOpacity={0.75}
-                    disabled={demoLoading !== null}
-                  >
-                    <Image source={{ uri: thumbUri }} style={styles.demoThumbImg} resizeMode="cover" />
-                    {isLoading && (
-                      <View style={styles.demoThumbOverlay}>
-                        <ActivityIndicator size="small" color="#00d4aa" />
-                      </View>
-                    )}
-                    <Text style={[styles.demoThumbLabel, { color: colors.primary }]}>{label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
+          {/* Demo link */}
+          <TouchableOpacity
+            style={[styles.demoLink, { borderColor: "#00d4aa44", backgroundColor: "#00d4aa11" }]}
+            onPress={() => router.navigate("/(tabs)/demo")}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="image-multiple" size={16} color="#00d4aa" />
+            <Text style={[styles.demoLinkText, { color: "#00d4aa" }]}>View Demo Sonar Scans</Text>
+            <Feather name="chevron-right" size={14} color="#00d4aa" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -481,14 +431,12 @@ const styles = StyleSheet.create({
   },
   featGalleryBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 
-  /* demo row */
-  demoRow: { gap: 6 },
-  demoRowLabel: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1.2, textTransform: "uppercase" },
-  demoThumbs: { flexDirection: "row", gap: 6 },
-  demoThumb: { flex: 1, borderRadius: 8, borderWidth: 1, overflow: "hidden" },
-  demoThumbImg: { width: "100%", height: 50 },
-  demoThumbOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
-  demoThumbLabel: { fontSize: 9, fontFamily: "Inter_700Bold", textAlign: "center", paddingVertical: 3 },
+  /* demo link row */
+  demoLink: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 10, borderRadius: 24, borderWidth: 1,
+  },
+  demoLinkText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 
   /* section label */
   sectionLabel: {

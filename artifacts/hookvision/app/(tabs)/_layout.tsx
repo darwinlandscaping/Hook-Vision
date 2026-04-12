@@ -40,6 +40,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "fish.fill", selected: "fish.fill" }} />
         <Label>Fishy</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="demo">
+        <Icon sf={{ default: "photo.on.rectangle", selected: "photo.on.rectangle.angled" }} />
+        <Label>Demo</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="history">
         <Icon sf={{ default: "clock", selected: "clock.fill" }} />
         <Label>History</Label>
@@ -166,6 +170,18 @@ function ClassicTabLayout() {
               <SymbolView name="fish.fill" tintColor={color} size={22} />
             ) : (
               <MaterialCommunityIcons name="fish" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="demo"
+        options={{
+          title: "Demo",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="photo.on.rectangle" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="image-multiple" size={22} color={color} />
             ),
         }}
       />
