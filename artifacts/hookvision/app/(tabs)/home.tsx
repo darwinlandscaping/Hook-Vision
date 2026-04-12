@@ -212,33 +212,31 @@ export default function HomeScreen() {
         <>
           <Text style={[S.sectionHead, { color: colors.mutedForeground }]}>DAILY INTEL BRIEFING</Text>
           <LilyPadCard innerStyle={S.briefingInner}>
-            {/* Barra activity bar */}
+            {/* Barra activity bar — compact single row */}
             <View style={S.activityRow}>
-              <Text style={S.briefingLabel}>BARRA ACTIVITY</Text>
-              <Text style={[S.activityScore, { color: barraColor }]}>{barraScore}/100</Text>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={S.briefingLabel}>BARRA ACTIVITY</Text>
+                <View style={S.activityBarBg}>
+                  <View style={[S.activityBarFill, { width: `${barraScore}%` as any, backgroundColor: barraColor }]} />
+                </View>
+                <Text style={[S.activityLine, { color: barraColor }]} numberOfLines={1}>
+                  {conds.barraActivity.replace(/^[^\s]+ /, "")}
+                </Text>
+              </View>
+              <Text style={[S.activityScore, { color: barraColor }]}>{barraScore}<Text style={S.activityScoreSub}>/100</Text></Text>
             </View>
-            <View style={S.activityBarBg}>
-              <View style={[S.activityBarFill, { width: `${barraScore}%` as any, backgroundColor: barraColor }]} />
-            </View>
-            <Text style={[S.activityLine, { color: barraColor }]}>
-              {conds.barraActivity.replace(/^[^\s]+ /, "")}
-            </Text>
 
-            {/* AI briefing */}
+            {/* AI briefing + technique on same divider */}
             <View style={[S.divider, { backgroundColor: "#2d8c4733" }]} />
             <View style={S.briefingMeta}>
-              <Feather name="cpu" size={13} color="#00d4aa" />
-              <Text style={S.briefingMetaText}>AI GUIDE BRIEFING  ·  {conds.date}</Text>
+              <Feather name="cpu" size={11} color="#00d4aa" />
+              <Text style={S.briefingMetaText}>AI BRIEFING · {conds.date}</Text>
+              <View style={{ flex: 1 }} />
+              <Feather name="target" size={11} color="#ffd700" />
+              <Text style={[S.briefingMetaText, { color: "#ffd700" }]}>TECHNIQUE</Text>
             </View>
             <Text style={[S.briefingText, { color: colors.foreground }]}>{conds.aiBriefing}</Text>
-
-            {/* Season top technique */}
-            <View style={[S.divider, { backgroundColor: "#2d8c4733" }]} />
-            <View style={S.briefingMeta}>
-              <Feather name="target" size={13} color="#ffd700" />
-              <Text style={[S.briefingMetaText, { color: "#ffd700" }]}>TOP TECHNIQUE TODAY</Text>
-            </View>
-            <Text style={[S.briefingText, { color: colors.foreground }]}>{conds.season.topTechnique}</Text>
+            <Text style={[S.techniqueText, { color: colors.mutedForeground }]}>{conds.season.topTechnique}</Text>
           </LilyPadCard>
         </>
       )}
@@ -363,17 +361,19 @@ const S = StyleSheet.create({
 
   sectionHead: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, marginTop: 4 },
 
-  briefingInner: { padding: 14, gap: 10 },
-  briefingLabel: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#00d4aa", letterSpacing: 1 },
-  activityRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  activityScore: { fontSize: 18, fontFamily: "Oswald_700Bold" },
-  activityBarBg: { height: 6, backgroundColor: "#1a2e1a", borderRadius: 3, overflow: "hidden" },
+  briefingInner: { padding: 10, gap: 7 },
+  briefingLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#00d4aa", letterSpacing: 1 },
+  activityRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  activityScore: { fontSize: 26, fontFamily: "Oswald_700Bold", lineHeight: 28 },
+  activityScoreSub: { fontSize: 12, fontFamily: "Oswald_700Bold", opacity: 0.6 },
+  activityBarBg: { height: 5, backgroundColor: "#1a2e1a", borderRadius: 3, overflow: "hidden" },
   activityBarFill: { height: "100%", borderRadius: 3 },
-  activityLine: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  activityLine: { fontSize: 11, fontFamily: "Inter_500Medium" },
   divider: { height: 1 },
-  briefingMeta: { flexDirection: "row", alignItems: "center", gap: 6 },
-  briefingMetaText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#00d4aa", letterSpacing: 0.8 },
-  briefingText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  briefingMeta: { flexDirection: "row", alignItems: "center", gap: 5 },
+  briefingMetaText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#00d4aa", letterSpacing: 0.8 },
+  briefingText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  techniqueText: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16, fontStyle: "italic" },
 
   tileGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   tile: { width: "22%", flexGrow: 1, aspectRatio: 0.9 },
