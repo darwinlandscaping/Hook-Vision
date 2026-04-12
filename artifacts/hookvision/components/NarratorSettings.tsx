@@ -29,11 +29,26 @@ export function NarratorSettings({ visible, onClose }: Props) {
   const { character, language, setCharacter, setLanguage, speak } = useNarrator();
 
   const DEMOS: Record<NarratorCharacter, string> = {
-    AUSSIE:       "She's on, mate! Deadset ripper conditions — tide's dropping and the barra are stacked up against the rock bar. Chuck on a white hardbody and work it slow. Let's go smash 'em!",
+    AUSSIE:       "She's on, mate! Deadset ripper conditions — tide's dropping and the barra are stacked against the rock bar. Chuck on a white hardbody and work it slow. Let's smash 'em!",
     BENAUD:       "Marvellous. Simply marvellous. The tide has delivered the conditions — one of those mornings where the barramundi simply cannot resist. Oh, I say.",
     CHOPPER:      "Listen to me. I've fished these waters and I'll tell ya something for nothing, ya mug — the fish are right there. Don't be weak. Get in there.",
     ATTENBOROUGH: "Here, in the ancient flood plains of the Northern Territory, the barramundi has waited... patiently. And now — the moment of truth.",
-    WIFE:         "Honestly, I cannot believe you're out there again. The gutters are full, your mother is coming over Sunday, and — fine, FINE. The tide's turning, fish the drop. But you better bring something home this time.",
+    WIFE:         "Honestly, I cannot believe you're out there again. The gutters are full, your mother is coming over Sunday, and — fine, FINE. The tide's turning, fish the drop. You better bring something home.",
+    ARNIE:        "Get to the boat! The barramundi is out there and I will find it. I've been in worse situations than this — and I never missed a target. I'll be back... with a trophy barra.",
+    BURGUNDY:     "I'm Ron Burgundy, and this is a breaking fishing update. The tide is turning — much like my life at the afterparty of the 1984 San Diego Anchor Awards. Stay classy, Northern Territory.",
+    IRWIN:        "Crikey! Look at the size of that barramundi — isn't she an absolute beauty! She's gonna have a go at us, mate, and I am HERE for it! You little ripper!",
+    GRYLLS:       "In a situation like this, you must act fast. The tide is your enemy and your ally. Your body is your greatest survival tool — and right now, it's telling you: cast left, cast NOW.",
+    RAMSAY:       "This barramundi is BEAUTIFUL. Look at that colour, that fight — stunning. But your technique? Oh dear. Come on. You're better than this. Get it TOGETHER.",
+    MORGAN:       "There is something... timeless about a man standing at the water's edge. The barramundi beneath the surface has lived in these rivers for forty million years. And yet, somehow... he waits for you.",
+    DUNDEE:       "You think that's a big fish? That's not a big fish. G'day mate — I've pulled crocs out of that same water with me bare hands. She'll be right. No worries.",
+    YODA:         "Strong with the Force, this barramundi is. Patient, you must be. Do or do not — there is no cast-and-give-up. When 900 years you fish, this good you will be.",
+    CONNERY:      "The name is Bass. Barramundi Bass. And I never miss. The tide is working in our favour — much like a well-placed Walther PPK. Shaken, not stirred.",
+    BOBROSS:      "Let's paint ourselves a happy little cast right here. And maybe right here we'll add a happy little barramundi — because everyone needs a friend. There are no mistakes, only happy little misses.",
+    SPARROW:      "But WHY is the rum gone? More importantly — why is the barramundi not on the hook? This is the day you'll always remember as the day you almost caught Captain Jack Sparrow's fish. Savvy?",
+    TYSON:        "Everyone has a plan until the fish bites. My style is impetuous, my casting is impregnable. I am the Baddest Fisherman on the Planet. This barra doesn't know what's coming.",
+    SAMUEL:       "I have HAD it with these fish in this Northern Territory water. You cast that line RIGHT NOW. Does he LOOK like a barramundi? Because I will tell you — that fish is MINE.",
+    JEFF:         "The barramundi — and I find this fascinating, actually — the barramundi is... uh... it's a fish that has, through millions of years of, uh... life... finds a way. It always, uh... finds a way.",
+    BOGAN:        "Oh FAAARK mate that is fully SICK conditions right now — deadset legend tide, absolute unit of a moon phase. Bloody oath you're getting onto fish today. What an absolute day to be alive!",
   };
 
   const handleCharacter = (c: NarratorCharacter) => {
@@ -62,17 +77,15 @@ export function NarratorSettings({ visible, onClose }: Props) {
           {/* Character selection */}
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>CHOOSE YOUR NARRATOR</Text>
           <View style={styles.charGrid}>
-            {CHARACTERS.map((c, idx) => {
+            {CHARACTERS.map((c) => {
               const selected = character === c.id;
-              const isLastOdd = idx === CHARACTERS.length - 1 && CHARACTERS.length % 2 !== 0;
               return (
                 <TouchableOpacity
                   key={c.id}
                   style={[
                     styles.charCard,
-                    isLastOdd && styles.charCardFull,
                     {
-                      backgroundColor: selected ? `${c.color}18` : colors.card,
+                      backgroundColor: selected ? `${c.color}20` : colors.card,
                       borderColor: selected ? c.color : colors.border,
                     },
                   ]}
@@ -184,28 +197,21 @@ const styles = StyleSheet.create({
     fontSize: 10, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1,
   },
 
-  charGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  charGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   charCard: {
-    width: "47%",
-    padding: 14,
-    borderRadius: 14,
+    width: "30%",
+    flexGrow: 1,
+    padding: 10,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: "center",
-    gap: 6,
+    gap: 4,
     position: "relative",
   },
-  charCardFull: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 20,
-  },
-  charEmoji: { fontSize: 28 },
-  charName: { fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" },
-  charTagline: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 15 },
-  selectedDot: { position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: 4 },
+  charEmoji: { fontSize: 24 },
+  charName: { fontSize: 11, fontFamily: "Inter_700Bold", textAlign: "center" },
+  charTagline: { fontSize: 9, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 13 },
+  selectedDot: { position: "absolute", top: 8, right: 8, width: 7, height: 7, borderRadius: 3.5 },
 
   langGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   langChip: {

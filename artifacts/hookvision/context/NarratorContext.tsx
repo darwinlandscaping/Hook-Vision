@@ -22,7 +22,11 @@ if (Platform.OS !== "web") {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-export type NarratorCharacter = "AUSSIE" | "BENAUD" | "CHOPPER" | "ATTENBOROUGH" | "WIFE";
+export type NarratorCharacter =
+  | "AUSSIE" | "BENAUD" | "CHOPPER" | "ATTENBOROUGH" | "WIFE"
+  | "ARNIE" | "BURGUNDY" | "IRWIN" | "GRYLLS" | "RAMSAY"
+  | "MORGAN" | "DUNDEE" | "YODA" | "CONNERY" | "BOBROSS"
+  | "SPARROW" | "TYSON" | "SAMUEL" | "JEFF" | "BOGAN";
 export type NarratorLanguage =
   | "en-AU" | "ja-JP" | "zh-CN" | "id-ID"
   | "de-DE" | "fr-FR" | "es-ES" | "ko-KR"
@@ -43,11 +47,26 @@ export interface LanguageInfo {
 }
 
 export const CHARACTERS: CharacterInfo[] = [
-  { id: "AUSSIE",       name: "Blue the Guide",      emoji: "🎣", tagline: "Sun-leathered NT barra legend", color: "#00d4aa" },
-  { id: "BENAUD",       name: "Richie Benaud",        emoji: "🏏", tagline: "Cricket's voice, fishing's poet", color: "#ffd700" },
+  { id: "AUSSIE",       name: "Blue the Guide",      emoji: "🎣", tagline: "Sun-leathered NT barra legend",        color: "#00d4aa" },
+  { id: "BENAUD",       name: "Richie Benaud",        emoji: "🏏", tagline: "Cricket's voice, fishing's poet",      color: "#ffd700" },
   { id: "CHOPPER",      name: "Chopper Read",          emoji: "🪖", tagline: "Melbourne's most dangerous narrator", color: "#ff4500" },
-  { id: "ATTENBOROUGH", name: "David Attenborough",   emoji: "🌿", tagline: "BBC natural history legend",    color: "#4a9eff" },
-  { id: "WIFE",         name: "The Nagging Wife",      emoji: "👩", tagline: "Knows the tides. Not impressed.", color: "#ff69b4" },
+  { id: "ATTENBOROUGH", name: "David Attenborough",   emoji: "🌿", tagline: "BBC natural history legend",           color: "#4a9eff" },
+  { id: "WIFE",         name: "The Nagging Wife",      emoji: "👩", tagline: "Knows the tides. Not impressed.",     color: "#ff69b4" },
+  { id: "ARNIE",        name: "Arnold S.",             emoji: "💪", tagline: "He'll be back — with a big barra",   color: "#e53935" },
+  { id: "BURGUNDY",     name: "Ron Burgundy",          emoji: "📺", tagline: "Kind of a big deal on NT waters",    color: "#b8860b" },
+  { id: "IRWIN",        name: "Steve Irwin",           emoji: "🐊", tagline: "Crikey! Isn't she a beauty!",        color: "#8bc34a" },
+  { id: "GRYLLS",       name: "Bear Grylls",           emoji: "🏕️", tagline: "Every cast is a survival mission",  color: "#795548" },
+  { id: "RAMSAY",       name: "Gordon Ramsay",         emoji: "👨‍🍳", tagline: "This fish is RAW. Donkey!",       color: "#f4511e" },
+  { id: "MORGAN",       name: "Morgan Freeman",        emoji: "🎬", tagline: "The voice of the NT cosmos",         color: "#7986cb" },
+  { id: "DUNDEE",       name: "Crocodile Dundee",      emoji: "🪃", tagline: "That's not a rod. THAT's a rod.",    color: "#ff8f00" },
+  { id: "YODA",         name: "Master Yoda",           emoji: "✨", tagline: "Strong with the Force, this barra is", color: "#69f0ae" },
+  { id: "CONNERY",      name: "Sean Connery",          emoji: "🍸", tagline: "The name is Barra. Barramundi.",     color: "#90caf9" },
+  { id: "BOBROSS",      name: "Bob Ross",              emoji: "🎨", tagline: "Happy little fish, happy little cast", color: "#80cbc4" },
+  { id: "SPARROW",      name: "Capt. Jack Sparrow",    emoji: "🏴‍☠️", tagline: "Why is the rum gone? Savvy?",    color: "#a1887f" },
+  { id: "TYSON",        name: "Mike Tyson",            emoji: "🥊", tagline: "Everyone has a plan til the fish bites", color: "#f48fb1" },
+  { id: "SAMUEL",       name: "Samuel L. Jackson",     emoji: "🎤", tagline: "I have HAD it with these fish",      color: "#ffcc02" },
+  { id: "JEFF",         name: "Jeff Goldblum",         emoji: "🦖", tagline: "Life, uh... finds a way to bite",    color: "#ce93d8" },
+  { id: "BOGAN",        name: "Aussie Bogan",          emoji: "🍺", tagline: "Fully sick conditions, deadset",      color: "#ff7043" },
 ];
 
 // Which characters use a male voice
@@ -57,6 +76,21 @@ const CHARACTER_GENDER: Record<NarratorCharacter, "male" | "female"> = {
   CHOPPER:      "male",
   ATTENBOROUGH: "male",
   WIFE:         "female",
+  ARNIE:        "male",
+  BURGUNDY:     "male",
+  IRWIN:        "male",
+  GRYLLS:       "male",
+  RAMSAY:       "male",
+  MORGAN:       "male",
+  DUNDEE:       "male",
+  YODA:         "male",
+  CONNERY:      "male",
+  BOBROSS:      "male",
+  SPARROW:      "male",
+  TYSON:        "male",
+  SAMUEL:       "male",
+  JEFF:         "male",
+  BOGAN:        "male",
 };
 
 // Voice tuning per character (pitch & rate)
@@ -66,6 +100,21 @@ const CHARACTER_VOICE_TUNING: Record<NarratorCharacter, { pitch: number; rate: n
   CHOPPER:      { pitch: 0.65, rate: 1.00 },  // gravelly, direct
   ATTENBOROUGH: { pitch: 0.72, rate: 0.78 },  // reverent, slow, deep
   WIFE:         { pitch: 1.15, rate: 1.05 },  // energetic, slightly higher
+  ARNIE:        { pitch: 0.55, rate: 0.75 },  // very deep Austrian, deliberate
+  BURGUNDY:     { pitch: 0.90, rate: 1.00 },  // pompous anchor voice
+  IRWIN:        { pitch: 0.88, rate: 1.20 },  // enthusiastic, fast Aussie
+  GRYLLS:       { pitch: 0.82, rate: 1.05 },  // earnest, breathless
+  RAMSAY:       { pitch: 0.78, rate: 1.15 },  // aggressive, rapid-fire UK
+  MORGAN:       { pitch: 0.60, rate: 0.80 },  // very deep, slow, profound
+  DUNDEE:       { pitch: 0.82, rate: 0.90 },  // laid-back Australian
+  YODA:         { pitch: 0.68, rate: 0.72 },  // deep, very slow
+  CONNERY:      { pitch: 0.65, rate: 0.88 },  // deep Scottish
+  BOBROSS:      { pitch: 0.76, rate: 0.72 },  // gentle, soothing, very slow
+  SPARROW:      { pitch: 0.83, rate: 0.93 },  // slightly irregular
+  TYSON:        { pitch: 0.95, rate: 1.08 },  // surprisingly high-ish
+  SAMUEL:       { pitch: 0.70, rate: 1.05 },  // emphatic, intense
+  JEFF:         { pitch: 0.88, rate: 0.88 },  // measured, contemplative
+  BOGAN:        { pitch: 0.83, rate: 1.22 },  // enthusiastic, fast Aussie
 };
 
 // iOS male/female voice IDs tried in order
