@@ -16,9 +16,9 @@ function NativeTabLayout() {
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "waveform", selected: "waveform" }} />
-        <Label>Analyze</Label>
+      <NativeTabs.Trigger name="buff">
+        <Icon sf={{ default: "bag.fill", selected: "bag.fill" }} />
+        <Label>Buff</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="live">
         <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
@@ -107,13 +107,17 @@ function ClassicTabLayout() {
       />
       <Tabs.Screen
         name="index"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="buff"
         options={{
-          title: "Analyze",
+          title: "Buff",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="waveform" tintColor={color} size={22} />
+              <SymbolView name="bag.fill" tintColor={color} size={22} />
             ) : (
-              <MaterialCommunityIcons name="fish" size={22} color={color} />
+              <MaterialCommunityIcons name="shopping" size={22} color={color} />
             ),
         }}
       />
