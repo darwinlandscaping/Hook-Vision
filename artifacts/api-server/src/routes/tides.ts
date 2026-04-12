@@ -19,166 +19,297 @@ interface CacheEntry {
   fetchedAt: number;
 }
 
-const NT_PORTS: Record<string, { code: string; name: string; tz: string }> = {
-  darwin: { code: "NT_TP001", name: "Darwin", tz: "Australia/Darwin" },
-  gove: { code: "NT_TP002", name: "Gove (Nhulunbuy)", tz: "Australia/Darwin" },
-  groote: { code: "NT_TP003", name: "Groote Eylandt", tz: "Australia/Darwin" },
+// ─── Primary BOM ports ─────────────────────────────────────────────────────────
+const BOM_PORTS: Record<string, { code: string; name: string }> = {
+  darwin: { code: "NT_TP001", name: "Darwin" },
+  gove:   { code: "NT_TP002", name: "Gove (Nhulunbuy)" },
+  groote: { code: "NT_TP003", name: "Groote Eylandt (Alyangula)" },
 };
 
-const cache: Record<string, CacheEntry> = {};
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+// ─── Secondary locations with corrections relative to a primary port ───────────
+// offsetMinutes: positive = later than reference port, negative = earlier
+// hwFactor / lwFactor: multiply reference port height by this factor
+interface LocationCfg {
+  name: string;
+  refPort: "darwin" | "gove" | "groote";
+  offsetMinutes: number;
+  hwFactor: number;
+  lwFactor: number;
+}
 
+const NT_LOCATIONS: Record<string, LocationCfg> = {
+  // ── Darwin Area (reference: darwin, no correction) ─────────────────────────
+  "darwin-city":        { name: "Darwin City (Stokes Hill Ramp)", refPort: "darwin", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "fannie-bay":         { name: "Fannie Bay Boat Ramp",           refPort: "darwin", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "cullen-bay":         { name: "Cullen Bay Marina",              refPort: "darwin", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "nightcliff":         { name: "Nightcliff Boat Ramp",           refPort: "darwin", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "lee-point":          { name: "Lee Point Beach",                refPort: "darwin", offsetMinutes:  -5, hwFactor: 1.00, lwFactor: 1.00 },
+  "mandorah":           { name: "Mandorah Boat Ramp",             refPort: "darwin", offsetMinutes: -10, hwFactor: 1.02, lwFactor: 1.00 },
+  "cox-peninsula":      { name: "Cox Peninsula Ramp",             refPort: "darwin", offsetMinutes: -15, hwFactor: 1.02, lwFactor: 1.01 },
+  "bynoe-harbour":      { name: "Bynoe Harbour Ramp",             refPort: "darwin", offsetMinutes: +20, hwFactor: 1.01, lwFactor: 1.00 },
+  "gunn-point":         { name: "Gunn Point Beach",               refPort: "darwin", offsetMinutes:  -5, hwFactor: 1.01, lwFactor: 1.00 },
+  "east-arm":           { name: "East Arm Wharf",                 refPort: "darwin", offsetMinutes:  +5, hwFactor: 1.00, lwFactor: 1.00 },
+
+  // ── Adelaide River ─────────────────────────────────────────────────────────
+  "adelaide-mouth":     { name: "Adelaide River Mouth",           refPort: "darwin", offsetMinutes:  +5, hwFactor: 0.97, lwFactor: 0.95 },
+  "point-stuart":       { name: "Point Stuart Boat Ramp",         refPort: "darwin", offsetMinutes: +20, hwFactor: 0.97, lwFactor: 0.94 },
+  "window-wetlands":    { name: "Window on the Wetlands",         refPort: "darwin", offsetMinutes: +30, hwFactor: 0.95, lwFactor: 0.90 },
+  "annaburroo":         { name: "Annaburroo Ramp (Adelaide R.)",  refPort: "darwin", offsetMinutes: +40, hwFactor: 0.92, lwFactor: 0.86 },
+
+  // ── Mary River ─────────────────────────────────────────────────────────────
+  "mary-mouth":         { name: "Mary River Mouth (Pt Ragged)",   refPort: "darwin", offsetMinutes: +10, hwFactor: 0.97, lwFactor: 0.95 },
+  "shady-camp":         { name: "Shady Camp Rock Bar ★",          refPort: "darwin", offsetMinutes: +15, hwFactor: 0.96, lwFactor: 0.93 },
+  "shady-camp-ramp":    { name: "Shady Camp Boat Ramp",           refPort: "darwin", offsetMinutes: +15, hwFactor: 0.96, lwFactor: 0.93 },
+  "corroboree":         { name: "Corroboree Billabong (Mary R.)", refPort: "darwin", offsetMinutes: +40, hwFactor: 0.90, lwFactor: 0.82 },
+  "marrakai":           { name: "Marrakai Boat Ramp",             refPort: "darwin", offsetMinutes: +45, hwFactor: 0.88, lwFactor: 0.80 },
+
+  // ── Daly River ─────────────────────────────────────────────────────────────
+  "daly-mouth":         { name: "Daly River Mouth",               refPort: "darwin", offsetMinutes: +45, hwFactor: 0.93, lwFactor: 0.85 },
+  "snake-creek":        { name: "Snake Creek Ramp (Daly R.)",     refPort: "darwin", offsetMinutes: +65, hwFactor: 0.88, lwFactor: 0.78 },
+  "woolianna":          { name: "Woolianna Boat Ramp (Daly R.)",  refPort: "darwin", offsetMinutes: +90, hwFactor: 0.85, lwFactor: 0.74 },
+  "daly-river-town":    { name: "Daly River Town Ramp",           refPort: "darwin", offsetMinutes:+120, hwFactor: 0.78, lwFactor: 0.65 },
+  "port-keats":         { name: "Wadeye (Port Keats) Ramp",       refPort: "darwin", offsetMinutes:+175, hwFactor: 0.82, lwFactor: 0.70 },
+
+  // ── Kakadu / Alligator Rivers ───────────────────────────────────────────────
+  "south-alligator":    { name: "South Alligator Mouth",          refPort: "darwin", offsetMinutes: +10, hwFactor: 0.96, lwFactor: 0.93 },
+  "field-island":       { name: "Field Island (S. Alligator)",    refPort: "darwin", offsetMinutes:  +5, hwFactor: 0.97, lwFactor: 0.95 },
+  "cahills-crossing":   { name: "Cahills Crossing Rock Bar ★",    refPort: "darwin", offsetMinutes: +35, hwFactor: 0.90, lwFactor: 0.82 },
+  "east-alligator":     { name: "East Alligator River Mouth",     refPort: "darwin", offsetMinutes: +25, hwFactor: 0.93, lwFactor: 0.88 },
+  "west-alligator":     { name: "West Alligator River Mouth",     refPort: "darwin", offsetMinutes:  +5, hwFactor: 0.97, lwFactor: 0.94 },
+
+  // ── Port Essington / Cobourg ────────────────────────────────────────────────
+  "port-essington":     { name: "Port Essington",                 refPort: "darwin", offsetMinutes: +30, hwFactor: 0.92, lwFactor: 0.85 },
+  "cobourg":            { name: "Cobourg Peninsula",              refPort: "darwin", offsetMinutes: +25, hwFactor: 0.93, lwFactor: 0.86 },
+  "smith-point":        { name: "Smith Point (Cobourg)",          refPort: "darwin", offsetMinutes: +20, hwFactor: 0.93, lwFactor: 0.87 },
+
+  // ── Victoria River & West ───────────────────────────────────────────────────
+  "victoria-mouth":     { name: "Victoria River Mouth",           refPort: "darwin", offsetMinutes:+160, hwFactor: 0.85, lwFactor: 0.72 },
+  "big-horse-creek":    { name: "Big Horse Creek Ramp (Vic. R.)", refPort: "darwin", offsetMinutes:+190, hwFactor: 0.80, lwFactor: 0.68 },
+  "baines-river":       { name: "Baines River Mouth",             refPort: "darwin", offsetMinutes:+155, hwFactor: 0.86, lwFactor: 0.73 },
+
+  // ── Arnhem Land (reference: gove) ──────────────────────────────────────────
+  "nhulunbuy-ramp":     { name: "Nhulunbuy (Gove) Boat Ramp",    refPort: "gove",   offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "melville-bay":       { name: "Melville Bay (Gove)",            refPort: "gove",   offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "caledon-bay":        { name: "Caledon Bay",                    refPort: "gove",   offsetMinutes: +30, hwFactor: 0.95, lwFactor: 0.90 },
+  "trial-bay":          { name: "Trial Bay (Arnhem Land)",        refPort: "gove",   offsetMinutes: +20, hwFactor: 0.97, lwFactor: 0.94 },
+  "buckingham-bay":     { name: "Buckingham Bay",                 refPort: "gove",   offsetMinutes: +45, hwFactor: 0.92, lwFactor: 0.88 },
+  "elcho-island":       { name: "Elcho Island (Galiwinku)",       refPort: "gove",   offsetMinutes: -30, hwFactor: 0.82, lwFactor: 0.75 },
+  "milingimbi":         { name: "Milingimbi",                     refPort: "gove",   offsetMinutes: -45, hwFactor: 0.80, lwFactor: 0.72 },
+  "maningrida":         { name: "Maningrida (Liverpool River)",   refPort: "darwin", offsetMinutes: -20, hwFactor: 0.75, lwFactor: 0.68 },
+
+  // ── Groote Eylandt (reference: groote) ────────────────────────────────────
+  "alyangula":          { name: "Alyangula Boat Ramp",            refPort: "groote", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "emerald-river":      { name: "Emerald River Mouth",            refPort: "groote", offsetMinutes: +20, hwFactor: 0.90, lwFactor: 0.85 },
+  "umbakumba":          { name: "Umbakumba Ramp (Groote E.)",     refPort: "groote", offsetMinutes: +45, hwFactor: 0.88, lwFactor: 0.82 },
+  "bartalumba-bay":     { name: "Bartalumba Bay",                 refPort: "groote", offsetMinutes: +15, hwFactor: 0.92, lwFactor: 0.88 },
+  "winchelsea":         { name: "Winchelsea Island (Groote E.)",  refPort: "groote", offsetMinutes: +30, hwFactor: 0.90, lwFactor: 0.85 },
+
+  // ── Gulf Coast (reference: groote) ────────────────────────────────────────
+  "king-ash-bay":       { name: "King Ash Bay Ramp (Borroloola)", refPort: "groote", offsetMinutes:+120, hwFactor: 0.90, lwFactor: 0.85 },
+  "mcarthur-mouth":     { name: "McArthur River Mouth",           refPort: "groote", offsetMinutes: +60, hwFactor: 0.93, lwFactor: 0.90 },
+  "roper-mouth":        { name: "Roper River Mouth",              refPort: "groote", offsetMinutes:+120, hwFactor: 0.80, lwFactor: 0.72 },
+  "roper-bar":          { name: "Roper Bar Rock Bar ★",           refPort: "groote", offsetMinutes:+240, hwFactor: 0.70, lwFactor: 0.60 },
+  "nathan-river":       { name: "Nathan River Mouth",             refPort: "groote", offsetMinutes: +90, hwFactor: 0.88, lwFactor: 0.80 },
+  "robinson-river":     { name: "Robinson River Mouth",           refPort: "groote", offsetMinutes:+100, hwFactor: 0.86, lwFactor: 0.78 },
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+// Format a UTC timestamp as Darwin local time (UTC+9:30)
+function formatDarwinTime(timestamp: number): string {
+  const offsetMs = 9.5 * 60 * 60 * 1000; // Darwin UTC+9:30
+  const local = new Date(timestamp + offsetMs);
+  let h = local.getUTCHours();
+  const min = local.getUTCMinutes();
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${min.toString().padStart(2, "0")} ${ampm}`;
+}
+
+// Get the Darwin local date string "YYYY-MM-DD" for a UTC timestamp
+function getDarwinDate(timestamp: number): string {
+  const offsetMs = 9.5 * 60 * 60 * 1000;
+  const local = new Date(timestamp + offsetMs);
+  const y = local.getUTCFullYear();
+  const m = String(local.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(local.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// Apply secondary port corrections to a set of Darwin/Gove/Groote tides
+function applyCorrection(
+  tides: TideDay[],
+  offsetMinutes: number,
+  hwFactor: number,
+  lwFactor: number
+): TideDay[] {
+  const offsetMs = offsetMinutes * 60 * 1000;
+
+  // Flatten, shift time, scale height
+  const all: TideEntry[] = tides.flatMap((d) =>
+    d.tides.map((t) => ({
+      timestamp: t.timestamp + offsetMs,
+      time: formatDarwinTime(t.timestamp + offsetMs),
+      type: t.type,
+      height: parseFloat(
+        (t.height * (t.type === "HW" ? hwFactor : lwFactor)).toFixed(2)
+      ),
+    }))
+  );
+
+  // Regroup by Darwin date
+  const grouped = new Map<string, TideDay>();
+  for (const t of all) {
+    const date = getDarwinDate(t.timestamp);
+    if (!grouped.has(date)) grouped.set(date, { date, tides: [] });
+    grouped.get(date)!.tides.push(t);
+  }
+
+  return Array.from(grouped.values()).sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+}
+
+// ─── BOM HTML parser (unchanged) ──────────────────────────────────────────────
 function parseBomHtml(html: string): TideDay[] {
   const result: Map<string, TideDay> = new Map();
 
-  // BOM HTML actual format (discovered from inspection):
-  // <table ... summary="Times and Heights of High (H) and Low (L) waters for Darwin, 10 April 2026">
-  //   <td data-time-utc="2026-04-09T19:10:00Z" data-time-local="2026-04-10T04:40:00+09:30" class="localtime low-tide">4:40 am</td>
-  //   <td class="height low-tide">2.76 m</td>
-  //   <td data-time-utc="2026-04-10T01:37:00Z" data-time-local="2026-04-10T11:07:00+09:30" class="localtime high-tide">11:07 am</td>
-  //   <td class="height high-tide">5.58 m</td>
-  // </table>
-
-  // Step 1: extract date from summary attributes
-  const summaryRe = /summary="[^"]*?(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})"/gi;
   const MONTHS: Record<string, string> = {
-    january: "01", february: "02", march: "03", april: "04", may: "05", june: "06",
-    july: "07", august: "08", september: "09", october: "10", november: "11", december: "12",
+    january: "01", february: "02", march: "03", april: "04",
+    may: "05",     june: "06",     july: "07",  august: "08",
+    september: "09", october: "10", november: "11", december: "12",
   };
 
-  const tablePositions: Array<{ pos: number; date: string }> = [];
+  const summaryRe =
+    /summary="[^"]*?(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})"/gi;
   let m: RegExpExecArray | null;
   while ((m = summaryRe.exec(html)) !== null) {
-    const day = m[1].padStart(2, "0");
-    const month = MONTHS[m[2].toLowerCase()];
-    const year = m[3];
-    const dateStr = `${year}-${month}-${day}`;
-    tablePositions.push({ pos: m.index, date: dateStr });
-    if (!result.has(dateStr)) {
-      result.set(dateStr, { date: dateStr, tides: [] });
-    }
+    const dateStr = `${m[3]}-${MONTHS[m[2].toLowerCase()]}-${m[1].padStart(2, "0")}`;
+    if (!result.has(dateStr)) result.set(dateStr, { date: dateStr, tides: [] });
   }
 
-  // Step 2: extract all tide entries.
-  // BOM HTML format (actual):
-  // <td data-time-utc="2026-04-09T19:10:00Z" data-time-local="2026-04-10T04:40:00+09:30" class="localtime low-tide">4:40 am</td>
-  // <td class="height low-tide">2.76 m</td>
-  // Both data-time-utc and data-time-local are on the same <td> element.
   const tideRe =
     /data-time-utc="([^"]+)"\s+data-time-local="(\d{4}-\d{2}-\d{2})[^"]*"\s+class="localtime\s+(low|high)-tide">([^<]+)<\/td>[\s\S]*?<td[^>]+class="height[^"]*">([\d.]+)\s*m/gi;
 
   while ((m = tideRe.exec(html)) !== null) {
     const utcIso = m[1];
-    const localDate = m[2]; // "2026-04-10"
-    const tideTypeWord = m[3]; // "low" or "high"
-    const localTimeText = m[4].trim(); // e.g. "4:40 am"
+    const localDate = m[2];
+    const tideTypeWord = m[3];
+    const localTimeText = m[4].trim();
     const height = parseFloat(m[5]);
     const timestamp = new Date(utcIso).getTime();
     const type: "HW" | "LW" = tideTypeWord === "high" ? "HW" : "LW";
-
-    // Format time: "4:40 am" → "4:40 AM"
     const [timePart, ampm] = localTimeText.split(" ");
     const displayTime = `${timePart} ${(ampm || "").toUpperCase()}`;
 
-    if (!result.has(localDate)) {
-      result.set(localDate, { date: localDate, tides: [] });
-    }
+    if (!result.has(localDate)) result.set(localDate, { date: localDate, tides: [] });
     result.get(localDate)!.tides.push({ time: displayTime, type, height, timestamp });
   }
 
-  // Sort each day's tides by timestamp
   for (const day of result.values()) {
     day.tides.sort((a, b) => a.timestamp - b.timestamp);
   }
 
-  // Return sorted by date
   return Array.from(result.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-async function fetchBomTides(
-  portCode: string,
-  dateStr: string,
-  days: number,
-  tz: string
-): Promise<TideDay[]> {
+// ─── Cache ─────────────────────────────────────────────────────────────────────
+const cache: Record<string, CacheEntry> = {};
+const CACHE_TTL = 60 * 60 * 1000;
+
+async function fetchBomTides(portCode: string, days: number): Promise<TideDay[]> {
+  const cacheKey = `${portCode}-${days}`;
+  const now = Date.now();
+  if (cache[cacheKey] && now - cache[cacheKey].fetchedAt < CACHE_TTL) {
+    return cache[cacheKey].data;
+  }
+
+  const darwinDate = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Australia/Darwin",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  });
+
   const url = new URL("https://www.bom.gov.au/australia/tides/print.php");
   url.searchParams.set("aac", portCode);
   url.searchParams.set("type", "tide");
-  url.searchParams.set("date", dateStr);
+  url.searchParams.set("date", darwinDate);
   url.searchParams.set("region", "NT");
-  url.searchParams.set("tz", tz);
+  url.searchParams.set("tz", "Australia/Darwin");
   url.searchParams.set("days", String(days));
 
   const res = await fetch(url.toString(), {
     headers: {
-      "User-Agent":
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
+      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
       Accept: "text/html,application/xhtml+xml",
       "Accept-Language": "en-AU,en;q=0.9",
     },
     signal: AbortSignal.timeout(12000),
   });
 
-  if (!res.ok) {
-    throw new Error(`BOM returned HTTP ${res.status}`);
-  }
+  if (!res.ok) throw new Error(`BOM returned HTTP ${res.status}`);
 
   const html = await res.text();
   const parsed = parseBomHtml(html);
-
   if (parsed.length === 0 || parsed.every((d) => d.tides.length === 0)) {
     throw new Error("Tide data unavailable from BOM. Try again later.");
   }
 
+  cache[cacheKey] = { data: parsed, fetchedAt: now };
   return parsed;
 }
 
+// ─── Routes ────────────────────────────────────────────────────────────────────
+
+// GET /api/tides?port=darwin&days=3   (legacy — primary BOM ports)
+// GET /api/tides?location=shady-camp&days=3  (new — secondary with corrections)
 router.get("/tides", async (req, res) => {
-  const portKey = ((req.query["port"] as string) || "darwin").toLowerCase();
   const days = Math.min(parseInt((req.query["days"] as string) || "3", 10), 5);
-
-  const port = NT_PORTS[portKey];
-  if (!port) {
-    res.status(400).json({
-      error: `Unknown port. Available: ${Object.keys(NT_PORTS).join(", ")}`,
-    });
-    return;
-  }
-
-  const cacheKey = `${portKey}-${days}`;
-  const now = Date.now();
-
-  if (cache[cacheKey] && now - cache[cacheKey].fetchedAt < CACHE_TTL) {
-    res.json({ port: port.name, portKey, data: cache[cacheKey].data });
-    return;
-  }
-
-  // Get today's date in Darwin timezone
-  const darwinDate = new Date().toLocaleDateString("en-CA", {
-    timeZone: port.tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
+  const locationId = req.query["location"] as string | undefined;
+  const portKey = ((req.query["port"] as string) || "darwin").toLowerCase();
 
   try {
-    const data = await fetchBomTides(port.code, darwinDate, days, port.tz);
-    cache[cacheKey] = { data, fetchedAt: now };
-    res.json({ port: port.name, portKey, data });
+    // ── Secondary location (with correction) ──────────────────────────────────
+    if (locationId) {
+      const loc = NT_LOCATIONS[locationId];
+      if (!loc) {
+        res.status(400).json({ error: `Unknown location: ${locationId}` });
+        return;
+      }
+      const port = BOM_PORTS[loc.refPort];
+      const rawTides = await fetchBomTides(port.code, days + 1); // fetch extra day to cover offset
+      const corrected = applyCorrection(rawTides, loc.offsetMinutes, loc.hwFactor, loc.lwFactor);
+      // Return only the requested number of days starting from today
+      const todayDarwin = getDarwinDate(Date.now());
+      const filtered = corrected.filter((d) => d.date >= todayDarwin).slice(0, days);
+      res.json({ port: loc.name, portKey: locationId, data: filtered, isSecondary: true, refPort: loc.refPort });
+      return;
+    }
+
+    // ── Primary BOM port ──────────────────────────────────────────────────────
+    const port = BOM_PORTS[portKey];
+    if (!port) {
+      res.status(400).json({ error: `Unknown port. Use ?location=ID or ?port=${Object.keys(BOM_PORTS).join("|")}` });
+      return;
+    }
+    const data = await fetchBomTides(port.code, days);
+    res.json({ port: port.name, portKey, data, isSecondary: false });
+
   } catch (err) {
     req.log.error({ err }, "BOM tides fetch failed");
     res.status(502).json({
-      error:
-        err instanceof Error
-          ? err.message
-          : "Could not fetch tide data from Bureau of Meteorology.",
+      error: err instanceof Error ? err.message : "Could not fetch tide data from Bureau of Meteorology.",
     });
   }
 });
 
-router.get("/tides/ports", (_req, res) => {
+// GET /api/tides/locations  — returns all NT locations grouped by region
+router.get("/tides/locations", (_req, res) => {
   res.json(
-    Object.entries(NT_PORTS).map(([key, val]) => ({ key, name: val.name }))
+    Object.entries(NT_LOCATIONS).map(([id, loc]) => ({
+      id,
+      name: loc.name,
+      refPort: loc.refPort,
+      offsetMinutes: loc.offsetMinutes,
+    }))
   );
 });
 
