@@ -85,10 +85,9 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
   const insets  = useSafeAreaInsets();
   const routes  = state.routes;
 
-  // Strip hidden routes (href: null — e.g. "fishy", "map") so they don't occupy slots
-  const visibleRoutes = routes.filter(
-    r => (descriptors[r.key].options as any).href !== null
-  );
+  // Strip routes that are hidden from the tab bar (href: null in layout)
+  const HIDDEN = new Set(["fishy", "map"]);
+  const visibleRoutes = routes.filter(r => !HIDDEN.has(r.name));
 
   // Layout constants
   const SKIN_H    = 20;
