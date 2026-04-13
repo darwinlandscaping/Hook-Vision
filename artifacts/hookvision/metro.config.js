@@ -31,11 +31,20 @@ config.watchFolders = [
 // @tensorflow/tfjs-react-native's bundle_resource_io.js, which we never
 // call (our CV pipeline runs server-side). Without this stub, Android
 // bundling fails with "Unable to resolve react-native-fs".
-const rnFsStub = path.resolve(projectRoot, "stubs/react-native-fs.js");
+const rnFsStub       = path.resolve(projectRoot, "stubs/react-native-fs.js");
+const tfjsRNStub     = path.resolve(projectRoot, "stubs/tfjs-react-native.js");
+
 const originalResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // react-native-fs — used by tfjs-react-native bundle_resource_io, never called
   if (moduleName === "react-native-fs") {
     return { filePath: rnFsStub, type: "sourceFile" };
+  }
+  // @tensorflow/tfjs-react-native — requires ExpoGL which Expo Go lacks;
+  // stub it so vision.native.ts (and therefore index.tsx) can load at all.
+  // quickScan falls back gracefully via try-catch when decodeJpeg returns null.
+  if (moduleName === "@tensorflow/tfjs-react-native") {
+    return { filePath: tfjsRNStub, type: "sourceFile" };
   }
   if (originalResolveRequest) {
     return originalResolveRequest(context, moduleName, platform);
