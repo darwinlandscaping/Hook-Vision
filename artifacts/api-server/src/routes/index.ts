@@ -10,6 +10,7 @@ import demosRouter from "./demos";
 import lureSearchRouter from "./lureSearch";
 import dataStatusRouter from "./dataStatus";
 import communityRouter from "./community";
+import brainRouter from "./brain";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(demosRouter);
 router.use(lureSearchRouter);
 router.use(dataStatusRouter);
 router.use(communityRouter);
+router.use(brainRouter);
 
 export default router;

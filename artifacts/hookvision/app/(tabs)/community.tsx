@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import * as VideoThumbnails from "expo-video-thumbnails";
 
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
@@ -65,6 +67,22 @@ interface FeedReport {
   locationName: string | null;
   lureSuggestion: string | null;
   submittedAt: string;
+}
+
+interface BrainVideo {
+  id: number;
+  title: string;
+  description: string | null;
+  durationSecs: number | null;
+  frameCount: number;
+  status: "queued" | "processing" | "done" | "failed";
+  brainInsight: string | null;
+  detectedSpecies: string[] | null;
+  depthRanges: string[] | null;
+  aiTips: string[] | null;
+  cvSummary: Record<string, unknown> | null;
+  submittedAt: string;
+  processedAt: string | null;
 }
 
 // Map community species name → demo image number (1-4)
@@ -137,6 +155,110 @@ export default function CommunityScreen() {
   const lastFeedId    = useRef<number>(0);
   const isFocused     = useRef(false);
 
+  // ── Brain Video Library ────────────────────────────────────────────────────
+  const [videoLibrary, setVideoLibrary]   = useState<BrainVideo[]>([]);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadStatus, setUploadStatus]   = useState<string | null>(null);
+  const [expandedVideoId, setExpandedVideoId] = useState<number | null>(null);
+
+  const fetchVideos = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/brain/videos`);
+      if (!res.ok) return;
+      const data = await res.json() as { videos: BrainVideo[] };
+      setVideoLibrary(data.videos ?? []);
+    } catch {}
+  }, []);
+
+  const pickAndUploadVideo = useCallback(async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "Allow photo library access to add videos to the brain.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["videos"],
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const asset   = result.assets[0];
+      const uri     = asset.uri;
+      const durMs   = asset.duration ?? 0;
+      const durSecs = Math.round(durMs / 1000);
+      const title   = asset.fileName ?? `Video ${new Date().toLocaleDateString()}`;
+
+      setUploadingVideo(true);
+      setUploadStatus("Extracting frames…");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      // ── Extract frames at even intervals (up to 20 frames) ────────────────
+      const maxFrames  = Math.min(20, Math.max(3, Math.floor(durSecs / 3)));
+      const intervalMs = durMs > 0 ? (durMs / maxFrames) : 2000;
+      const frames: string[] = [];
+
+      for (let i = 0; i < maxFrames; i++) {
+        const timeMs = Math.floor(intervalMs * i);
+        try {
+          const thumb = await VideoThumbnails.getThumbnailAsync(uri, {
+            time:    timeMs,
+            quality: 0.65,
+          });
+          // Convert thumbnail URI → base64
+          const r    = await fetch(thumb.uri);
+          const blob = await r.blob();
+          const b64  = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload  = () => resolve((reader.result as string).split(",")[1] ?? "");
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          if (b64) frames.push(b64);
+        } catch {}
+
+        setUploadStatus(`Extracting frame ${i + 1}/${maxFrames}…`);
+      }
+
+      if (frames.length === 0) {
+        Alert.alert("Error", "Could not extract frames from this video. Try a different file.");
+        setUploadingVideo(false);
+        setUploadStatus(null);
+        return;
+      }
+
+      setUploadStatus(`Sending ${frames.length} frames to Brain…`);
+
+      const uploadRes = await fetch(`${BASE_URL}/api/brain/video`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ title, durationSecs: durSecs, frames }),
+      });
+
+      if (!uploadRes.ok) throw new Error("Upload failed");
+
+      setUploadStatus("Video added to brain — analyzing…");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Refresh library after a short delay so the processing entry is visible
+      setTimeout(() => {
+        fetchVideos();
+        setUploadStatus(null);
+      }, 1500);
+
+    } catch (e) {
+      Alert.alert("Error", "Failed to add video. Please try again.");
+    } finally {
+      setUploadingVideo(false);
+    }
+  }, [fetchVideos]);
+
+  // Poll for status updates on processing videos
+  const videoPolling = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // ── fetch hotspots ─────────────────────────────────────────────────────────
   const fetchHotspots = useCallback(async () => {
     try {
@@ -204,19 +326,23 @@ export default function CommunityScreen() {
     // initial load
     fetchFeed(false);
     fetchHotspots();
+    fetchVideos();
     if (!insights) fetchInsights(true);
 
     feedTimer.current     = setInterval(() => fetchFeed(true), FEED_POLL_MS);
     insightsTimer.current = setInterval(() => fetchInsights(false), INSIGHTS_POLL_MS);
     hotspotTimer.current  = setInterval(() => fetchHotspots(), HOTSPOT_POLL_MS);
+    // Poll for video status updates every 8s (catches processing → done transitions)
+    videoPolling.current  = setInterval(() => fetchVideos(), 8_000);
 
     return () => {
       isFocused.current = false;
       if (feedTimer.current)     clearInterval(feedTimer.current);
       if (insightsTimer.current) clearInterval(insightsTimer.current);
       if (hotspotTimer.current)  clearInterval(hotspotTimer.current);
+      if (videoPolling.current)  clearInterval(videoPolling.current);
     };
-  }, [fetchFeed, fetchInsights, fetchHotspots, insights]));
+  }, [fetchFeed, fetchInsights, fetchHotspots, fetchVideos, insights]));
 
   // ── Send community species demo to Analyzer ────────────────────────────────
   const sendToAnalyzer = useCallback(async (speciesName: string, idx: number) => {
@@ -610,6 +736,173 @@ export default function CommunityScreen() {
             </Text>
           </>
         ) : null}
+
+        {/* ── BRAIN VIDEO LIBRARY ──────────────────────────────────────── */}
+        <View style={[styles.videoLibCard, { backgroundColor: colors.card, borderColor: "#7c5cfc40" }]}>
+          {/* Header */}
+          <View style={styles.videoLibHeader}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+              <MaterialCommunityIcons name="brain" size={20} color="#7c5cfc" />
+              <View>
+                <Text style={[styles.videoLibTitle, { color: colors.foreground }]}>BRAIN LIBRARY</Text>
+                <Text style={[styles.videoLibSub, { color: colors.mutedForeground }]}>
+                  Add fishing videos · CV engine learns from every frame
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.cvBadge, { borderColor: "#7c5cfc40", backgroundColor: "#7c5cfc12" }]}>
+              <Text style={[styles.cvBadgeText, { color: "#7c5cfc" }]}>CV + AI</Text>
+            </View>
+          </View>
+
+          {/* Upload status / progress */}
+          {uploadStatus && (
+            <View style={[styles.uploadStatus, { backgroundColor: "#7c5cfc15", borderColor: "#7c5cfc40" }]}>
+              <ActivityIndicator size="small" color="#7c5cfc" />
+              <Text style={[styles.uploadStatusText, { color: "#7c5cfc" }]}>{uploadStatus}</Text>
+            </View>
+          )}
+
+          {/* Add video button */}
+          <TouchableOpacity
+            style={[styles.addVideoBtn, {
+              backgroundColor: uploadingVideo ? "#7c5cfc30" : "#7c5cfc",
+              opacity: uploadingVideo ? 0.6 : 1,
+            }]}
+            onPress={pickAndUploadVideo}
+            disabled={uploadingVideo}
+            activeOpacity={0.8}
+          >
+            {uploadingVideo
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Feather name="film" size={16} color="#fff" />
+            }
+            <Text style={styles.addVideoBtnText}>
+              {uploadingVideo ? "Processing…" : "Add Video to Brain"}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Video library list */}
+          {videoLibrary.length === 0 && !uploadingVideo ? (
+            <Text style={[styles.videoEmptyText, { color: colors.mutedForeground }]}>
+              No videos yet. Add a fishing video — the CV engine will extract every frame, measure sonar signatures with TF.js + OpenCV, and feed the intelligence into the brain.
+            </Text>
+          ) : (
+            videoLibrary.map((v) => {
+              const isExpanded = expandedVideoId === v.id;
+              const statusColor =
+                v.status === "done"       ? C.teal :
+                v.status === "processing" ? "#ffd700" :
+                v.status === "failed"     ? "#ff4444" : colors.mutedForeground;
+              const statusLabel =
+                v.status === "done"       ? "ANALYSED" :
+                v.status === "processing" ? "ANALYSING…" :
+                v.status === "failed"     ? "FAILED" : "QUEUED";
+
+              return (
+                <TouchableOpacity
+                  key={v.id}
+                  style={[styles.videoRow, {
+                    backgroundColor: isExpanded ? "#7c5cfc08" : "transparent",
+                    borderColor: isExpanded ? "#7c5cfc50" : colors.border,
+                  }]}
+                  onPress={() => setExpandedVideoId(isExpanded ? null : v.id)}
+                  activeOpacity={0.8}
+                >
+                  {/* Collapsed header */}
+                  <View style={styles.videoRowTop}>
+                    <Feather name="film" size={14} color="#7c5cfc" style={{ marginTop: 1 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.videoTitle, { color: colors.foreground }]} numberOfLines={1}>
+                        {v.title}
+                      </Text>
+                      <Text style={[styles.videoMeta, { color: colors.mutedForeground }]}>
+                        {v.frameCount} frames
+                        {v.durationSecs ? ` · ${v.durationSecs}s` : ""}
+                        {v.processedAt ? ` · ${feedTimeAgo(v.processedAt)}` : ""}
+                      </Text>
+                    </View>
+                    <View style={[styles.videoStatus, { borderColor: statusColor + "60", backgroundColor: statusColor + "15" }]}>
+                      {v.status === "processing" && <ActivityIndicator size="small" color={statusColor} style={{ marginRight: 4 }} />}
+                      <Text style={[styles.videoStatusText, { color: statusColor }]}>{statusLabel}</Text>
+                    </View>
+                    <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color={colors.mutedForeground} />
+                  </View>
+
+                  {/* Expanded panel — brain results */}
+                  {isExpanded && v.status === "done" && (
+                    <View style={styles.videoExpanded}>
+                      {/* CV stats */}
+                      {v.cvSummary && (
+                        <View style={[styles.cvStatsRow, { backgroundColor: "#00a8ff08" }]}>
+                          <Text style={[styles.cvStatLabel, { color: colors.mutedForeground }]}>
+                            {(v.cvSummary as any).framesAnalysed ?? 0} frames · brightness {(v.cvSummary as any).avgBrightness ?? "?"}/255 · {(v.cvSummary as any).totalBlobsDetected ?? 0} arch blobs
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Brain insight */}
+                      {v.brainInsight ? (
+                        <View style={[styles.insightBox, { backgroundColor: "#7c5cfc10", borderColor: "#7c5cfc30" }]}>
+                          <MaterialCommunityIcons name="brain" size={13} color="#7c5cfc" />
+                          <Text style={[styles.insightText, { color: colors.foreground }]}>{v.brainInsight}</Text>
+                        </View>
+                      ) : null}
+
+                      {/* Species detected */}
+                      {v.detectedSpecies && v.detectedSpecies.length > 0 && (
+                        <View style={styles.chipRow}>
+                          <Text style={[styles.chipRowLabel, { color: colors.mutedForeground }]}>SPECIES</Text>
+                          {v.detectedSpecies.map((s, i) => (
+                            <View key={i} style={[styles.chip, { borderColor: C.teal + "50", backgroundColor: C.teal + "15" }]}>
+                              <MaterialCommunityIcons name="fish" size={10} color={C.teal} />
+                              <Text style={[styles.chipText, { color: C.teal }]}>{s}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* Depth ranges */}
+                      {v.depthRanges && v.depthRanges.length > 0 && (
+                        <View style={styles.chipRow}>
+                          <Text style={[styles.chipRowLabel, { color: colors.mutedForeground }]}>DEPTHS</Text>
+                          {v.depthRanges.map((d, i) => (
+                            <View key={i} style={[styles.chip, { borderColor: C.blue + "50", backgroundColor: C.blue + "15" }]}>
+                              <Text style={[styles.chipText, { color: C.blue }]}>{d}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {/* AI tips */}
+                      {v.aiTips && v.aiTips.length > 0 && (
+                        <View style={{ gap: 5, marginTop: 4 }}>
+                          <Text style={[styles.chipRowLabel, { color: colors.mutedForeground }]}>AI TIPS</Text>
+                          {v.aiTips.map((tip, i) => (
+                            <View key={i} style={[styles.videoTipRow, { borderColor: C.gold + "30", backgroundColor: C.gold + "08" }]}>
+                              <Text style={[styles.videoTipNum, { color: C.gold }]}>{i + 1}</Text>
+                              <Text style={[styles.videoTipText, { color: colors.foreground }]}>{tip}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {isExpanded && v.status === "processing" && (
+                    <View style={styles.videoProcessing}>
+                      <ActivityIndicator color="#ffd700" />
+                      <Text style={[styles.videoProcessingText, { color: colors.mutedForeground }]}>
+                        TF.js + OpenCV analysing {v.frameCount} frames… GPT-4.1 synthesising intelligence…
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
+
       </ScrollView>
     </View>
   );
@@ -795,4 +1088,89 @@ const styles = StyleSheet.create({
   },
   heatBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
   spotScans:     { fontSize: 9, fontFamily: "Inter_400Regular" },
+
+  // ── Brain Video Library ────────────────────────────────────────────────────
+  videoLibCard: {
+    borderRadius: 14, borderWidth: 1,
+    padding: 14, marginBottom: 16, gap: 12,
+  },
+  videoLibHeader: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+  },
+  videoLibTitle: {
+    fontSize: 13, fontFamily: "Oswald_700Bold", letterSpacing: 0.8,
+  },
+  videoLibSub: {
+    fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 1,
+  },
+  cvBadge: {
+    borderWidth: 1, borderRadius: 6,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  cvBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 },
+
+  uploadStatus: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 10, borderWidth: 1, padding: 10,
+  },
+  uploadStatusText: { fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 },
+
+  addVideoBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 12, borderRadius: 24,
+  },
+  addVideoBtnText: {
+    fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff",
+  },
+
+  videoEmptyText: {
+    fontSize: 12, fontFamily: "Inter_400Regular",
+    lineHeight: 18, textAlign: "center", paddingVertical: 4,
+  },
+
+  videoRow: {
+    borderRadius: 10, borderWidth: 1,
+    padding: 11, gap: 0,
+  },
+  videoRowTop: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+  },
+  videoTitle: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  videoMeta:  { fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 1 },
+  videoStatus: {
+    flexDirection: "row", alignItems: "center",
+    borderWidth: 1, borderRadius: 6,
+    paddingHorizontal: 6, paddingVertical: 3, flexShrink: 0,
+  },
+  videoStatusText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+
+  videoExpanded: { marginTop: 12, gap: 8 },
+  cvStatsRow: { borderRadius: 8, padding: 8 },
+  cvStatLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
+
+  insightBox: {
+    flexDirection: "row", alignItems: "flex-start", gap: 6,
+    borderWidth: 1, borderRadius: 8, padding: 10,
+  },
+  insightText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
+
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, alignItems: "center" },
+  chipRowLabel: { fontSize: 8, fontFamily: "Inter_700Bold", letterSpacing: 1, marginRight: 2 },
+  chip: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    borderWidth: 1, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3,
+  },
+  chipText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+
+  videoTipRow: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8,
+    borderWidth: 1, borderRadius: 8, padding: 8,
+  },
+  videoTipNum: { fontSize: 11, fontFamily: "Inter_700Bold", marginTop: 1, width: 14 },
+  videoTipText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+
+  videoProcessing: {
+    flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10,
+  },
+  videoProcessingText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
 });
