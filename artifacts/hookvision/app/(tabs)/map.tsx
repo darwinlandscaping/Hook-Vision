@@ -18,11 +18,11 @@ import { NT_SPOTS } from "@/utils/ntLocation";
 // ── Types ──────────────────────────────────────────────────────────────────
 interface HotspotSpot {
   locationName: string;
-  scanCount: number;
-  totalFish: number;
+  reportCount: number;
+  avgFishCount: number;
   heat: "firing" | "hot" | "warm";
-  lastSeen: string;
-  topSpecies: string;
+  latestAt: string;
+  topSpecies: string | null;
 }
 
 interface MapPin {
@@ -166,7 +166,8 @@ export default function MapScreen() {
       const base = domain ? `https://${domain}` : "";
       const res = await fetch(`${base}/api/community/hotspots`);
       if (!res.ok) return;
-      const data: HotspotSpot[] = await res.json();
+      const json = await res.json();
+      const data: HotspotSpot[] = Array.isArray(json) ? json : (json.hotspots ?? []);
 
       // Match each hotspot location name to a known GPS coordinate
       const matched: MapPin[] = [];
@@ -179,10 +180,10 @@ export default function MapScreen() {
             name: found.name,
             lat: found.lat,
             lng: found.lng,
-            scanCount: spot.scanCount,
-            totalFish: spot.totalFish,
+            scanCount: spot.reportCount,
+            totalFish: spot.avgFishCount,
             heat: spot.heat,
-            topSpecies: spot.topSpecies,
+            topSpecies: spot.topSpecies ?? "Unknown",
           });
         }
       }
