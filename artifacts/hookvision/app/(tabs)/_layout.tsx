@@ -69,6 +69,7 @@ function ClassicTabLayout() {
   const colorScheme = useColorScheme();
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const isAndroid = Platform.OS === "android";
 
   return (
     <Tabs
@@ -82,7 +83,8 @@ function ClassicTabLayout() {
           borderTopWidth: 2,
           borderTopColor: "#00d4aa",
           elevation: 0,
-          ...(isWeb ? { height: 60 } : {}),
+          ...(isWeb  ? { height: 60 } : {}),
+          ...(isAndroid ? { height: 62, paddingBottom: 6 } : {}),
         },
         tabBarBackground: () =>
           isIOS ? (
@@ -120,7 +122,7 @@ function ClassicTabLayout() {
             isIOS ? (
               <SymbolView name="waveform" tintColor={color} size={22} />
             ) : (
-              <MaterialCommunityIcons name="fish" size={22} color={color} />
+              <MaterialCommunityIcons name="radar" size={22} color={color} />
             ),
         }}
       />
@@ -188,6 +190,7 @@ function ClassicTabLayout() {
         name="zones"
         options={{
           title: "Zones",
+          href: isAndroid ? null : undefined,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="chart.bar.fill" tintColor={color} size={22} />
@@ -204,7 +207,7 @@ function ClassicTabLayout() {
             isIOS ? (
               <SymbolView name="fish.fill" tintColor={color} size={22} />
             ) : (
-              <MaterialCommunityIcons name="fish" size={22} color={color} />
+              <MaterialCommunityIcons name="weather-windy" size={22} color={color} />
             ),
         }}
       />
@@ -216,6 +219,7 @@ function ClassicTabLayout() {
         name="demo"
         options={{
           title: "Demo",
+          href: isAndroid ? null : undefined,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="photo.on.rectangle" tintColor={color} size={22} />
