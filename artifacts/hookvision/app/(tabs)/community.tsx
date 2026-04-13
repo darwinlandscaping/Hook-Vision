@@ -1,8 +1,12 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
+  Easing,
   Image,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -160,6 +164,67 @@ export default function CommunityScreen() {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadStatus, setUploadStatus]   = useState<string | null>(null);
   const [expandedVideoId, setExpandedVideoId] = useState<number | null>(null);
+
+  // ── Brain Snapshot popup ──────────────────────────────────────────────────
+  const [snapshotVideo, setSnapshotVideo] = useState<BrainVideo | null>(null);
+  const [snapshotCountdown, setSnapshotCountdown] = useState(10);
+  const snapshotProgress = useRef(new Animated.Value(1)).current;
+  const snapshotAnimRef  = useRef<Animated.CompositeAnimation | null>(null);
+  const snapshotTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const closeSnapshot = useCallback(() => {
+    snapshotAnimRef.current?.stop();
+    if (snapshotTimerRef.current) clearInterval(snapshotTimerRef.current);
+    setSnapshotVideo(null);
+    setSnapshotCountdown(10);
+  }, []);
+
+  const showSnapshot = useCallback((v: BrainVideo) => {
+    snapshotProgress.setValue(1);
+    snapshotAnimRef.current?.stop();
+    if (snapshotTimerRef.current) clearInterval(snapshotTimerRef.current);
+    setSnapshotCountdown(10);
+    setSnapshotVideo(v);
+    snapshotAnimRef.current = Animated.timing(snapshotProgress, {
+      toValue: 0,
+      duration: 10_000,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    });
+    snapshotAnimRef.current.start(({ finished }) => {
+      if (finished) setSnapshotVideo(null);
+    });
+    let count = 10;
+    snapshotTimerRef.current = setInterval(() => {
+      count -= 1;
+      setSnapshotCountdown(count);
+      if (count <= 0) {
+        clearInterval(snapshotTimerRef.current!);
+      }
+    }, 1000);
+  }, [snapshotProgress]);
+
+  // Only show snapshot when the video has meaningful sonar data
+  const hasHandyVisual = useCallback((v: BrainVideo): boolean => {
+    if (v.status !== "done" || !v.cvSummary) return false;
+    const cv = v.cvSummary as Record<string, number>;
+    return (cv.totalBlobsDetected ?? 0) >= 5 || (cv.avgBrightPct ?? 0) >= 12;
+  }, []);
+
+  const handleVideoTap = useCallback((v: BrainVideo, isExpanded: boolean) => {
+    setExpandedVideoId(isExpanded ? null : v.id);
+    if (!isExpanded && hasHandyVisual(v)) {
+      showSnapshot(v);
+    }
+  }, [hasHandyVisual, showSnapshot]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      snapshotAnimRef.current?.stop();
+      if (snapshotTimerRef.current) clearInterval(snapshotTimerRef.current);
+    };
+  }, []);
 
   const fetchVideos = useCallback(async () => {
     try {
@@ -806,7 +871,7 @@ export default function CommunityScreen() {
                     backgroundColor: isExpanded ? "#7c5cfc08" : "transparent",
                     borderColor: isExpanded ? "#7c5cfc50" : colors.border,
                   }]}
-                  onPress={() => setExpandedVideoId(isExpanded ? null : v.id)}
+                  onPress={() => handleVideoTap(v, isExpanded)}
                   activeOpacity={0.8}
                 >
                   {/* Collapsed header */}
@@ -904,6 +969,109 @@ export default function CommunityScreen() {
         </View>
 
       </ScrollView>
+
+      {/* ── Brain Snapshot Modal ──────────────────────────────────────────── */}
+      <Modal
+        visible={!!snapshotVideo}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={closeSnapshot}
+      >
+        {snapshotVideo && (() => {
+          const cv = (snapshotVideo.cvSummary ?? {}) as Record<string, number | string>;
+          const brightPct   = Number(cv.avgBrightPct   ?? 0);
+          const blobs       = Number(cv.totalBlobsDetected ?? 0);
+          const brightness  = Number(cv.avgBrightness  ?? 0);
+          const echoLabel   = brightPct > 30 ? "STRONG" : brightPct > 15 ? "MODERATE" : "LOW";
+          const echoColor   = brightPct > 30 ? C.teal : brightPct > 15 ? C.gold : C.blue;
+          const screenH     = Dimensions.get("window").height;
+
+          return (
+            <View style={styles.snapOverlay}>
+              <TouchableOpacity style={styles.snapDismissArea} activeOpacity={1} onPress={closeSnapshot} />
+              <View style={[styles.snapPanel, { height: screenH * 0.5, backgroundColor: "#07111f" }]}>
+
+                {/* Header row */}
+                <View style={styles.snapHeader}>
+                  <View style={styles.snapHeaderLeft}>
+                    <MaterialCommunityIcons name="brain" size={16} color="#7c5cfc" />
+                    <Text style={styles.snapHeaderTitle}>BRAIN SNAPSHOT</Text>
+                    <View style={[styles.snapCountBadge, { backgroundColor: "#7c5cfc30", borderColor: "#7c5cfc60" }]}>
+                      <Text style={[styles.snapCountText, { color: "#7c5cfc" }]}>{snapshotCountdown}s</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={closeSnapshot} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Feather name="x" size={18} color="#888" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Video title */}
+                <Text style={styles.snapVideoTitle} numberOfLines={1}>{snapshotVideo.title}</Text>
+
+                {/* Echo strength meter */}
+                <View style={styles.snapMeterRow}>
+                  <Text style={styles.snapMeterLabel}>ECHO STRENGTH</Text>
+                  <View style={[styles.snapMeterTrack, { backgroundColor: "#ffffff10" }]}>
+                    <View style={[styles.snapMeterFill, {
+                      width: `${Math.min(100, brightPct * 2.5)}%` as any,
+                      backgroundColor: echoColor,
+                    }]} />
+                  </View>
+                  <Text style={[styles.snapMeterValue, { color: echoColor }]}>{echoLabel}</Text>
+                </View>
+
+                {/* Stats row */}
+                <View style={styles.snapStatsRow}>
+                  <View style={styles.snapStat}>
+                    <Text style={styles.snapStatNum}>{blobs}</Text>
+                    <Text style={styles.snapStatLabel}>ARCH BLOBS</Text>
+                  </View>
+                  <View style={[styles.snapStatDivider]} />
+                  <View style={styles.snapStat}>
+                    <Text style={styles.snapStatNum}>{brightness.toFixed(0)}</Text>
+                    <Text style={styles.snapStatLabel}>BRIGHTNESS</Text>
+                  </View>
+                  <View style={[styles.snapStatDivider]} />
+                  <View style={styles.snapStat}>
+                    <Text style={styles.snapStatNum}>{snapshotVideo.frameCount}</Text>
+                    <Text style={styles.snapStatLabel}>FRAMES</Text>
+                  </View>
+                </View>
+
+                {/* Species chips */}
+                {snapshotVideo.detectedSpecies && snapshotVideo.detectedSpecies.length > 0 && (
+                  <View style={styles.snapChipRow}>
+                    {snapshotVideo.detectedSpecies.slice(0, 3).map((s, i) => (
+                      <View key={i} style={[styles.snapChip, { borderColor: C.teal + "50", backgroundColor: C.teal + "18" }]}>
+                        <MaterialCommunityIcons name="fish" size={10} color={C.teal} />
+                        <Text style={[styles.snapChipText, { color: C.teal }]}>{s}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Top AI tip */}
+                {snapshotVideo.aiTips && snapshotVideo.aiTips[0] && (
+                  <View style={[styles.snapTipBox, { borderColor: C.gold + "30", backgroundColor: C.gold + "0a" }]}>
+                    <Text style={[styles.snapTipLabel, { color: C.gold }]}>🎣 TOP TIP</Text>
+                    <Text style={styles.snapTipText} numberOfLines={3}>{snapshotVideo.aiTips[0]}</Text>
+                  </View>
+                )}
+
+                {/* Countdown progress bar */}
+                <View style={styles.snapBarTrack}>
+                  <Animated.View style={[styles.snapBarFill, {
+                    width: snapshotProgress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+                    backgroundColor: "#7c5cfc",
+                  }]} />
+                </View>
+              </View>
+            </View>
+          );
+        })()}
+      </Modal>
+
     </View>
   );
 }
@@ -1173,4 +1341,89 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10,
   },
   videoProcessingText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+
+  // ── Brain Snapshot Modal ────────────────────────────────────────────────────
+  snapOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  snapDismissArea: { flex: 1 },
+  snapPanel: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 18,
+    gap: 12,
+    borderTopWidth: 1,
+    borderColor: "#7c5cfc40",
+    overflow: "hidden",
+  },
+  snapHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  snapHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  snapHeaderTitle: {
+    fontSize: 11, fontFamily: "Inter_700Bold",
+    letterSpacing: 1.5, color: "#7c5cfc",
+  },
+  snapCountBadge: {
+    borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 7, paddingVertical: 2,
+  },
+  snapCountText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  snapVideoTitle: {
+    fontSize: 14, fontFamily: "Oswald_700Bold",
+    color: "#e0e8f5", letterSpacing: 0.3,
+  },
+  snapMeterRow: { gap: 5 },
+  snapMeterLabel: {
+    fontSize: 9, fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1.2, color: "#667788",
+  },
+  snapMeterTrack: {
+    height: 8, borderRadius: 4, overflow: "hidden",
+  },
+  snapMeterFill: { height: 8, borderRadius: 4 },
+  snapMeterValue: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
+  snapStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff06",
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  snapStat: { flex: 1, alignItems: "center", gap: 2 },
+  snapStatNum: {
+    fontSize: 24, fontFamily: "Oswald_700Bold", color: "#e0e8f5",
+  },
+  snapStatLabel: {
+    fontSize: 8, fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1, color: "#667788",
+  },
+  snapStatDivider: { width: 1, height: 32, backgroundColor: "#ffffff15" },
+  snapChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  snapChip: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    borderWidth: 1, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4,
+  },
+  snapChipText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  snapTipBox: {
+    borderWidth: 1, borderRadius: 10, padding: 10, gap: 4, flex: 1,
+  },
+  snapTipLabel: {
+    fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1.2,
+  },
+  snapTipText: {
+    fontSize: 12, fontFamily: "Inter_400Regular",
+    lineHeight: 17, color: "#c0cce0",
+  },
+  snapBarTrack: {
+    height: 3, borderRadius: 2,
+    backgroundColor: "#ffffff10",
+    overflow: "hidden",
+    marginTop: "auto" as any,
+  },
+  snapBarFill: { height: 3, borderRadius: 2 },
 });
