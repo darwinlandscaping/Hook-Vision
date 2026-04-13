@@ -892,11 +892,11 @@ export default function CommunityScreen() {
         ) : null}
 
         {/* ── BRAIN VIDEO LIBRARY ──────────────────────────────────────── */}
-        <View style={[styles.videoLibCard, { backgroundColor: colors.card, borderColor: "#aaff0040" }]}>
+        <View style={[styles.videoLibCard, { backgroundColor: colors.card, borderColor: "#ff880040" }]}>
           {/* Header */}
           <View style={styles.videoLibHeader}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-              <MaterialCommunityIcons name="brain" size={20} color="#aaff00" />
+              <MaterialCommunityIcons name="brain" size={20} color="#ff8800" />
               <View>
                 <Text style={[styles.videoLibTitle, { color: colors.foreground }]}>BRAIN LIBRARY</Text>
                 <Text style={[styles.videoLibSub, { color: colors.mutedForeground }]}>
@@ -904,23 +904,23 @@ export default function CommunityScreen() {
                 </Text>
               </View>
             </View>
-            <View style={[styles.cvBadge, { borderColor: "#aaff0040", backgroundColor: "#aaff0012" }]}>
-              <Text style={[styles.cvBadgeText, { color: "#aaff00" }]}>CV + AI</Text>
+            <View style={[styles.cvBadge, { borderColor: "#ff880040", backgroundColor: "#ff880012" }]}>
+              <Text style={[styles.cvBadgeText, { color: "#ff8800" }]}>CV + AI</Text>
             </View>
           </View>
 
           {/* Upload status / progress */}
           {uploadStatus && (
-            <View style={[styles.uploadStatus, { backgroundColor: "#aaff0015", borderColor: "#aaff0040" }]}>
-              <ActivityIndicator size="small" color="#aaff00" />
-              <Text style={[styles.uploadStatusText, { color: "#aaff00" }]}>{uploadStatus}</Text>
+            <View style={[styles.uploadStatus, { backgroundColor: "#ff880015", borderColor: "#ff880040" }]}>
+              <ActivityIndicator size="small" color="#ff8800" />
+              <Text style={[styles.uploadStatusText, { color: "#ff8800" }]}>{uploadStatus}</Text>
             </View>
           )}
 
           {/* Add video button */}
           <TouchableOpacity
             style={[styles.addVideoBtn, {
-              backgroundColor: uploadingVideo ? "#aaff0030" : "#aaff00",
+              backgroundColor: uploadingVideo ? "#ff880030" : "#ff8800",
               opacity: uploadingVideo ? 0.6 : 1,
             }]}
             onPress={pickAndUploadVideo}
@@ -928,8 +928,8 @@ export default function CommunityScreen() {
             activeOpacity={0.8}
           >
             {uploadingVideo
-              ? <ActivityIndicator size="small" color="#fff" />
-              : <Feather name="film" size={16} color="#fff" />
+              ? <ActivityIndicator size="small" color="#000" />
+              : <Feather name="film" size={16} color="#000" />
             }
             <Text style={styles.addVideoBtnText}>
               {uploadingVideo ? "Processing…" : "Add Video to Brain"}
@@ -957,15 +957,15 @@ export default function CommunityScreen() {
                 <TouchableOpacity
                   key={v.id}
                   style={[styles.videoRow, {
-                    backgroundColor: isExpanded ? "#aaff0008" : "transparent",
-                    borderColor: isExpanded ? "#aaff0050" : colors.border,
+                    backgroundColor: isExpanded ? "#ff880008" : "transparent",
+                    borderColor: isExpanded ? "#ff880050" : colors.border,
                   }]}
                   onPress={() => handleVideoTap(v, isExpanded)}
                   activeOpacity={0.8}
                 >
                   {/* Collapsed header */}
                   <View style={styles.videoRowTop}>
-                    <Feather name="film" size={14} color="#aaff00" style={{ marginTop: 1 }} />
+                    <Feather name="film" size={14} color="#ff8800" style={{ marginTop: 1 }} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.videoTitle, { color: colors.foreground }]} numberOfLines={1}>
                         {v.title}
@@ -982,7 +982,7 @@ export default function CommunityScreen() {
                     </View>
                     {hasHandyVisual(v) && (
                       <View style={styles.snapReadyBadge}>
-                        <MaterialCommunityIcons name="brain" size={9} color="#aaff00" />
+                        <MaterialCommunityIcons name="brain" size={9} color="#ff8800" />
                         <Text style={styles.snapReadyText}>SNAP</Text>
                       </View>
                     )}
@@ -1010,8 +1010,8 @@ export default function CommunityScreen() {
 
                       {/* Brain insight */}
                       {v.brainInsight ? (
-                        <View style={[styles.insightBox, { backgroundColor: "#aaff0010", borderColor: "#aaff0030" }]}>
-                          <MaterialCommunityIcons name="brain" size={13} color="#aaff00" />
+                        <View style={[styles.insightBox, { backgroundColor: "#ff880010", borderColor: "#ff880030" }]}>
+                          <MaterialCommunityIcons name="brain" size={13} color="#ff8800" />
                           <Text style={[styles.insightText, { color: colors.foreground }]}>{v.brainInsight}</Text>
                         </View>
                       ) : null}
@@ -1057,14 +1057,14 @@ export default function CommunityScreen() {
                       {/* Watch button — always shown on done cards */}
                       <TouchableOpacity
                         style={[styles.watchCardBtn, {
-                          borderColor: v.videoUri ? "#aaff0060" : "#ffffff20",
-                          backgroundColor: v.videoUri ? "#aaff0022" : "#ffffff08",
+                          borderColor: v.videoUri ? "#ff880060" : "#ffffff20",
+                          backgroundColor: v.videoUri ? "#ff880022" : "#ffffff08",
                         }]}
                         activeOpacity={0.75}
                         onPress={(e) => { e.stopPropagation?.(); linkAndWatch(v); }}
                       >
-                        <Feather name="play-circle" size={15} color={v.videoUri ? "#aaff00" : colors.mutedForeground} />
-                        <Text style={[styles.watchCardBtnText, { color: v.videoUri ? "#aaff00" : colors.mutedForeground }]}>
+                        <Feather name="play-circle" size={15} color={v.videoUri ? "#ff8800" : colors.mutedForeground} />
+                        <Text style={[styles.watchCardBtnText, { color: v.videoUri ? "#ff8800" : colors.mutedForeground }]}>
                           {v.videoUri ? "▶  WATCH VIDEO" : "▶  LINK & WATCH"}
                         </Text>
                         {!v.videoUri && (
@@ -1144,10 +1144,10 @@ export default function CommunityScreen() {
                 {/* Header row */}
                 <View style={styles.snapHeader}>
                   <View style={styles.snapHeaderLeft}>
-                    <MaterialCommunityIcons name="brain" size={16} color="#aaff00" />
+                    <MaterialCommunityIcons name="brain" size={16} color="#ff8800" />
                     <Text style={styles.snapHeaderTitle}>BRAIN SNAPSHOT</Text>
-                    <View style={[styles.snapCountBadge, { backgroundColor: "#aaff0030", borderColor: "#aaff0060" }]}>
-                      <Text style={[styles.snapCountText, { color: "#aaff00" }]}>{snapshotCountdown}s</Text>
+                    <View style={[styles.snapCountBadge, { backgroundColor: "#ff880030", borderColor: "#ff880060" }]}>
+                      <Text style={[styles.snapCountText, { color: "#ff8800" }]}>{snapshotCountdown}s</Text>
                     </View>
                   </View>
                   <TouchableOpacity onPress={closeSnapshot} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -1227,7 +1227,7 @@ export default function CommunityScreen() {
                 <View style={styles.snapBarTrack}>
                   <Animated.View style={[styles.snapBarFill, {
                     width: snapshotProgress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
-                    backgroundColor: "#aaff00",
+                    backgroundColor: "#ff8800",
                   }]} />
                 </View>
               </View>
@@ -1452,7 +1452,7 @@ const styles = StyleSheet.create({
     gap: 8, paddingVertical: 12, borderRadius: 24,
   },
   addVideoBtnText: {
-    fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff",
+    fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#000",
   },
 
   videoEmptyText: {
@@ -1510,12 +1510,12 @@ const styles = StyleSheet.create({
   snapReadyBadge: {
     flexDirection: "row", alignItems: "center", gap: 3,
     borderWidth: 1, borderRadius: 8,
-    borderColor: "#aaff0070", backgroundColor: "#aaff0020",
+    borderColor: "#ff880070", backgroundColor: "#ff880020",
     paddingHorizontal: 6, paddingVertical: 3,
   },
   snapReadyText: {
     fontSize: 8, fontFamily: "Inter_700Bold",
-    letterSpacing: 1, color: "#aaff00",
+    letterSpacing: 1, color: "#ff8800",
   },
 
   // ── Brain Snapshot Modal ────────────────────────────────────────────────────
@@ -1531,7 +1531,7 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 12,
     borderTopWidth: 1,
-    borderColor: "#aaff0040",
+    borderColor: "#ff880040",
     overflow: "hidden",
   },
   snapHeader: {
@@ -1542,7 +1542,7 @@ const styles = StyleSheet.create({
   snapHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   snapHeaderTitle: {
     fontSize: 11, fontFamily: "Inter_700Bold",
-    letterSpacing: 1.5, color: "#aaff00",
+    letterSpacing: 1.5, color: "#ff8800",
   },
   snapCountBadge: {
     borderWidth: 1, borderRadius: 10,
@@ -1607,12 +1607,12 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
     gap: 6, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 10,
-    backgroundColor: "#aaff00",
+    backgroundColor: "#ff8800",
     flexShrink: 0,
   },
   snapWatchText: {
     fontSize: 9, fontFamily: "Inter_700Bold",
-    letterSpacing: 1.2, color: "#fff",
+    letterSpacing: 1.2, color: "#000",
   },
 
   playerModal: {
