@@ -6,7 +6,6 @@ import {
   Dimensions,
   Easing,
   Image,
-  Linking,
   Modal,
   Platform,
   RefreshControl,
@@ -22,6 +21,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import * as VideoThumbnails from "expo-video-thumbnails";
+import { Video, ResizeMode } from "expo-av";
 
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
@@ -167,6 +167,13 @@ export default function CommunityScreen() {
   const [uploadStatus, setUploadStatus]   = useState<string | null>(null);
   const [expandedVideoId, setExpandedVideoId] = useState<number | null>(null);
 
+  // ── In-app video player ───────────────────────────────────────────────────
+  const [playingVideoUri, setPlayingVideoUri] = useState<string | null>(null);
+  const playVideo = useCallback((uri: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setPlayingVideoUri(uri);
+  }, []);
+
   // ── Brain Snapshot popup ──────────────────────────────────────────────────
   const [snapshotVideo, setSnapshotVideo] = useState<BrainVideo | null>(null);
   const [snapshotCountdown, setSnapshotCountdown] = useState(10);
@@ -220,18 +227,16 @@ export default function CommunityScreen() {
     }
   }, [hasHandyVisual, showSnapshot]);
 
-  // Watch button handler — picks from gallery if no URI saved yet, then plays
+  // Watch button handler — picks from gallery if no URI saved yet, then plays in-app
   const linkAndWatch = useCallback(async (v: BrainVideo) => {
     if (v.videoUri) {
-      Linking.openURL(v.videoUri).catch(() =>
-        Alert.alert("Can't open", "The video file could not be found on this device.")
-      );
+      playVideo(v.videoUri);
       return;
     }
     // No URI saved — ask user to locate the original file
     Alert.alert(
       "Find your video",
-      "Tap OK to pick the video from your gallery — it will be saved for future taps.",
+      "Pick the video from your gallery — it will be saved for future taps.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -254,10 +259,8 @@ export default function CommunityScreen() {
               });
               // Update local state immediately
               setVideoLibrary(prev => prev.map(x => x.id === v.id ? { ...x, videoUri: uri } : x));
-              // Play it
-              Linking.openURL(uri).catch(() =>
-                Alert.alert("Can't open", "The video could not be played on this device.")
-              );
+              // Play in-app
+              playVideo(uri);
             } catch {
               Alert.alert("Error", "Something went wrong picking the video.");
             }
@@ -265,7 +268,7 @@ export default function CommunityScreen() {
         },
       ]
     );
-  }, []);
+  }, [playVideo]);
 
   // Clean up timers on unmount
   useEffect(() => {
@@ -1043,6 +1046,35 @@ export default function CommunityScreen() {
 
       </ScrollView>
 
+      {/* ── In-App Video Player ──────────────────────────────────────────── */}
+      <Modal
+        visible={!!playingVideoUri}
+        transparent={false}
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setPlayingVideoUri(null)}
+      >
+        <View style={styles.playerModal}>
+          <TouchableOpacity
+            style={styles.playerClose}
+            onPress={() => setPlayingVideoUri(null)}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Feather name="x" size={22} color="#fff" />
+          </TouchableOpacity>
+          {playingVideoUri && (
+            <Video
+              source={{ uri: playingVideoUri }}
+              style={styles.playerVideo}
+              resizeMode={ResizeMode.CONTAIN}
+              useNativeControls
+              shouldPlay
+              isLooping={false}
+            />
+          )}
+        </View>
+      </Modal>
+
       {/* ── Brain Snapshot Modal ──────────────────────────────────────────── */}
       <Modal
         visible={!!snapshotVideo}
@@ -1137,13 +1169,11 @@ export default function CommunityScreen() {
                       style={styles.snapWatchBtn}
                       activeOpacity={0.75}
                       onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        Linking.openURL(snapshotVideo!.videoUri!).catch(() =>
-                          Alert.alert("Can't open", "The video file could not be found on this device.")
-                        );
+                        closeSnapshot();
+                        playVideo(snapshotVideo!.videoUri!);
                       }}
                     >
-                      <Feather name="play-circle" size={22} color="#fff" />
+                      <Feather name="play-circle" size={22} color="#000" />
                       <Text style={styles.snapWatchText}>WATCH</Text>
                     </TouchableOpacity>
                   )}
@@ -1538,6 +1568,18 @@ const styles = StyleSheet.create({
   snapWatchText: {
     fontSize: 9, fontFamily: "Inter_700Bold",
     letterSpacing: 1.2, color: "#fff",
+  },
+
+  playerModal: {
+    flex: 1, backgroundColor: "#000",
+    justifyContent: "center", alignItems: "center",
+  },
+  playerVideo: {
+    width: "100%", height: "100%",
+  },
+  playerClose: {
+    position: "absolute", top: 52, right: 20, zIndex: 10,
+    backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 20, padding: 8,
   },
 
   watchCardBtn: {
