@@ -283,6 +283,19 @@ export default function HomeScreen() {
         throw new Error("AI response was cut off — please try again.");
       }
       setAnalysis(data);
+
+      // ── CROC ALERT — native dialog fires immediately ──────────────────────
+      if (data.crocAlert) {
+        Alert.alert(
+          "🐊 CROCODILE DETECTED",
+          data.crocWarning
+            ? `${data.crocWarning}\n\n🚨 NT CROC SAFETY\n• Stay 5m back from the water's edge\n• Do NOT enter the water or lean over the side\n• Saltwater crocs can be submerged and unseen\n• Relocate immediately`
+            : "A saltwater crocodile has been detected on your sonar.\n\n🚨 DO NOT ENTER THE WATER\n• Stay 5m back from the water's edge\n• Saltwater crocs can be submerged and unseen\n• Relocate immediately",
+          [{ text: "UNDERSTOOD — MOVING AWAY", style: "destructive" }],
+          { cancelable: false }
+        );
+      }
+
       // ── Compare with community-expected species ──
       if (SpeciesCompareStore.expectedSpecies) {
         const expected = SpeciesCompareStore.expectedSpecies;
