@@ -16,6 +16,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "waveform", selected: "waveform" }} />
         <Label>Analyze</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="live">
+        <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
+        <Label>Live</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="home">
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
@@ -23,10 +27,6 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="buff">
         <Icon sf={{ default: "bag.fill", selected: "bag.fill" }} />
         <Label>Boof</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="live">
-        <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
-        <Label>Live</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="tides">
         <Icon sf={{ default: "water.waves", selected: "water.waves" }} />
@@ -115,6 +115,18 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="live"
+        options={{
+          title: "Live",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="camera.viewfinder" tintColor={color} size={22} />
+            ) : (
+              <Feather name="video" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
         name="home"
         options={{
           title: "Home",
@@ -135,18 +147,6 @@ function ClassicTabLayout() {
               <SymbolView name="bag.fill" tintColor={color} size={22} />
             ) : (
               <MaterialCommunityIcons name="shopping" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="live"
-        options={{
-          title: "Live",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="camera.viewfinder" tintColor={color} size={22} />
-            ) : (
-              <Feather name="video" size={22} color={color} />
             ),
         }}
       />
