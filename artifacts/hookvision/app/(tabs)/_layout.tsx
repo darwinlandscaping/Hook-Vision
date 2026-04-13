@@ -67,7 +67,6 @@ function NativeTabLayout() {
 function ClassicTabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
 
@@ -75,81 +74,182 @@ function ClassicTabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#00d4aa",
-        tabBarInactiveTintColor: "#556677",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.mutedForeground,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: "#0a1628",
+          backgroundColor: isIOS ? "transparent" : colors.background,
           borderTopWidth: 2,
-          borderTopColor: "#00d4aa44",
-          elevation: 8,
-          shadowColor: "#00d4aa",
-          shadowOpacity: 0.15,
-          shadowOffset: { width: 0, height: -2 },
-          height: isWeb ? 60 : 58,
+          borderTopColor: "#00d4aa",
+          elevation: 0,
+          ...(isWeb ? { height: 60 } : {}),
         },
-        tabBarBackground: () => null,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: "700", marginBottom: 2 },
-        tabBarIconStyle: { marginTop: 4 },
+        tabBarBackground: () =>
+          isIOS ? (
+            <BlurView
+              intensity={90}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+          ) : isWeb ? (
+            <View
+              style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
+            />
+          ) : null,
+        tabBarLabelStyle: { fontSize: 9, fontFamily: "Inter_500Medium" },
+        tabBarIconStyle: { marginBottom: -2 },
       }}
     >
-      {/* ── 5 primary tabs always visible ── */}
       <Tabs.Screen
         name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={22} color={color} />
-          ),
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="house.fill" tintColor={color} size={22} />
+            ) : (
+              <Feather name="home" size={22} color={color} />
+            ),
         }}
       />
       <Tabs.Screen
         name="index"
         options={{
-          title: "Scan",
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="fish" size={24} color={color} />
-          ),
+          title: "Analyze",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="waveform" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="fish" size={22} color={color} />
+            ),
         }}
       />
       <Tabs.Screen
         name="buff"
         options={{
           title: "Boof",
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="shopping" size={22} color={color} />
-          ),
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="bag.fill" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="shopping" size={22} color={color} />
+            ),
         }}
       />
       <Tabs.Screen
         name="live"
         options={{
           title: "Live",
-          tabBarIcon: ({ color }) => (
-            <Feather name="video" size={22} color={color} />
-          ),
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="camera.viewfinder" tintColor={color} size={22} />
+            ) : (
+              <Feather name="video" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="tides"
+        options={{
+          title: "Tides",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="water.waves" tintColor={color} size={22} />
+            ) : (
+              <Feather name="activity" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="species"
+        options={{
+          title: "Species",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="fish" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="fish" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="barra"
+        options={{
+          title: "Barra",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="target" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="crosshairs-gps" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="zones"
+        options={{
+          title: "Zones",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="chart.bar.fill" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="chart-bar" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="forecast"
+        options={{
+          title: "Fishy",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="fish.fill" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="fish" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="fishy"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="demo"
+        options={{
+          title: "Demo",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="photo.on.rectangle" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="image-multiple" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: "History",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="clock" tintColor={color} size={22} />
+            ) : (
+              <Feather name="clock" size={22} color={color} />
+            ),
         }}
       />
       <Tabs.Screen
         name="community"
         options={{
           title: "Intel",
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="brain" size={24} color={color} />
-          ),
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="brain.head.profile" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="brain" size={22} color={color} />
+            ),
         }}
       />
-
-      {/* ── All other screens — navigable via home tiles, hidden from tab bar ── */}
-      <Tabs.Screen name="tides"    options={{ href: null }} />
-      <Tabs.Screen name="species"  options={{ href: null }} />
-      <Tabs.Screen name="barra"    options={{ href: null }} />
-      <Tabs.Screen name="zones"    options={{ href: null }} />
-      <Tabs.Screen name="forecast" options={{ href: null }} />
-      <Tabs.Screen name="fishy"    options={{ href: null }} />
-      <Tabs.Screen name="demo"     options={{ href: null }} />
-      <Tabs.Screen name="history"  options={{ href: null }} />
-      <Tabs.Screen name="map"      options={{ href: null }} />
+      {/* Hidden screen — accessible from Intel tab map button */}
+      <Tabs.Screen name="map" options={{ href: null }} />
     </Tabs>
   );
 }
