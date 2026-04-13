@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { db, brainVideos, communityInsights, communityReports } from "@workspace/db";
+import { desc, eq } from "drizzle-orm";
 import { getConditionsContext } from "../lib/dailyBriefing";
 import { analyzeSonarImage, formatCvContext } from "../lib/vision";
 
@@ -295,7 +297,123 @@ STEPS (run ALL of them, every time):
    - Multiple slim bodies mid-column + short shadows + soft bottom = Threadfin Salmon
 5. DEPTH: read the scale on whichever panel shows it. Eliminate species outside that zone.
 6. CROSS-REFERENCE: Do the 2D and live results agree? If both confirm same species → boost confidence 10–15%. If one is silent → use the method that found fish. Note findings from both in archReasoning.
-7. FINAL ID: COMMIT to a species name. Reduce confidence if unsure but NEVER leave species null or empty. Output ONLY the JSON object — nothing before the opening { bracket.`;
+7. FINAL ID: COMMIT to a species name. Reduce confidence if unsure but NEVER leave species null or empty. Output ONLY the JSON object — nothing before the opening { bracket.
+8. INTELLIGENCE CHECK: Cross-reference your ID against the BRAIN LIBRARY & COMMUNITY INTELLIGENCE block provided above the image. If your ID matches the hot species at this depth and region → boost confidence 5–10%. If your ID is unusual for this area given strong community evidence otherwise → note it in archReasoning and reduce confidence 5–10% unless your sonar evidence is very clear.`;
+
+// ─── Brain library + community intelligence context ───────────────────────────
+// Fetched in parallel with the CV scan before every analysis. Gives GPT
+// ground-truth about which species are actually being caught at the moment,
+// at what depths, and at which NT locations so it can cross-check its ID.
+
+async function getIntelligenceContext(): Promise<string> {
+  try {
+    const [brainRows, insightRows, recentReports] = await Promise.all([
+      db.select({
+        species: brainVideos.detectedSpecies,
+        depths:  brainVideos.depthRanges,
+      })
+        .from(brainVideos)
+        .where(eq(brainVideos.status, "done"))
+        .orderBy(desc(brainVideos.submittedAt))
+        .limit(60),
+
+      db.select()
+        .from(communityInsights)
+        .orderBy(desc(communityInsights.generatedAt))
+        .limit(1),
+
+      db.select({
+        species:  communityReports.species,
+        depth:    communityReports.depth,
+        location: communityReports.locationName,
+      })
+        .from(communityReports)
+        .orderBy(desc(communityReports.submittedAt))
+        .limit(40),
+    ]);
+
+    // Species frequency from brain library
+    const libCount: Record<string, number> = {};
+    const libDepths: Record<string, number> = {};
+    for (const row of brainRows) {
+      for (const s of (row.species as string[] | null) ?? []) {
+        if (s && s !== "Unknown species") libCount[s] = (libCount[s] ?? 0) + 1;
+      }
+      for (const d of (row.depths as string[] | null) ?? []) {
+        if (d) libDepths[d] = (libDepths[d] ?? 0) + 1;
+      }
+    }
+    const topLib = Object.entries(libCount)
+      .sort((a, b) => b[1] - a[1]).slice(0, 6)
+      .map(([s, n]) => `${s} (${n})`).join(", ");
+    const topLibDepths = Object.entries(libDepths)
+      .sort((a, b) => b[1] - a[1]).slice(0, 5)
+      .map(([d, n]) => `${d} (${n})`).join(", ");
+
+    // Species + location frequency from community reports
+    const comCount: Record<string, number> = {};
+    const comLocations: string[] = [];
+    const comDepths: string[] = [];
+    for (const r of recentReports) {
+      if (r.species && r.species !== "Unknown species") {
+        comCount[r.species] = (comCount[r.species] ?? 0) + 1;
+      }
+      if (r.location) comLocations.push(r.location);
+      if (r.depth)    comDepths.push(r.depth);
+    }
+    const topCom = Object.entries(comCount)
+      .sort((a, b) => b[1] - a[1]).slice(0, 6)
+      .map(([s, n]) => `${s} (${n})`).join(", ");
+
+    type HotSpeciesRow = { species: string; count: number; trend?: string };
+    type HotDepthRow   = { range: string; count: number; notes?: string };
+    const hotSpecies  = ((insightRows[0]?.hotSpecies  as HotSpeciesRow[] | null) ?? [])
+      .slice(0, 5)
+      .map(h => `${h.species} (${h.count} reports, ${h.trend ?? "stable"})`)
+      .join(", ");
+    const hotDepths   = ((insightRows[0]?.hotDepths   as HotDepthRow[] | null) ?? [])
+      .slice(0, 4)
+      .map(h => `${h.range}: ${h.notes ? h.notes.slice(0, 60) : `${h.count} reports`}`)
+      .join(" | ");
+    const hotLocations= ((insightRows[0]?.hotLocations as string[] | null) ?? []).slice(0, 5).join(", ");
+    const insightSum  = insightRows[0]?.summary ?? "";
+
+    const uniqueLocs  = [...new Set(comLocations)].slice(0, 5).join(", ");
+    const uniqueDepths= [...new Set(comDepths)].slice(0, 6).join(", ");
+
+    const lines: string[] = [
+      `\n\n═══ BRAIN LIBRARY & COMMUNITY INTELLIGENCE (${brainRows.length} library scans + ${recentReports.length} community reports) ═══`,
+      `Use this real-world NT fishing data to cross-check your sonar ID:`,
+    ];
+    if (topLib)       lines.push(`LIBRARY top species: ${topLib}`);
+    if (topLibDepths) lines.push(`LIBRARY active depths: ${topLibDepths}`);
+    if (topCom)       lines.push(`COMMUNITY top species (recent): ${topCom}`);
+    if (hotSpecies)   lines.push(`HOT species right now: ${hotSpecies}`);
+    if (hotDepths)    lines.push(`HOT depth zones: ${hotDepths}`);
+    if (uniqueDepths || hotLocations) {
+      lines.push(`ACTIVE depths (recent community): ${uniqueDepths || "n/a"}`);
+      lines.push(`ACTIVE locations: ${hotLocations || uniqueLocs || "n/a"}`);
+    }
+    if (insightSum)   lines.push(`INTELLIGENCE: ${insightSum}`);
+    lines.push(
+      `RULE: If your sonar ID matches the library/community top species at this depth → confidence +5–10%. ` +
+      `If your ID is unusual vs strong community data → note in archReasoning and confidence −5–10% unless sonar evidence is clear.`
+    );
+
+    return lines.join("\n");
+  } catch {
+    return "";
+  }
+}
+
+// ─── Detect MIME type from base64 magic bytes ─────────────────────────────────
+function detectMimeType(base64: string): "image/jpeg" | "image/png" | "image/webp" {
+  const prefix = base64.slice(0, 8);
+  if (prefix.startsWith("/9j/")) return "image/jpeg";
+  if (prefix.startsWith("iVBORw0")) return "image/png";
+  if (prefix.startsWith("UklGR")) return "image/webp";
+  return "image/jpeg";
+}
 
 router.post("/analyze", async (req, res) => {
   const { imageBase64 } = req.body as { imageBase64?: string };
@@ -306,26 +424,23 @@ router.post("/analyze", async (req, res) => {
   }
 
   try {
-    // ── CV Pre-scan (TF.js + OpenCV) — runs in parallel with stream setup ──
-    // Decodes the JPEG, measures brightness/colour/blob positions, and injects
-    // measured pixel data into the GPT prompt so the model can cross-reference
-    // arch brightness and positions against actual values rather than guessing.
-    const cvScanPromise = analyzeSonarImage(imageBase64);
+    // ── Run CV scan + intelligence fetch in parallel ──────────────────────
+    const [cvScan, intelligenceCtx] = await Promise.all([
+      analyzeSonarImage(imageBase64),
+      getIntelligenceContext(),
+    ]);
 
-    const condCtx = getConditionsContext();
+    const condCtx  = getConditionsContext();
+    const cvBlock  = cvScan ? "\n\n" + formatCvContext(cvScan) : "";
+    const analysisPrompt = `${condCtx ? condCtx + "\n\n" : ""}${intelligenceCtx}\n\n${ANALYSIS_STEP_PROMPT}${cvBlock}`;
 
-    // Wait for CV scan (typically 50–120ms) — negligible vs GPT latency
-    const cvScan = await cvScanPromise;
-    const cvBlock = cvScan ? "\n\n" + formatCvContext(cvScan) : "";
-    const analysisPrompt = `${condCtx ? condCtx + "\n\n" : ""}${ANALYSIS_STEP_PROMPT}${cvBlock}`;
+    // Detect actual image MIME type so vision API gets correct format header
+    const mimeType = detectMimeType(imageBase64);
 
     // ── Streaming OpenAI call ─────────────────────────────────────────────
-    // Reference images removed — calibration context is now text-only in the
-    // analysis prompt. This eliminates ~150–500KB of upload payload and
-    // ~255 tokens of processing overhead per request, targeting <3s total.
     const stream = await openai.chat.completions.create({
       model: "gpt-4.1",
-      max_completion_tokens: 1100,
+      max_completion_tokens: 1300,
       stream: true,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
@@ -334,7 +449,7 @@ router.post("/analyze", async (req, res) => {
           content: [
             {
               type: 'image_url',
-              image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: 'auto' },
+              image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'auto' },
             },
             { type: 'text', text: analysisPrompt },
           ],
