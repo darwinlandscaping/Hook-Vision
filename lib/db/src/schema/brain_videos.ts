@@ -34,6 +34,9 @@ export const brainVideos = pgTable("brain_videos", {
   depthRanges:     jsonb("depth_ranges"),        // string[]
   aiTips:          jsonb("ai_tips"),             // string[]
 
+  // Local device URI stored so the client can re-open the original video file
+  videoUri:        text("video_uri"),
+
   submittedAt:     timestamp("submitted_at", { withTimezone: true }).defaultNow().notNull(),
   processedAt:     timestamp("processed_at", { withTimezone: true }),
 });

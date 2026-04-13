@@ -30,11 +30,13 @@ router.post("/brain/video", async (req, res) => {
     title        = "Untitled Video",
     description  = "",
     durationSecs = null,
+    videoUri     = null,
     frames       = [],            // base64 JPEG strings, up to 30
   } = req.body as {
     title?: string;
     description?: string;
     durationSecs?: number | null;
+    videoUri?: string | null;
     frames?: string[];
   };
 
@@ -53,6 +55,7 @@ router.post("/brain/video", async (req, res) => {
       description:  description.slice(0, 1000),
       durationSecs: durationSecs ?? null,
       frameCount:   cappedFrames.length,
+      videoUri:     videoUri ?? null,
       status:       "processing",
     }).returning();
 

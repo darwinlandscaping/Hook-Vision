@@ -6,6 +6,7 @@ import {
   Dimensions,
   Easing,
   Image,
+  Linking,
   Modal,
   Platform,
   RefreshControl,
@@ -85,6 +86,7 @@ interface BrainVideo {
   depthRanges: string[] | null;
   aiTips: string[] | null;
   cvSummary: Record<string, unknown> | null;
+  videoUri: string | null;
   submittedAt: string;
   processedAt: string | null;
 }
@@ -300,7 +302,7 @@ export default function CommunityScreen() {
       const uploadRes = await fetch(`${BASE_URL}/api/brain/video`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ title, durationSecs: durSecs, frames }),
+        body:    JSON.stringify({ title, durationSecs: durSecs, videoUri: uri, frames }),
       });
 
       if (!uploadRes.ok) throw new Error("Upload failed");
@@ -1057,13 +1059,30 @@ export default function CommunityScreen() {
                   </View>
                 )}
 
-                {/* Top AI tip */}
-                {snapshotVideo.aiTips && snapshotVideo.aiTips[0] && (
-                  <View style={[styles.snapTipBox, { borderColor: C.gold + "30", backgroundColor: C.gold + "0a" }]}>
-                    <Text style={[styles.snapTipLabel, { color: C.gold }]}>🎣 TOP TIP</Text>
-                    <Text style={styles.snapTipText} numberOfLines={3}>{snapshotVideo.aiTips[0]}</Text>
-                  </View>
-                )}
+                {/* Top AI tip + Watch button row */}
+                <View style={{ flexDirection: "row", gap: 8, alignItems: "stretch" }}>
+                  {snapshotVideo.aiTips && snapshotVideo.aiTips[0] && (
+                    <View style={[styles.snapTipBox, { borderColor: C.gold + "30", backgroundColor: C.gold + "0a" }]}>
+                      <Text style={[styles.snapTipLabel, { color: C.gold }]}>🎣 TOP TIP</Text>
+                      <Text style={styles.snapTipText} numberOfLines={3}>{snapshotVideo.aiTips[0]}</Text>
+                    </View>
+                  )}
+                  {snapshotVideo.videoUri && (
+                    <TouchableOpacity
+                      style={styles.snapWatchBtn}
+                      activeOpacity={0.75}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        Linking.openURL(snapshotVideo!.videoUri!).catch(() =>
+                          Alert.alert("Can't open", "The video file could not be found on this device.")
+                        );
+                      }}
+                    >
+                      <Feather name="play-circle" size={22} color="#fff" />
+                      <Text style={styles.snapWatchText}>WATCH</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
 
                 {/* Countdown progress bar */}
                 <View style={styles.snapBarTrack}>
@@ -1443,4 +1462,16 @@ const styles = StyleSheet.create({
     marginTop: "auto" as any,
   },
   snapBarFill: { height: 3, borderRadius: 2 },
+
+  snapWatchBtn: {
+    alignItems: "center", justifyContent: "center",
+    gap: 6, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10,
+    backgroundColor: "#7c5cfc",
+    flexShrink: 0,
+  },
+  snapWatchText: {
+    fontSize: 9, fontFamily: "Inter_700Bold",
+    letterSpacing: 1.2, color: "#fff",
+  },
 });
