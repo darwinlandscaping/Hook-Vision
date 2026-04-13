@@ -209,10 +209,21 @@ Live Spatial:
 • Humminbird MEGA Live: "MEGA LIVE" or "MEGA 360" text, orange brand accents
 • Simrad ForwardScan: Navico, similar to Lowrance palette
 
+═══ MANDATORY SPECIES RULE ═══
+You MUST ALWAYS return a real species name. NEVER return null, never return empty string "".
+If you are uncertain: lower the confidence (25–45) and use the best available evidence.
+Acceptable uncertain answers: "Barramundi (probable)", "Suspected Mangrove Jack", "Mixed species school — possibly Threadfin"
+UNACCEPTABLE: null, "", "Unknown", "Unclear", no species field at all.
+If the image shows NO fish at all: return species "No fish detected", fishCount 0, confidence 0.
+This rule is absolute. Every response must contain a meaningful species string.
+
+Depth is also required: always read the depth scale. If scale is not visible, estimate from context and note "(estimated)".
+fishCount: count visible arches (2D) or visible bodies (live sonar). Return 0 only if you are certain there are no fish.
+
 ═══ RESPONSE ═══
 Return ONLY valid JSON — no markdown fences, no explanation, no surrounding text:
 {
-  "species": "primary species name",
+  "species": "primary species name — REQUIRED, never null",
   "confidence": 85,
   "fishCount": 3,
   "depth": "8.4m",
@@ -260,7 +271,7 @@ STEPS:
 3. DEPTH: read depth scale exactly. Eliminate species outside that zone.
 4. SHADOW: In 2D — dark void BELOW arch = barra 90%+. In live sonar — long "post-cast shadow" behind body = large physostomous fish, confirm barra if near structure.
 5. POSITION: In 2D — ON hard structure (barra/jack) | floating 1–4m ABOVE rubble (fingermark) | mid-column soft (thready) | buried IN echo (jack). In live sonar — adjacent to structure (barra/jack) | suspended mid-column (thready/fingermark) | surface (saratoga).
-6. FINAL ID: apply species signatures for the detected mode. Output ONLY the JSON object.`;
+6. FINAL ID: apply species signatures for the detected mode. COMMIT to a species name — never leave it null or empty. If unsure, reduce confidence and annotate (e.g. "Barramundi (probable)"). Output ONLY the JSON object — no text before or after the opening { bracket.`;
 
 router.post("/analyze", async (req, res) => {
   const { imageBase64 } = req.body as { imageBase64?: string };

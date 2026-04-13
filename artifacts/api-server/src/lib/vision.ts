@@ -74,15 +74,45 @@ export interface SonarScan {
  *
  * Runs in ~50–120 ms on the API server before the GPT streaming call begins.
  */
-export async function analyzeSonarImage(jpegBase64: string): Promise<SonarScan | null> {
+/** Detect image format from magic bytes */
+function detectFormat(buf: Buffer): "jpeg" | "png" | "unknown" {
+  if (buf[0] === 0xff && buf[1] === 0xd8) return "jpeg";
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "png";
+  return "unknown";
+}
+
+/** Decode any supported image format to raw RGBA */
+async function decodeToRGBA(buf: Buffer): Promise<{ width: number; height: number; data: Uint8Array }> {
+  const fmt = detectFormat(buf);
+
+  if (fmt === "jpeg") {
+    const jpegModule = await import("jpeg-js");
+    const decoded = jpegModule.default.decode(buf, { useTArray: true, formatAsRGBA: true });
+    return { width: decoded.width, height: decoded.height, data: decoded.data as Uint8Array };
+  }
+
+  if (fmt === "png") {
+    // Sync PNG decode via pngjs
+    const { PNG } = await import("pngjs") as any;
+    return new Promise((resolve, reject) => {
+      const png = new PNG();
+      png.parse(buf, (err: Error | null, parsed: any) => {
+        if (err) return reject(err);
+        resolve({ width: parsed.width, height: parsed.height, data: new Uint8Array(parsed.data) });
+      });
+    });
+  }
+
+  throw new Error(`Unsupported image format (magic: ${buf[0].toString(16)} ${buf[1].toString(16)})`);
+}
+
+export async function analyzeSonarImage(imageBase64: string): Promise<SonarScan | null> {
   try {
     const { tf: t, cv } = await getVision();
 
-    // ── Decode JPEG → raw RGBA via jpeg-js ───────────────────────────────
-    const jpegModule = await import("jpeg-js");
-    const jpegBuf = Buffer.from(jpegBase64, "base64");
-    const decoded = jpegModule.default.decode(jpegBuf, { useTArray: true, formatAsRGBA: true });
-    const { width, height, data: rgba } = decoded;
+    // ── Decode JPEG or PNG → raw RGBA ────────────────────────────────────
+    const imgBuf = Buffer.from(imageBase64, "base64");
+    const { width, height, data: rgba } = await decodeToRGBA(imgBuf);
     const pixelCount = width * height;
 
     // ── Build TF.js tensor [H, W, 3] ─────────────────────────────────────
