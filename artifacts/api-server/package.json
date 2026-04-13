@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/integrations-openai-ai-server": "workspace:*",
@@ -17,6 +18,8 @@
     "cors": "^2",
     "drizzle-orm": "catalog:",
     "express": "^5",
+    "onnxruntime-node": "^1.24.3",
+    "opencv-wasm": "4.3.0-10",
     "pino": "^9",
     "pino-http": "^10"
   },
