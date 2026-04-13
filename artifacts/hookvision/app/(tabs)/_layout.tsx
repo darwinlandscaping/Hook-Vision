@@ -4,11 +4,22 @@ import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import React, { useRef } from "react";
+import { Platform, PanResponder, StyleSheet, View, useColorScheme } from "react-native";
+import { useRouter, usePathname } from "expo-router";
 
 import { useColors } from "@/hooks/useColors";
 import { CrocTabBar } from "@/components/CrocTabBar";
+
+// Ordered list of all tab route names (must match Tabs.Screen order below)
+const TAB_ROUTES = [
+  "index", "live", "home", "buff", "tides", "species",
+  "barra", "zones", "forecast", "demo", "history", "community",
+] as const;
+
+function tabPath(name: string) {
+  return name === "index" ? "/" : `/${name}`;
+}
 
 function NativeTabLayout() {
   return (
@@ -71,8 +82,34 @@ function ClassicTabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const isAndroid = Platform.OS === "android";
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Keep a mutable ref so the PanResponder closure always sees the latest route
+  const routeRef = useRef(pathname);
+  routeRef.current = pathname;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      // Only claim the gesture for clear horizontal swipes
+      onMoveShouldSetPanResponder: (_, gs) =>
+        Math.abs(gs.dx) > 20 && Math.abs(gs.dx) > Math.abs(gs.dy) * 2.5,
+      onPanResponderRelease: (_, gs) => {
+        if (Math.abs(gs.dx) < 50) return;            // too short — ignore
+        const seg = routeRef.current.replace(/^\//, "") || "index";
+        const idx = TAB_ROUTES.indexOf(seg as typeof TAB_ROUTES[number]);
+        if (idx === -1) return;
+        if (gs.dx < 0 && idx < TAB_ROUTES.length - 1) {
+          router.navigate(tabPath(TAB_ROUTES[idx + 1]));   // swipe left → next
+        } else if (gs.dx > 0 && idx > 0) {
+          router.navigate(tabPath(TAB_ROUTES[idx - 1]));   // swipe right → prev
+        }
+      },
+    })
+  ).current;
 
   return (
+    <View style={{ flex: 1 }} {...panResponder.panHandlers}>
     <Tabs
       tabBar={(props) => <CrocTabBar {...props} />}
       screenOptions={{
@@ -255,6 +292,7 @@ function ClassicTabLayout() {
       {/* Hidden screen — accessible from Intel tab map button */}
       <Tabs.Screen name="map" options={{ href: null }} />
     </Tabs>
+    </View>
   );
 }
 
