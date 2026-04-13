@@ -88,6 +88,23 @@ router.get("/brain/videos", async (_req, res) => {
   }
 });
 
+// ─── PATCH /api/brain/video/:id ────────────────────────────────────────────
+// Save (or update) the local device videoUri for an existing entry
+
+router.patch("/brain/video/:id", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { videoUri } = req.body as { videoUri?: string };
+  if (!videoUri) { res.status(400).json({ error: "videoUri required" }); return; }
+  try {
+    await db.update(brainVideos).set({ videoUri }).where(eq(brainVideos.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Failed to update videoUri");
+    res.status(500).json({ error: "Update failed" });
+  }
+});
+
 // ─── POST /api/brain/video/:id/reanalyze ───────────────────────────────────
 // (requires frames to be re-sent — just resets status for now)
 router.post("/brain/video/:id/reanalyze", async (req, res) => {

@@ -220,6 +220,53 @@ export default function CommunityScreen() {
     }
   }, [hasHandyVisual, showSnapshot]);
 
+  // Watch button handler — picks from gallery if no URI saved yet, then plays
+  const linkAndWatch = useCallback(async (v: BrainVideo) => {
+    if (v.videoUri) {
+      Linking.openURL(v.videoUri).catch(() =>
+        Alert.alert("Can't open", "The video file could not be found on this device.")
+      );
+      return;
+    }
+    // No URI saved — ask user to locate the original file
+    Alert.alert(
+      "Find your video",
+      "Tap OK to pick the video from your gallery — it will be saved for future taps.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Pick video",
+          onPress: async () => {
+            try {
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== "granted") {
+                Alert.alert("Permission Required", "Allow photo library access to link the video.");
+                return;
+              }
+              const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["videos"], allowsEditing: false, quality: 1 });
+              if (result.canceled || !result.assets?.[0]) return;
+              const uri = result.assets[0].uri;
+              // Save to server so we don't need to ask again
+              await fetch(`${BASE_URL}/api/brain/video/${v.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ videoUri: uri }),
+              });
+              // Update local state immediately
+              setVideoLibrary(prev => prev.map(x => x.id === v.id ? { ...x, videoUri: uri } : x));
+              // Play it
+              Linking.openURL(uri).catch(() =>
+                Alert.alert("Can't open", "The video could not be played on this device.")
+              );
+            } catch {
+              Alert.alert("Error", "Something went wrong picking the video.");
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
@@ -959,6 +1006,24 @@ export default function CommunityScreen() {
                           ))}
                         </View>
                       )}
+
+                      {/* Watch button — always shown on done cards */}
+                      <TouchableOpacity
+                        style={[styles.watchCardBtn, {
+                          borderColor: v.videoUri ? "#7c5cfc60" : "#ffffff20",
+                          backgroundColor: v.videoUri ? "#7c5cfc22" : "#ffffff08",
+                        }]}
+                        activeOpacity={0.75}
+                        onPress={(e) => { e.stopPropagation?.(); linkAndWatch(v); }}
+                      >
+                        <Feather name="play-circle" size={15} color={v.videoUri ? "#7c5cfc" : colors.mutedForeground} />
+                        <Text style={[styles.watchCardBtnText, { color: v.videoUri ? "#7c5cfc" : colors.mutedForeground }]}>
+                          {v.videoUri ? "▶  WATCH VIDEO" : "▶  LINK & WATCH"}
+                        </Text>
+                        {!v.videoUri && (
+                          <Text style={[styles.watchCardHint, { color: colors.mutedForeground }]}>tap to link from gallery</Text>
+                        )}
+                      </TouchableOpacity>
                     </View>
                   )}
 
@@ -1473,5 +1538,18 @@ const styles = StyleSheet.create({
   snapWatchText: {
     fontSize: 9, fontFamily: "Inter_700Bold",
     letterSpacing: 1.2, color: "#fff",
+  },
+
+  watchCardBtn: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
+    marginTop: 4,
+  },
+  watchCardBtnText: {
+    fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.6, flex: 1,
+  },
+  watchCardHint: {
+    fontSize: 9, fontFamily: "Inter_400Regular", letterSpacing: 0.3,
   },
 });
