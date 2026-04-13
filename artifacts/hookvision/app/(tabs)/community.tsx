@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { Video, ResizeMode } from "expo-av";
@@ -269,6 +270,42 @@ export default function CommunityScreen() {
       ]
     );
   }, [playVideo]);
+
+  // Delete a brain video — removes from DB and deletes local file if stored
+  const deleteVideo = useCallback((v: BrainVideo) => {
+    Alert.alert(
+      "Remove Video",
+      `Remove "${v.title}" from the Brain Library?${v.videoUri ? "\n\nThe video file will also be deleted from your phone." : ""}`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Delete local file first (best effort)
+              if (v.videoUri && Platform.OS !== "web") {
+                try {
+                  await FileSystem.deleteAsync(v.videoUri, { idempotent: true });
+                } catch {
+                  // File already gone — that's fine
+                }
+              }
+              // Remove from DB
+              await fetch(`${BASE_URL}/api/brain/video/${v.id}`, { method: "DELETE" });
+              // Remove from local state
+              setVideoLibrary((prev) => prev.filter((x) => x.id !== v.id));
+              if (Platform.OS !== "web") {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }
+            } catch {
+              Alert.alert("Error", "Could not delete the video. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  }, []);
 
   // Clean up timers on unmount
   useEffect(() => {
@@ -949,6 +986,13 @@ export default function CommunityScreen() {
                         <Text style={styles.snapReadyText}>SNAP</Text>
                       </View>
                     )}
+                    <TouchableOpacity
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      onPress={(e) => { e.stopPropagation?.(); deleteVideo(v); }}
+                      style={styles.videoDeleteBtn}
+                    >
+                      <Feather name="trash-2" size={14} color="#ff444488" />
+                    </TouchableOpacity>
                     <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color={colors.mutedForeground} />
                   </View>
 
@@ -1431,6 +1475,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6, paddingVertical: 3, flexShrink: 0,
   },
   videoStatusText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  videoDeleteBtn: { padding: 2, marginLeft: 2 },
 
   videoExpanded: { marginTop: 12, gap: 8 },
   cvStatsRow: { borderRadius: 8, padding: 8 },

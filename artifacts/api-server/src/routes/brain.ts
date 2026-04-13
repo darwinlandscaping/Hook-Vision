@@ -88,6 +88,22 @@ router.get("/brain/videos", async (_req, res) => {
   }
 });
 
+// ─── DELETE /api/brain/video/:id ───────────────────────────────────────────
+// Permanently remove a brain video entry from the library
+
+router.delete("/brain/video/:id", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    const deleted = await db.delete(brainVideos).where(eq(brainVideos.id, id)).returning();
+    if (deleted.length === 0) { res.status(404).json({ error: "Not found" }); return; }
+    res.json({ ok: true, id });
+  } catch (err) {
+    logger.error({ err }, "Failed to delete brain video");
+    res.status(500).json({ error: "Delete failed" });
+  }
+});
+
 // ─── PATCH /api/brain/video/:id ────────────────────────────────────────────
 // Save (or update) the local device videoUri for an existing entry
 
