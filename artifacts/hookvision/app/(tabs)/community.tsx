@@ -1013,6 +1013,16 @@ export default function CommunityScreen() {
                         <Text style={styles.snapReadyText}>SNAP</Text>
                       </View>
                     )}
+                    {/* Direct play button — always visible on the row */}
+                    {v.videoUri && v.status === "done" && (
+                      <TouchableOpacity
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        onPress={(e) => { e.stopPropagation?.(); playVideo(v.videoUri!); }}
+                        style={styles.rowPlayBtn}
+                      >
+                        <Feather name="play-circle" size={22} color="#ff8800" />
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       onPress={(e) => { e.stopPropagation?.(); deleteVideo(v); }}
@@ -1500,6 +1510,7 @@ const styles = StyleSheet.create({
   },
   videoStatusText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
   videoDeleteBtn: { padding: 2, marginLeft: 2 },
+  rowPlayBtn: { padding: 3, marginLeft: 4 },
 
   videoExpanded: { marginTop: 12, gap: 8 },
   cvStatsRow: { borderRadius: 8, padding: 8 },
