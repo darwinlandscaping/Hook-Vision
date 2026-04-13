@@ -80,11 +80,59 @@ router.get("/brain/videos", async (_req, res) => {
       .select()
       .from(brainVideos)
       .orderBy(desc(brainVideos.submittedAt))
-      .limit(50);
+      .limit(500);
     res.json({ videos: rows });
   } catch (err) {
     logger.error({ err }, "Failed to list brain videos");
     res.status(500).json({ error: "Failed to list videos" });
+  }
+});
+
+// ─── POST /api/brain/sonar ─────────────────────────────────────────────────
+// Auto-save a single analysed sonar image from the Analyze tab
+
+router.post("/brain/sonar", async (req, res) => {
+  const {
+    title       = "Sonar Scan",
+    imageUri    = null,
+    species     = "Unknown",
+    depth       = null,
+    aiSummary   = "",
+    tips        = [],
+    location    = null,
+    fishCount   = 0,
+  } = req.body as {
+    title?: string; imageUri?: string | null; species?: string;
+    depth?: string | null; aiSummary?: string; tips?: string[];
+    location?: string | null; fishCount?: number;
+  };
+
+  try {
+    const desc = [
+      location ? `📍 ${location}` : null,
+      fishCount ? `🐟 ${fishCount} fish detected` : null,
+      aiSummary ? aiSummary.slice(0, 300) : null,
+    ].filter(Boolean).join("  •  ");
+
+    const [entry] = await db.insert(brainVideos).values({
+      title:           title.slice(0, 255),
+      description:     desc || null,
+      durationSecs:    null,
+      frameCount:      1,
+      videoUri:        imageUri ?? null,
+      status:          "done",
+      brainInsight:    aiSummary || null,
+      detectedSpecies: species ? [species] : [],
+      depthRanges:     depth ? [depth] : [],
+      aiTips:          Array.isArray(tips) ? tips.slice(0, 5) : [],
+      processedAt:     new Date(),
+    }).returning();
+
+    logger.info({ id: entry.id, species, depth }, "Sonar scan saved to library");
+    res.json({ id: entry.id, ok: true });
+  } catch (err) {
+    logger.error({ err }, "Failed to save sonar scan");
+    res.status(500).json({ error: "Failed to save sonar scan" });
   }
 });
 

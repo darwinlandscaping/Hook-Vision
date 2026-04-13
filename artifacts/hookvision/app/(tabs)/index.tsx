@@ -296,6 +296,27 @@ export default function HomeScreen() {
       }
       setAnalysis(data);
 
+      // ── Auto-save to Brain library (fire-and-forget) ──────────────────────
+      {
+        const brainDomain = process.env.EXPO_PUBLIC_DOMAIN;
+        const brainBase   = brainDomain ? `https://${brainDomain}` : "";
+        const scanDate    = new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+        fetch(`${brainBase}/api/brain/sonar`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title:      `${data.species} — ${scanDate}`,
+            imageUri:   imageUri ?? null,
+            species:    data.species,
+            depth:      data.depth ?? null,
+            aiSummary:  data.suggestion ?? "",
+            tips:       [data.technique, data.rig, data.lure].filter(Boolean) as string[],
+            location:   capturedLocation?.name ?? null,
+            fishCount:  data.fishCount ?? 0,
+          }),
+        }).catch(() => {/* silent — don't interrupt the user */});
+      }
+
       // ── CROC ALERT — native dialog fires immediately ──────────────────────
       if (data.crocAlert) {
         Alert.alert(
