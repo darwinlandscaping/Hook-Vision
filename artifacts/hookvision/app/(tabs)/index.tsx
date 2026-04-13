@@ -32,6 +32,7 @@ import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/context/HistoryContext";
 import { useNarrator } from "@/context/NarratorContext";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
+import { getVision, quickScan, visionStatusSync, type MobileSonarScan } from "@/services/vision";
 
 interface FishAnalysis {
   fishCount: number;
@@ -141,6 +142,11 @@ export default function HomeScreen() {
   const [imageLayout, setImageLayout] = useState({ width: SCREEN_W - 32, height: 240 });
   const autoAnalyzeRef = useRef(false);
 
+  // ── On-device vision engine ────────────────────────────────────────────────
+  const [cvReady, setCvReady] = useState(false);
+  const [cvScan, setCvScan] = useState<MobileSonarScan | null>(null);
+  const [cvScanning, setCvScanning] = useState(false);
+
   // ── Species comparison (community → analyze flow) ──────────────────────────
   const [compareCard, setCompareCard] = useState<{ expected: string; found: string } | null>(null);
   const [compareExp, setCompareExp]   = useState<string | null>(null);
@@ -151,6 +157,13 @@ export default function HomeScreen() {
   // By the time the AI finishes, location is almost always ready.
   const locationPromiseRef = useRef<Promise<string | null> | null>(null);
   const [capturedLocation, setCapturedLocation] = useState<string | null>(null);
+
+  // ── Pre-warm TF.js backend (background, non-blocking) ────────────────────
+  useEffect(() => {
+    getVision()
+      .then(() => setCvReady(true))
+      .catch(() => {/* silent — vision is optional */});
+  }, []);
 
   // Pick up demo image loaded from the Demo tab and auto-analyse it
   useFocusEffect(
@@ -183,9 +196,18 @@ export default function HomeScreen() {
     setAnalysis(null);
     setError(null);
     setCapturedLocation(null);
+    setCvScan(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     // Kick off location grab in the background — runs while user taps "Analyze Sonar"
     locationPromiseRef.current = getNTLocationName(10_000);
+    // Kick off on-device CV pre-scan in background while user reviews image
+    if (base64) {
+      setCvScanning(true);
+      quickScan(base64)
+        .then((scan) => setCvScan(scan))
+        .catch(() => setCvScan(null))
+        .finally(() => setCvScanning(false));
+    }
   }, []);
 
   const openCamera = useCallback(async () => {
@@ -410,6 +432,56 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* ── CV Engine status / pre-scan panel ───────────────────────── */}
+        {!analysis && (cvScanning || cvScan) && (
+          <View style={[styles.cvPanel, { backgroundColor: colors.card, borderColor: "#00a8ff33" }]}>
+            {/* Header row */}
+            <View style={styles.cvPanelHeader}>
+              <View style={[styles.cvDot, { backgroundColor: cvReady ? "#00a8ff" : "#888" }]} />
+              <Text style={[styles.cvPanelTitle, { color: "#00a8ff" }]}>CV ENGINE</Text>
+              {cvScanning && (
+                <Text style={[styles.cvStatus, { color: colors.mutedForeground }]}>scanning…</Text>
+              )}
+              {!cvScanning && cvScan && (
+                <Text style={[styles.cvStatus, { color: "#00a8ff" }]}>{visionStatusSync()}</Text>
+              )}
+            </View>
+
+            {/* Scan results */}
+            {cvScan && !cvScanning && (
+              <View style={styles.cvGrid}>
+                <View style={styles.cvCell}>
+                  <Text style={[styles.cvLabel, { color: colors.mutedForeground }]}>BRIGHTNESS</Text>
+                  <Text style={[styles.cvValue, { color: colors.foreground }]}>{cvScan.meanBrightness}/255</Text>
+                </View>
+                <View style={styles.cvCell}>
+                  <Text style={[styles.cvLabel, { color: colors.mutedForeground }]}>ECHO</Text>
+                  <Text style={[styles.cvValue, {
+                    color: cvScan.echoStrength === "strong" ? "#00d4aa"
+                         : cvScan.echoStrength === "moderate" ? "#ffd700" : "#888"
+                  }]}>{cvScan.echoStrength.toUpperCase()}</Text>
+                </View>
+                <View style={styles.cvCell}>
+                  <Text style={[styles.cvLabel, { color: colors.mutedForeground }]}>HOT PIXELS</Text>
+                  <Text style={[styles.cvValue, { color: colors.foreground }]}>{cvScan.brightPixelPct.toFixed(1)}%</Text>
+                </View>
+                <View style={styles.cvCell}>
+                  <Text style={[styles.cvLabel, { color: colors.mutedForeground }]}>PALETTE</Text>
+                  <Text style={[styles.cvValue, { color: "#00a8ff" }]}>{cvScan.paletteCue}</Text>
+                </View>
+                <View style={styles.cvCell}>
+                  <Text style={[styles.cvLabel, { color: colors.mutedForeground }]}>DOMINANT</Text>
+                  <Text style={[styles.cvValue, { color: colors.foreground }]}>ch-{cvScan.dominantChannel}</Text>
+                </View>
+                <View style={styles.cvCell}>
+                  <Text style={[styles.cvLabel, { color: colors.mutedForeground }]}>BACKEND</Text>
+                  <Text style={[styles.cvValue, { color: colors.foreground }]}>{cvScan.backendUsed}</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
         {!analysis && !loading && (
           <Animated.View style={animatedAnalyzeStyle}>
             <TouchableOpacity style={[styles.analyzeBtn, { backgroundColor: colors.primary }]} onPress={analyzeImage} activeOpacity={0.85}>
@@ -483,7 +555,7 @@ export default function HomeScreen() {
         )}
 
         {analysis && (
-          <TouchableOpacity style={[styles.newBtn, { borderColor: colors.border }]} onPress={() => { setImageUri(null); setImageBase64(null); setAnalysis(null); setError(null); setCompareCard(null); setCompareExp(null); setCapturedLocation(null); locationPromiseRef.current = null; }} activeOpacity={0.7}>
+          <TouchableOpacity style={[styles.newBtn, { borderColor: colors.border }]} onPress={() => { setImageUri(null); setImageBase64(null); setAnalysis(null); setError(null); setCompareCard(null); setCompareExp(null); setCapturedLocation(null); setCvScan(null); locationPromiseRef.current = null; }} activeOpacity={0.7}>
             <Feather name="plus" size={16} color={colors.mutedForeground} />
             <Text style={[styles.newBtnText, { color: colors.mutedForeground }]}>New analysis</Text>
           </TouchableOpacity>
@@ -700,4 +772,54 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 10, paddingVertical: 11, paddingHorizontal: 14,
   },
   learnBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+
+  /* CV Engine pre-scan panel */
+  cvPanel: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    gap: 10,
+  },
+  cvPanelHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  cvDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  cvPanelTitle: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.4,
+    flex: 1,
+  },
+  cvStatus: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+  },
+  cvGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  cvCell: {
+    width: "30%",
+    backgroundColor: "#00a8ff0d",
+    borderRadius: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    gap: 2,
+  },
+  cvLabel: {
+    fontSize: 8,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
+  },
+  cvValue: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
 });

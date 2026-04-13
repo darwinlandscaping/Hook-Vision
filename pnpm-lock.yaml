@@ -187,6 +187,9 @@ importers:
       express:
         specifier: ^5
         version: 5.2.1
+      jpeg-js:
+        specifier: ^0.4.4
+        version: 0.4.4
       onnxruntime-node:
         specifier: ^1.24.3
         version: 1.24.3
@@ -209,6 +212,9 @@ importers:
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
+      '@types/jpeg-js':
+        specifier: ^0.3.7
+        version: 0.3.7
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5
@@ -2490,6 +2496,10 @@ packages:
 
   '@types/istanbul-reports@3.0.4':
     resolution: {integrity: sha512-pk2B1NWalF9toCRu6gjBzR69syFjP4Od8WRAX+0mmf9lAjCRicLOWc+ZrxZHx/0XRjotgkF9t6iaMJ+aXcOdZQ==}
+
+  '@types/jpeg-js@0.3.7':
+    resolution: {integrity: sha512-v3FEzt2TXOOIgvwwOqMoeEhqYqUoK4wcV/K7JbKj8CzwDE9sSuor8EZpSJKaOnuEtyO0W+Nd2uKk8MbtusYpEg==}
+    deprecated: This is a stub types definition. jpeg-js provides its own type definitions, so you do not need this installed.
 
   '@types/keyv@3.1.4':
     resolution: {integrity: sha512-BQ5aZNSCpj7D6K2ksrRCTmKRLEpnPvWDiLPfoGyhZ++8YtiK9d/3DBKPJgry359X/P1PfruyYwvnvwFjuEiEIg==}
@@ -8564,6 +8574,10 @@ snapshots:
   '@types/istanbul-reports@3.0.4':
     dependencies:
       '@types/istanbul-lib-report': 3.0.3
+
+  '@types/jpeg-js@0.3.7':
+    dependencies:
+      jpeg-js: 0.4.4
 
   '@types/keyv@3.1.4':
     dependencies:

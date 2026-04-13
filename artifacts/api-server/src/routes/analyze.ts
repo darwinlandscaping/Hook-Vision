@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getConditionsContext } from "../lib/dailyBriefing";
+import { analyzeSonarImage, formatCvContext } from "../lib/vision";
 
 const router = Router();
 
@@ -139,8 +140,18 @@ router.post("/analyze", async (req, res) => {
   }
 
   try {
+    // ── CV Pre-scan (TF.js + OpenCV) — runs in parallel with stream setup ──
+    // Decodes the JPEG, measures brightness/colour/blob positions, and injects
+    // measured pixel data into the GPT prompt so the model can cross-reference
+    // arch brightness and positions against actual values rather than guessing.
+    const cvScanPromise = analyzeSonarImage(imageBase64);
+
     const condCtx = getConditionsContext();
-    const analysisPrompt = `${condCtx ? condCtx + "\n\n" : ""}${ANALYSIS_STEP_PROMPT}`;
+
+    // Wait for CV scan (typically 50–120ms) — negligible vs GPT latency
+    const cvScan = await cvScanPromise;
+    const cvBlock = cvScan ? "\n\n" + formatCvContext(cvScan) : "";
+    const analysisPrompt = `${condCtx ? condCtx + "\n\n" : ""}${ANALYSIS_STEP_PROMPT}${cvBlock}`;
 
     // ── Streaming OpenAI call ─────────────────────────────────────────────
     // Reference images removed — calibration context is now text-only in the
