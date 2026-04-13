@@ -52,13 +52,21 @@ const DEMOS = [
     tags: ["Dual layer", "Multi-species", "7m"],
     accent: "#ff7043",
   },
+  {
+    num: 5,
+    brand: "Lowrance",
+    model: "Elite FS 9",
+    desc: "Kakadu Jim Jim Billabong — dense barra school locked at 3-5m on a submerged rock shelf. Saratoga surface arches visible at 1m and Archer Fish scatter at 0.5m as an early-warning feeding signal.",
+    tags: ["Kakadu", "Barra school", "3-5m", "Saratoga"],
+    accent: "#aaff00",
+  },
 ];
 
 export default function DemoScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [loadingNum, setLoadingNum] = useState<number | null>(null);
-  useAutoNarrate(() => "Demo Sonar Scans. Four real sonar screenshots from Lowrance, Garmin, Humminbird and Simrad. Tap any card to run instant AI analysis.");
+  useAutoNarrate(() => "Demo Sonar Scans. Five real sonar screenshots including Kakadu Jim Jim Billabong barra. Tap any card to run instant AI analysis.");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 

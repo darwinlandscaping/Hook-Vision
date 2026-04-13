@@ -219,7 +219,6 @@ function ClassicTabLayout() {
         name="demo"
         options={{
           title: "Demo",
-          href: isAndroid ? null : undefined,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="photo.on.rectangle" tintColor={color} size={22} />
