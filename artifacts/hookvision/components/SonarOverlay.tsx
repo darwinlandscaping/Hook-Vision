@@ -37,7 +37,8 @@ interface Props {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Extract the average depth in metres from a string like "5–8m" or "3ft" */
-function parseDepthM(depthStr: string): number {
+function parseDepthM(depthStr: string | null | undefined): number {
+  if (!depthStr) return 0;
   const ftMatch = depthStr.match(/(\d+(?:\.\d+)?)\s*ft/i);
   if (ftMatch) return parseFloat(ftMatch[1]) * 0.3048;
   const nums = depthStr.match(/\d+(?:\.\d+)?/g);
