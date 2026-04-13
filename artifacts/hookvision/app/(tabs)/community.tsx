@@ -275,7 +275,7 @@ export default function CommunityScreen() {
   const deleteVideo = useCallback((v: BrainVideo) => {
     Alert.alert(
       "Remove Video",
-      `Remove "${v.title}" from the Brain Library?${v.videoUri ? "\n\nThe video file will also be deleted from your phone." : ""}`,
+      `Remove "${v.title}" from the Brain Library?${v.videoUri?.startsWith("file://") ? "\n\nThe video file will also be deleted from your phone." : ""}`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -283,8 +283,8 @@ export default function CommunityScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // Delete local file first (best effort)
-              if (v.videoUri && Platform.OS !== "web") {
+              // Delete local file first — only if it's a local file:// URI, not a remote URL
+              if (v.videoUri && Platform.OS !== "web" && v.videoUri.startsWith("file://")) {
                 try {
                   await FileSystem.deleteAsync(v.videoUri, { idempotent: true });
                 } catch {
