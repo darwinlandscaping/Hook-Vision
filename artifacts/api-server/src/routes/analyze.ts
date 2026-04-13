@@ -3,7 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { db, brainVideos, communityInsights, communityReports } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
 import { getConditionsContext } from "../lib/dailyBriefing";
-import { analyzeSonarImage, formatCvContext } from "../lib/vision";
+import { analyzeSonarImage, formatCvContext, generateZoomCrops } from "../lib/vision";
 
 const router = Router();
 
@@ -424,36 +424,52 @@ router.post("/analyze", async (req, res) => {
   }
 
   try {
-    // ── Run CV scan + intelligence fetch in parallel ──────────────────────
-    const [cvScan, intelligenceCtx] = await Promise.all([
+    // ── Run CV scan + zoom crops + intelligence fetch in parallel ─────────
+    const [cvScan, zoomCrops, intelligenceCtx] = await Promise.all([
       analyzeSonarImage(imageBase64),
+      generateZoomCrops(imageBase64),
       getIntelligenceContext(),
     ]);
 
     const condCtx  = getConditionsContext();
     const cvBlock  = cvScan ? "\n\n" + formatCvContext(cvScan) : "";
-    const analysisPrompt = `${condCtx ? condCtx + "\n\n" : ""}${intelligenceCtx}\n\n${ANALYSIS_STEP_PROMPT}${cvBlock}`;
+
+    // Build zoom context note so GPT knows what it's looking at
+    const zoomNote = zoomCrops
+      ? `\n\nZOOM CROPS ATTACHED: You have been given 3 images below.\n` +
+        `  IMAGE 1 (FULL FRAME): Complete sonar display — use for overall layout and scale.\n` +
+        `  IMAGE 2 (LEFT PANEL ZOOM): Left half of the screen at 2× detail — examine every arch, blob, shadow, and body shape here first.\n` +
+        `  IMAGE 3 (RIGHT PANEL ZOOM): Right half at 2× detail — compare with the left panel.\n` +
+        `  IMAGE 4 (TIGHT CROP): Auto-cropped around the brightest activity region (most active: ${zoomCrops.mostActive} side)${zoomCrops.blobRegion ? ` — pixel box x:${zoomCrops.blobRegion.x} y:${zoomCrops.blobRegion.y} w:${zoomCrops.blobRegion.w} h:${zoomCrops.blobRegion.h}` : ""}. THIS IS YOUR PRIMARY ID SURFACE — zoom into every detail here.\n` +
+        `  INSTRUCTION: Identify fish using the TIGHT CROP and PANEL ZOOM that contains them. The full frame gives context (depth scale, palette, temperature). Never skip the zoomed images.`
+      : "";
+
+    const analysisPrompt = `${condCtx ? condCtx + "\n\n" : ""}${intelligenceCtx}${zoomNote}\n\n${ANALYSIS_STEP_PROMPT}${cvBlock}`;
 
     // Detect actual image MIME type so vision API gets correct format header
     const mimeType = detectMimeType(imageBase64);
 
+    // ── Build vision message content — full image + zoom crops ───────────
+    type ImagePart = { type: 'image_url'; image_url: { url: string; detail: 'high' | 'low' } };
+    type TextPart  = { type: 'text'; text: string };
+    const content: Array<ImagePart | TextPart> = [
+      { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'high' } },
+    ];
+    if (zoomCrops) {
+      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.leftHalf}`,  detail: 'high' } });
+      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.rightHalf}`, detail: 'high' } });
+      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.blobCrop}`,  detail: 'high' } });
+    }
+    content.push({ type: 'text', text: analysisPrompt });
+
     // ── Streaming OpenAI call ─────────────────────────────────────────────
     const stream = await openai.chat.completions.create({
       model: "gpt-4.1",
-      max_completion_tokens: 1300,
+      max_completion_tokens: 1400,
       stream: true,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'auto' },
-            },
-            { type: 'text', text: analysisPrompt },
-          ],
-        },
+        { role: 'user', content },
       ],
     });
 

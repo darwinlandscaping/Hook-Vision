@@ -227,6 +227,105 @@ export async function analyzeSonarImage(imageBase64: string): Promise<SonarScan 
   }
 }
 
+// ─── Zoom crop helpers ────────────────────────────────────────────────────────
+
+/** Crop raw RGBA data to a sub-rectangle and re-encode as JPEG base64 */
+async function cropToJpegBase64(
+  rgba: Uint8Array,
+  srcWidth: number,
+  srcHeight: number,
+  x: number, y: number, cropW: number, cropH: number,
+  quality = 92
+): Promise<string> {
+  const out = new Uint8Array(cropW * cropH * 4);
+  for (let row = 0; row < cropH; row++) {
+    const srcOff = ((y + row) * srcWidth + x) * 4;
+    const dstOff = row * cropW * 4;
+    out.set(rgba.subarray(srcOff, srcOff + cropW * 4), dstOff);
+  }
+  const jpegModule = await import("jpeg-js");
+  const encoded = jpegModule.default.encode({ data: out, width: cropW, height: cropH }, quality);
+  return Buffer.from(encoded.data).toString("base64");
+}
+
+export interface ZoomCrops {
+  leftHalf:    string;   // base64 JPEG — left 50% of image
+  rightHalf:   string;   // base64 JPEG — right 50% of image
+  blobCrop:    string;   // base64 JPEG — tight crop around brightest blob (if found)
+  mostActive:  "left" | "right";  // which half has more bright pixels
+  blobRegion:  { x: number; y: number; w: number; h: number } | null;
+}
+
+/**
+ * Generate zoom crops of a sonar image so GPT can inspect regions at high detail.
+ * Runs in parallel with analyzeSonarImage — ~40–100 ms extra overhead.
+ */
+export async function generateZoomCrops(imageBase64: string): Promise<ZoomCrops | null> {
+  try {
+    const imgBuf = Buffer.from(imageBase64, "base64");
+    const { width, height, data: rgba } = await decodeToRGBA(imgBuf);
+
+    const midX = Math.floor(width / 2);
+
+    // ── Count bright pixels per half ───────────────────────────────────────
+    let leftBright = 0, rightBright = 0;
+    // Track bounding box of all bright pixels for the blob crop
+    let bMinX = width, bMinY = height, bMaxX = 0, bMaxY = 0;
+
+    for (let row = 0; row < height; row++) {
+      for (let col = 0; col < width; col++) {
+        const idx = (row * width + col) * 4;
+        const lum = rgba[idx] * 0.299 + rgba[idx + 1] * 0.587 + rgba[idx + 2] * 0.114;
+        if (lum > 190) {
+          if (col < midX) leftBright++;
+          else rightBright++;
+          if (col < bMinX) bMinX = col;
+          if (col > bMaxX) bMaxX = col;
+          if (row < bMinY) bMinY = row;
+          if (row > bMaxY) bMaxY = row;
+        }
+      }
+    }
+
+    const mostActive: "left" | "right" = leftBright >= rightBright ? "left" : "right";
+
+    // ── Blob tight crop — pad 12% each side ───────────────────────────────
+    let blobCrop: string;
+    let blobRegion: ZoomCrops["blobRegion"] = null;
+    if (bMaxX > bMinX && bMaxY > bMinY) {
+      const padX = Math.floor((bMaxX - bMinX) * 0.12);
+      const padY = Math.floor((bMaxY - bMinY) * 0.12);
+      const cx = Math.max(0, bMinX - padX);
+      const cy = Math.max(0, bMinY - padY);
+      const cw = Math.min(width  - cx, (bMaxX - bMinX) + padX * 2);
+      const ch = Math.min(height - cy, (bMaxY - bMinY) + padY * 2);
+      if (cw > 40 && ch > 40) {
+        blobCrop  = await cropToJpegBase64(rgba, width, height, cx, cy, cw, ch);
+        blobRegion = { x: cx, y: cy, w: cw, h: ch };
+      } else {
+        blobCrop = mostActive === "left"
+          ? await cropToJpegBase64(rgba, width, height, 0, 0, midX, height)
+          : await cropToJpegBase64(rgba, width, height, midX, 0, width - midX, height);
+      }
+    } else {
+      blobCrop = mostActive === "left"
+        ? await cropToJpegBase64(rgba, width, height, 0, 0, midX, height)
+        : await cropToJpegBase64(rgba, width, height, midX, 0, width - midX, height);
+    }
+
+    // ── Generate both halves ───────────────────────────────────────────────
+    const [leftHalf, rightHalf] = await Promise.all([
+      cropToJpegBase64(rgba, width, height, 0,    0, midX,          height),
+      cropToJpegBase64(rgba, width, height, midX, 0, width - midX,  height),
+    ]);
+
+    return { leftHalf, rightHalf, blobCrop, mostActive, blobRegion };
+  } catch (err) {
+    console.warn("[vision] generateZoomCrops failed:", (err as Error).message);
+    return null;
+  }
+}
+
 /**
  * Format a SonarScan as a compact text block to inject into the GPT prompt.
  */
