@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import * as Haptics from "expo-haptics";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
@@ -30,7 +31,6 @@ import { CHARACTERS, useNarrator, type NarratorCharacter } from "@/context/Narra
 let CameraView: any = null;
 let useCameraPermissions: any = null;
 if (Platform.OS !== "web") {
-  // dynamically require so Metro doesn't try to resolve on web build
   const cam = require("expo-camera");
   CameraView = cam.CameraView;
   useCameraPermissions = cam.useCameraPermissions;
@@ -127,9 +127,9 @@ function BarraSketches({ opacity = 1 }: { opacity?: number }) {
 
 // ─── Big glowing scan button ──────────────────────────────────────────────────
 function GlowButton({
-  onPress, scanning, mountMode, ready,
+  onPress, scanning, boatMode, ready,
 }: {
-  onPress: () => void; scanning: boolean; mountMode: boolean; ready: boolean;
+  onPress: () => void; scanning: boolean; boatMode: boolean; ready: boolean;
 }) {
   const ring1 = useSharedValue(1);
   const ring2 = useSharedValue(1);
@@ -140,7 +140,7 @@ function GlowButton({
     ring2.value = withRepeat(withTiming(1.85, { duration: speed * 1.5 }), -1, true);
   }, [scanning]);
 
-  const color = scanning ? "#ffd700" : mountMode ? "#ff4500" : "#00d4aa";
+  const color = scanning ? "#ffd700" : boatMode ? "#aaff00" : "#00d4aa";
 
   const r1Style = useAnimatedStyle(() => ({
     transform: [{ scale: ring1.value }],
@@ -168,11 +168,76 @@ function GlowButton({
           </>
         ) : (
           <>
-            <Feather name="zap" size={44} color="#fff" />
-            <Text style={styles.glowBtnLabel}>{!ready ? "LOADING" : mountMode ? "AUTO ON" : "SCAN"}</Text>
+            <Feather name="zap" size={44} color="#0a1628" />
+            <Text style={[styles.glowBtnLabel, { color: "#0a1628" }]}>
+              {!ready ? "LOADING" : boatMode ? "AUTO ON" : "SCAN"}
+            </Text>
           </>
         )}
       </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Boat mode big result card ────────────────────────────────────────────────
+function BoatResultCard({
+  result, charInfo, speaking, onReplay, onClear,
+}: {
+  result: FishAnalysis;
+  charInfo: { emoji: string; color: string };
+  speaking: boolean;
+  onReplay: () => void;
+  onClear: () => void;
+}) {
+  const hasfish = result.fishCount > 0;
+  const accent = hasfish ? "#aaff00" : "#ff4500";
+  return (
+    <View style={[styles.boatCard, { borderColor: accent + "88" }]}>
+      {/* Species + count row */}
+      <View style={styles.boatRow}>
+        <MaterialCommunityIcons name="fish" size={28} color={accent} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.boatSpecies, { color: accent }]} numberOfLines={1}>
+            {result.species}
+          </Text>
+          <Text style={[styles.boatCount, { color: hasfish ? "#fff" : "#ff4500" }]}>
+            {result.fishCount === 0 ? "No fish showing" : `${result.fishCount} fish detected`}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={onClear} style={styles.boatClose}>
+          <Feather name="x" size={18} color="#ffffff77" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Depth + distance */}
+      <View style={styles.boatDepthRow}>
+        <View style={[styles.boatBadge, { backgroundColor: "#00a8ff33" }]}>
+          <Feather name="anchor" size={13} color="#00a8ff" />
+          <Text style={[styles.boatBadgeText, { color: "#00a8ff" }]}>{result.depth}</Text>
+        </View>
+        <View style={[styles.boatBadge, { backgroundColor: "#ffd70033" }]}>
+          <MaterialCommunityIcons name="radar" size={13} color="#ffd700" />
+          <Text style={[styles.boatBadgeText, { color: "#ffd700" }]}>{result.distance}</Text>
+        </View>
+      </View>
+
+      {/* Lure tip */}
+      {result.lure ? (
+        <Text style={styles.boatLure} numberOfLines={2}>🎣 {result.lure}</Text>
+      ) : null}
+
+      {/* Actions */}
+      <View style={styles.boatActions}>
+        <TouchableOpacity
+          style={[styles.boatReplay, { backgroundColor: charInfo.color + "33", borderColor: charInfo.color + "66" }]}
+          onPress={onReplay}
+        >
+          <Feather name={speaking ? "volume-x" : "volume-2"} size={15} color={charInfo.color} />
+          <Text style={[styles.boatReplayText, { color: charInfo.color }]}>
+            {speaking ? "Stop" : `${charInfo.emoji} Read aloud`}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -183,43 +248,48 @@ export default function LiveScreen() {
   const insets   = useSafeAreaInsets();
   const { addEntry } = useHistory();
   const { character, speak, stop: stopSpeaking, speaking } = useNarrator();
-  useAutoNarrate(() => "Live Camera mode. Point your phone at a sonar screen for real-time AI fish detection and depth overlay.");
+  useAutoNarrate(() => "Live Camera mode. Point your phone at a sonar screen for real-time AI fish detection. Activate Boat Mode for hands-free auto-scanning.");
 
-  // Native-only camera permissions
   const [nativePermission, requestNativePermission] =
     useCameraPermissions ? useCameraPermissions() : [null, null];
 
-  // Web camera state
   const [webPermission, setWebPermission] = useState<"unknown" | "requesting" | "granted" | "denied">("unknown");
-  const [webReady, setWebReady] = useState(false);
+  const [webReady, setWebReady]           = useState(false);
 
-  // Shared state
-  const [scanning, setScanning] = useState(false);
-  const [result, setResult]     = useState<FishAnalysis | null>(null);
-  const [error, setError]       = useState<string | null>(null);
+  const [scanning, setScanning]   = useState(false);
+  const [result, setResult]       = useState<FishAnalysis | null>(null);
+  const [error, setError]         = useState<string | null>(null);
   const [autoSpeak, setAutoSpeak] = useState(true);
-  const [mountMode, setMountMode] = useState(false);
+  const [boatMode, setBoatMode]   = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [scanCount, setScanCount] = useState(0);
 
-  // Camera refs
   const nativeCamRef = useRef<any>(null);
   const webCamRef    = useRef<any>(null);
   const mountTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
   const cdTimer      = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const AUTO_INTERVAL = 12;
+  const AUTO_INTERVAL = 20;
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
   const topPad   = Platform.OS === "web" ? 20 : insets.top;
   const botPad   = Platform.OS === "web" ? 70 : insets.bottom + 16;
 
-  // Request web camera
+  // ── Screen keep-awake in boat mode ────────────────────────────────────────
+  useEffect(() => {
+    if (boatMode) {
+      activateKeepAwakeAsync().catch(() => {});
+    } else {
+      deactivateKeepAwake();
+    }
+    return () => { deactivateKeepAwake(); };
+  }, [boatMode]);
+
   const requestWebCamera = useCallback(async () => {
     setWebPermission("requesting");
     try {
-      // Just checking we can — WebCameraView handles the actual stream
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      stream.getTracks().forEach((t) => t.stop()); // release the probe stream
+      stream.getTracks().forEach((t) => t.stop());
       setWebPermission("granted");
     } catch {
       setWebPermission("denied");
@@ -275,12 +345,13 @@ export default function LiveScreen() {
 
       const data: FishAnalysis = await response.json();
       setResult(data);
+      setScanCount((n) => n + 1);
 
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
-      if (autoSpeak) speakResult(data);
+      if (autoSpeak || boatMode) speakResult(data);
 
       addEntry({
         id: Date.now().toString() + Math.random().toString(36).slice(2, 9),
@@ -300,31 +371,209 @@ export default function LiveScreen() {
     } finally {
       setScanning(false);
     }
-  }, [scanning, autoSpeak, speakResult, addEntry]);
+  }, [scanning, autoSpeak, boatMode, speakResult, addEntry]);
 
-  // ── Mount mode ────────────────────────────────────────────────────────────
-  const stopMount = useCallback(() => {
-    if (mountTimer.current)  { clearInterval(mountTimer.current);  mountTimer.current = null; }
-    if (cdTimer.current)     { clearInterval(cdTimer.current);     cdTimer.current = null; }
+  // ── Boat mode auto-scan loop ──────────────────────────────────────────────
+  const stopBoatLoop = useCallback(() => {
+    if (mountTimer.current) { clearInterval(mountTimer.current); mountTimer.current = null; }
+    if (cdTimer.current)    { clearInterval(cdTimer.current);    cdTimer.current = null; }
     setCountdown(0);
   }, []);
 
-  const startMount = useCallback(() => {
-    stopMount();
+  const startBoatLoop = useCallback(() => {
+    stopBoatLoop();
     setCountdown(AUTO_INTERVAL);
     cdTimer.current = setInterval(() =>
       setCountdown((c) => (c <= 1 ? AUTO_INTERVAL : c - 1)), 1000);
     mountTimer.current = setInterval(() => scanNow(), AUTO_INTERVAL * 1000);
-  }, [scanNow, stopMount]);
+  }, [scanNow, stopBoatLoop]);
 
   useEffect(() => {
-    if (mountMode) startMount(); else stopMount();
-    return stopMount;
-  }, [mountMode]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (boatMode) {
+      setAutoSpeak(true);
+      startBoatLoop();
+    } else {
+      stopBoatLoop();
+      setScanCount(0);
+    }
+    return stopBoatLoop;
+  }, [boatMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Shared overlay UI ───────────────────────────────────────────────────
+  function renderOverlays(isNative: boolean) {
+    return (
+      <>
+        {/* Boat mode tint */}
+        {boatMode && (
+          <View style={[StyleSheet.absoluteFill, styles.boatTint]} pointerEvents="none" />
+        )}
+
+        {/* Top bar */}
+        <View style={[styles.topBar, { paddingTop: (isNative ? insets.top : topPad) + 8 }]}>
+          {!boatMode && (
+            <TouchableOpacity
+              style={[styles.chip, { backgroundColor: autoSpeak ? `${colors.primary}44` : "#00000077", borderColor: autoSpeak ? colors.primary : "#ffffff44" }]}
+              onPress={() => { setAutoSpeak((v) => !v); if (autoSpeak) stopSpeaking(); }}
+            >
+              <Feather name={autoSpeak ? "volume-2" : "volume-x"} size={13} color={autoSpeak ? colors.primary : "#ffffffaa"} />
+              <Text style={[styles.chipText, { color: autoSpeak ? colors.primary : "#ffffffaa" }]}>
+                {autoSpeak ? `${charInfo.emoji} Voice` : "Voice OFF"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {boatMode && (
+            <View style={[styles.chip, { backgroundColor: "#aaff0022", borderColor: "#aaff0066" }]}>
+              <MaterialCommunityIcons name="anchor" size={13} color="#aaff00" />
+              <Text style={[styles.chipText, { color: "#aaff00" }]}>
+                🚤 BOAT MODE — next scan in {countdown}s
+              </Text>
+            </View>
+          )}
+
+          {speaking && (
+            <TouchableOpacity
+              style={[styles.chip, { backgroundColor: `${charInfo.color}44`, borderColor: charInfo.color }]}
+              onPress={stopSpeaking}
+            >
+              <SonarPulse size={12} active />
+              <Text style={[styles.chipText, { color: charInfo.color }]}>Stop {charInfo.emoji}</Text>
+            </TouchableOpacity>
+          )}
+
+          {!boatMode && (
+            <View style={{ marginLeft: "auto" }}>
+              <NarratorSettingsTrigger />
+            </View>
+          )}
+        </View>
+
+        {/* Aim guide */}
+        <View style={styles.aimGuide} pointerEvents="none">
+          <View style={[styles.aimCorner, styles.aimTL, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
+          <View style={[styles.aimCorner, styles.aimTR, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
+          <View style={[styles.aimCorner, styles.aimBL, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
+          <View style={[styles.aimCorner, styles.aimBR, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
+          <Text style={[styles.aimLabel, { color: boatMode ? "#aaff00" : colors.primary }]}>
+            {boatMode ? `📡 Scanning sonar every ${AUTO_INTERVAL}s` : "Aim at sonar screen"}
+          </Text>
+          {boatMode && scanCount > 0 && (
+            <View style={[styles.cdBadge, { borderColor: "#aaff0066", backgroundColor: "#aaff0011" }]}>
+              <Text style={[styles.cdText, { color: "#aaff00" }]}>{scanCount}</Text>
+              <Text style={[styles.cdSub, { color: "#aaff0099" }]}>scans</Text>
+            </View>
+          )}
+          {boatMode && scanCount === 0 && (
+            <View style={[styles.cdBadge, { borderColor: "#aaff0066", backgroundColor: "#aaff0011" }]}>
+              <Text style={[styles.cdText, { color: "#aaff00" }]}>{countdown}s</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Boat mode big result card */}
+        {boatMode && result && !scanning && (
+          <BoatResultCard
+            result={result}
+            charInfo={charInfo}
+            speaking={speaking}
+            onReplay={() => { if (speaking) stopSpeaking(); else speakResult(result); }}
+            onClear={() => { setResult(null); stopSpeaking(); }}
+          />
+        )}
+
+        {/* Standard result overlay (non-boat mode) */}
+        {!boatMode && result && !scanning && (
+          <View style={[styles.resultOverlay, { backgroundColor: `${colors.background}ee`, borderColor: colors.border }]}>
+            <View style={styles.resultRow}>
+              <Text style={styles.charBadge}>{charInfo.emoji}</Text>
+              <MaterialCommunityIcons name="fish" size={16} color={colors.primary} />
+              <Text style={[styles.resultSpecies, { color: colors.primary }]}>{result.species}</Text>
+              <View style={[styles.countBadge, { backgroundColor: `${colors.primary}22` }]}>
+                <Text style={[styles.countText, { color: colors.primary }]}>{result.fishCount} fish</Text>
+              </View>
+            </View>
+            <Text style={[styles.resultDetail, { color: colors.foreground }]}>{result.depth} · {result.distance}</Text>
+            {result.lure && <Text style={[styles.resultLure, { color: colors.accent }]} numberOfLines={2}>{result.lure}</Text>}
+            <View style={styles.resultActions}>
+              <TouchableOpacity
+                style={[styles.replayBtn, { backgroundColor: `${charInfo.color}22`, borderColor: `${charInfo.color}44` }]}
+                onPress={() => { if (speaking) stopSpeaking(); else speakResult(result); }}
+              >
+                <Feather name={speaking ? "volume-x" : "volume-2"} size={14} color={charInfo.color} />
+                <Text style={[styles.replayText, { color: charInfo.color }]}>
+                  {speaking ? "Stop" : `${charInfo.emoji} Read`}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.clearBtn, { borderColor: colors.border }]}
+                onPress={() => { setResult(null); stopSpeaking(); }}
+              >
+                <Feather name="x" size={14} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Error overlay */}
+        {error && !scanning && (
+          <View style={[styles.errorOverlay, { backgroundColor: `${colors.destructive}22`, borderColor: `${colors.destructive}55` }]}>
+            <Feather name="alert-circle" size={14} color={colors.destructive} />
+            <Text style={[styles.errorText, { color: colors.destructive }]} numberOfLines={2}>{error}</Text>
+            <TouchableOpacity onPress={() => setError(null)}>
+              <Feather name="x" size={14} color={colors.destructive} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Bottom bar */}
+        <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
+          <GlowButton
+            onPress={scanNow}
+            scanning={scanning}
+            boatMode={boatMode}
+            ready={isNative ? true : webReady}
+          />
+
+          {/* BOAT MODE big toggle button */}
+          <TouchableOpacity
+            style={[
+              styles.boatModeBtn,
+              boatMode
+                ? { backgroundColor: "#aaff00", borderColor: "#aaff00" }
+                : { backgroundColor: "#0a162888", borderColor: "#aaff0066" },
+            ]}
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              setBoatMode((v) => !v);
+              setResult(null);
+            }}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons
+              name="anchor"
+              size={18}
+              color={boatMode ? "#0a1628" : "#aaff00"}
+            />
+            <Text style={[styles.boatModeBtnText, { color: boatMode ? "#0a1628" : "#aaff00" }]}>
+              {boatMode ? "🚤 EXIT BOAT MODE" : "🚤 BOAT MODE"}
+            </Text>
+            {boatMode && (
+              <View style={styles.boatLiveDot} />
+            )}
+          </TouchableOpacity>
+
+          <Text style={[styles.hint, { color: "#ffffffcc" }]}>
+            {boatMode
+              ? `Screen stays on · auto-scan every ${AUTO_INTERVAL}s · voice ON`
+              : "Point at sonar — tap to scan"}
+          </Text>
+        </View>
+      </>
+    );
+  }
 
   // ─── WEB rendering ──────────────────────────────────────────────────────────
   if (Platform.OS === "web") {
-    // Step 1: ask permission
     if (webPermission === "unknown" || webPermission === "requesting") {
       return (
         <View style={[styles.permContainer, { backgroundColor: colors.background }]}>
@@ -372,129 +621,11 @@ export default function LiveScreen() {
       );
     }
 
-    // Step 2: show camera + UI
     return (
       <View style={[styles.container, { backgroundColor: "#000" }]}>
-        {/* HTML5 camera stream */}
-        {WebCameraView && (
-          <WebCameraView
-            ref={webCamRef}
-            onReady={() => setWebReady(true)}
-          />
-        )}
-
-        {/* Barra sketches ghost overlay */}
+        {WebCameraView && <WebCameraView ref={webCamRef} onReady={() => setWebReady(true)} />}
         <BarraSketches opacity={0.7} />
-
-        {/* Mount mode tint */}
-        {mountMode && (
-          <View style={[StyleSheet.absoluteFill, styles.mountTint]} pointerEvents="none" />
-        )}
-
-        {/* Top bar */}
-        <View style={[styles.topBar, { paddingTop: topPad + 8 }]}>
-          <TouchableOpacity
-            style={[styles.chip, { backgroundColor: autoSpeak ? `${colors.primary}44` : "#00000077", borderColor: autoSpeak ? colors.primary : "#ffffff44" }]}
-            onPress={() => { setAutoSpeak((v) => !v); if (autoSpeak) stopSpeaking(); }}
-          >
-            <Feather name={autoSpeak ? "volume-2" : "volume-x"} size={13} color={autoSpeak ? colors.primary : "#ffffffaa"} />
-            <Text style={[styles.chipText, { color: autoSpeak ? colors.primary : "#ffffffaa" }]}>
-              {autoSpeak ? `${charInfo.emoji} Voice` : "Voice OFF"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.chip, { backgroundColor: mountMode ? "#ff450044" : "#00000077", borderColor: mountMode ? "#ff4500" : "#ffffff44" }]}
-            onPress={() => setMountMode((v) => !v)}
-          >
-            <MaterialCommunityIcons name="bracket" size={13} color={mountMode ? "#ff4500" : "#ffffffaa"} />
-            <Text style={[styles.chipText, { color: mountMode ? "#ff4500" : "#ffffffaa" }]}>
-              {mountMode ? `Auto ${countdown}s` : "Mount Mode"}
-            </Text>
-          </TouchableOpacity>
-
-          {speaking && (
-            <TouchableOpacity
-              style={[styles.chip, { backgroundColor: `${charInfo.color}44`, borderColor: charInfo.color }]}
-              onPress={stopSpeaking}
-            >
-              <SonarPulse size={12} active />
-              <Text style={[styles.chipText, { color: charInfo.color }]}>Stop {charInfo.emoji}</Text>
-            </TouchableOpacity>
-          )}
-
-          <View style={{ marginLeft: "auto" }}>
-            <NarratorSettingsTrigger />
-          </View>
-        </View>
-
-        {/* Aim guide */}
-        <View style={styles.aimGuide} pointerEvents="none">
-          <View style={[styles.aimCorner, styles.aimTL, { borderColor: mountMode ? "#ff4500" : colors.primary }]} />
-          <View style={[styles.aimCorner, styles.aimTR, { borderColor: mountMode ? "#ff4500" : colors.primary }]} />
-          <View style={[styles.aimCorner, styles.aimBL, { borderColor: mountMode ? "#ff4500" : colors.primary }]} />
-          <View style={[styles.aimCorner, styles.aimBR, { borderColor: mountMode ? "#ff4500" : colors.primary }]} />
-          <Text style={[styles.aimLabel, { color: mountMode ? "#ff4500" : colors.primary }]}>
-            {mountMode ? `⚡ AUTO — scanning every ${AUTO_INTERVAL}s` : "Aim at sonar screen"}
-          </Text>
-          {mountMode && (
-            <View style={[styles.cdBadge, { borderColor: "#ff450066" }]}>
-              <Text style={styles.cdText}>{countdown}s</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Result overlay */}
-        {result && !scanning && (
-          <View style={[styles.resultOverlay, { backgroundColor: `${colors.background}ee`, borderColor: colors.border }]}>
-            <View style={styles.resultRow}>
-              <Text style={styles.charBadge}>{charInfo.emoji}</Text>
-              <MaterialCommunityIcons name="fish" size={16} color={colors.primary} />
-              <Text style={[styles.resultSpecies, { color: colors.primary }]}>{result.species}</Text>
-              <View style={[styles.countBadge, { backgroundColor: `${colors.primary}22` }]}>
-                <Text style={[styles.countText, { color: colors.primary }]}>{result.fishCount} fish</Text>
-              </View>
-            </View>
-            <Text style={[styles.resultDetail, { color: colors.foreground }]}>{result.depth} · {result.distance}</Text>
-            {result.lure && <Text style={[styles.resultLure, { color: colors.accent }]} numberOfLines={2}>{result.lure}</Text>}
-            <View style={styles.resultActions}>
-              <TouchableOpacity
-                style={[styles.replayBtn, { backgroundColor: `${charInfo.color}22`, borderColor: `${charInfo.color}44` }]}
-                onPress={() => { if (speaking) stopSpeaking(); else speakResult(result); }}
-              >
-                <Feather name={speaking ? "volume-x" : "volume-2"} size={14} color={charInfo.color} />
-                <Text style={[styles.replayText, { color: charInfo.color }]}>
-                  {speaking ? "Stop" : `${charInfo.emoji} Read`}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.clearBtn, { borderColor: colors.border }]}
-                onPress={() => { setResult(null); stopSpeaking(); }}
-              >
-                <Feather name="x" size={14} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Error overlay */}
-        {error && !scanning && (
-          <View style={[styles.errorOverlay, { backgroundColor: `${colors.destructive}22`, borderColor: `${colors.destructive}55` }]}>
-            <Feather name="alert-circle" size={14} color={colors.destructive} />
-            <Text style={[styles.errorText, { color: colors.destructive }]} numberOfLines={2}>{error}</Text>
-            <TouchableOpacity onPress={() => setError(null)}>
-              <Feather name="x" size={14} color={colors.destructive} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Bottom bar */}
-        <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
-          <GlowButton onPress={scanNow} scanning={scanning} mountMode={mountMode} ready={webReady} />
-          <Text style={[styles.hint, { color: "#ffffffcc" }]}>
-            {mountMode ? "📡 Auto-scanning every 12s" : "Point at sonar — tap to scan"}
-          </Text>
-        </View>
+        {renderOverlays(false)}
       </View>
     );
   }
@@ -538,116 +669,8 @@ export default function LiveScreen() {
   return (
     <View style={[styles.container, { backgroundColor: "#000" }]}>
       <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
-
-      {/* Barra sketches ghost overlay */}
       <BarraSketches opacity={0.7} />
-
-      {mountMode && <View style={[StyleSheet.absoluteFill, styles.mountTint]} pointerEvents="none" />}
-
-      {/* Top bar */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity
-          style={[styles.chip, { backgroundColor: autoSpeak ? `${colors.primary}44` : "#00000077", borderColor: autoSpeak ? colors.primary : "#ffffff44" }]}
-          onPress={() => { setAutoSpeak((v) => !v); if (autoSpeak) stopSpeaking(); }}
-        >
-          <Feather name={autoSpeak ? "volume-2" : "volume-x"} size={13} color={autoSpeak ? colors.primary : "#ffffffaa"} />
-          <Text style={[styles.chipText, { color: autoSpeak ? colors.primary : "#ffffffaa" }]}>
-            {autoSpeak ? `${charInfo.emoji} Voice` : "Voice OFF"}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.chip, { backgroundColor: mountMode ? "#ff450044" : "#00000077", borderColor: mountMode ? "#ff4500" : "#ffffff44" }]}
-          onPress={() => setMountMode((v) => !v)}
-        >
-          <MaterialCommunityIcons name="bracket" size={13} color={mountMode ? "#ff4500" : "#ffffffaa"} />
-          <Text style={[styles.chipText, { color: mountMode ? "#ff4500" : "#ffffffaa" }]}>
-            {mountMode ? `Auto ${countdown}s` : "Mount Mode"}
-          </Text>
-        </TouchableOpacity>
-
-        {speaking && (
-          <TouchableOpacity
-            style={[styles.chip, { backgroundColor: `${charInfo.color}44`, borderColor: charInfo.color }]}
-            onPress={stopSpeaking}
-          >
-            <SonarPulse size={12} active />
-            <Text style={[styles.chipText, { color: charInfo.color }]}>Stop {charInfo.emoji}</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={{ marginLeft: "auto" }}>
-          <NarratorSettingsTrigger />
-        </View>
-      </View>
-
-      {/* Aim guide */}
-      <View style={styles.aimGuide} pointerEvents="none">
-        <View style={[styles.aimCorner, styles.aimTL, { borderColor: mountMode ? "#ff4500" : colors.primary }]} />
-        <View style={[styles.aimCorner, styles.aimTR, { borderColor: mountMode ? "#ff4500" : colors.primary }]} />
-        <View style={[styles.aimCorner, styles.aimBL, { borderColor: mountMode ? "#ff4500" : colors.primary }]} />
-        <View style={[styles.aimCorner, styles.aimBR, { borderColor: mountMode ? "#ff4500" : colors.primary }]} />
-        <Text style={[styles.aimLabel, { color: mountMode ? "#ff4500" : colors.primary }]}>
-          {mountMode ? `⚡ AUTO — scanning every ${AUTO_INTERVAL}s` : "Aim at sonar screen"}
-        </Text>
-        {mountMode && (
-          <View style={[styles.cdBadge, { borderColor: "#ff450066" }]}>
-            <Text style={styles.cdText}>{countdown}s</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Result overlay */}
-      {result && !scanning && (
-        <View style={[styles.resultOverlay, { backgroundColor: `${colors.background}ee`, borderColor: colors.border }]}>
-          <View style={styles.resultRow}>
-            <Text style={styles.charBadge}>{charInfo.emoji}</Text>
-            <MaterialCommunityIcons name="fish" size={16} color={colors.primary} />
-            <Text style={[styles.resultSpecies, { color: colors.primary }]}>{result.species}</Text>
-            <View style={[styles.countBadge, { backgroundColor: `${colors.primary}22` }]}>
-              <Text style={[styles.countText, { color: colors.primary }]}>{result.fishCount} fish</Text>
-            </View>
-          </View>
-          <Text style={[styles.resultDetail, { color: colors.foreground }]}>{result.depth} · {result.distance}</Text>
-          {result.lure && <Text style={[styles.resultLure, { color: colors.accent }]} numberOfLines={2}>{result.lure}</Text>}
-          <View style={styles.resultActions}>
-            <TouchableOpacity
-              style={[styles.replayBtn, { backgroundColor: `${charInfo.color}22`, borderColor: `${charInfo.color}44` }]}
-              onPress={() => { if (speaking) stopSpeaking(); else speakResult(result); }}
-            >
-              <Feather name={speaking ? "volume-x" : "volume-2"} size={14} color={charInfo.color} />
-              <Text style={[styles.replayText, { color: charInfo.color }]}>
-                {speaking ? "Stop" : `${charInfo.emoji} Read`}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.clearBtn, { borderColor: colors.border }]}
-              onPress={() => { setResult(null); stopSpeaking(); }}
-            >
-              <Feather name="x" size={14} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* Error overlay */}
-      {error && !scanning && (
-        <View style={[styles.errorOverlay, { backgroundColor: `${colors.destructive}22`, borderColor: `${colors.destructive}55` }]}>
-          <Feather name="alert-circle" size={14} color={colors.destructive} />
-          <Text style={[styles.errorText, { color: colors.destructive }]} numberOfLines={2}>{error}</Text>
-          <TouchableOpacity onPress={() => setError(null)}>
-            <Feather name="x" size={14} color={colors.destructive} />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Bottom bar */}
-      <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
-        <GlowButton onPress={scanNow} scanning={scanning} mountMode={mountMode} ready={true} />
-        <Text style={[styles.hint, { color: "#ffffffcc" }]}>
-          {mountMode ? "📡 Auto-scanning every 12s" : "Point at sonar — tap to scan"}
-        </Text>
-      </View>
+      {renderOverlays(true)}
     </View>
   );
 }
@@ -655,7 +678,6 @@ export default function LiveScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // ─── Permission screens ────────────────────────────────────────────────────
   permContainer: { flex: 1, backgroundColor: "#0a1628" },
   permContent: {
     flex: 1, alignItems: "center", justifyContent: "center",
@@ -666,7 +688,6 @@ const styles = StyleSheet.create({
   permTitle:   { fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center", color: "#fff" },
   permDesc:    { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22, color: "#ffffffaa" },
 
-  // ─── Glow button ──────────────────────────────────────────────────────────
   glowWrap: { width: 190, height: 190, alignItems: "center", justifyContent: "center", marginTop: 12 },
   glowRing: {
     position: "absolute", width: 145, height: 145, borderRadius: 72.5,
@@ -679,7 +700,7 @@ const styles = StyleSheet.create({
   glowBtnLabel: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 2 },
   glowBtnSub:   { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#fff", letterSpacing: 1.5 },
 
-  // ─── Camera overlay ───────────────────────────────────────────────────────
+  boatTint: { backgroundColor: "#aaff0006" },
   mountTint: { backgroundColor: "#ff450008" },
 
   topBar: {
@@ -697,10 +718,12 @@ const styles = StyleSheet.create({
   aimBL: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 4 },
   aimBR: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 4 },
   aimLabel: { fontSize: 11, fontFamily: "Inter_500Medium", letterSpacing: 0.5, opacity: 0.9, textAlign: "center" },
-  cdBadge:  { marginTop: 12, width: 52, height: 52, borderRadius: 26, backgroundColor: "#ff450022", borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  cdText:   { fontSize: 18, fontFamily: "Inter_700Bold", color: "#ff4500" },
+  cdBadge:  { marginTop: 12, width: 64, height: 64, borderRadius: 32, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  cdText:   { fontSize: 20, fontFamily: "Inter_700Bold" },
+  cdSub:    { fontSize: 9, fontFamily: "Inter_500Medium" },
 
-  resultOverlay: { position: "absolute", left: 16, right: 16, bottom: 220, borderRadius: 16, borderWidth: 1, padding: 16, gap: 6, zIndex: 20 },
+  // ── Standard result overlay ───────────────────────────────────────────────
+  resultOverlay: { position: "absolute", left: 16, right: 16, bottom: 260, borderRadius: 16, borderWidth: 1, padding: 16, gap: 6, zIndex: 20 },
   resultRow:     { flexDirection: "row", alignItems: "center", gap: 8 },
   charBadge:     { fontSize: 16 },
   resultSpecies: { fontSize: 16, fontFamily: "Inter_700Bold", flex: 1 },
@@ -713,9 +736,43 @@ const styles = StyleSheet.create({
   replayText:    { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   clearBtn:      { width: 30, height: 30, borderRadius: 15, borderWidth: 1, alignItems: "center", justifyContent: "center" },
 
-  errorOverlay: { position: "absolute", left: 16, right: 16, bottom: 220, borderRadius: 12, borderWidth: 1, padding: 12, flexDirection: "row", alignItems: "center", gap: 8, zIndex: 20 },
+  // ── Boat mode big card ────────────────────────────────────────────────────
+  boatCard: {
+    position: "absolute", left: 12, right: 12, bottom: 260,
+    backgroundColor: "#0a1628ee", borderRadius: 20, borderWidth: 2,
+    padding: 20, gap: 12, zIndex: 20,
+  },
+  boatRow:       { flexDirection: "row", alignItems: "center", gap: 12 },
+  boatSpecies:   { fontSize: 24, fontFamily: "Oswald_700Bold", letterSpacing: 0.5 },
+  boatCount:     { fontSize: 16, fontFamily: "Inter_600SemiBold", marginTop: 2 },
+  boatClose:     { padding: 4 },
+  boatDepthRow:  { flexDirection: "row", gap: 10 },
+  boatBadge:     { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
+  boatBadgeText: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  boatLure:      { fontSize: 14, fontFamily: "Inter_400Regular", color: "#ffffffcc", lineHeight: 20 },
+  boatActions:   { flexDirection: "row", marginTop: 4 },
+  boatReplay:    { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 24, borderWidth: 1 },
+  boatReplayText:{ fontSize: 14, fontFamily: "Inter_600SemiBold" },
+
+  errorOverlay: { position: "absolute", left: 16, right: 16, bottom: 260, borderRadius: 12, borderWidth: 1, padding: 12, flexDirection: "row", alignItems: "center", gap: 8, zIndex: 20 },
   errorText:    { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
 
-  bottomBar: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center", paddingTop: 12, gap: 6, zIndex: 10 },
-  hint: { fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 4 },
+  // ── Bottom bar ────────────────────────────────────────────────────────────
+  bottomBar: {
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    alignItems: "center", paddingTop: 12, gap: 8, zIndex: 10,
+  },
+  boatModeBtn: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 28, paddingVertical: 13,
+    borderRadius: 32, borderWidth: 2,
+    minWidth: 200, justifyContent: "center",
+  },
+  boatModeBtnText: {
+    fontSize: 15, fontFamily: "Inter_700Bold", letterSpacing: 0.5,
+  },
+  boatLiveDot: {
+    width: 8, height: 8, borderRadius: 4, backgroundColor: "#0a1628",
+  },
+  hint: { fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 4, textAlign: "center", paddingHorizontal: 20 },
 });

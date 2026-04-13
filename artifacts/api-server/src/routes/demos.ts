@@ -6,7 +6,7 @@ const router = Router();
 
 router.get("/demos/:name", (req, res) => {
   const name = req.params.name;
-  if (!/^sonar-demo-[1-4]\.png$/.test(name)) {
+  if (!/^sonar-demo-[1-5]\.png$/.test(name)) {
     res.status(404).json({ error: "Not found" });
     return;
   }
