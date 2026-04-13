@@ -51,7 +51,7 @@ const META: Record<string, { label: string; icon: (c: string, s: number) => Reac
   forecast:  { label: "Fishy",   icon: (c, s) => <MaterialCommunityIcons name="weather-windy"     size={s} color={c} /> },
   demo:      { label: "Demo",    icon: (c, s) => <MaterialCommunityIcons name="image-multiple"     size={s} color={c} /> },
   history:   { label: "History", icon: (c, s) => <Feather                name="clock"              size={s} color={c} /> },
-  community: { label: "Intel",   icon: (c, s) => <MaterialCommunityIcons name="brain"              size={s} color={c} /> },
+  community: { label: "Brain",   icon: (c, s) => <MaterialCommunityIcons name="brain"              size={s} color={c} /> },
 };
 
 const COLS    = 6;                             // tabs per row
