@@ -214,20 +214,142 @@ crocAlert = true ONLY when ALL criteria met simultaneously:
 In LIVE sonar: a croc appears as a VERY LARGE horizontal body shape near surface with an enormous shadow, body wider than any fish.
 DEFAULT = false. A bright thick barra arch (even huge) is NEVER a croc. In live sonar: a fish body with a normal body-length shadow is NEVER a croc.
 
-═══ SONAR BRAND ID ═══
-Traditional 2D:
-• Lowrance HDS: dark grey bezel, teal/green accent buttons, orange/red = strongest return
-• Garmin ECHOMAP/Striker: black bezel, aqua palette, white/blue = strongest return
-• Humminbird HELIX: orange logo, brown/orange scale — split-screen has circular FLASHER WHEEL on LEFT
-• Simrad: blue/grey branding, Navico parent, similar palette to Lowrance
-• Raymarine: lighthouse orange logo, navy/dark interface
-• Deeper Smart Sonar: phone app screenshot, blue UI, fish icons with depth labels
+═══ SONAR BRAND ID — COMPREHENSIVE MANUAL KNOWLEDGE ═══
 
-Live Spatial:
-• Garmin LiveScope: "LIVESCOPE" text, green-grey tint, bright white fish blobs on dark bg
-• Lowrance ActiveTarget: "ACTIVE TARGET" label, dark navy tint, similar blob display
-• Humminbird MEGA Live: "MEGA LIVE" or "MEGA 360" text, orange brand accents
-• Simrad ForwardScan: Navico, similar to Lowrance palette
+TRADITIONAL 2D — DISPLAY & FREQUENCY RECOGNITION:
+• LOWRANCE HDS Live / HDS Pro / Hook / Elite:
+  - Dark charcoal grey bezel, teal/green soft-key buttons below screen
+  - Colour palette: red/orange = strongest return, yellow = medium, green/blue = weakest
+  - CHIRP capable: 83kHz (wide beam, ~60°) or 200kHz (narrow beam, ~20°) or CHIRP (sweeps 28–75kHz or 83–160kHz)
+  - 83kHz wide beam shows larger coverage but edges produce edge-arches that look like fish — check for symmetry
+  - On-screen text "CHIRP" or frequency displayed in top bar; depth scale on left or right side
+  - Depth scale: digital readout top-left; water temp top-right; speed if paddlewheel fitted
+
+• GARMIN ECHOMAP / Striker / GPSMAP:
+  - Black or dark grey bezel, aqua/cyan UI accents, Garmin compass logo top-left
+  - Colour palette: white/light yellow = strongest, dark blue/black = weakest (inverted vs Lowrance)
+  - Frequencies: 77kHz (wide) / 200kHz (narrow) / CHIRP (50–200kHz sweep or 150–240kHz hi-CHIRP)
+  - Hi-CHIRP at 150–240kHz gives the BEST arch resolution of any single-frequency system
+  - "SONAR" or "CHIRP" label visible on screen; depth top-centre or top-right
+
+• HUMMINBIRD HELIX / SOLIX:
+  - Orange/amber branding, Humminbird fish logo, orange accent ring or logo bottom
+  - Colour palette: bright orange/red = strongest, brown/amber medium, dark = weakest
+  - Frequencies: 83kHz / 200kHz / 455kHz (MEGA Down) / 800kHz (MEGA Down high detail)
+  - SPLIT SCREEN: left panel = FLASHER WHEEL (circular rotating ping display showing current depth column) right panel = traditional scroll
+  - Flasher wheel shows: outer ring = bottom, coloured bands = fish at depth, spins continuously
+  - MEGA Down Imaging (455/800kHz): NOT traditional arches — shows structure/fish as bright streaks/dots on a photo-like image scrolling right to left
+
+• SIMRAD NSS / NSX / GO:
+  - Navico parent company (same as Lowrance/B&G); blue-grey UI branding, Simrad logo
+  - Colour palette similar to Lowrance (red/orange strong, blue weak)
+  - StructureScan HD: side imaging + down imaging in one view; fish appear as bright white smears/comma shapes OFF the bottom line
+  - StructureScan 3D: three-dimensional rendered view of bottom and fish above it
+
+• RAYMARINE ELEMENT / AXIOM:
+  - Lighthouse OS (orange/amber logo), dark navy interface, orange "Lighthouse" brand text
+  - Colour palette: yellow/white = strongest, blue = weakest
+  - RealVision 3D and RealVision sonar overlays
+
+• DEEPER PRO / PRO+ / CHIRP (portable wifi sonar):
+  - NOT a fixed chartplotter — this is a PHONE APP screenshot (iOS/Android UI visible)
+  - Blue UI with depth gradient display; fish shown as arches or fish icons with depth labels
+  - Round portable transducer cast into water on a fishing line (NOT boat-mounted)
+  - Deeper PRO+2 beam angles: WIDE 47° at 290kHz; MEDIUM 20° at 675kHz; NARROW 7° at 1160kHz
+  - Wide beam = more false edge arches; narrow beam = only fish directly below
+  - Fish icons may appear if "fish finding" mode is enabled in the app
+  - Depth range typically 0–80m; very popular in NT shore/kayak fishing
+
+LIVE SONAR — DETAILED MODE & APPEARANCE GUIDE:
+• GARMIN LIVESCOPE (LVS32 / LVS34 / LVS62 XR):
+  - GLS10 or GLS10 sonar black box required; connects to ECHOMAP UHD, GPSMAP Plus/Ultra
+  - LVS62 XR = longest range (~100m+); LVS34 = mid range; LVS32 = original shorter range
+  - "LIVESCOPE" text always visible on screen; depth scale shown on side
+  - Dark background (near-black or dark grey/green); fish appear as bright white or light grey blobs/bodies
+  - FORWARD MODE (most common): transducer faces forward, sees fish AHEAD of boat horizontally; depth scale = vertical; horizontal axis = distance forward; max ~200ft useful range
+  - DOWN MODE: transducer faces down (vertically); sees fish directly below in real time; similar to traditional but live
+  - PERSPECTIVE MODE: overhead "bird's-eye" view; shows fish on flats from above; only works in shallow water <20ft; fish appear as oval blobs moving in 2D plane
+  - Fish arches do NOT appear in LiveScope — fish appear as bright BLOBS or SILHOUETTES with cast shadows
+  - Lure visible in water as a small bright dot moving on screen
+
+• LOWRANCE ACTIVETARGET / ACTIVETARGET 2:
+  - "ACTIVE TARGET" or "ACTIVETARGET 2" text label visible; requires HDS Live or HDS Pro
+  - Dark navy/grey background; fish as bright grey-white blobs; slightly warmer tint than Garmin
+  - THREE MODES:
+    1. FORWARD MODE: horizontal ahead view, identical concept to LiveScope Forward
+    2. DOWN MODE: looking directly below boat in real-time
+    3. SCOUT MODE (unique to ActiveTarget 2): transducer faces REARWARD — sees fish following the boat, following a lure being trolled, or approaching from behind — NOT available on original ActiveTarget or LiveScope
+  - AT2 improvements: higher resolution, smoother frame rate, more detail at longer range vs original
+  - Range: up to ~100ft forward/down; Scout mode typically 30–50ft rear
+
+• HUMMINBIRD MEGA LIVE / MEGA LIVE 2:
+  - "MEGA LIVE" text label; orange brand accents; Humminbird HELIX 10–12 or SOLIX required
+  - Dark background; fish as bright orange-tinted blobs (warm tint vs Garmin's cooler tone)
+  - FORWARD MODE: horizontal ahead; DOWN MODE: directly below
+  - Very high frequency (MEGA = megahertz class) → extremely fine detail, individual fish clearly resolved
+
+• HUMMINBIRD MEGA 360 IMAGING:
+  - "MEGA 360" or "360°" text; rotating transducer mounted on trolling motor shaft
+  - CIRCULAR DISPLAY: bird's-eye top-down view showing 360° sweep around the boat
+  - Fish appear as BRIGHT DOTS or SHORT ARCS at their radial distance from centre (boat = centre)
+  - Structure appears as bright arcs/bands at consistent radial distances
+  - Range: up to 125ft radius in all directions
+  - NOT a traditional scroll or forward-looking view — this is a RADAR-LIKE CIRCULAR SWEEP
+  - Useful for seeing structure/fish in ALL directions without moving
+  - Operating at 1.2MHz (megahertz) = ultra-high detail
+
+• SIMRAD STRUCTURESCAN HD:
+  - "STRUCTURE" label on screen; shows left side imaging + right side imaging + down imaging
+  - Side imaging: boat at top-centre; bottom extends down each side; fish appear as BRIGHT SMEARS or COMMA SHAPES off the bottom line, suspended fish = bright marks in mid-water
+  - Down imaging: similar to Humminbird Down — fish as bright white blobs/commas directly below
+
+═══ ADVANCED ARCH PHYSICS — FROM MANUFACTURER MANUALS ═══
+
+FULL ARCH vs HALF ARCH (CRITICAL for positioning):
+• PERFECT SYMMETRICAL ARCH: fish passed directly through the CENTRE of your sonar cone — boat went right over it. This is a HIGH-CONFIDENCE mark. Barra love to sit still letting the boat pass overhead.
+• HALF ARCH (only one side of the arc): fish only CLIPPED the EDGE of the cone. The fish is NOT directly below — it's to one side. This affects your cast position significantly.
+• LONG HORIZONTAL STREAK (no arch curve): fish is STATIONARY below a stationary or slow-moving boat — fish is NOT moving. This is common for bottom-sitting barra on a snag.
+
+HORIZONTAL LENGTH ≠ FISH SIZE (the most common mistake):
+• Horizontal arch width = TIME the fish spent inside the sonar cone
+• SHORT STEEP ARCH = fish at trolling speed, or boat moving quickly over fish
+• LONG DRAWN-OUT ARCH = fish is SLOW or STATIONARY, OR your boat is barely moving
+• A stationary barra under a slow-drifting boat can paint a long horizontal line that looks like "a thick log" — this IS a fish, not structure
+• VERTICAL THICKNESS is the TRUE size indicator — thicker = bigger fish/bigger bladder
+
+CHIRP vs SINGLE FREQUENCY EFFECTS ON ARCH QUALITY:
+• SINGLE FREQUENCY (83kHz or 200kHz):
+  - At 83kHz wide beam: arches are fatter and fuzzier; fish at beam edges produce half-arches that seem small; schools blur together
+  - At 200kHz narrow beam: crisper arches; better target separation; but misses fish outside narrow cone
+• CHIRP (sweeps across frequency range):
+  - Best target separation of any method — can resolve individual fish within a dense school
+  - Arches are crisper, thinner (more precise vertical thickness = more accurate size estimate)
+  - HUMMINBIRD MEGA Down at 455/800kHz gives near-photographic bottom detail but shows fish as smears not arches
+
+BEAM WIDTH EFFECT ON DISPLAYED DEPTH:
+• Wide beam (83kHz, 55–60°): fish at the EDGE of the cone appear DEEPER on screen than they actually are (hypotenuse effect — sonar measures slant distance not vertical depth)
+• This means a fish shown at "6m" on a 60° wide beam might actually be at only 5.2m vertical depth
+• Narrow beam (200kHz, 15–20°): displayed depth ≈ actual vertical depth (minimal hypotenuse error)
+
+FALSE RETURN IDENTIFICATION (do NOT confuse these with fish):
+• THERMOCLINE: A broad diffuse horizontal band (not a thin arch). In NT wet season: freshwater runoff sits on top of heavier saltwater creating a layer at 3–8m. Appears as a wide fuzzy horizontal smear.
+• PROP/TURBULENCE: Chaotic scattered returns behind the boat moving right-to-left (air bubbles)
+• SURFACE CLUTTER: Dense noise in the top 0.5–2m from wave action/wake
+• DEBRIS: Submerged grass, sticks, seaweed — appear as irregular blobs without arch shape
+• BAITFISH CLOUD: Dense fuzzy mass of tiny returns, usually mid-column — like static interference
+• TEMPERATURE/SALINITY LAYERS: In NT estuaries with heavy runoff — appear as broad light lines, NOT arches
+
+SCHOOL IDENTIFICATION PATTERNS:
+• TIGHT SCHOOL (fingermark, bream, thready): Overlapping intertwined arches forming a dense clump; CHIRP separates them into individual arches
+• LOOSE SCHOOL (schooling barra, queenfish): Individual arches at similar depth but spread out horizontally — each fish clearly separate
+• SOLO HUNTERS (big barra, mangrove jack, jewfish): Single thick arch, often embedded in or directly above structure
+• BAIT SCHOOL: Dense irregular fuzzy cloud — smaller marks than fish arches, no clear arch shape
+
+NT-SPECIFIC SONAR CONDITIONS:
+• WET SEASON (Nov–Apr): Heavy freshwater inflow = lower salinity = weaker sonar returns overall (less signal conductivity). Arches may appear fainter — this does NOT mean small fish.
+• RUN-OFF: Turbid/silty water = bottom echo may be thick/diffuse (silty mud absorbs some return). Hard structure stands out more clearly against a soft mud echo.
+• TIDAL CHANNELS: Strong current creates micro-bubbles under boat → surface clutter in top 1–2m. Sensitivity may need reducing.
+• SALTWATER/FRESHWATER INTERFACE (Mary River, Daly, Roper): fish congregate at the interface line, visible as a diffuse band on sonar
 
 ═══ MANDATORY SPECIES RULE ═══
 You MUST ALWAYS return a real species name. NEVER return null, never return empty string "".
@@ -272,33 +394,71 @@ Return ONLY valid JSON — no markdown fences, no explanation, no surrounding te
 const ANALYSIS_STEP_PROMPT = `Analyse the sonar image using BOTH methods simultaneously. Output JSON only.
 
 CALIBRATION — TRADITIONAL 2D:
-Demo A: Lowrance HDS Live — 3 Barramundi at 5.2m, thick bright red/orange arches ON hard bottom structure.
-Demo B: Humminbird HELIX 10 — Fingermark school at 8m, medium arches floating ABOVE ragged rocky rubble.
-Demo C: Humminbird split-screen — 5–6 Barramundi mid-column, each arch has a clear DARK SHADOW void beneath it.
+Demo A: Lowrance HDS Live (red/orange palette) — 3 Barramundi at 5.2m, thick bright red/orange arches ON hard bottom structure. Perfect symmetrical arches = full beam pass. Shadow voids beneath each arch confirm large physostomous bladder.
+Demo B: Humminbird HELIX 10 (orange palette) — Fingermark school at 8m. Medium-brightness arches floating 2m ABOVE ragged rocky rubble bottom. Arches do NOT touch bottom echo — they float above it. Rubble bottom echo is rough and irregular.
+Demo C: Humminbird split-screen — 5–6 Barramundi mid-column. Left panel = FLASHER WHEEL (circular rotating display). Right panel = traditional 2D scroll showing stacked arches with clear DARK SHADOW voids beneath each.
+Demo H: Deeper PRO app (phone screenshot, blue UI) — arches with depth labels shown as icons. Wide 47° beam means arches at screen edges are fish at the edge of the cone, not directly below. Central arches most reliable.
+Demo I: Garmin ECHOMAP CHIRP (aqua palette, white=strongest) — single thick white-core arch at 4.5m with clear shadow. Garmin's palette = white core surrounded by blue/green halo = very strong Tier 1 return = barra or fingermark.
+Demo J: Simrad NSS with StructureScan — LEFT = traditional 2D (red/orange palette); RIGHT = side imaging showing fish as bright comma-shaped marks off the bottom line on both sides of the centre.
 
 CALIBRATION — LIVE SONAR:
-Demo D: Garmin LiveScope — single large Barramundi at 4m near timber pylon. Bright white oval body with a LONG dark "post-cast shadow" extending behind/below the body — shadow ≈ same length as body. Blunt-nosed profile. Stationary. sonarMode="split-screen-both" (2D also visible).
-Demo E: Humminbird MEGA Live — school of Threadfin Salmon mid-column. 8–12 smaller bright oval blobs at the same depth, each with a short shadow.
-Demo F: Garmin LiveScope — Mangrove Jack tight against timber. Compact round body partially merged into bright structure echo, minimal shadow.
-Demo G: SPLIT SCREEN — LEFT side shows traditional 2D with barra arch ON structure; RIGHT side live scope shows same fish as a bright oval body with long shadow next to a bright echo. Both methods confirm Barramundi → confidence +15%.
+Demo D: Garmin LiveScope Forward (dark green-grey bg, "LIVESCOPE" text) — single large Barramundi at 4m near timber pylon. Bright white oval body with a LONG dark "post-cast shadow" extending behind/below the body — shadow ≈ same length as body. Blunt-nosed profile. Stationary.
+Demo E: Humminbird MEGA Live (orange accents, "MEGA LIVE" text) — school of Threadfin Salmon mid-column. 8–12 smaller bright oval-orange blobs at the same depth, each with a short shadow. Warmer orange tint vs Garmin's cooler grey-white.
+Demo F: Garmin LiveScope Forward — Mangrove Jack tight against timber. Compact round body partially merged into bright structure echo, minimal shadow. Fish barely moves.
+Demo G: SPLIT SCREEN — LEFT = traditional 2D with barra arch ON structure; RIGHT = LiveScope showing same fish as bright oval body with long shadow next to bright echo. Both confirm Barramundi → confidence +15%.
+Demo K: Lowrance ActiveTarget 2 SCOUT MODE — fish visible BEHIND the boat (transducer facing rearward). Fish appear as blobs moving toward boat from the rear. Navy/grey background, "ACTIVE TARGET" or "ACTIVETARGET 2" label.
+Demo L: Humminbird MEGA 360 — CIRCULAR bird's-eye display (radar-like), boat at centre. Fish appear as bright dots or short arcs at their distance from centre on the 360° sweep. NOT a traditional scroll — it's a top-down radial view.
+Demo M: Garmin LiveScope PERSPECTIVE mode — overhead/angled bird's-eye view of shallow flats (<20ft). Fish appear as oval blobs moving on a 2D plane. Used for sight-fishing on flats.
 
 STEPS (run ALL of them, every time):
-1. LAYOUT: Is the image a single panel or split screen? Identify each panel's type (2D scroll vs live scope vs flasher wheel).
-2. BRAND: UI chrome, bezel, palette, text labels. "LIVESCOPE"=Garmin. "ACTIVE TARGET"=Lowrance. "MEGA LIVE"/"MEGA 360"=Humminbird. Flasher wheel on left = Humminbird split.
-3. 2D SCAN — search the entire image (or the 2D panel) for ARCHES:
-   - Arch brightness tier: red/orange=Tier1 (barra/jack/fingermark/thready); yellow/green=Tier2; faint/invisible=Tier3
-   - Shadow void BELOW arch = big predator 90%+
-   - Position: ON structure=barra/jack | floating ABOVE rubble=fingermark | mid-column soft=thready | buried IN echo=jack
-4. LIVE SCAN — search the entire image (or the live panel) for BODY SHAPES + SHADOWS:
+1. LAYOUT & MODE: Is the image a single panel or split screen? Identify EACH panel:
+   - Traditional 2D scroll (time axis right→left, arched returns)
+   - Live sonar Forward (horizontal distance axis, fish as blobs looking ahead)
+   - Live sonar Down (real-time vertical view directly below)
+   - Live sonar Perspective (overhead bird's-eye, shallow water)
+   - Live sonar Scout (ActiveTarget 2 only — looking BEHIND boat)
+   - MEGA 360 circular (radar-like 360° radial sweep, round display)
+   - Humminbird Flasher Wheel (circular rotating ping on left panel of split screen)
+   - StructureScan / Side Imaging (fish as comma/smear marks off bottom line)
+   - Deeper app (phone UI, blue gradient, fish icons with depth labels)
+
+2. BRAND & FREQUENCY:
+   - UI chrome, bezel, colour palette, text labels
+   - "LIVESCOPE"=Garmin forward/down/perspective. "ACTIVE TARGET"/"ACTIVETARGET 2"=Lowrance (Scout mode if rearward view). "MEGA LIVE"/"MEGA 360"=Humminbird.
+   - Flasher wheel on left of split = Humminbird HELIX/SOLIX
+   - Blue phone UI = Deeper app. Aqua UI + compass logo = Garmin. Teal buttons + red palette = Lowrance. Orange logo = Humminbird.
+   - Estimate frequency if visible: "CHIRP" label, "200kHz", "83kHz", "455kHz" etc.
+   - NOTE if wide beam (83kHz/47°) — edge arches may be false; focus on central arches only
+
+3. FALSE RETURN REJECTION — check BEFORE identifying fish:
+   - Thermocline / salinity layer: BROAD DIFFUSE HORIZONTAL BAND across multiple depth rows — NOT a fish. In NT wet season typically at 3–8m. Rule it out first.
+   - Surface clutter: chaotic noise in top 0.5–1.5m from waves/wake — not fish
+   - Prop bubbles: scattered random returns scrolling left (just appeared in the history) — not fish
+   - Bait cloud: dense irregular fuzzy mass, uniform small returns with no clear arch structure — bait not predators
+   - Debris: irregular blob without symmetrical arch curve — check for arch shape before calling it a fish
+
+4. 2D SCAN — search the 2D panel or full image for ARCHES:
+   - Check arch completeness: FULL arch (high confidence, fish was directly below) vs HALF arch (fish at cone edge — to one side)
+   - Check horizontal length: SHORT steep arch = fast-moving fish OR boat moving; LONG flat line = stationary fish (classic barra resting on snag)
+   - Arch brightness tier: red/orange/white core=Tier1 (barra/jack/fingermark/thready); yellow/green=Tier2; faint/invisible=Tier3
+   - Shadow void BELOW arch = big predator 90%+ confidence
+   - Position: ON or touching structure=barra/jack | floating ABOVE rubble=fingermark | mid-column soft=thready | buried IN echo=jack
+
+5. LIVE SCAN — search the live panel for BODY SHAPES + SHADOWS:
    - Large oval body + long post-cast shadow + near structure = Barramundi
    - Large oval + long shadow + mid-column = Barramundi chasing bait
    - Tall/round body + fast movement + faint/no shadow = Giant Trevally
    - Compact chunky body + embedded in structure + stationary = Mangrove Jack
    - Multiple slim bodies mid-column + short shadows + soft bottom = Threadfin Salmon
-5. DEPTH: read the scale on whichever panel shows it. Eliminate species outside that zone.
-6. CROSS-REFERENCE: Do the 2D and live results agree? If both confirm same species → boost confidence 10–15%. If one is silent → use the method that found fish. Note findings from both in archReasoning.
-7. FINAL ID: COMMIT to a species name. Reduce confidence if unsure but NEVER leave species null or empty. Output ONLY the JSON object — nothing before the opening { bracket.
-8. INTELLIGENCE CHECK: Cross-reference your ID against the BRAIN LIBRARY & COMMUNITY INTELLIGENCE block provided above the image. If your ID matches the hot species at this depth and region → boost confidence 5–10%. If your ID is unusual for this area given strong community evidence otherwise → note it in archReasoning and reduce confidence 5–10% unless your sonar evidence is very clear.`;
+   - Tiny bright dots on flats (Perspective mode) = baitfish or small species
+
+6. DEPTH: Read the depth scale from whichever panel shows it. In wide-beam mode (83kHz), displayed depth may be 10–15% deeper than actual for fish at beam edges. Eliminate species outside their known NT depth zone.
+
+7. CROSS-REFERENCE: Do 2D and live results agree? Both confirm same species → boost confidence 10–15%. One silent → use the method that found fish, note the other. Conflict → strongest evidence wins; explain in archReasoning.
+
+8. FINAL ID: COMMIT to a species name. Reduce confidence if unsure but NEVER leave species null or empty. Output ONLY the JSON object — no text before the { bracket.
+
+9. INTELLIGENCE CHECK: Cross-reference your ID against the BRAIN LIBRARY & COMMUNITY INTELLIGENCE block above. Hot species at this depth and region → boost confidence 5–10%. Unusual ID vs strong community evidence → note in archReasoning, reduce confidence 5–10% unless sonar evidence is very clear.`;
 
 // ─── Brain library + community intelligence context ───────────────────────────
 // Fetched in parallel with the CV scan before every analysis. Gives GPT
