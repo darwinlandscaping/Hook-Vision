@@ -72,7 +72,8 @@
         {
           "photosPermission": "HookVision needs access to your photos to analyse sonar screenshots."
         }
-      ]
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

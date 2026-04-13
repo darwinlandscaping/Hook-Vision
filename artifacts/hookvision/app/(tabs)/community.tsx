@@ -22,7 +22,7 @@ import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import * as VideoThumbnails from "expo-video-thumbnails";
-import { Video, ResizeMode } from "expo-av";
+import { VideoView, useVideoPlayer } from "expo-video";
 
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
@@ -135,6 +135,24 @@ function feedTimeAgo(iso: string) {
 const FEED_POLL_MS      = 30_000;         // 30 seconds
 const INSIGHTS_POLL_MS  = 5 * 60_000;    // 5 minutes
 const HOTSPOT_POLL_MS   = 2 * 60_000;    // 2 minutes
+
+// Separate component so useVideoPlayer hook is called unconditionally
+function InnerVideoPlayer({ uri, style }: { uri: string; style: any }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = false;
+    p.play();
+  });
+  return (
+    <VideoView
+      player={player}
+      style={style}
+      contentFit="contain"
+      nativeControls
+      allowsFullscreen
+      allowsPictureInPicture={false}
+    />
+  );
+}
 
 export default function CommunityScreen() {
   const colors  = useColors();
@@ -1107,14 +1125,7 @@ export default function CommunityScreen() {
             <Feather name="x" size={22} color="#fff" />
           </TouchableOpacity>
           {playingVideoUri && (
-            <Video
-              source={{ uri: playingVideoUri }}
-              style={styles.playerVideo}
-              resizeMode={ResizeMode.CONTAIN}
-              useNativeControls
-              shouldPlay
-              isLooping={false}
-            />
+            <InnerVideoPlayer uri={playingVideoUri} style={styles.playerVideo} />
           )}
         </View>
       </Modal>
