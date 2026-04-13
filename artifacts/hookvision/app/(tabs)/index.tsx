@@ -277,10 +277,20 @@ export default function HomeScreen() {
 
       const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Incomplete response from AI — please try again.");
-      const data: FishAnalysis = JSON.parse(jsonMatch[0]);
-      if (!data.species || typeof data.fishCount !== "number") {
-        throw new Error("AI response was cut off — please try again.");
+      if (!jsonMatch) throw new Error("No response from AI — please try again.");
+      let data: FishAnalysis;
+      try {
+        data = JSON.parse(jsonMatch[0]);
+      } catch {
+        throw new Error("Response interrupted — please try again.");
+      }
+      // Coerce fishCount to a number in case the model returned a string
+      if (typeof data.fishCount !== "number") {
+        data.fishCount = parseInt(String(data.fishCount), 10) || 0;
+      }
+      // Fallback species label so the card always renders
+      if (!data.species) {
+        data.species = "Unknown species";
       }
       setAnalysis(data);
 

@@ -159,7 +159,7 @@ router.post("/analyze", async (req, res) => {
     // ~255 tokens of processing overhead per request, targeting <3s total.
     const stream = await openai.chat.completions.create({
       model: "gpt-4.1",
-      max_completion_tokens: 600,
+      max_completion_tokens: 1100,
       stream: true,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
