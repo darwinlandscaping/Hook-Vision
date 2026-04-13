@@ -6,6 +6,7 @@ import {
   Dimensions,
   Easing,
   Image,
+  Linking,
   Modal,
   Platform,
   RefreshControl,
@@ -190,6 +191,14 @@ export default function CommunityScreen() {
   const [playingVideoUri, setPlayingVideoUri] = useState<string | null>(null);
   const playVideo = useCallback((uri: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Remote HTTPS videos → open in system browser/video app (guaranteed to work on Android)
+    if (uri.startsWith("http://") || uri.startsWith("https://")) {
+      Linking.openURL(uri).catch(() => {
+        Alert.alert("Could not open video", "Please check your internet connection.");
+      });
+      return;
+    }
+    // Local file:// recordings → in-app player
     setPlayingVideoUri(uri);
   }, []);
 
@@ -1081,9 +1090,13 @@ export default function CommunityScreen() {
                         activeOpacity={0.75}
                         onPress={(e) => { e.stopPropagation?.(); linkAndWatch(v); }}
                       >
-                        <Feather name="play-circle" size={15} color={v.videoUri ? "#ff8800" : colors.mutedForeground} />
+                        <Feather
+                          name={v.videoUri?.startsWith("http") ? "external-link" : "play-circle"}
+                          size={15}
+                          color={v.videoUri ? "#ff8800" : colors.mutedForeground}
+                        />
                         <Text style={[styles.watchCardBtnText, { color: v.videoUri ? "#ff8800" : colors.mutedForeground }]}>
-                          {v.videoUri ? "▶  WATCH VIDEO" : "▶  LINK & WATCH"}
+                          {v.videoUri?.startsWith("http") ? "▶  WATCH IN BROWSER" : v.videoUri ? "▶  WATCH VIDEO" : "▶  LINK & WATCH"}
                         </Text>
                         {!v.videoUri && (
                           <Text style={[styles.watchCardHint, { color: colors.mutedForeground }]}>tap to link from gallery</Text>
