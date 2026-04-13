@@ -20,6 +20,7 @@ interface FishAnalysis {
   waterTemp?: string;
   bottomType?: string;
   sonarModel?: string | null;
+  sonarMode?: string | null;
   bladderShape?: string | null;
   fishMovement?: string | null;
   crocAlert?: boolean;
@@ -408,27 +409,42 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true }: AnalysisC
           delay={440}
         />
       )}
-      {analysis.sonarModel && (
+      {(analysis.sonarModel || analysis.sonarMode) && (
         <StatRow
           icon={<MaterialCommunityIcons name="radar" size={16} color={colors.accent} />}
           label="Sonar Unit"
-          value={analysis.sonarModel}
+          value={[
+            analysis.sonarModel,
+            analysis.sonarMode && analysis.sonarMode !== "traditional-2d"
+              ? `📡 LIVE SCAN`
+              : analysis.sonarMode === "traditional-2d"
+              ? "2D History"
+              : null,
+          ].filter(Boolean).join("  ·  ")}
           delay={500}
         />
       )}
 
-      {/* ── Arch shape + bladder movement ── */}
+      {/* ── Arch / Body shape + movement — labels adapt for live sonar ── */}
       {!analysis.crocAlert && (analysis.bladderShape || analysis.fishMovement) && (
         <>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="waveform" size={13} color="#00a8ff" />
-            <Text style={[styles.sectionTitle, { color: "#00a8ff" }]}>SONAR SIGNAL</Text>
+            <Text style={[styles.sectionTitle, { color: "#00a8ff" }]}>
+              {analysis.sonarMode && analysis.sonarMode !== "traditional-2d"
+                ? "LIVE SONAR READING"
+                : "SONAR SIGNAL"}
+            </Text>
           </View>
           {analysis.bladderShape && (
             <TacticBox
               icon={<MaterialCommunityIcons name="sine-wave" size={13} color="#00a8ff" />}
-              label="ARCH / BLADDER SHAPE"
+              label={
+                analysis.sonarMode && analysis.sonarMode !== "traditional-2d"
+                  ? "BODY SHAPE & SHADOW"
+                  : "ARCH / BLADDER SHAPE"
+              }
               value={analysis.bladderShape}
               colors={colors}
               delay={150}
@@ -437,7 +453,11 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true }: AnalysisC
           {analysis.fishMovement && (
             <TacticBox
               icon={<MaterialCommunityIcons name="trending-up" size={13} color="#ffd700" />}
-              label="BLADDER MOVEMENT"
+              label={
+                analysis.sonarMode && analysis.sonarMode !== "traditional-2d"
+                  ? "FISH POSTURE & MOVEMENT"
+                  : "BLADDER MOVEMENT"
+              }
               value={analysis.fishMovement}
               colors={colors}
               delay={250}

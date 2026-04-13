@@ -47,6 +47,7 @@ interface FishAnalysis {
   waterTemp?: string;
   bottomType?: string;
   sonarModel?: string | null;
+  sonarMode?: string | null;
   bladderShape?: string | null;
   fishMovement?: string | null;
   crocAlert?: boolean;
