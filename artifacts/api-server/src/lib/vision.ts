@@ -63,7 +63,8 @@ export interface SonarScan {
   }>;
   sonarPaletteCue: string;      // "warm-red" | "cool-blue" | "teal-green" | "neutral"
   echoStrength: string;         // "strong" | "moderate" | "weak"
-  candidateArchCount: number;   // rough count of bright blobs
+  candidateArchCount: number;   // rough count of bright blobs (only valid when opencvAvailable=true)
+  opencvAvailable: boolean;     // false = blob detection was NOT run, counts are unreliable
 }
 
 /**
@@ -220,6 +221,7 @@ export async function analyzeSonarImage(imageBase64: string): Promise<SonarScan 
       sonarPaletteCue,
       echoStrength,
       candidateArchCount,
+      opencvAvailable: !!cv,
     };
   } catch (err) {
     console.error("[vision] analyzeSonarImage failed:", err);
@@ -334,17 +336,25 @@ export function formatCvContext(scan: SonarScan): string {
     ? scan.topBrightRegions
         .map((b, i) => `  #${i + 1}: x=${b.xFrac} y=${b.yFrac} area=${b.size}px`)
         .join("\n")
-    : "  none detected";
+    : scan.opencvAvailable
+      ? "  none detected (OpenCV found no blobs above threshold)"
+      : "  NOT AVAILABLE — OpenCV blob detection did not run";
+
+  const blobCountLine = scan.opencvAvailable
+    ? `Candidate arches: ${scan.candidateArchCount} bright blobs found (OpenCV measured)`
+    : `Candidate arches: ⚠ BLOB DETECTION UNAVAILABLE — OpenCV WASM not loaded. This count is MEANINGLESS. Do NOT use it to infer fish presence or absence. Ignore entirely and rely solely on your visual analysis of the images.`;
 
   return `
-═══ CV PRE-SCAN (TF.js + OpenCV — measured pixel data) ═══
+═══ CV PRE-SCAN (TF.js pixel stats — measured data) ═══
 Mean brightness : ${scan.meanBrightness}/255 (echo strength: ${scan.echoStrength})
 Strong-echo %   : ${scan.brightPixelPct}% pixels above threshold
 Palette cue     : ${scan.sonarPaletteCue} → R=${scan.redDominance.toFixed(2)} B=${scan.blueDominance.toFixed(2)}
-Candidate arches: ${scan.candidateArchCount} bright blobs found
+${blobCountLine}
 Top bright regions (x/y as fraction of image, 0=top-left):
 ${blobSummary}
-USE these positions to cross-reference arch locations with depth scale. Strong arches at low yFrac = shallow; high yFrac = deeper.`.trim();
+${scan.opencvAvailable
+  ? "USE these positions to cross-reference arch locations with depth scale. Strong arches at low yFrac = shallow; high yFrac = deeper."
+  : "⚠ IMPORTANT: Because blob detection is unavailable, YOU MUST search every pixel of every provided image manually. Scan left half AND right half AND tight crop. Assume there are fish until proven otherwise — the bright-echo % above is your only signal hint."}`.trim();
 }
 
 // ─── Status check ─────────────────────────────────────────────────────────────

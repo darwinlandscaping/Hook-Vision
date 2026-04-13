@@ -362,6 +362,13 @@ This rule is absolute. Every response must contain a meaningful species string.
 Depth is also required: always read the depth scale. If scale is not visible, estimate from context and note "(estimated)".
 fishCount: count visible arches (2D) or visible bodies (live sonar). Return 0 only if you are certain there are no fish.
 
+═══ CRITICAL OVERRIDE — CV BLOB COUNT ═══
+THE CV PRE-SCAN BLOB COUNT IS OFTEN ZERO BECAUSE OpenCV IS NOT AVAILABLE ON THIS SERVER.
+A count of "0 blobs" or "BLOB DETECTION UNAVAILABLE" from the CV block means NOTHING about fish presence.
+NEVER conclude "No fish detected" or lower your confidence because the blob count is 0 or missing.
+Instead: LOOK HARDER at the images. Search every row of IMAGE 2, IMAGE 3, and IMAGE 4 methodically.
+The only valid reason to return "No fish detected" is if YOU can visually confirm there are no arches, blobs, or body shapes anywhere in any of the 4 provided images after a thorough search.
+
 ═══ RESPONSE ═══
 Return ONLY valid JSON — no markdown fences, no explanation, no surrounding text:
 {
@@ -596,11 +603,11 @@ router.post("/analyze", async (req, res) => {
 
     // Build zoom context note so GPT knows what it's looking at
     const zoomNote = zoomCrops
-      ? `\n\nZOOM CROPS ATTACHED: You have been given 3 images below.\n` +
-        `  IMAGE 1 (FULL FRAME): Complete sonar display — use for overall layout and scale.\n` +
-        `  IMAGE 2 (LEFT PANEL ZOOM): Left half of the screen at 2× detail — examine every arch, blob, shadow, and body shape here first.\n` +
-        `  IMAGE 3 (RIGHT PANEL ZOOM): Right half at 2× detail — compare with the left panel.\n` +
-        `  IMAGE 4 (TIGHT CROP): Auto-cropped around the brightest activity region (most active: ${zoomCrops.mostActive} side)${zoomCrops.blobRegion ? ` — pixel box x:${zoomCrops.blobRegion.x} y:${zoomCrops.blobRegion.y} w:${zoomCrops.blobRegion.w} h:${zoomCrops.blobRegion.h}` : ""}. THIS IS YOUR PRIMARY ID SURFACE — zoom into every detail here.\n` +
+      ? `\n\nZOOM CROPS ATTACHED: You have been given 4 images below.\n` +
+        `  IMAGE 1 (FULL FRAME): Complete sonar display — use for overall layout, depth scale, and brand ID.\n` +
+        `  IMAGE 2 (LEFT PANEL ZOOM): Left half of the screen at 2× detail — scan EVERY row methodically for any arch shape, curved return, or blob. Do not skip a single row.\n` +
+        `  IMAGE 3 (RIGHT PANEL ZOOM): Right half at 2× detail — same rigorous row-by-row scan.\n` +
+        `  IMAGE 4 (TIGHT CROP): Auto-cropped around the brightest activity region (most active: ${zoomCrops.mostActive} side)${zoomCrops.blobRegion ? ` — pixel box x:${zoomCrops.blobRegion.x} y:${zoomCrops.blobRegion.y} w:${zoomCrops.blobRegion.w} h:${zoomCrops.blobRegion.h}` : ""}. THIS IS YOUR PRIMARY ID SURFACE — examine pixel-by-pixel for any arch curvature, shadow void, or blob shape.\n` +
         `  INSTRUCTION: Identify fish using the TIGHT CROP and PANEL ZOOM that contains them. The full frame gives context (depth scale, palette, temperature). Never skip the zoomed images.`
       : "";
 
