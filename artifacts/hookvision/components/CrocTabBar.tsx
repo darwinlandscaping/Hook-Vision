@@ -1,291 +1,349 @@
+/**
+ * CrocTabBar — Realistic saltwater croc jaw navigation bar
+ * Curved bezier teeth · tongue · palate ridges · saliva · hex scales · gum veins
+ */
 import React from "react";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import {
-  View,
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  Dimensions,
-} from "react-native";
+import { View, TouchableOpacity, Text, StyleSheet, Dimensions } from "react-native";
 import Svg, {
-  Defs,
-  LinearGradient,
-  RadialGradient,
-  Stop,
-  Rect,
-  Polygon,
-  Ellipse,
-  Circle,
-  Path,
-  G,
+  Defs, LinearGradient, RadialGradient, Stop,
+  Rect, Path, Ellipse, Circle, G, Line,
 } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 
-// ─── Croc colour palette ───────────────────────────────────────────────────────
-const C = {
-  skinTop:      "#151f0a",   // very dark olive at top edge
-  skinMid:      "#243312",   // dark croc green
-  skinLow:      "#1a2710",   // darker green below scale row
-  scaleStroke:  "#0d1808",   // scale outline
-  scaleFill:    "#1e2c0f",   // scale interior
-  gumDark:      "#4a0808",   // dark gum at tooth roots
-  gumMid:       "#7a1010",   // mid gum
-  mouthTop:     "#5c0e0e",   // top of mouth interior (behind teeth)
-  mouthMid:     "#922020",   // mid mouth
-  mouthLow:     "#6e1515",   // lower mouth shadow
-  ridgeLight:   "#a02828",   // gum ridge highlight
-  ridgeDark:    "#500a0a",   // gum ridge shadow
-  toothCream:   "#f2ead4",   // tooth light tip
-  toothBase:    "#c8b87a",   // tooth base (yellowed)
-  toothShadow:  "#8a7030",   // tooth root shadow
-  toothShine:   "#ffffff",   // tooth highlight glint
-  activeGlow:   "#00d4aa",   // active tooth glow
-  activeTint:   "#b0fff0",   // active tooth fill
-  iconActive:   "#00d4aa",
-  iconInactive: "#c8a898",
-  labelActive:  "#00d4aa",
-  labelInactive:"#9a7868",
+// ─── Palette ──────────────────────────────────────────────────────────────────
+const P = {
+  skinTop:      "#0e160a",
+  skinMid:      "#1d2e0e",
+  skinLow:      "#263a10",
+  scaleStroke:  "#0a0f07",
+  scaleFill:    "#192509",
+  jawBone:      "#1a2c0c",
+  gumBase:      "#3d0808",
+  gumMid:       "#6e1010",
+  gumLight:     "#9a2020",
+  mouthDeep:    "#3c0808",
+  mouthMid:     "#7a1616",
+  mouthLight:   "#b02424",
+  palateRidge:  "#8a1c1c",
+  tongueBase:   "#a01818",
+  tongueMid:    "#c83030",
+  tongueTip:    "#e04848",
+  tongueShine:  "#ff6060",
+  salivaColor:  "#e8e0d8c0",
+  veinColor:    "#4a0808",
+  toothIvory:   "#f5efd8",
+  toothMid:     "#dfd0a0",
+  toothBase:    "#c0a85c",
+  toothRoot:    "#8a7030",
+  toothShine:   "#ffffffcc",
+  toothActive:  "#00f5c8",
+  toothActGlow: "#00d4aa",
+  activeIcon:   "#00d4aa",
+  inactiveIcon: "#c8a898",
+  activeLbl:    "#00d4aa",
+  inactiveLbl:  "#8a6858",
 };
 
-// ─── Tab metadata ──────────────────────────────────────────────────────────────
-const TAB_META: Record<string, { label: string; icon: (c: string, s: number) => React.ReactNode }> = {
-  index:     { label: "Scan",    icon: (c, s) => <MaterialCommunityIcons name="radar" size={s} color={c} /> },
-  live:      { label: "Live",    icon: (c, s) => <Feather name="video" size={s} color={c} /> },
-  home:      { label: "Home",    icon: (c, s) => <Feather name="home" size={s} color={c} /> },
-  buff:      { label: "Boof",    icon: (c, s) => <MaterialCommunityIcons name="shopping" size={s} color={c} /> },
-  tides:     { label: "Tides",   icon: (c, s) => <MaterialCommunityIcons name="waves" size={s} color={c} /> },
-  species:   { label: "Species", icon: (c, s) => <MaterialCommunityIcons name="fish" size={s} color={c} /> },
-  barra:     { label: "Barra",   icon: (c, s) => <MaterialCommunityIcons name="crosshairs-gps" size={s} color={c} /> },
+// ─── Tab config ───────────────────────────────────────────────────────────────
+const META: Record<string, { label: string; icon: (c: string, s: number) => React.ReactNode }> = {
+  index:     { label: "Scan",    icon: (c, s) => <MaterialCommunityIcons name="radar"             size={s} color={c} /> },
+  live:      { label: "Live",    icon: (c, s) => <Feather                name="video"             size={s} color={c} /> },
+  home:      { label: "Home",    icon: (c, s) => <Feather                name="home"              size={s} color={c} /> },
+  buff:      { label: "Boof",    icon: (c, s) => <MaterialCommunityIcons name="shopping"          size={s} color={c} /> },
+  tides:     { label: "Tides",   icon: (c, s) => <MaterialCommunityIcons name="waves"             size={s} color={c} /> },
+  species:   { label: "Species", icon: (c, s) => <MaterialCommunityIcons name="fish"              size={s} color={c} /> },
+  barra:     { label: "Barra",   icon: (c, s) => <MaterialCommunityIcons name="crosshairs-gps"   size={s} color={c} /> },
   zones:     { label: "Zones",   icon: (c, s) => <MaterialCommunityIcons name="map-marker-radius" size={s} color={c} /> },
-  forecast:  { label: "Fishy",   icon: (c, s) => <MaterialCommunityIcons name="weather-windy" size={s} color={c} /> },
-  demo:      { label: "Demo",    icon: (c, s) => <MaterialCommunityIcons name="image-multiple" size={s} color={c} /> },
-  history:   { label: "History", icon: (c, s) => <Feather name="clock" size={s} color={c} /> },
-  community: { label: "Intel",   icon: (c, s) => <MaterialCommunityIcons name="brain" size={s} color={c} /> },
+  forecast:  { label: "Fishy",   icon: (c, s) => <MaterialCommunityIcons name="weather-windy"    size={s} color={c} /> },
+  demo:      { label: "Demo",    icon: (c, s) => <MaterialCommunityIcons name="image-multiple"    size={s} color={c} /> },
+  history:   { label: "History", icon: (c, s) => <Feather                name="clock"             size={s} color={c} /> },
+  community: { label: "Intel",   icon: (c, s) => <MaterialCommunityIcons name="brain"             size={s} color={c} /> },
 };
 
-// Tooth height profile — varies to mimic real croc jaw irregular spacing
-const TOOTH_H_PROFILE = [24, 32, 20, 36, 22, 28, 20, 36, 22, 30, 20, 28];
+// Fang height per slot — irregular like a real croc
+const FANG_H = [30, 42, 26, 48, 28, 38, 24, 48, 28, 40, 26, 36];
 
-const SCREEN_W = Dimensions.get("window").width;
+const W = Dimensions.get("window").width;
 
-// ─── Scale row helper ──────────────────────────────────────────────────────────
-function ScaleRow({ y, w, count }: { y: number; w: number; count: number }) {
-  const scaleW = w / count;
-  return (
-    <>
-      {Array.from({ length: count }).map((_, i) => {
-        const cx = i * scaleW + scaleW / 2;
-        return (
-          <G key={i}>
-            <Ellipse cx={cx} cy={y} rx={scaleW * 0.38} ry={3.5} fill={C.scaleFill} stroke={C.scaleStroke} strokeWidth={0.6} />
-          </G>
-        );
-      })}
-    </>
-  );
+// ─── Bezier tooth path ────────────────────────────────────────────────────────
+function toothPath(lx: number, rx: number, baseY: number, h: number): string {
+  const cx   = (lx + rx) / 2;
+  const tipY = baseY + h;
+  const bW   = rx - lx;          // base width
+  const mid  = baseY + h * 0.46; // control point height
+
+  // Left side curves slightly outward; right side mirrors
+  return [
+    `M ${lx} ${baseY}`,
+    `C ${lx - bW * 0.08} ${mid} ${cx - bW * 0.07} ${tipY - 6} ${cx} ${tipY}`,
+    `C ${cx + bW * 0.07} ${tipY - 6} ${rx + bW * 0.08} ${mid} ${rx} ${baseY}`,
+    "Z",
+  ].join(" ");
 }
 
-// ─── Main CrocTabBar component ─────────────────────────────────────────────────
+// Saliva drip between slots i and i+1
+function salivaDrip(slotW: number, i: number, baseY: number, len: number): string {
+  const x = (i + 1) * slotW;
+  return `M ${x - 1} ${baseY} Q ${x} ${baseY + len * 0.6} ${x} ${baseY + len} Q ${x} ${baseY + len * 1.1} ${x + 1} ${baseY + len * 0.95} L ${x + 1.5} ${baseY} Z`;
+}
+
+// Scale hex grid on skin band
+function ScaleHex({ skinH, w }: { skinH: number; w: number }) {
+  const cols = Math.ceil(w / 22);
+  const rows = 2;
+  const nodes: React.ReactNode[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const ox = r % 2 === 0 ? 0 : 11;
+      const cx = c * 22 + ox + 4;
+      const cy = skinH * (r === 0 ? 0.3 : 0.75);
+      nodes.push(
+        <Ellipse key={`${r}-${c}`} cx={cx} cy={cy} rx={7} ry={4}
+          fill={P.scaleFill} stroke={P.scaleStroke} strokeWidth={0.7} opacity={0.9} />
+      );
+    }
+  }
+  return <>{nodes}</>;
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const routes = state.routes;
-  const n = routes.length;
+  const n      = routes.length;
 
-  const slotW = SCREEN_W / n;
-  const maxToothH = Math.max(...TOOTH_H_PROFILE.slice(0, n));
-  const SKIN_H  = 14;   // croc skin band height
-  const ICON_H  = 16;
-  const LABEL_H = 10;
-  const INNER_PAD = 6;
-  const BOTTOM_PAD = 6 + insets.bottom;
-  const TEETH_ZONE = maxToothH + 4; // teeth + gum buffer
-  const BAR_H = SKIN_H + TEETH_ZONE + INNER_PAD + ICON_H + LABEL_H + BOTTOM_PAD;
+  const slotW      = W / n;
+  const maxFang    = Math.max(...FANG_H.slice(0, n));
+  const SKIN_H     = 20;
+  const GUM_BUF    = 6;           // gum strip above teeth
+  const TEETH_ZONE = maxFang + GUM_BUF;
+  const ICON_SZ    = 18;
+  const LBL_H      = 12;
+  const PAD_TOP    = 6;
+  const PAD_BOT    = 8 + insets.bottom;
+  const BAR_H      = SKIN_H + TEETH_ZONE + PAD_TOP + ICON_SZ + LBL_H + PAD_BOT;
+  const iconY      = SKIN_H + TEETH_ZONE + PAD_TOP;   // top of icon area from bar top
 
-  // y-position where icons start (below the deepest tooth tip + buffer)
-  const iconY = SKIN_H + TEETH_ZONE + INNER_PAD;
+  // Drip slots — pick a few gaps for saliva drips (visual variety)
+  const dripSlots = [1, 3, 6, 9];
 
   return (
     <View style={{ width: "100%", height: BAR_H, overflow: "hidden" }}>
-      {/* ── SVG mouth background + teeth ── */}
+      {/* ── SVG layer ── */}
       <Svg
         style={StyleSheet.absoluteFill}
-        width={SCREEN_W}
+        width={W}
         height={BAR_H}
-        viewBox={`0 0 ${SCREEN_W} ${BAR_H}`}
+        viewBox={`0 0 ${W} ${BAR_H}`}
       >
         <Defs>
-          {/* Mouth interior gradient */}
-          <LinearGradient id="mouthGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0"    stopColor={C.mouthTop} />
-            <Stop offset="0.45" stopColor={C.mouthMid} />
-            <Stop offset="1"    stopColor={C.mouthLow} />
+          {/* Mouth interior */}
+          <LinearGradient id="mouth" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0"    stopColor={P.mouthDeep}  />
+            <Stop offset="0.38" stopColor={P.mouthMid}   />
+            <Stop offset="1"    stopColor={P.mouthDeep}  />
           </LinearGradient>
-          {/* Croc skin gradient */}
-          <LinearGradient id="skinGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0"   stopColor={C.skinTop} />
-            <Stop offset="0.6" stopColor={C.skinMid} />
-            <Stop offset="1"   stopColor={C.skinLow} />
+          {/* Croc skin */}
+          <LinearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0"   stopColor={P.skinTop} />
+            <Stop offset="0.5" stopColor={P.skinMid} />
+            <Stop offset="1"   stopColor={P.skinLow} />
           </LinearGradient>
-          {/* Tooth gradient */}
-          <LinearGradient id="toothGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0"   stopColor={C.toothCream} />
-            <Stop offset="0.65" stopColor="#ddd0a0" />
-            <Stop offset="1"   stopColor={C.toothBase} />
+          {/* Normal tooth */}
+          <LinearGradient id="tooth" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0"    stopColor={P.toothIvory} />
+            <Stop offset="0.55" stopColor={P.toothMid}   />
+            <Stop offset="1"    stopColor={P.toothBase}  />
           </LinearGradient>
-          {/* Active tooth gradient */}
-          <LinearGradient id="toothActiveGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0"   stopColor="#d0fff6" />
-            <Stop offset="0.5" stopColor="#80ffe8" />
-            <Stop offset="1"   stopColor="#40d4b8" />
+          {/* Active tooth */}
+          <LinearGradient id="toothActive" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0"   stopColor="#c0fff4" />
+            <Stop offset="0.5" stopColor="#50e8cc" />
+            <Stop offset="1"   stopColor="#18b898" />
           </LinearGradient>
-          {/* Gum gradient */}
-          <LinearGradient id="gumGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={C.gumDark} />
-            <Stop offset="1" stopColor={C.gumMid}  />
+          {/* Gum */}
+          <LinearGradient id="gum" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={P.gumBase}  />
+            <Stop offset="1" stopColor={P.gumLight} />
           </LinearGradient>
+          {/* Tongue */}
+          <RadialGradient id="tongue" cx="50%" cy="40%" r="55%">
+            <Stop offset="0"   stopColor={P.tongueShine} stopOpacity={0.5} />
+            <Stop offset="0.4" stopColor={P.tongueTip}   />
+            <Stop offset="0.7" stopColor={P.tongueMid}   />
+            <Stop offset="1"   stopColor={P.tongueBase}  />
+          </RadialGradient>
         </Defs>
 
-        {/* ── Mouth interior background ── */}
-        <Rect x="0" y="0" width={SCREEN_W} height={BAR_H} fill="url(#mouthGrad)" />
+        {/* ── Mouth interior ── */}
+        <Rect x="0" y="0" width={W} height={BAR_H} fill="url(#mouth)" />
 
-        {/* ── Gum ridges — horizontal texture lines ── */}
-        {[0.42, 0.58, 0.75, 0.88].map((pct, i) => (
-          <Rect
+        {/* ── Tongue (wide ellipse in the lower mouth) ── */}
+        <Ellipse
+          cx={W / 2} cy={BAR_H * 0.76}
+          rx={W * 0.28} ry={BAR_H * 0.18}
+          fill="url(#tongue)"
+          opacity={0.75}
+        />
+        {/* Tongue tip groove */}
+        <Path
+          d={`M ${W / 2} ${BAR_H * 0.6} Q ${W / 2} ${BAR_H * 0.9} ${W / 2} ${BAR_H * 0.95}`}
+          stroke={P.tongueBase} strokeWidth={1.5} fill="none" opacity={0.6}
+        />
+
+        {/* ── Palate ridges (curved horizontal lines) ── */}
+        {[0.50, 0.64, 0.76, 0.87].map((pct, i) => {
+          const y = BAR_H * pct;
+          const sag = 4 + i * 1.5;
+          return (
+            <Path
+              key={i}
+              d={`M 0 ${y} Q ${W / 2} ${y + sag} ${W} ${y}`}
+              stroke={P.palateRidge}
+              strokeWidth={1.4}
+              fill="none"
+              opacity={0.45}
+            />
+          );
+        })}
+
+        {/* ── Gum blood vessels / veins ── */}
+        {[W * 0.12, W * 0.28, W * 0.55, W * 0.72, W * 0.88].map((x, i) => (
+          <Path
             key={i}
-            x="0"
-            y={BAR_H * pct}
-            width={SCREEN_W}
-            height={1.2}
-            fill={i % 2 === 0 ? C.ridgeLight : C.ridgeDark}
-            opacity={0.5}
+            d={`M ${x} ${SKIN_H + 4} Q ${x + 3} ${SKIN_H + 14} ${x - 2} ${SKIN_H + 22}`}
+            stroke={P.veinColor} strokeWidth={0.7} fill="none" opacity={0.5}
           />
         ))}
 
-        {/* ── Gum base strip (just below skin, around tooth roots) ── */}
-        <Rect x="0" y={SKIN_H - 2} width={SCREEN_W} height={10} fill="url(#gumGrad)" opacity={0.9} />
+        {/* ── Gum strip just below skin ── */}
+        <Rect x="0" y={SKIN_H - 4} width={W} height={GUM_BUF + 8} fill="url(#gum)" opacity={0.95} />
 
-        {/* ── Teeth ── */}
+        {/* ── Saliva drips between teeth ── */}
+        {dripSlots.map((slot) => {
+          if (slot >= n) return null;
+          const fH = (FANG_H[slot % FANG_H.length] + FANG_H[(slot + 1) % FANG_H.length]) / 2;
+          const dripLen = fH * 0.55;
+          return (
+            <Path
+              key={slot}
+              d={salivaDrip(slotW, slot, SKIN_H + 2, dripLen)}
+              fill={P.salivaColor}
+            />
+          );
+        })}
+
+        {/* ── Teeth (drawn back-to-front, shadow first) ── */}
         {routes.map((route, i) => {
           const isActive = state.index === i;
-          const toothH   = TOOTH_H_PROFILE[i % TOOTH_H_PROFILE.length];
-          const cx       = i * slotW + slotW / 2;
-          const gapSide  = slotW * 0.14;
-          const leftX    = i * slotW + gapSide;
-          const rightX   = (i + 1) * slotW - gapSide;
-          const tipX     = cx;
-          const tipY     = SKIN_H + toothH;
-          const baseY    = SKIN_H;
+          const fH  = FANG_H[i % FANG_H.length];
+          const gap = slotW * 0.16;
+          const lx  = i * slotW + gap;
+          const rx  = (i + 1) * slotW - gap;
+          const cx  = i * slotW + slotW / 2;
+          const bY  = SKIN_H + GUM_BUF - 2;
+          const tipY = bY + fH;
 
-          const toothPts = `${leftX},${baseY} ${tipX},${tipY} ${rightX},${baseY}`;
-          // Shadow tooth (offset slightly for depth illusion)
-          const shadowPts = `${leftX + 1.5},${baseY} ${tipX + 1},${tipY + 2.5} ${rightX + 0.5},${baseY}`;
+          const tp   = toothPath(lx, rx, bY, fH);
+          // shadow tooth slightly down+right
+          const spLx = lx + 1.5;
+          const spRx = rx + 1;
+          const sp   = toothPath(spLx, spRx, bY, fH + 2.5);
 
           return (
             <G key={route.key}>
-              {/* Gum socket at tooth base */}
-              <Ellipse
-                cx={cx}
-                cy={baseY + 1}
-                rx={slotW * 0.3}
-                ry={3.5}
-                fill={C.gumDark}
-                opacity={0.8}
-              />
-
-              {/* Drop shadow tooth */}
-              <Polygon points={shadowPts} fill="#000000" opacity={0.35} />
+              {/* Drop shadow */}
+              <Path d={sp} fill="#000" opacity={0.38} />
 
               {/* Main tooth body */}
-              <Polygon
-                points={toothPts}
-                fill={isActive ? "url(#toothActiveGrad)" : "url(#toothGrad)"}
-              />
-
-              {/* Active teal glow edge */}
-              {isActive && (
-                <Polygon points={toothPts} fill={C.activeGlow} opacity={0.22} />
-              )}
-
-              {/* Tooth shine glint — left edge */}
-              <Path
-                d={`M ${leftX + 1} ${baseY} L ${leftX + 3} ${baseY} L ${tipX - 2} ${tipY - 5} L ${tipX - 4} ${tipY - 4} Z`}
-                fill={C.toothShine}
-                opacity={0.5}
-              />
+              <Path d={tp} fill={isActive ? "url(#toothActive)" : "url(#tooth)"} />
 
               {/* Tooth root darkening */}
-              <Rect
-                x={leftX}
-                y={baseY - 3}
-                width={rightX - leftX}
-                height={5}
-                fill={C.toothShadow}
-                opacity={0.45}
+              <Path
+                d={toothPath(lx, rx, bY, Math.min(fH, 8))}
+                fill={P.toothRoot}
+                opacity={0.55}
               />
 
-              {/* Active: teal dot on tooth tip */}
+              {/* Shine glint — left edge of tooth */}
+              <Path
+                d={`M ${lx + 1} ${bY} C ${lx - 0.5} ${bY + fH * 0.3} ${cx - 2.5} ${tipY - 10} ${cx - 1.5} ${tipY - 2}`}
+                stroke={P.toothShine}
+                strokeWidth={1.2}
+                fill="none"
+                strokeLinecap="round"
+                opacity={0.65}
+              />
+
+              {/* Active: full teal tint + glowing tip dot */}
               {isActive && (
-                <Circle
-                  cx={tipX}
-                  cy={tipY - 3}
-                  r={2.5}
-                  fill={C.activeGlow}
-                  opacity={0.9}
-                />
+                <>
+                  <Path d={tp} fill={P.toothActive} opacity={0.2} />
+                  <Circle cx={cx} cy={tipY - 4} r={3.5} fill={P.toothActGlow} opacity={0.95} />
+                </>
               )}
             </G>
           );
         })}
 
-        {/* ── Croc skin band at top ── */}
-        <Rect x="0" y="0" width={SCREEN_W} height={SKIN_H} fill="url(#skinGrad)" />
+        {/* ── Croc skin band ── */}
+        <Rect x="0" y="0" width={W} height={SKIN_H} fill="url(#skin)" />
 
-        {/* ── Scale rows on skin ── */}
-        <ScaleRow y={SKIN_H * 0.33} w={SCREEN_W} count={Math.floor(SCREEN_W / 18)} />
-        <ScaleRow y={SKIN_H * 0.72} w={SCREEN_W} count={Math.floor(SCREEN_W / 14)} />
+        {/* ── Hex scales on skin ── */}
+        <ScaleHex skinH={SKIN_H} w={W} />
 
-        {/* ── Top skin border ── */}
-        <Rect x="0" y="0" width={SCREEN_W} height={1.5} fill="#0a1005" />
+        {/* ── Skin top border (very dark) ── */}
+        <Rect x="0" y="0" width={W} height={1.5} fill="#050805" />
 
-        {/* ── Vertical dividers between teeth (croc jaw bone lines) ── */}
+        {/* ── Jawbone suture lines between teeth slots ── */}
         {routes.map((_, i) => {
           if (i === 0) return null;
           const x = i * slotW;
           return (
-            <Rect key={i} x={x - 0.5} y={SKIN_H} width={1} height={6} fill="#2a0808" opacity={0.4} />
+            <Rect
+              key={i} x={x - 0.4} y={SKIN_H} width={0.8}
+              height={GUM_BUF + 4} fill="#1a0303" opacity={0.5}
+            />
           );
         })}
+
+        {/* ── Mucus sheen — semi-transparent gloss across whole bar bottom ── */}
+        <Path
+          d={`M 0 ${BAR_H} Q ${W * 0.25} ${BAR_H - 5} ${W * 0.5} ${BAR_H} Q ${W * 0.75} ${BAR_H + 5} ${W} ${BAR_H}`}
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth={2}
+          opacity={0.06}
+        />
       </Svg>
 
-      {/* ── Tab touch targets + icons ── */}
-      <View style={[StyleSheet.absoluteFill, styles.tabRow]}>
+      {/* ── Touchable tab buttons ── */}
+      <View style={[StyleSheet.absoluteFill, styles.row]}>
         {routes.map((route, i) => {
-          const isActive  = state.index === i;
-          const meta      = TAB_META[route.name] ?? { label: route.name, icon: (c: string, s: number) => <Feather name="circle" size={s} color={c} /> };
-          const iconColor = isActive ? C.iconActive  : C.iconInactive;
-          const lblColor  = isActive ? C.labelActive : C.labelInactive;
+          const isActive = state.index === i;
+          const meta     = META[route.name] ?? {
+            label: route.name,
+            icon:  (c: string, s: number) => <Feather name="circle" size={s} color={c} />,
+          };
+          const iconColor = isActive ? P.activeIcon   : P.inactiveIcon;
+          const lblColor  = isActive ? P.activeLbl    : P.inactiveLbl;
 
           const onPress = () => {
-            const event = navigation.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!isActive && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
+            const ev = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+            if (!isActive && !ev.defaultPrevented) navigation.navigate(route.name);
           };
 
           return (
             <TouchableOpacity
               key={route.key}
-              style={[styles.tab, { width: slotW, paddingTop: iconY, paddingBottom: BOTTOM_PAD }]}
+              style={[styles.tab, { width: slotW, paddingTop: iconY, paddingBottom: PAD_BOT }]}
               onPress={onPress}
-              activeOpacity={0.65}
+              activeOpacity={0.6}
             >
-              {meta.icon(iconColor, 13)}
-              <Text style={[styles.label, { color: lblColor }]} numberOfLines={1} adjustsFontSizeToFit>
+              {meta.icon(iconColor, ICON_SZ)}
+              <Text style={[styles.lbl, { color: lblColor }]} numberOfLines={1} adjustsFontSizeToFit>
                 {meta.label}
               </Text>
             </TouchableOpacity>
@@ -297,20 +355,12 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
 }
 
 const styles = StyleSheet.create({
-  tabRow: {
-    flexDirection: "row",
-    alignItems:    "flex-start",
-  },
-  tab: {
-    alignItems:  "center",
-    gap:          1,
-    overflow:    "hidden",
-  },
-  label: {
-    fontSize:       6.5,
-    fontFamily:     "Inter_600SemiBold",
-    letterSpacing:  0.3,
-    textAlign:      "center",
-    minWidth:       1,
+  row: { flexDirection: "row", alignItems: "flex-start" },
+  tab: { alignItems: "center", gap: 2, overflow: "hidden" },
+  lbl: {
+    fontSize:      7.5,
+    fontFamily:    "Inter_600SemiBold",
+    letterSpacing: 0.25,
+    textAlign:     "center",
   },
 });
