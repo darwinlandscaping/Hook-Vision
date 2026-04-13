@@ -85,6 +85,11 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
   const insets  = useSafeAreaInsets();
   const routes  = state.routes;
 
+  // Strip hidden routes (href: null — e.g. "fishy", "map") so they don't occupy slots
+  const visibleRoutes = routes.filter(
+    r => (descriptors[r.key].options as any).href !== null
+  );
+
   // Layout constants
   const SKIN_H    = 20;
   const ICON_SZ   = 24;
@@ -95,9 +100,9 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
   const PAD_BOT   = 6 + insets.bottom;
   const BAR_H     = SKIN_H + ROW_H + DIV_H + ROW_H + PAD_BOT;
 
-  // Split routes into two rows
-  const row1 = routes.slice(0, COLS);
-  const row2 = routes.slice(COLS);
+  // Split visible routes into two rows
+  const row1 = visibleRoutes.slice(0, COLS);
+  const row2 = visibleRoutes.slice(COLS);
 
   const row1Y  = SKIN_H;
   const divY   = SKIN_H + ROW_H;
