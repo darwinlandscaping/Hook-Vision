@@ -9,7 +9,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const HV_LOGO = require("../../assets/images/hv-logo2-nobg.png");
 
 // ─── Brand palette ────────────────────────────────────────────────────────────
 const C = {
@@ -314,7 +317,7 @@ export default function BuffScreen() {
       <View style={styles.header}>
         <View style={styles.headerStripe} />
         <View style={styles.headerInner}>
-          <Text style={styles.headerBrand}>HOOK<Text style={{ color: C.gold }}>VISION</Text></Text>
+          <Image source={HV_LOGO} style={styles.headerLogo} resizeMode="contain" />
           <View style={styles.headerRow}>
             <Text style={styles.headerTitle}>BOOF</Text>
             <View style={styles.headerBadge}>
@@ -401,8 +404,8 @@ const styles = StyleSheet.create({
   headerStripe: { height: 4, backgroundColor: C.red },
   headerStripeBottom: { height: 3, backgroundColor: C.pink },
   headerInner: { paddingHorizontal: 18, paddingVertical: 14, backgroundColor: "#0f050c" },
-  headerBrand: { fontSize: 11, fontFamily: "Inter_700Bold", color: C.muted, letterSpacing: 3 },
-  headerRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 2 },
+  headerLogo: { width: 140, height: 36 },
+  headerRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
   headerTitle: { fontSize: 42, fontFamily: "Oswald_700Bold", color: C.white, lineHeight: 44 },
   headerBadge: {
     backgroundColor: C.pink, paddingHorizontal: 10, paddingVertical: 5,

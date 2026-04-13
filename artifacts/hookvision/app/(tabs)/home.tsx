@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,8 @@ import { useColors } from "@/hooks/useColors";
 import { LilyPadCard } from "@/components/LilyPadCard";
 import { NarratorButton } from "@/components/NarratorButton";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
+
+const HV_LOGO = require("@/assets/images/hv-logo2-nobg.png");
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -143,8 +146,8 @@ export default function HomeScreen() {
     >
       {/* ── HEADER ── */}
       <View style={S.header}>
-        <View>
-          <Text style={S.brand}>HOOK<Text style={S.brandAccent}>VISION</Text></Text>
+        <View style={S.headerLeft}>
+          <Image source={HV_LOGO} style={S.logo} resizeMode="contain" />
           <View style={S.liveRow}>
             <LiveDot />
             <Text style={[S.tagline, { color: colors.mutedForeground }]}>
@@ -343,9 +346,9 @@ const S = StyleSheet.create({
   content: { paddingHorizontal: 14, gap: 14 },
 
   header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
-  brand: { fontSize: 32, fontFamily: "Oswald_700Bold", color: "#ffffff", letterSpacing: 1 },
-  brandAccent: { color: "#00d4aa" },
-  liveRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 },
+  headerLeft: { flexDirection: "column", gap: 4 },
+  logo: { width: 160, height: 42 },
+  liveRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#00d4aa" },
   tagline: { fontSize: 11, fontFamily: "Inter_400Regular" },
   analyzeBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
