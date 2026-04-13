@@ -30,11 +30,11 @@ const P = {
   tongueTip:    "#ff8c30",
   tongueShine:  "#ffb060",
   veinColor:    "#6a2800",
-  activeIcon:   "#00d4aa",
-  inactiveIcon: "#d4a898",
-  activeLbl:    "#00d4aa",
-  inactiveLbl:  "#9a7868",
-  activeBg:     "#00d4aa22",
+  activeIcon:   "#000000",
+  inactiveIcon: "#000000",
+  activeLbl:    "#000000",
+  inactiveLbl:  "#000000",
+  activeBg:     "#ffffff33",
   divider:      "#7a3800",
 };
 
