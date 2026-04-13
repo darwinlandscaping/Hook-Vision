@@ -20,6 +20,8 @@ interface FishAnalysis {
   waterTemp?: string;
   bottomType?: string;
   sonarModel?: string | null;
+  bladderShape?: string | null;
+  fishMovement?: string | null;
   crocAlert?: boolean;
   crocWarning?: string | null;
   archReasoning?: string;
@@ -413,6 +415,35 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true }: AnalysisC
           value={analysis.sonarModel}
           delay={500}
         />
+      )}
+
+      {/* ── Arch shape + bladder movement ── */}
+      {!analysis.crocAlert && (analysis.bladderShape || analysis.fishMovement) && (
+        <>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="waveform" size={13} color="#00a8ff" />
+            <Text style={[styles.sectionTitle, { color: "#00a8ff" }]}>SONAR SIGNAL</Text>
+          </View>
+          {analysis.bladderShape && (
+            <TacticBox
+              icon={<MaterialCommunityIcons name="sine-wave" size={13} color="#00a8ff" />}
+              label="ARCH / BLADDER SHAPE"
+              value={analysis.bladderShape}
+              colors={colors}
+              delay={150}
+            />
+          )}
+          {analysis.fishMovement && (
+            <TacticBox
+              icon={<MaterialCommunityIcons name="trending-up" size={13} color="#ffd700" />}
+              label="BLADDER MOVEMENT"
+              value={analysis.fishMovement}
+              colors={colors}
+              delay={250}
+            />
+          )}
+        </>
       )}
 
       {/* How to catch it — suppressed when croc alert is active */}

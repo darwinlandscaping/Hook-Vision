@@ -73,7 +73,27 @@ TIER 3 — Dim/invisible: Giant Trevally, Spanish Mackerel, Cobia, Flathead
   SIGNATURE: Medium-brightness single arches on or just above reef structure. Deep water.
   Lures: Jigs 80–150g, live bait, hard body lures.
 
-═══ STEP 5: CROC DETECTION ═══
+═══ STEP 5: ARCH SHAPE & BLADDER MOVEMENT ═══
+
+ARCH SHAPE (what the return looks like on screen):
+• FAT FULL ARCH (wide base, rounded peak) = large fish crossing beam, swim bladder fully inflated, fish actively cruising
+• THIN HAIRLINE ARCH = small fish OR fast baitfish crossing beam at speed
+• HALF-ARCH = fish at edge of beam, partially insonified — entering or leaving
+• SOLID THICK RETURN (no arch curve, blob shape) = stationary fish hugging structure OR croc — fish not moving
+• STACKED/OVERLAPPING ARCHES = school, multiple fish in beam simultaneously
+• ARCH + DARK SHADOW VOID directly beneath = maximum swim bladder echo = large physostomous predator (barra, fingermark)
+
+BLADDER MOVEMENT (arch trajectory tells you fish behaviour):
+• ASCENDING ARCH (right side higher than left) = fish rising = ACTIVELY FEEDING — chase it now
+• DESCENDING ARCH (right side lower than left) = fish diving/retreating = SPOOKED or moving off
+• FLAT HORIZONTAL ARCH = fish holding depth = cruising, neutral
+• TIGHT CLUSTER = school holding position = ambush or bait-ball waiting
+• SEPARATED INDIVIDUAL ARCHES = territorial solo hunters (jack, jewfish, big barra)
+• ARCH FADING RIGHT = fish moving away from transducer = losing signal
+
+INCLUDE bladderShape and fishMovement in your JSON output.
+
+═══ STEP 6: CROC DETECTION ═══
 crocAlert = true ONLY when ALL FOUR criteria met simultaneously:
 1. Mark is a SOLID FILLED horizontal blob — no arch shape, no curve, definitely NOT U-shaped
 2. ELONGATED like a cigar/torpedo, wider than tall
@@ -110,6 +130,8 @@ Return ONLY valid JSON — no markdown fences, no explanation, no surrounding te
   "tidal": "incoming",
   "turbidity": "clear",
   "structure": "hard rocky rubble",
+  "bladderShape": "Fat full arch — swim bladder fully inflated, fish cruising",
+  "fishMovement": "Ascending — fish rising to feed",
   "crocAlert": false,
   "crocWarning": null,
   "archReasoning": "Sentence 1: brightness tier and depth zone — species included/excluded. Sentence 2: position and bottom type — final ID confirmed."
