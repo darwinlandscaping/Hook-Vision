@@ -32,6 +32,7 @@ interface AnalysisCardProps {
   analysis: FishAnalysis;
   imageUri?: string;
   autoSpeak?: boolean;
+  cvRegions?: Array<{ xFrac: number; yFrac: number; size: number }>;
 }
 
 const SPECIES_SLANG: Record<string, string> = {
@@ -202,7 +203,7 @@ function TacticBox({ icon, label, value, colors, delay }: TacticBoxProps) {
   );
 }
 
-export function AnalysisCard({ analysis, imageUri, autoSpeak = true }: AnalysisCardProps) {
+export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }: AnalysisCardProps) {
   const colors = useColors();
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(0.95)).current;
@@ -367,6 +368,7 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true }: AnalysisC
           confidence={analysis.confidence}
           bottomType={analysis.bottomType}
           archReasoning={analysis.archReasoning}
+          cvRegions={cvRegions}
         />
       )}
 

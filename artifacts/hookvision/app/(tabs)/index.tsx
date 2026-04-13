@@ -160,6 +160,7 @@ export default function HomeScreen() {
   // By the time the AI finishes, location is almost always ready.
   const locationPromiseRef = useRef<Promise<string | null> | null>(null);
   const [capturedLocation, setCapturedLocation] = useState<string | null>(null);
+  const [cvRegions, setCvRegions] = useState<Array<{ xFrac: number; yFrac: number; size: number }>>([]);
 
   // ── Pre-warm TF.js backend (background, non-blocking) ────────────────────
   useEffect(() => {
@@ -278,6 +279,17 @@ export default function HomeScreen() {
         accumulated = await response.text();
       }
 
+      // ── Extract CV blob positions appended by server ──────────────────────
+      let parsedCvRegions: Array<{ xFrac: number; yFrac: number; size: number }> = [];
+      const cvSuffix = accumulated.match(/\n__CV__:(\{[^\n]+\})/);
+      if (cvSuffix) {
+        try {
+          const cvData = JSON.parse(cvSuffix[1]);
+          if (Array.isArray(cvData.regions)) parsedCvRegions = cvData.regions;
+        } catch { /* silent */ }
+        accumulated = accumulated.replace(/\n__CV__:[^\n]*/, "");
+      }
+
       const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("No response from AI — please try again.");
@@ -287,6 +299,7 @@ export default function HomeScreen() {
       } catch {
         throw new Error("Response interrupted — please try again.");
       }
+      setCvRegions(parsedCvRegions);
       // Coerce fishCount to a number in case the model returned a string
       if (typeof data.fishCount !== "number") {
         data.fishCount = parseInt(String(data.fishCount), 10) || 0;
@@ -545,7 +558,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} />}
+        {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} cvRegions={cvRegions} />}
 
         {/* ── Scan logged location chip ─────────────────────────────────── */}
         {analysis && (
@@ -602,7 +615,7 @@ export default function HomeScreen() {
         )}
 
         {analysis && (
-          <TouchableOpacity style={[styles.newBtn, { borderColor: colors.border }]} onPress={() => { setImageUri(null); setImageBase64(null); setAnalysis(null); setError(null); setCompareCard(null); setCompareExp(null); setCapturedLocation(null); setCvScan(null); locationPromiseRef.current = null; }} activeOpacity={0.7}>
+          <TouchableOpacity style={[styles.newBtn, { borderColor: colors.border }]} onPress={() => { setImageUri(null); setImageBase64(null); setAnalysis(null); setError(null); setCompareCard(null); setCompareExp(null); setCapturedLocation(null); setCvScan(null); setCvRegions([]); locationPromiseRef.current = null; }} activeOpacity={0.7}>
             <Feather name="plus" size={16} color={colors.mutedForeground} />
             <Text style={[styles.newBtnText, { color: colors.mutedForeground }]}>New analysis</Text>
           </TouchableOpacity>

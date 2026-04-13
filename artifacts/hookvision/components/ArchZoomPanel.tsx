@@ -27,6 +27,12 @@ import { useColors } from "@/hooks/useColors";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface BlobRegion {
+  xFrac: number;
+  yFrac: number;
+  size: number;
+}
+
 interface Props {
   imageUri: string;
   depth: string;
@@ -35,6 +41,7 @@ interface Props {
   confidence: number;
   bottomType?: string | null;
   archReasoning?: string;
+  cvRegions?: BlobRegion[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -95,6 +102,7 @@ export function ArchZoomPanel({
   confidence,
   bottomType,
   archReasoning,
+  cvRegions,
 }: Props) {
   const colors = useColors();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -134,13 +142,24 @@ export function ArchZoomPanel({
   };
 
   const depthM = parseDepthM(depth);
-  const yFrac = depthFraction(depthM);
-  const xFrac = horizontalFraction(distance);
   const zone = depthZoneInfo(depthM);
   const btColor = bottomColor(bottomType);
   const cleanSpecies = species.replace(/\s*\(\d+%\)/, "");
 
-  // Translation to center the arch:
+  // ── Determine crosshair target ───────────────────────────────────────────
+  // Prefer the real CV blob position (largest bright region detected by OpenCV).
+  // Fall back to the depth/distance estimate when no CV data is available.
+  const sortedBlobs = cvRegions && cvRegions.length > 0
+    ? [...cvRegions].sort((a, b) => b.size - a.size)
+    : null;
+  const primaryBlob = sortedBlobs?.[0];
+  const secondaryBlobs = sortedBlobs?.slice(1, 6) ?? [];          // up to 5 extra dots
+
+  const xFrac = primaryBlob ? primaryBlob.xFrac : horizontalFraction(distance);
+  const yFrac = primaryBlob ? primaryBlob.yFrac : depthFraction(depthM);
+  const usingCvPositions = !!primaryBlob;
+
+  // Translation to center the primary blob:
   // With scale(S) then translate(tx, ty), the arch at (xFrac*W, yFrac*H)
   // ends up at center when tx = S*(0.5 - xFrac)*W, ty = S*(0.5 - yFrac)*H
   const tx = ZOOM_SCALE * (0.5 - xFrac) * containerW;
@@ -164,8 +183,10 @@ export function ArchZoomPanel({
           <Feather name="zoom-in" size={13} color={zone.color} />
         </View>
         <Text style={[styles.titleText, { color: colors.foreground }]}>ARCH DETAIL</Text>
-        <View style={[styles.titleBadge, { backgroundColor: zone.color + "25" }]}>
-          <Text style={[styles.titleBadgeText, { color: zone.color }]}>AI METHOD</Text>
+        <View style={[styles.titleBadge, { backgroundColor: usingCvPositions ? "#ff880022" : zone.color + "25" }]}>
+          <Text style={[styles.titleBadgeText, { color: usingCvPositions ? "#ff8800" : zone.color }]}>
+            {usingCvPositions ? `CV · ${sortedBlobs!.length} BLOB${sortedBlobs!.length !== 1 ? "S" : ""}` : "AI METHOD"}
+          </Text>
         </View>
       </View>
 
@@ -208,6 +229,36 @@ export function ArchZoomPanel({
             {/* Centre dot */}
             <View style={[styles.crosshairDot, { backgroundColor: zone.color }]} />
           </View>
+
+          {/* ── Secondary blob dots (real CV positions) ── */}
+          {secondaryBlobs.map((blob, i) => {
+            // Position each secondary dot in container space using the transform math:
+            // screen_x = containerW/2 + ZOOM_SCALE * containerW * (blob.xFrac - xFrac)
+            // screen_y = ZOOM_HEIGHT/2 + ZOOM_SCALE * ZOOM_HEIGHT * (blob.yFrac - yFrac)
+            const DOT = 10;
+            const sx = containerW / 2 + ZOOM_SCALE * containerW * (blob.xFrac - xFrac) - DOT / 2;
+            const sy = ZOOM_HEIGHT / 2 + ZOOM_SCALE * ZOOM_HEIGHT * (blob.yFrac - yFrac) - DOT / 2;
+            // Skip dots that fall outside the visible clip area
+            if (sx < -DOT || sx > containerW || sy < -DOT || sy > ZOOM_HEIGHT) return null;
+            const opacity = 0.85 - i * 0.12;
+            return (
+              <View
+                key={i}
+                style={{
+                  position: "absolute",
+                  left: sx,
+                  top: sy,
+                  width: DOT,
+                  height: DOT,
+                  borderRadius: DOT / 2,
+                  backgroundColor: zone.color,
+                  opacity,
+                  borderWidth: 1.5,
+                  borderColor: "#fff5",
+                }}
+              />
+            );
+          })}
 
           {/* Species label — top-left */}
           <View style={[styles.speciesLabel, { backgroundColor: "#000000bb" }]}>

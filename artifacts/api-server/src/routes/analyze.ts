@@ -487,6 +487,16 @@ router.post("/analyze", async (req, res) => {
         res.write(delta);
       }
     }
+
+    // Append CV blob positions so the app can overlay exact marker dots
+    if (cvScan && cvScan.topBrightRegions.length > 0) {
+      const payload = JSON.stringify({
+        regions: cvScan.topBrightRegions,        // [{xFrac, yFrac, size}]
+        mostActive: zoomCrops?.mostActive ?? null, // "left" | "right"
+      });
+      res.write(`\n__CV__:${payload}`);
+    }
+
     res.end();
 
     // Server-side log only — client already parsed the streamed JSON
