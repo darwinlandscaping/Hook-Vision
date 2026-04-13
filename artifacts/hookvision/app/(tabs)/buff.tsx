@@ -219,11 +219,11 @@ function ProductCard({
       ) : (
         /* ── COLLAPSED layout ── */
         <View style={styles.collapsedInner}>
-          <View style={[styles.imgWrap, { borderColor: p.color + "40" }]}>
+          <View style={[styles.imgWrap, { borderColor: p.color + "40", backgroundColor: "#1a0810" }]}>
             <Image
               source={PRODUCT_IMAGES[p.id]}
               style={styles.img}
-              resizeMode="cover"
+              resizeMode="contain"
             />
             <View style={[styles.imgOverlay, { backgroundColor: p.color + "18" }]} />
           </View>
@@ -434,9 +434,9 @@ const styles = StyleSheet.create({
   },
 
   // ── Collapsed layout ──
-  collapsedInner: { flexDirection: "row", alignItems: "stretch", minHeight: 96 },
-  imgWrap: { width: 96, borderRightWidth: 1, position: "relative", overflow: "hidden" },
-  img: { width: 96, height: "100%", minHeight: 96 },
+  collapsedInner: { flexDirection: "row", alignItems: "center", minHeight: 92 },
+  imgWrap: { width: 92, height: 92, borderRightWidth: 1, position: "relative", overflow: "hidden", flexShrink: 0 },
+  img: { width: 92, height: 92 },
   imgOverlay: { ...StyleSheet.absoluteFillObject },
   cardInfo: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, justifyContent: "space-between" },
   cardNameRow: { flexDirection: "row", alignItems: "center", gap: 8 },

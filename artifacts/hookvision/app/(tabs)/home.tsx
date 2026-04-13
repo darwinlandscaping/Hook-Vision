@@ -55,14 +55,14 @@ interface DailyConditions {
 // ─── Quick nav tiles ──────────────────────────────────────────────────────────
 
 const TILES = [
-  { label: "Savage\nBarra Nation", emoji: "🎯", route: "/(tabs)/barra",    border: "#ff220055" },
+  { label: "AI\nScan",        emoji: "📡", route: "/(tabs)/index",    border: "#00d4aa55" },
+  { label: "Trophy\nBarra",   emoji: "🎯", route: "/(tabs)/barra",    border: "#ff220055" },
   { label: "NT\nTides",       emoji: "🌊", route: "/(tabs)/tides",    border: "#00a8ff55" },
-  { label: "Species\nGuide",  emoji: "🐟", route: "/(tabs)/species",  border: "#00d4aa55" },
+  { label: "Species\nGuide",  emoji: "🐟", route: "/(tabs)/species",  border: "#4caf5055" },
   { label: "Fishy\nForecast", emoji: "🎣", route: "/(tabs)/forecast", border: "#ffd70055" },
-  { label: "AI\nAnalyze",    emoji: "📡", route: "/(tabs)/index",    border: "#7986cb55" },
-  { label: "Live\nCamera",    emoji: "📷", route: "/(tabs)/live",     border: "#ff980055" },
-  { label: "Fishing\nZones",  emoji: "🗺️",  route: "/(tabs)/zones",    border: "#4caf5055" },
-  { label: "Catch\nHistory",  emoji: "📖", route: "/(tabs)/history",  border: "#e91e6355" },
+  { label: "Strike\nZones",   emoji: "🗺️",  route: "/(tabs)/zones",    border: "#ff980055" },
+  { label: "Scan\nHistory",   emoji: "📖", route: "/(tabs)/history",  border: "#e91e6355" },
+  { label: "Demo\nScans",     emoji: "🖼️", route: "/(tabs)/demo",     border: "#7986cb55" },
 ];
 
 // ─── Darwin local time helper ─────────────────────────────────────────────────
