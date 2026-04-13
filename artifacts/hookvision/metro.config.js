@@ -27,4 +27,20 @@ config.watchFolders = [
   path.resolve(workspaceRoot, "lib"),
 ];
 
+// Stub out react-native-fs — it is only referenced inside
+// @tensorflow/tfjs-react-native's bundle_resource_io.js, which we never
+// call (our CV pipeline runs server-side). Without this stub, Android
+// bundling fails with "Unable to resolve react-native-fs".
+const rnFsStub = path.resolve(projectRoot, "stubs/react-native-fs.js");
+const originalResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === "react-native-fs") {
+    return { filePath: rnFsStub, type: "sourceFile" };
+  }
+  if (originalResolveRequest) {
+    return originalResolveRequest(context, moduleName, platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = config;
