@@ -8,6 +8,7 @@ import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { CrocTabBar } from "@/components/CrocTabBar";
 
 function NativeTabLayout() {
   return (
@@ -73,6 +74,7 @@ function ClassicTabLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <CrocTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
@@ -190,7 +192,6 @@ function ClassicTabLayout() {
         name="zones"
         options={{
           title: "Zones",
-          href: isAndroid ? null : undefined,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="chart.bar.fill" tintColor={color} size={22} />
