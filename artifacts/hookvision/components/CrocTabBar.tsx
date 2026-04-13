@@ -62,32 +62,10 @@ const META: Record<string, { label: string; icon: (c: string, s: number) => Reac
   community: { label: "Intel",   icon: (c, s) => <MaterialCommunityIcons name="brain"             size={s} color={c} /> },
 };
 
-// Fang height per slot — irregular like a real croc
-const FANG_H = [30, 42, 26, 48, 28, 38, 24, 48, 28, 40, 26, 36];
 
 const W = Dimensions.get("window").width;
 
-// ─── Bezier tooth path ────────────────────────────────────────────────────────
-function toothPath(lx: number, rx: number, baseY: number, h: number): string {
-  const cx   = (lx + rx) / 2;
-  const tipY = baseY + h;
-  const bW   = rx - lx;          // base width
-  const mid  = baseY + h * 0.46; // control point height
 
-  // Left side curves slightly outward; right side mirrors
-  return [
-    `M ${lx} ${baseY}`,
-    `C ${lx - bW * 0.08} ${mid} ${cx - bW * 0.07} ${tipY - 6} ${cx} ${tipY}`,
-    `C ${cx + bW * 0.07} ${tipY - 6} ${rx + bW * 0.08} ${mid} ${rx} ${baseY}`,
-    "Z",
-  ].join(" ");
-}
-
-// Saliva drip between slots i and i+1
-function salivaDrip(slotW: number, i: number, baseY: number, len: number): string {
-  const x = (i + 1) * slotW;
-  return `M ${x - 1} ${baseY} Q ${x} ${baseY + len * 0.6} ${x} ${baseY + len} Q ${x} ${baseY + len * 1.1} ${x + 1} ${baseY + len * 0.95} L ${x + 1.5} ${baseY} Z`;
-}
 
 // Scale hex grid on skin band
 function ScaleHex({ skinH, w }: { skinH: number; w: number }) {
@@ -114,20 +92,15 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
   const routes = state.routes;
   const n      = routes.length;
 
-  const slotW      = W / n;
-  const maxFang    = Math.max(...FANG_H.slice(0, n));
-  const SKIN_H     = 20;
-  const GUM_BUF    = 6;           // gum strip above teeth
-  const TEETH_ZONE = maxFang + GUM_BUF;
-  const ICON_SZ    = 18;
-  const LBL_H      = 12;
-  const PAD_TOP    = 6;
-  const PAD_BOT    = 8 + insets.bottom;
-  const BAR_H      = SKIN_H + TEETH_ZONE + PAD_TOP + ICON_SZ + LBL_H + PAD_BOT;
-  const iconY      = SKIN_H + TEETH_ZONE + PAD_TOP;   // top of icon area from bar top
+  const slotW   = W / n;
+  const SKIN_H  = 20;
+  const ICON_SZ = 20;
+  const LBL_H   = 12;
+  const PAD_TOP = 10;
+  const PAD_BOT = 8 + insets.bottom;
+  const BAR_H   = SKIN_H + PAD_TOP + ICON_SZ + LBL_H + PAD_BOT;
+  const iconY   = SKIN_H + PAD_TOP;
 
-  // Drip slots — pick a few gaps for saliva drips (visual variety)
-  const dripSlots = [1, 3, 6, 9];
 
   return (
     <View style={{ width: "100%", height: BAR_H, overflow: "hidden" }}>
@@ -219,74 +192,9 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
         ))}
 
         {/* ── Gum strip just below skin ── */}
-        <Rect x="0" y={SKIN_H - 4} width={W} height={GUM_BUF + 8} fill="url(#gum)" opacity={0.95} />
+        <Rect x="0" y={SKIN_H - 4} width={W} height={12} fill="url(#gum)" opacity={0.95} />
 
-        {/* ── Saliva drips between teeth ── */}
-        {dripSlots.map((slot) => {
-          if (slot >= n) return null;
-          const fH = (FANG_H[slot % FANG_H.length] + FANG_H[(slot + 1) % FANG_H.length]) / 2;
-          const dripLen = fH * 0.55;
-          return (
-            <Path
-              key={slot}
-              d={salivaDrip(slotW, slot, SKIN_H + 2, dripLen)}
-              fill={P.salivaColor}
-            />
-          );
-        })}
 
-        {/* ── Teeth (drawn back-to-front, shadow first) ── */}
-        {routes.map((route, i) => {
-          const isActive = state.index === i;
-          const fH  = FANG_H[i % FANG_H.length];
-          const gap = slotW * 0.16;
-          const lx  = i * slotW + gap;
-          const rx  = (i + 1) * slotW - gap;
-          const cx  = i * slotW + slotW / 2;
-          const bY  = SKIN_H + GUM_BUF - 2;
-          const tipY = bY + fH;
-
-          const tp   = toothPath(lx, rx, bY, fH);
-          // shadow tooth slightly down+right
-          const spLx = lx + 1.5;
-          const spRx = rx + 1;
-          const sp   = toothPath(spLx, spRx, bY, fH + 2.5);
-
-          return (
-            <G key={route.key}>
-              {/* Drop shadow */}
-              <Path d={sp} fill="#000" opacity={0.38} />
-
-              {/* Main tooth body */}
-              <Path d={tp} fill={isActive ? "url(#toothActive)" : "url(#tooth)"} />
-
-              {/* Tooth root darkening */}
-              <Path
-                d={toothPath(lx, rx, bY, Math.min(fH, 8))}
-                fill={P.toothRoot}
-                opacity={0.55}
-              />
-
-              {/* Shine glint — left edge of tooth */}
-              <Path
-                d={`M ${lx + 1} ${bY} C ${lx - 0.5} ${bY + fH * 0.3} ${cx - 2.5} ${tipY - 10} ${cx - 1.5} ${tipY - 2}`}
-                stroke={P.toothShine}
-                strokeWidth={1.2}
-                fill="none"
-                strokeLinecap="round"
-                opacity={0.65}
-              />
-
-              {/* Active: full teal tint + glowing tip dot */}
-              {isActive && (
-                <>
-                  <Path d={tp} fill={P.toothActive} opacity={0.2} />
-                  <Circle cx={cx} cy={tipY - 4} r={3.5} fill={P.toothActGlow} opacity={0.95} />
-                </>
-              )}
-            </G>
-          );
-        })}
 
         {/* ── Croc skin band ── */}
         <Rect x="0" y="0" width={W} height={SKIN_H} fill="url(#skin)" />
@@ -304,7 +212,7 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
           return (
             <Rect
               key={i} x={x - 0.4} y={SKIN_H} width={0.8}
-              height={GUM_BUF + 4} fill="#1a0303" opacity={0.5}
+              height={10} fill="#1a0303" opacity={0.5}
             />
           );
         })}
