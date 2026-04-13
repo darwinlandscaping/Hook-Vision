@@ -891,6 +891,12 @@ export default function CommunityScreen() {
                       {v.status === "processing" && <ActivityIndicator size="small" color={statusColor} style={{ marginRight: 4 }} />}
                       <Text style={[styles.videoStatusText, { color: statusColor }]}>{statusLabel}</Text>
                     </View>
+                    {hasHandyVisual(v) && (
+                      <View style={styles.snapReadyBadge}>
+                        <MaterialCommunityIcons name="brain" size={9} color="#7c5cfc" />
+                        <Text style={styles.snapReadyText}>SNAP</Text>
+                      </View>
+                    )}
                     <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color={colors.mutedForeground} />
                   </View>
 
@@ -1341,6 +1347,17 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10,
   },
   videoProcessingText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+
+  snapReadyBadge: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    borderWidth: 1, borderRadius: 8,
+    borderColor: "#7c5cfc70", backgroundColor: "#7c5cfc20",
+    paddingHorizontal: 6, paddingVertical: 3,
+  },
+  snapReadyText: {
+    fontSize: 8, fontFamily: "Inter_700Bold",
+    letterSpacing: 1, color: "#7c5cfc",
+  },
 
   // ── Brain Snapshot Modal ────────────────────────────────────────────────────
   snapOverlay: {
