@@ -578,6 +578,8 @@ export default function CatchIdScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 0 : insets.top;
+  const tabBarH = Platform.OS === "web" ? 141 : 141 + insets.bottom;
+  const botPad  = tabBarH + 20;
 
   const [imageUri,      setImageUri]      = useState<string | null>(null);
   const [barraCheck,    setBarraCheck]    = useState<BarraCheck | null>(null);
@@ -740,7 +742,7 @@ export default function CatchIdScreen() {
 
       <ScrollView
         style={S.scroll}
-        contentContainerStyle={[S.scrollContent, { paddingBottom: hasAnyResult ? 110 : 40 }]}
+        contentContainerStyle={[S.scrollContent, { paddingBottom: hasAnyResult ? botPad + 70 : botPad }]}
         showsVerticalScrollIndicator={false}
       >
         {/* ─ No photo yet ─ */}
@@ -821,7 +823,7 @@ export default function CatchIdScreen() {
 
       {/* Floating action bar — show when photo is loaded */}
       {imageUri && (
-        <View style={[S.fab, { paddingBottom: insets.bottom + 8 }]}>
+        <View style={[S.fab, { bottom: tabBarH, paddingBottom: 8 }]}>
           <TouchableOpacity style={S.fabCamera} onPress={() => pickImage("camera")} activeOpacity={0.85}
             disabled={isAnalysing}>
             <Feather name="camera" size={18} color={C.navy} />
