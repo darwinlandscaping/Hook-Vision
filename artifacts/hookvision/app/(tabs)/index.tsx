@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DemoStore } from "@/app/(tabs)/demo";
@@ -127,6 +128,12 @@ function SquareTile({ item, colors }: { item: GridItem; colors: any }) {
   );
 }
 
+/** Ensure any picked image (WebP, HEIF, etc) is re-encoded as JPEG before upload */
+async function toJpeg(uri: string): Promise<{ uri: string; base64: string }> {
+  const result = await manipulateAsync(uri, [], { format: SaveFormat.JPEG, compress: 0.82, base64: true });
+  return { uri: result.uri, base64: result.base64 ?? "" };
+}
+
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -221,8 +228,11 @@ export default function HomeScreen() {
       return;
     }
     cameraScale.value = withSpring(0.92, {}, () => { cameraScale.value = withSpring(1); });
-    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.65, base64: true, allowsEditing: false, exif: false });
-    if (!result.canceled && result.assets[0]) handleImageSelected(result.assets[0].uri, result.assets[0].base64);
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.8, base64: false, allowsEditing: false, exif: false });
+    if (!result.canceled && result.assets[0]) {
+      const { uri, base64 } = await toJpeg(result.assets[0].uri);
+      handleImageSelected(uri, base64);
+    }
   }, [cameraScale, handleImageSelected]);
 
   const openGallery = useCallback(async () => {
@@ -232,8 +242,11 @@ export default function HomeScreen() {
       return;
     }
     galleryScale.value = withSpring(0.92, {}, () => { galleryScale.value = withSpring(1); });
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.65, base64: true, allowsEditing: false, exif: false });
-    if (!result.canceled && result.assets[0]) handleImageSelected(result.assets[0].uri, result.assets[0].base64);
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8, base64: false, allowsEditing: false, exif: false });
+    if (!result.canceled && result.assets[0]) {
+      const { uri, base64 } = await toJpeg(result.assets[0].uri);
+      handleImageSelected(uri, base64);
+    }
   }, [galleryScale, handleImageSelected]);
 
   const analyzeImage = useCallback(async () => {
