@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -107,6 +107,7 @@ export default function WelcomeScreen() {
   const barraY       = useRef(new Animated.Value(60)).current;
   const barraOpacity = useRef(new Animated.Value(0)).current;
   const windAnim     = useRef(new Animated.Value(0)).current;
+  const glowPulse    = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -128,10 +129,18 @@ export default function WelcomeScreen() {
         ]),
       ]),
     ]).start(() => {
+      // Wind animation for flag
       Animated.loop(
         Animated.sequence([
           Animated.timing(windAnim, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
           Animated.timing(windAnim, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        ])
+      ).start();
+      // Glow pulse on the enter button
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowPulse, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(glowPulse, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ])
       ).start();
     });
@@ -205,8 +214,13 @@ export default function WelcomeScreen() {
         <Text style={styles.tagline}>NT'S AI FISHING GUIDE</Text>
       </Animated.View>
 
-      {/* ── Enter button ── */}
+      {/* ── Enter button with pulsing glow ring ── */}
       <Animated.View style={[styles.btnWrap, { bottom: insets.bottom > 0 ? insets.bottom + 24 : 40, opacity: btnOpacity, transform: [{ scale: btnScale }] }]}>
+        {/* Glow ring — pulses behind the button */}
+        <Animated.View style={[styles.glowRing, {
+          opacity: glowPulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.65] }),
+          transform: [{ scale: glowPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] }) }],
+        }]} />
         <Pressable style={({ pressed }) => [styles.enterBtn, pressed && styles.enterBtnPressed]} onPress={enter}>
           <LinearGradient colors={[TEAL, "#00a8d4"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.enterGradient}>
             <Text style={styles.enterText}>ENTER THE TERRITORY</Text>
@@ -214,6 +228,11 @@ export default function WelcomeScreen() {
           </LinearGradient>
         </Pressable>
       </Animated.View>
+
+      {/* ── Version badge ── */}
+      <View style={[styles.versionBadge, { bottom: insets.bottom > 0 ? insets.bottom + 6 : 14 }]}>
+        <Text style={styles.versionText}>v1.0 · NT AUSTRALIA</Text>
+      </View>
 
       {/* ── Gold corner marks ── */}
       <View style={[styles.corner, { top: topPad + 16, left: 16 }]}>
@@ -248,6 +267,16 @@ const styles = StyleSheet.create({
   enterGradient: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 18, paddingHorizontal: 24, gap: 10 },
   enterText: { fontSize: 15, fontFamily: "Oswald_700Bold", color: "#000000", letterSpacing: 2.5 },
   enterArrow: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#000000" },
+  glowRing: {
+    position: "absolute",
+    left: -6, right: -6, top: -6, bottom: -6,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: TEAL,
+    backgroundColor: `${TEAL}18`,
+  },
+  versionBadge: { position: "absolute", left: 0, right: 0, alignItems: "center" },
+  versionText: { fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.35)", letterSpacing: 2 },
 
   corner: { position: "absolute", width: 18, height: 18 },
   cornerH: { position: "absolute", top: 0, left: 0, width: 18, height: 2 },
