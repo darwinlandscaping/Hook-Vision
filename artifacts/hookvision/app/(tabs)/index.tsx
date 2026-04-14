@@ -96,31 +96,68 @@ function TotalBrainAnalyser({
   sonarBarra:  SonarBarraResult | null;
   analysis:    FishAnalysisForBrain;
 }) {
-  // ── Per-system signals ──────────────────────────────────────────────────
-  const cvEchoScore = cvScan
+  // ── System 1 · CV ENGINE (12%) ─────────────────────────────────────────
+  const cvScore: number | null = cvScan
     ? cvScan.echoStrength === "strong" ? 90
       : cvScan.echoStrength === "moderate" ? 65 : 30
     : null;
-  const cvFishSignal   = cvEchoScore != null && cvEchoScore >= 65;
-  const sbConfidence   = sonarBarra?.confidence ?? null;
-  const sbFishSignal   = sonarBarra ? sonarBarra.isBarraArch && sonarBarra.confidence >= 50 : null;
-  const gptConfidence  = analysis.confidence;
-  const gptFishSignal  = analysis.fishCount > 0;
+  const cvSignal = cvScore != null && cvScore >= 65;
+
+  // ── System 2 · ARCH DETECT (15%) ──────────────────────────────────────
+  const archScore: number | null = sonarBarra
+    ? Math.min(100, (sonarBarra.archFeatures?.length ?? 0) * 30)
+    : null;
+  const archSignal = archScore != null && archScore >= 60;
+
+  // ── System 3 · REF MATCH (13%) ────────────────────────────────────────
+  const refScore: number | null = sonarBarra?.refMatchScore ?? null;
+  const refSignal = refScore != null && refScore >= 60;
+
+  // ── System 4 · SONAR BRAIN (20%) ──────────────────────────────────────
+  const sbScore: number | null = sonarBarra?.confidence ?? null;
+  const sbSignal = sonarBarra
+    ? sonarBarra.isBarraArch && sonarBarra.confidence >= 50
+    : null;
+
+  // ── System 5 · HABITAT (10%) ──────────────────────────────────────────
+  const habitatScore: number | null = sonarBarra
+    ? sonarBarra.bottomType?.includes("rock") ? 90
+      : sonarBarra.bottomType?.includes("reef") ? 85
+      : sonarBarra.bottomType?.includes("weed") ? 75
+      : sonarBarra.bottomType?.includes("sand") ? 55
+      : sonarBarra.bottomType?.includes("mud") ? 50
+      : 40
+    : null;
+  const habitatSignal = habitatScore != null && habitatScore >= 70;
+
+  // ── System 6 · DEPTH SCAN (10%) ───────────────────────────────────────
+  const depthScore: number | null = analysis
+    ? analysis.fishCount > 0
+      ? Math.min(90, Math.round(analysis.confidence * 0.75 + 18))
+      : 28
+    : null;
+  const depthSignal = depthScore != null && depthScore >= 60;
+
+  // ── System 7 · GPT-4.1 (20%) ──────────────────────────────────────────
+  const gptScore  = analysis.confidence;
+  const gptSignal = analysis.fishCount > 0;
 
   // ── Weighted brain score ────────────────────────────────────────────────
-  let scoreSum = 0, scoreWt = 0;
-  if (cvEchoScore != null)   { scoreSum += cvEchoScore   * 0.20; scoreWt += 0.20; }
-  if (sbConfidence != null)  { scoreSum += sbConfidence  * 0.35; scoreWt += 0.35; }
-  scoreSum += gptConfidence * 0.45; scoreWt += 0.45;
-  const brainScore = Math.round(scoreSum / scoreWt);
+  const WEIGHTS = [0.12, 0.15, 0.13, 0.20, 0.10, 0.10, 0.20];
+  const raw      = [cvScore, archScore, refScore, sbScore, habitatScore, depthScore, gptScore];
+  let wSum = 0, wWt = 0;
+  raw.forEach((v, i) => { if (v != null) { wSum += v * WEIGHTS[i]; wWt += WEIGHTS[i]; } });
+  const brainScore = wWt > 0 ? Math.round(wSum / wWt) : 0;
 
-  // ── Consensus ───────────────────────────────────────────────────────────
-  const yeses = [cvFishSignal, sbFishSignal, gptFishSignal].filter(v => v === true).length;
+  // ── Consensus (7 binary signals) ───────────────────────────────────────
+  const bools = [cvSignal, archSignal, refSignal, sbSignal === true, habitatSignal, depthSignal, gptSignal];
+  const yeses = bools.filter(Boolean).length;
+  const ready = raw.filter(v => v != null).length;
   type CStatus = "CONFIRMED" | "PROBABLE" | "POSSIBLE" | "NOT DETECTED";
   const consensus: CStatus =
-    yeses >= 3 || (yeses >= 2 && sbFishSignal === null) ? "CONFIRMED"
-    : yeses === 2 ? "PROBABLE"
-    : yeses === 1 ? "POSSIBLE"
+    yeses >= 5 ? "CONFIRMED"
+    : yeses >= 3 ? "PROBABLE"
+    : yeses >= 1 ? "POSSIBLE"
     : "NOT DETECTED";
   const cc =
     consensus === "CONFIRMED" ? "#00d4aa"
@@ -129,10 +166,48 @@ function TotalBrainAnalyser({
     : "#666666";
   const scoreColor = brainScore >= 75 ? "#00d4aa" : brainScore >= 50 ? "#ffd700" : "#ff8800";
 
+  // ── 6 upstream nodes (grid) ────────────────────────────────────────────
+  const upstream: Array<{
+    icon: string; label: string; color: string; wt: string;
+    score: number | null; signal: boolean | null; chip?: string | null;
+  }> = [
+    {
+      icon: "eye-circle", label: "CV\nENGINE",    color: "#00a8ff", wt: "12%",
+      score: cvScore, signal: cvSignal,
+      chip: cvScan ? `${cvScan.brightPixelPct.toFixed(0)}% hot` : null,
+    },
+    {
+      icon: "wave",       label: "ARCH\nDETECT",  color: "#00d4aa", wt: "15%",
+      score: archScore, signal: archSignal,
+      chip: sonarBarra?.archFeatures ? `${sonarBarra.archFeatures.length} arch${sonarBarra.archFeatures.length !== 1 ? "es" : ""}` : null,
+    },
+    {
+      icon: "compare",    label: "REF\nMATCH",    color: "#ffd700", wt: "13%",
+      score: refScore, signal: refSignal,
+      chip: sonarBarra ? `${sonarBarra.refPhotosUsed} refs` : null,
+    },
+    {
+      icon: "radar",      label: "SONAR\nBRAIN",  color: "#00d4aa", wt: "20%",
+      score: sbScore, signal: sbSignal,
+      chip: sonarBarra?.bottomType && sonarBarra.bottomType !== "unknown"
+        ? sonarBarra.bottomType : null,
+    },
+    {
+      icon: "terrain",    label: "HABITAT",       color: "#ff8800", wt: "10%",
+      score: habitatScore, signal: habitatSignal,
+      chip: habitatScore != null ? `${habitatScore}% suit.` : null,
+    },
+    {
+      icon: "arrow-collapse-down", label: "DEPTH\nSCAN", color: "#00a8ff", wt: "10%",
+      score: depthScore, signal: depthSignal,
+      chip: analysis.depth ?? null,
+    },
+  ];
+
   return (
     <View style={BT.card}>
-      {/* Teal accent bar */}
-      <View style={{ height: 4, backgroundColor: "#00d4aa", marginBottom: 0 }} />
+      {/* Accent bar */}
+      <View style={{ height: 4, backgroundColor: "#00d4aa" }} />
 
       {/* Header */}
       <View style={BT.header}>
@@ -142,52 +217,59 @@ function TotalBrainAnalyser({
           <Text style={[BT.scoreBadgeText, { color: scoreColor }]}>{brainScore}%</Text>
         </View>
       </View>
-      <Text style={BT.subtitle}>3 AI systems · weighted confidence consensus</Text>
+      <Text style={BT.subtitle}>
+        7 AI systems · {ready} active · weighted confidence consensus
+      </Text>
 
-      {/* Neural node row */}
-      <View style={BT.nodeRow}>
-        {/* CV ENGINE */}
-        <View style={BT.nodeWrap}>
-          <View style={[BT.node, { borderColor: cvEchoScore != null ? "#00a8ff" : "#2a2a2a" }]}>
-            <MaterialCommunityIcons name="eye-circle" size={20} color={cvEchoScore != null ? "#00a8ff" : "#444"} />
-            <Text style={[BT.nodeLabel, { color: cvEchoScore != null ? "#00a8ff" : "#444" }]}>CV ENGINE</Text>
-            <Text style={[BT.nodeScore, { color: cvEchoScore != null ? "#ffffff" : "#333" }]}>
-              {cvEchoScore != null ? `${cvEchoScore}%` : "—"}
+      {/* ── 6-node upstream grid (3 × 2) ─────────────────────────────────── */}
+      <View style={BT.nodeGrid}>
+        {upstream.map((n, idx) => (
+          <View key={idx} style={BT.nodeWrap}>
+            <View style={[BT.node, { borderColor: n.score != null ? n.color : "#2a2a2a" }]}>
+              <MaterialCommunityIcons
+                name={n.icon as any}
+                size={17}
+                color={n.score != null ? n.color : "#2d2d2d"}
+              />
+              <Text style={[BT.nodeLabel, { color: n.score != null ? n.color : "#2d2d2d" }]}>
+                {n.label}
+              </Text>
+              <Text style={[BT.nodeScore, { color: n.score != null ? "#ffffff" : "#2d2d2d" }]}>
+                {n.score != null ? `${n.score}%` : "—"}
+              </Text>
+              {n.chip && n.score != null && (
+                <Text style={[BT.nodeChip, { color: n.color + "aa" }]} numberOfLines={1}>
+                  {n.chip}
+                </Text>
+              )}
+            </View>
+            <Text style={[BT.nodeWeight, { color: n.score != null ? n.color + "60" : "#2a2a2a" }]}>
+              {n.wt}
             </Text>
           </View>
-          <Text style={[BT.nodeWeight, { color: "#00a8ff60" }]}>20% wt</Text>
-        </View>
+        ))}
+      </View>
 
-        <View style={BT.connectorWrap}>
-          <View style={BT.connLine} />
-          <MaterialCommunityIcons name="chevron-right" size={13} color="#ffffff25" />
-        </View>
+      {/* ── Funnel arrow into GPT-4.1 ────────────────────────────────────── */}
+      <View style={BT.funnelRow}>
+        <View style={BT.funnelLine} />
+        <MaterialCommunityIcons name="arrow-down-circle" size={20} color="#00d4aa30" />
+        <View style={BT.funnelLine} />
+      </View>
 
-        {/* SONAR BRAIN */}
-        <View style={BT.nodeWrap}>
-          <View style={[BT.node, { borderColor: sbConfidence != null ? "#00d4aa" : "#2a2a2a" }]}>
-            <MaterialCommunityIcons name="radar" size={20} color={sbConfidence != null ? "#00d4aa" : "#444"} />
-            <Text style={[BT.nodeLabel, { color: sbConfidence != null ? "#00d4aa" : "#444" }]}>SONAR BRAIN</Text>
-            <Text style={[BT.nodeScore, { color: sbConfidence != null ? "#ffffff" : "#333" }]}>
-              {sbConfidence != null ? `${sbConfidence}%` : "—"}
+      {/* ── GPT-4.1 master node (full-width) ─────────────────────────────── */}
+      <View style={BT.masterWrap}>
+        <View style={[BT.masterNode, { borderColor: "#7c5cfc" }]}>
+          <View style={BT.masterInner}>
+            <MaterialCommunityIcons name="chip" size={22} color="#7c5cfc" />
+            <View style={{ flex: 1 }}>
+              <Text style={[BT.masterLabel, { color: "#7c5cfc" }]}>GPT-4.1  MASTER ANALYSIS</Text>
+              <Text style={BT.masterSub}>Full sonar intelligence · 20% weight</Text>
+            </View>
+            <Text style={[BT.masterScore, { color: gptSignal ? "#ffffff" : "#555" }]}>
+              {gptScore}%
             </Text>
           </View>
-          <Text style={[BT.nodeWeight, { color: "#00d4aa60" }]}>35% wt</Text>
-        </View>
-
-        <View style={BT.connectorWrap}>
-          <View style={BT.connLine} />
-          <MaterialCommunityIcons name="chevron-right" size={13} color="#ffffff25" />
-        </View>
-
-        {/* GPT-4.1 */}
-        <View style={BT.nodeWrap}>
-          <View style={[BT.node, { borderColor: "#7c5cfc" }]}>
-            <MaterialCommunityIcons name="chip" size={20} color="#7c5cfc" />
-            <Text style={[BT.nodeLabel, { color: "#7c5cfc" }]}>GPT-4.1</Text>
-            <Text style={[BT.nodeScore, { color: "#ffffff" }]}>{gptConfidence}%</Text>
-          </View>
-          <Text style={[BT.nodeWeight, { color: "#7c5cfc60" }]}>45% wt</Text>
         </View>
       </View>
 
@@ -199,14 +281,14 @@ function TotalBrainAnalyser({
         <Text style={[BT.scoreBarLabel, { color: scoreColor }]}>BRAIN SCORE  {brainScore}%</Text>
       </View>
 
-      {/* System verdict rows */}
+      {/* Verdict rows */}
       <View style={BT.verdictList}>
         {cvScan && (
           <View style={BT.verdictRow}>
-            <View style={[BT.verdictDot, { backgroundColor: cvFishSignal ? "#00a8ff" : "#555" }]} />
+            <View style={[BT.verdictDot, { backgroundColor: cvSignal ? "#00a8ff" : "#555" }]} />
             <Text style={BT.verdictSys}>CV ENGINE</Text>
-            <Text style={[BT.verdictVal, { color: cvFishSignal ? "#00a8ff" : "#666" }]}>
-              {cvFishSignal ? `✓ ${cvScan.echoStrength.toUpperCase()} ECHO` : "○ WEAK ECHO"}
+            <Text style={[BT.verdictVal, { color: cvSignal ? "#00a8ff" : "#666" }]}>
+              {cvSignal ? `✓ ${cvScan.echoStrength.toUpperCase()} ECHO` : "○ WEAK ECHO"}
             </Text>
             <Text style={[BT.verdictChip, { color: "#00a8ff", borderColor: "#00a8ff25", backgroundColor: "#00a8ff0d" }]}>
               {cvScan.brightPixelPct.toFixed(0)}% hot
@@ -214,31 +296,80 @@ function TotalBrainAnalyser({
           </View>
         )}
         {sonarBarra && (
-          <View style={BT.verdictRow}>
-            <View style={[BT.verdictDot, { backgroundColor: sbFishSignal ? "#00d4aa" : "#555" }]} />
-            <Text style={BT.verdictSys}>SONAR BRAIN</Text>
-            <Text style={[BT.verdictVal, { color: sbFishSignal ? "#00d4aa" : "#666" }]}>
-              {sbFishSignal ? "✓ BARRA ARCHES"
-               : sonarBarra.isBarraArch ? "⚠ LOW CONFIDENCE"
-               : "✗ NO ARCHES"}
-            </Text>
-            {sonarBarra.bottomType && sonarBarra.bottomType !== "unknown" && (
-              <Text style={[BT.verdictChip, { color: "#00d4aa", borderColor: "#00d4aa25", backgroundColor: "#00d4aa0d" }]}>
-                {sonarBarra.bottomType}
+          <>
+            <View style={BT.verdictRow}>
+              <View style={[BT.verdictDot, { backgroundColor: archSignal ? "#00d4aa" : "#555" }]} />
+              <Text style={BT.verdictSys}>ARCH DETECT</Text>
+              <Text style={[BT.verdictVal, { color: archSignal ? "#00d4aa" : "#666" }]}>
+                {archSignal
+                  ? `✓ ${sonarBarra.archFeatures?.length ?? 0} ARCH FEATURES`
+                  : sonarBarra.archFeatures?.length
+                  ? `⚠ ${sonarBarra.archFeatures.length} WEAK`
+                  : "✗ NO ARCH FEATURES"}
               </Text>
+            </View>
+            {refScore != null && (
+              <View style={BT.verdictRow}>
+                <View style={[BT.verdictDot, { backgroundColor: refSignal ? "#ffd700" : "#555" }]} />
+                <Text style={BT.verdictSys}>REF MATCH</Text>
+                <Text style={[BT.verdictVal, { color: refSignal ? "#ffd700" : "#666" }]}>
+                  {refSignal ? `✓ ${refScore}% REFERENCE MATCH` : `○ ${refScore}% MATCH`}
+                </Text>
+                <Text style={[BT.verdictChip, { color: "#ffd700", borderColor: "#ffd70025", backgroundColor: "#ffd7000d" }]}>
+                  {sonarBarra.refPhotosUsed} refs
+                </Text>
+              </View>
             )}
-          </View>
+            <View style={BT.verdictRow}>
+              <View style={[BT.verdictDot, { backgroundColor: sbSignal ? "#00d4aa" : "#555" }]} />
+              <Text style={BT.verdictSys}>SONAR BRAIN</Text>
+              <Text style={[BT.verdictVal, { color: sbSignal ? "#00d4aa" : "#666" }]}>
+                {sbSignal ? "✓ BARRA ARCHES"
+                 : sonarBarra.isBarraArch ? "⚠ LOW CONFIDENCE"
+                 : "✗ NO ARCHES"}
+              </Text>
+              {sonarBarra.bottomType && sonarBarra.bottomType !== "unknown" && (
+                <Text style={[BT.verdictChip, { color: "#00d4aa", borderColor: "#00d4aa25", backgroundColor: "#00d4aa0d" }]}>
+                  {sonarBarra.bottomType}
+                </Text>
+              )}
+            </View>
+            {habitatScore != null && sonarBarra.bottomType && (
+              <View style={BT.verdictRow}>
+                <View style={[BT.verdictDot, { backgroundColor: habitatSignal ? "#ff8800" : "#555" }]} />
+                <Text style={BT.verdictSys}>HABITAT</Text>
+                <Text style={[BT.verdictVal, { color: habitatSignal ? "#ff8800" : "#666" }]}>
+                  {habitatSignal
+                    ? `✓ PRIME ${sonarBarra.bottomType.toUpperCase()}`
+                    : `○ ${sonarBarra.bottomType.toUpperCase()}`}
+                </Text>
+                <Text style={[BT.verdictChip, { color: "#ff8800", borderColor: "#ff880025", backgroundColor: "#ff88000d" }]}>
+                  {habitatScore}% suit.
+                </Text>
+              </View>
+            )}
+          </>
         )}
         <View style={BT.verdictRow}>
-          <View style={[BT.verdictDot, { backgroundColor: gptFishSignal ? "#7c5cfc" : "#555" }]} />
+          <View style={[BT.verdictDot, { backgroundColor: depthSignal ? "#00a8ff" : "#555" }]} />
+          <Text style={BT.verdictSys}>DEPTH SCAN</Text>
+          <Text style={[BT.verdictVal, { color: depthSignal ? "#00a8ff" : "#666" }]}>
+            {depthSignal
+              ? `✓ FISH AT ${analysis.depth}`
+              : analysis.fishCount === 0 ? "✗ EMPTY WATER COLUMN"
+              : `○ ${analysis.depth}`}
+          </Text>
+        </View>
+        <View style={BT.verdictRow}>
+          <View style={[BT.verdictDot, { backgroundColor: gptSignal ? "#7c5cfc" : "#555" }]} />
           <Text style={BT.verdictSys}>GPT-4.1</Text>
-          <Text style={[BT.verdictVal, { color: gptFishSignal ? "#7c5cfc" : "#666" }]}>
-            {gptFishSignal
+          <Text style={[BT.verdictVal, { color: gptSignal ? "#7c5cfc" : "#666" }]}>
+            {gptSignal
               ? `✓ ${analysis.fishCount} FISH @ ${analysis.depth}`
               : "✗ NONE DETECTED"}
           </Text>
           <Text style={[BT.verdictChip, { color: "#7c5cfc", borderColor: "#7c5cfc25", backgroundColor: "#7c5cfc0d" }]}>
-            {gptConfidence}% conf
+            {gptScore}% conf
           </Text>
         </View>
       </View>
@@ -256,9 +387,9 @@ function TotalBrainAnalyser({
           color={cc}
         />
         <Text style={[BT.consensusLabel, { color: cc }]}>
-          {consensus === "CONFIRMED" ? "ALL SYSTEMS AGREE"
-           : consensus === "PROBABLE" ? "2 OF 3 SYSTEMS AGREE"
-           : consensus === "POSSIBLE" ? "1 SYSTEM DETECTED FISH"
+          {consensus === "CONFIRMED" ? `ALL ${yeses} SYSTEMS AGREE`
+           : consensus === "PROBABLE" ? `${yeses} OF 7 SYSTEMS AGREE`
+           : consensus === "POSSIBLE" ? `${yeses} SYSTEM${yeses !== 1 ? "S" : ""} POSITIVE`
            : "NO FISH SIGNAL DETECTED"}
         </Text>
         <Text style={[BT.consensusBadge, { color: cc }]}>{consensus}</Text>
@@ -307,50 +438,91 @@ const BT = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 14,
   },
-  nodeRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
+  // ── 6-node upstream grid ─────────────────────────────────────────────
+  nodeGrid: {
+    flexDirection:    "row",
+    flexWrap:         "wrap",
+    justifyContent:   "space-between",
     paddingHorizontal: 12,
-    paddingBottom: 14,
+    paddingBottom:    10,
+    gap:              8,
   },
   nodeWrap: {
-    flex: 1,
+    width:      "30%",
     alignItems: "center",
-    gap: 5,
+    gap:        4,
   },
   node: {
-    width: "100%",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    backgroundColor: "#0c1825",
-    gap: 3,
+    width:           "100%",
+    alignItems:      "center",
+    paddingVertical:  8,
+    borderRadius:    10,
+    borderWidth:     1.5,
+    backgroundColor: "#0b1520",
+    gap:             2,
   },
   nodeLabel: {
-    fontSize: 7,
-    fontFamily: "Inter_700Bold",
+    fontSize:      7,
+    fontFamily:    "Inter_700Bold",
     letterSpacing: 0.3,
-    textAlign: "center",
+    textAlign:     "center",
   },
   nodeScore: {
-    fontSize: 16,
+    fontSize:   15,
     fontFamily: "Oswald_700Bold",
   },
+  nodeChip: {
+    fontSize:   7,
+    fontFamily: "Inter_400Regular",
+    marginTop:  1,
+  },
   nodeWeight: {
-    fontSize: 9,
+    fontSize:   8,
     fontFamily: "Inter_400Regular",
   },
-  connectorWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: 18,
-    marginTop: 20,
+  // ── Funnel arrow ──────────────────────────────────────────────────────
+  funnelRow: {
+    flexDirection:    "row",
+    alignItems:       "center",
+    paddingHorizontal: 24,
+    paddingVertical:   4,
+    gap:              4,
   },
-  connLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#ffffff18",
+  funnelLine: {
+    flex:            1,
+    height:          1,
+    backgroundColor: "#00d4aa18",
+  },
+  // ── GPT-4.1 master node ───────────────────────────────────────────────
+  masterWrap: {
+    paddingHorizontal: 12,
+    paddingBottom:     12,
+  },
+  masterNode: {
+    borderRadius:    12,
+    borderWidth:     1.5,
+    backgroundColor: "#0b1520",
+    padding:         12,
+  },
+  masterInner: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           10,
+  },
+  masterLabel: {
+    fontSize:      11,
+    fontFamily:    "Inter_700Bold",
+    letterSpacing: 0.5,
+  },
+  masterSub: {
+    fontSize:   9,
+    fontFamily: "Inter_400Regular",
+    color:      "#7c5cfc60",
+    marginTop:  1,
+  },
+  masterScore: {
+    fontSize:   24,
+    fontFamily: "Oswald_700Bold",
   },
   scoreBarWrap: {
     paddingHorizontal: 16,
