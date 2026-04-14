@@ -1,7 +1,7 @@
 /**
  * CrocTabBar — 2-row croc-mouth navigation bar
  * Row 1: Live · Home · Boof · Tides · Species · Barra
- * Row 2: Zones · Fishy · Catch · History · Brain  (+ hidden: index/fishy/map/demo)
+ * Row 2: Scan · Zones · Fishy · Catch · History · Brain  (+ hidden: fishy/map/demo)
  */
 import React from "react";
 // @ts-ignore — types bundled with expo-router at runtime
@@ -87,7 +87,7 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
   const routes  = state.routes;
 
   // Strip routes that are hidden from the tab bar (href: null in layout)
-  const HIDDEN = new Set(["index", "fishy", "map", "demo"]);
+  const HIDDEN = new Set(["fishy", "map", "demo"]);
   const visibleRoutes = routes.filter((r: any) => !HIDDEN.has(r.name));
 
   // Layout constants
