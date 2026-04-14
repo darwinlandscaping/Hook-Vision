@@ -153,43 +153,61 @@ router.post("/barra-check", async (req, res) => {
       });
     }
 
-    const response = await openai.chat.completions.create({
-      model:                "gpt-4.1-mini",
+    const userContent = [
+      ...refBlocks,
+      {
+        type: "image_url",
+        image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low" },
+      },
+      {
+        type: "text",
+        text: refs.length > 0
+          ? `Compare against the ${refs.length} reference specimens above. Return JSON only.`
+          : "Return JSON only.",
+      },
+    ];
+
+    const callOpts = {
+      model:                "gpt-4.1-mini" as const,
       max_completion_tokens: 200,
-      temperature:          0,
-      seed:                 42,
-      stream:               false,
+      stream:               false as const,
       messages: [
-        { role: "system", content: BARRA_SYSTEM },
-        {
-          role: "user",
-          content: [
-            ...refBlocks,
-            {
-              type: "image_url",
-              image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low" },
-            },
-            {
-              type: "text",
-              text: refs.length > 0
-                ? `Compare against the ${refs.length} reference specimens above. Return JSON only.`
-                : "Return JSON only.",
-            },
-          ],
-        },
+        { role: "system" as const, content: BARRA_SYSTEM },
+        { role: "user" as const, content: userContent as any },
       ],
-    });
+    };
 
-    const raw   = response.choices[0]?.message?.content ?? "{}";
-    const clean = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+    // ── Dual-scan consensus: 2 parallel calls with different seeds ────────
+    const [res1, res2] = await Promise.all([
+      openai.chat.completions.create({ ...callOpts, temperature: 0,   seed: 1 }),
+      openai.chat.completions.create({ ...callOpts, temperature: 0.3, seed: 2 }),
+    ]);
 
+    function parseResult(r: typeof res1): Record<string, unknown> {
+      const raw   = r.choices[0]?.message?.content ?? "{}";
+      const clean = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      try { return JSON.parse(clean); } catch { return {}; }
+    }
+
+    const p1 = parseResult(res1);
+    const p2 = parseResult(res2);
+
+    const agreed = (p1.isBarra === p2.isBarra);
     let parsed: Record<string, unknown>;
-    try { parsed = JSON.parse(clean); }
-    catch { res.status(500).json({ error: "Parse error", raw }); return; }
 
-    // Attach library stats to response
+    if (agreed) {
+      // Both scans agree — use average confidence (boosted by 5 for consensus)
+      const avgConf = Math.round(((Number(p1.confidence) + Number(p2.confidence)) / 2) + 5);
+      parsed = { ...p1, confidence: Math.min(99, avgConf) };
+    } else {
+      // Scans disagree — use the more conservative result (lower confidence)
+      parsed = Number(p1.confidence) <= Number(p2.confidence) ? p1 : p2;
+    }
+
+    parsed.consensusScans   = 2;
+    parsed.consensusAgreed  = agreed;
     parsed.refPhotosUsed    = refs.length;
-    parsed.refSourceDetails = refs.map(r => r.location);
+    parsed.refSourceDetails = refs.map((r: { location: string }) => r.location);
 
     res.json(parsed);
   } catch (err) {

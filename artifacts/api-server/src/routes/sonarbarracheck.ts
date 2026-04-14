@@ -168,42 +168,61 @@ router.post("/sonar-barra-check", async (req, res) => {
       refBlocks.push({ type: "text", text: "Evaluate the following sonar image for barramundi arches." });
     }
 
-    const response = await openai.chat.completions.create({
-      model:                "gpt-4.1-mini",
+    const userContent = [
+      ...refBlocks,
+      {
+        type: "image_url",
+        image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low" },
+      },
+      {
+        type: "text",
+        text: [
+          barraPhotos.length > 0 ? `1 barramundi body anatomy photo` : null,
+          refs.filter(r => r.isPositive).length > 0 ? `${refs.filter(r => r.isPositive).length} confirmed sonar arch reference${refs.filter(r => r.isPositive).length > 1 ? "s" : ""}` : null,
+          refs.filter(r => !r.isPositive).length > 0 ? `${refs.filter(r => !r.isPositive).length} contrast reference` : null,
+        ].filter(Boolean).join(" + ") + " shown above. Apply cross-modal reasoning: body anatomy → sonar arch physics → verdict. Return JSON only.",
+      },
+    ];
+
+    const callOpts = {
+      model:                "gpt-4.1-mini" as const,
       max_completion_tokens: 200,
-      temperature:          0,
-      seed:                 42,
-      stream:               false,
+      stream:               false as const,
       messages: [
-        { role: "system", content: SONAR_BARRA_SYSTEM },
-        {
-          role: "user",
-          content: [
-            ...refBlocks,
-            {
-              type: "image_url",
-              image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low" },
-            },
-            {
-              type: "text",
-              text: [
-                barraPhotos.length > 0 ? `1 barramundi body anatomy photo` : null,
-                refs.filter(r => r.isPositive).length > 0 ? `${refs.filter(r => r.isPositive).length} confirmed sonar arch reference${refs.filter(r => r.isPositive).length > 1 ? "s" : ""}` : null,
-                refs.filter(r => !r.isPositive).length > 0 ? `${refs.filter(r => !r.isPositive).length} contrast reference` : null,
-              ].filter(Boolean).join(" + ") + " shown above. Apply cross-modal reasoning: body anatomy → sonar arch physics → verdict. Return JSON only.",
-            },
-          ],
-        },
+        { role: "system" as const, content: SONAR_BARRA_SYSTEM },
+        { role: "user" as const, content: userContent as any },
       ],
-    });
+    };
 
-    const raw   = response.choices[0]?.message?.content ?? "{}";
-    const clean = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+    // ── Dual-scan consensus: 2 parallel calls with different seeds ────────
+    const [res1, res2] = await Promise.all([
+      openai.chat.completions.create({ ...callOpts, temperature: 0,   seed: 1 }),
+      openai.chat.completions.create({ ...callOpts, temperature: 0.3, seed: 2 }),
+    ]);
 
+    function parseResult(r: typeof res1): Record<string, unknown> {
+      const raw   = r.choices[0]?.message?.content ?? "{}";
+      const clean = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      try { return JSON.parse(clean); } catch { return {}; }
+    }
+
+    const p1 = parseResult(res1);
+    const p2 = parseResult(res2);
+
+    const agreed = (p1.isBarraArch === p2.isBarraArch);
     let parsed: Record<string, unknown>;
-    try { parsed = JSON.parse(clean); }
-    catch { res.status(500).json({ error: "Parse error", raw }); return; }
 
+    if (agreed) {
+      // Both scans agree — use average confidence (boosted by 5 for consensus)
+      const avgConf = Math.round(((Number(p1.confidence) + Number(p2.confidence)) / 2) + 5);
+      parsed = { ...p1, confidence: Math.min(99, avgConf) };
+    } else {
+      // Scans disagree — use the more conservative result (lower confidence)
+      parsed = Number(p1.confidence) <= Number(p2.confidence) ? p1 : p2;
+    }
+
+    parsed.consensusScans   = 2;
+    parsed.consensusAgreed  = agreed;
     parsed.refPhotosUsed    = refs.length + barraPhotos.length;
     parsed.positiveRefsUsed = refs.filter(r => r.isPositive).length;
     parsed.negativeRefsUsed = refs.filter(r => !r.isPositive).length;

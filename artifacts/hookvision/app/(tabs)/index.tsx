@@ -640,6 +640,10 @@ export default function HomeScreen() {
   // ── Sonar Brain — Stage-1 fast barra arch detector ────────────────────────
   const [sonarBarraResult, setSonarBarraResult] = useState<SonarBarraResult | null>(null);
   const [sonarBarraLoading, setSonarBarraLoading] = useState(false);
+  // ── Dual-scan consensus (scan 2 runs in background, appended as __SCAN2__ token) ──
+  const [scan2Consensus, setScan2Consensus] = useState<{
+    agreed: boolean; species2: string | null; confidence2: number | null;
+  } | null>(null);
   const autoAnalyzeRef = useRef(false);
 
   // ── On-device vision engine ────────────────────────────────────────────────
@@ -788,6 +792,7 @@ export default function HomeScreen() {
     setAnalysis(null);
     setSonarBarraResult(null);
     setSonarBarraLoading(true);
+    setScan2Consensus(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     // ── Sonar Brain Stage-1: fire sonar-barra-check in parallel ──────────────
@@ -854,6 +859,18 @@ export default function HomeScreen() {
           if (Array.isArray(cvData.regions)) parsedCvRegions = cvData.regions;
         } catch { /* silent */ }
         accumulated = accumulated.replace(/\n__CV__:[^\n]*/, "");
+      }
+
+      // ── Extract dual-scan consensus token ─────────────────────────────────
+      const scan2Suffix = accumulated.match(/\n__SCAN2__:(\{[^\n]+\})/);
+      if (scan2Suffix) {
+        try {
+          const s2 = JSON.parse(scan2Suffix[1]) as {
+            agreed: boolean; species2: string | null; confidence2: number | null;
+          };
+          setScan2Consensus(s2);
+        } catch { /* silent */ }
+        accumulated = accumulated.replace(/\n__SCAN2__:[^\n]*/, "");
       }
 
       const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
@@ -1304,6 +1321,22 @@ export default function HomeScreen() {
 
         {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} cvRegions={cvRegions} />}
 
+        {/* ── Dual-scan consensus badge ──────────────────────────────────── */}
+        {analysis && scan2Consensus && (
+          <View style={[styles.consensusBadge, {
+            borderColor: scan2Consensus.agreed ? "#00d4aa55" : "#ff880055",
+            backgroundColor: scan2Consensus.agreed ? "#00d4aa12" : "#ff880012",
+          }]}>
+            <Text style={[styles.consensusBadgeText, {
+              color: scan2Consensus.agreed ? "#00d4aa" : "#ff8800",
+            }]}>
+              {scan2Consensus.agreed
+                ? `✓  2-SCAN CONSENSUS — BOTH SCANS AGREE`
+                : `⚠  SCANS DISAGREED — SHOWING MOST CONFIDENT (scan 2: ${scan2Consensus.species2 ?? "?"} ${scan2Consensus.confidence2 ?? "?"}%)`}
+            </Text>
+          </View>
+        )}
+
         {/* ── Scan logged location chip ─────────────────────────────────── */}
         {analysis && (
           <View style={[styles.locationChip, {
@@ -1564,6 +1597,13 @@ const styles = StyleSheet.create({
   errorText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   newBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
   newBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+
+  /* Dual-scan consensus badge */
+  consensusBadge: {
+    borderWidth: 1, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  consensusBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.4 },
 
   /* Location logged chip */
   locationChip: {

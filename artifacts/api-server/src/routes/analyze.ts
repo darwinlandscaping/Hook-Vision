@@ -668,19 +668,32 @@ router.post("/analyze", async (req, res) => {
     content.push({ type: 'text', text: analysisPrompt });
 
     // ── Streaming OpenAI call ─────────────────────────────────────────────
-    const stream = await openai.chat.completions.create({
-      model: "gpt-4.1",
-      max_completion_tokens: 600,
-      temperature: 0,
-      seed: 42,
-      stream: true,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content },
-      ],
-    });
+    const sharedMessages = [
+      { role: 'system' as const, content: SYSTEM_PROMPT },
+      { role: 'user'   as const, content },
+    ];
 
-    // Stream each chunk directly to the HTTP response — client sees first byte in ~1s
+    // ── Dual-scan: fire scan 1 (streaming → client) + scan 2 (background) ──
+    const [stream, scan2Promise] = await Promise.all([
+      openai.chat.completions.create({
+        model: "gpt-4.1",
+        max_completion_tokens: 600,
+        temperature: 0,
+        seed: 1,
+        stream: true,
+        messages: sharedMessages,
+      }),
+      openai.chat.completions.create({
+        model: "gpt-4.1",
+        max_completion_tokens: 600,
+        temperature: 0.3,
+        seed: 2,
+        stream: false,
+        messages: sharedMessages,
+      }),
+    ]);
+
+    // Stream scan 1 directly to client — first bytes in ~1s
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('X-Accel-Buffering', 'no');
@@ -698,16 +711,37 @@ router.post("/analyze", async (req, res) => {
     // Append CV blob positions so the app can overlay exact marker dots
     if (cvScan && cvScan.topBrightRegions.length > 0) {
       const payload = JSON.stringify({
-        regions: cvScan.topBrightRegions,        // [{xFrac, yFrac, size}]
-        mostActive: zoomCrops?.mostActive ?? null, // "left" | "right"
+        regions: cvScan.topBrightRegions,
+        mostActive: zoomCrops?.mostActive ?? null,
       });
       res.write(`\n__CV__:${payload}`);
     }
 
+    // ── Append scan 2 consensus token ───────────────────────────────────────
+    // scan2Promise already resolved (it runs non-streaming in parallel with the stream)
+    try {
+      const raw2   = scan2Promise.choices[0]?.message?.content ?? "{}";
+      const clean2 = raw2.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      const match2 = clean2.match(/\{[\s\S]*\}/);
+      if (match2) {
+        const p2 = JSON.parse(match2[0]) as { species?: string; confidence?: number; fishCount?: number };
+        // Parse scan 1 for comparison
+        const clean1 = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+        const match1 = clean1.match(/\{[\s\S]*\}/);
+        const p1 = match1 ? JSON.parse(match1[0]) as { species?: string; confidence?: number; fishCount?: number } : null;
+        const agreed = p1?.species?.toLowerCase() === p2?.species?.toLowerCase();
+        res.write(`\n__SCAN2__:${JSON.stringify({
+          agreed,
+          species2:    p2.species    ?? null,
+          confidence2: p2.confidence ?? null,
+          fishCount2:  p2.fishCount  ?? null,
+        })}`);
+      }
+    } catch { /* non-fatal — scan 1 result still valid */ }
+
     res.end();
 
-    // Server-side log only — client already parsed the streamed JSON
-    req.log.info({ chars: raw.length }, 'Streaming analysis complete');
+    req.log.info({ chars: raw.length }, 'Dual-scan analysis complete');
   } catch (err) {
     req.log.error({ err }, 'OpenAI analyze request failed');
     res.status(500).json({ error: 'Analysis failed. Check your connection and try again.' });
