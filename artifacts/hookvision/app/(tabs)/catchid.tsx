@@ -43,6 +43,7 @@ import { HVHeader } from "@/components/HVHeader";
 interface BarraCheck {
   isBarra:           boolean;
   confidence:        number;
+  viewingAngle?:     "side" | "top" | "angled" | "head-on" | "unknown";
   featuresDetected:  string[];
   featuresMissing:   string[];
   keyEvidence:       string;
@@ -146,6 +147,84 @@ function ConfBar({ value, color }: { value: number; color: string }) {
   );
 }
 
+// ─── Top-view target zone overlay ─────────────────────────────────────────────
+// Shown over the photo when viewingAngle === "top" is confirmed.
+// Animated scan line + 5 zone labels (eye bulges, pectoral wings, dorsal ridge,
+// caudal fin, shadow zone) teach the user exactly what the AI is reading.
+
+interface TVZone {
+  label: string;
+  top:   string;
+  left?: string;
+  right?: string;
+  color: string;
+}
+const TV_ZONES: TVZone[] = [
+  { label: "EYE L",        top: "17%",  left:   "8%",              color: "#00d4aa" },
+  { label: "EYE R",        top: "17%",              right:  "8%",  color: "#00d4aa" },
+  { label: "DORSAL RIDGE", top:  "8%",  left:  "28%",              color: "#00a8ff" },
+  { label: "PECT. FIN ◀",  top: "44%",  left:   "2%",              color: "#ffd700" },
+  { label: "▶ PECT. FIN",  top: "44%",              right:  "2%",  color: "#ffd700" },
+  { label: "CAUDAL FIN",   top: "76%",  left:  "30%",              color: "#00d4aa" },
+  { label: "SHADOW ZONE",  top: "60%",  left:  "56%",              color: "#ff8800" },
+];
+
+function TopViewScanOverlay({ active }: { active: boolean }) {
+  const scanY   = useSharedValue(0);
+  const pulse   = useSharedValue(0.4);
+  const fadein  = useSharedValue(0);
+
+  React.useEffect(() => {
+    if (!active) return;
+    fadein.value = withTiming(1, { duration: 350 });
+    scanY.value  = withRepeat(withTiming(1, { duration: 1800 }), -1, false);
+    pulse.value  = withRepeat(withSequence(
+      withTiming(1,   { duration: 700 }),
+      withTiming(0.4, { duration: 700 }),
+    ), -1, true);
+  }, [active, fadein, scanY, pulse]);
+
+  const scanAnim = useAnimatedStyle(() => ({
+    top: `${interpolate(scanY.value, [0, 1], [0, 100])}%`,
+  }));
+  const containerAnim = useAnimatedStyle(() => ({
+    opacity: fadein.value,
+  }));
+  const cornerAnim = useAnimatedStyle(() => ({
+    opacity: interpolate(pulse.value, [0.4, 1], [0.5, 1]),
+  }));
+
+  if (!active) return null;
+  return (
+    <Animated.View style={[ST.tvOverlay, containerAnim]} pointerEvents="none">
+      {/* Corner brackets */}
+      {(["tl","tr","bl","br"] as const).map(pos => (
+        <Animated.View key={pos} style={[ST.corner, ST[`corner_${pos}`], cornerAnim]} />
+      ))}
+
+      {/* Sweep line */}
+      <Animated.View style={[ST.scanLine, scanAnim]} />
+
+      {/* Zone labels */}
+      {TV_ZONES.map((z, i) => (
+        <View key={i} style={[ST.zoneTag, {
+          top:   z.top,
+          left:  z.left  as any,
+          right: z.right as any,
+        }]}>
+          <View style={[ST.zoneDot, { backgroundColor: z.color }]} />
+          <Text style={[ST.zoneLabel, { color: z.color }]}>{z.label}</Text>
+        </View>
+      ))}
+
+      {/* Mode badge */}
+      <View style={ST.tvBadge}>
+        <Text style={ST.tvBadgeText}>📐 TOP VIEW SCAN</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
 /** Stage 1 — Instant barra verdict card */
 function BarraVerdictCard({ bc }: { bc: BarraCheck }) {
   const scale = useSharedValue(0.88);
@@ -167,20 +246,30 @@ function BarraVerdictCard({ bc }: { bc: BarraCheck }) {
       {/* Icon + title row */}
       <View style={S.verdictTop}>
         <MaterialCommunityIcons
-          name={confirmed ? "fish-off" : "fish"}
+          name={confirmed ? "fish" : "fish-off"}
           size={32}
           color={labelCol}
-          style={{ transform: [{ scaleX: confirmed ? 1 : 1 }] }}
         />
-        {/* actual fish icon when confirmed, warning when not */}
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[S.verdictTitle, { color: labelCol }]}>
             {confirmed ? "BARRA CONFIRMED" : bc.isBarra ? "POSSIBLE BARRA" : "NOT A BARRA"}
           </Text>
           <Text style={S.verdictSub}>AI Detection — Stage 1 of 2</Text>
         </View>
-        <View style={[S.speedBadge]}>
-          <Text style={S.speedText}>⚡ FAST</Text>
+        <View style={{ gap: 4, alignItems: "flex-end" }}>
+          <View style={S.speedBadge}>
+            <Text style={S.speedText}>⚡ FAST</Text>
+          </View>
+          {bc.viewingAngle === "top" && (
+            <View style={S.topViewBadge}>
+              <Text style={S.topViewBadgeText}>📐 TOP VIEW</Text>
+            </View>
+          )}
+          {bc.viewingAngle === "angled" && (
+            <View style={[S.topViewBadge, { borderColor: C.gold + "60", backgroundColor: C.gold + "18" }]}>
+              <Text style={[S.topViewBadgeText, { color: C.gold }]}>↗ ANGLED</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -201,7 +290,10 @@ function BarraVerdictCard({ bc }: { bc: BarraCheck }) {
       {/* Features detected */}
       {bc.featuresDetected?.length > 0 && (
         <View style={S.verdictSection}>
-          <Text style={S.verdictMeta}>HALLMARK FEATURES DETECTED ({bc.featuresDetected.length}/9)</Text>
+          <Text style={S.verdictMeta}>
+            HALLMARK FEATURES DETECTED ({bc.featuresDetected.length}/{bc.viewingAngle === "top" ? "8" : "9"})
+            {bc.viewingAngle === "top" ? " · DORSAL VIEW" : bc.viewingAngle === "angled" ? " · ANGLED VIEW" : ""}
+          </Text>
           <View style={S.pillRow}>
             {bc.featuresDetected.map((f, i) => (
               <View key={i} style={[S.pill, { borderColor: C.teal + "40", backgroundColor: C.teal + "18" }]}>
@@ -448,7 +540,8 @@ function EmptyState({
 
       <View style={S.tipBox}>
         <Text style={S.tipTitle}>BEST SHOT TIPS</Text>
-        <Text style={S.tipItem}>• Side-on view of the whole fish</Text>
+        <Text style={S.tipItem}>• Side-on view of the whole fish (most features visible)</Text>
+        <Text style={S.tipItem}>• Top-down view also works — hold camera directly above, let shadow fall to one side</Text>
         <Text style={S.tipItem}>• Include your hand or rod as a size reference</Text>
         <Text style={S.tipItem}>• Good light, avoid heavy shadow across the body</Text>
         <Text style={S.tipItem}>• Keep fish in water if releasing</Text>
@@ -596,8 +689,11 @@ export default function CatchIdScreen() {
         {/* ─ Photo + analysis ─ */}
         {imageUri && (
           <View style={S.analysisWrap}>
-            {/* Photo thumbnail */}
-            <Image source={{ uri: imageUri }} style={S.photo} resizeMode="cover" />
+            {/* Photo thumbnail + top-view target zone overlay */}
+            <View style={S.photoWrap}>
+              <Image source={{ uri: imageUri }} style={S.photo} resizeMode="cover" />
+              <TopViewScanOverlay active={barraCheck?.viewingAngle === "top"} />
+            </View>
 
             {/* Stage 1 status */}
             {stage1Loading && (
@@ -682,6 +778,7 @@ const S = StyleSheet.create({
 
   // ── Analysis wrapper ──────────────────────────────────────────────────────
   analysisWrap: { gap: 14 },
+  photoWrap:    { width: "100%", height: 220, borderRadius: 14, overflow: "hidden", backgroundColor: "#111" },
   photo:        { width: "100%", height: 220, borderRadius: 14, backgroundColor: "#111" },
 
   // ── Stage status ──────────────────────────────────────────────────────────
@@ -697,8 +794,10 @@ const S = StyleSheet.create({
   verdictTop:    { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   verdictTitle:  { fontSize: 22, fontFamily: "Oswald_700Bold", letterSpacing: 0.5 },
   verdictSub:    { fontSize: 10, fontFamily: "Inter_400Regular", color: "#666" },
-  speedBadge:    { paddingHorizontal: 8, paddingVertical: 3, backgroundColor: "#ffd70020", borderWidth: 1, borderColor: "#ffd70050", borderRadius: 8 },
-  speedText:     { fontSize: 9, fontFamily: "Inter_700Bold", color: C.gold, letterSpacing: 0.5 },
+  speedBadge:      { paddingHorizontal: 8, paddingVertical: 3, backgroundColor: "#ffd70020", borderWidth: 1, borderColor: "#ffd70050", borderRadius: 8 },
+  speedText:       { fontSize: 9, fontFamily: "Inter_700Bold", color: C.gold, letterSpacing: 0.5 },
+  topViewBadge:    { paddingHorizontal: 8, paddingVertical: 3, backgroundColor: "#00a8ff18", borderWidth: 1, borderColor: "#00a8ff60", borderRadius: 8 },
+  topViewBadgeText:{ fontSize: 9, fontFamily: "Inter_700Bold", color: C.accent, letterSpacing: 0.5 },
 
   verdictSection:{ gap: 6 },
   verdictMeta:   { fontSize: 9, fontFamily: "Inter_700Bold", color: "#555", letterSpacing: 0.8 },
@@ -774,4 +873,78 @@ const S = StyleSheet.create({
   fabGallery:    { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1.5, borderColor: C.teal, borderRadius: 12, paddingVertical: 12 },
   fabGalleryText:{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.teal },
   fabReset:      { width: 46, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#444", borderRadius: 12 },
+});
+
+// ─── Top-view overlay styles ──────────────────────────────────────────────────
+const CORNER_SIZE = 20;
+const CORNER_W    = 2.5;
+const ST = StyleSheet.create({
+  tvOverlay: {
+    position:  "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: 14,
+  },
+
+  // Corner bracket shared base
+  corner: {
+    position: "absolute",
+    width:    CORNER_SIZE,
+    height:   CORNER_SIZE,
+    borderColor: C.teal,
+  },
+  corner_tl: { top: 8,  left:  8,  borderTopWidth: CORNER_W, borderLeftWidth:  CORNER_W },
+  corner_tr: { top: 8,  right: 8,  borderTopWidth: CORNER_W, borderRightWidth: CORNER_W },
+  corner_bl: { bottom: 8, left:  8,  borderBottomWidth: CORNER_W, borderLeftWidth:  CORNER_W },
+  corner_br: { bottom: 8, right: 8,  borderBottomWidth: CORNER_W, borderRightWidth: CORNER_W },
+
+  // Horizontal sweep line
+  scanLine: {
+    position: "absolute",
+    left: 0, right: 0,
+    height: 1.5,
+    backgroundColor: C.teal + "55",
+  },
+
+  // Zone tag label
+  zoneTag: {
+    position:      "absolute",
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           3,
+  },
+  zoneDot: {
+    width:        5,
+    height:       5,
+    borderRadius: 3,
+  },
+  zoneLabel: {
+    fontSize:    8,
+    fontFamily:  "Inter_700Bold",
+    letterSpacing: 0.3,
+    textShadowColor: "#000a",
+    textShadowRadius: 3,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+
+  // Mode badge bottom-center
+  tvBadge: {
+    position:        "absolute",
+    bottom:          8,
+    alignSelf:       "center",
+    left:            "25%",
+    right:           "25%",
+    alignItems:      "center",
+    backgroundColor: "#00000088",
+    borderWidth:     1,
+    borderColor:     C.accent + "80",
+    borderRadius:    8,
+    paddingHorizontal: 6,
+    paddingVertical:   3,
+  },
+  tvBadgeText: {
+    fontSize:    9,
+    fontFamily:  "Inter_700Bold",
+    color:       C.accent,
+    letterSpacing: 0.5,
+  },
 });
