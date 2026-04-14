@@ -724,6 +724,22 @@ export default function LiveScreen() {
                 </TouchableOpacity>
               </View>
             )}
+            <Text style={[styles.permOrDivider, { color: colors.mutedForeground }]}>— or —</Text>
+            <TouchableOpacity
+              style={styles.permGalleryBtn}
+              onPress={pickFromGallery}
+              disabled={galleryPicking || scanning}
+              activeOpacity={0.82}
+            >
+              {galleryPicking ? (
+                <ActivityIndicator color="#00d4aa" size="small" />
+              ) : (
+                <Feather name="image" size={22} color="#00d4aa" />
+              )}
+              <Text style={styles.permGalleryText}>
+                {galleryPicking ? "Analysing…" : "Pick from Gallery"}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       );
@@ -739,6 +755,21 @@ export default function LiveScreen() {
             <Text style={[styles.permDesc, { color: colors.mutedForeground }]}>
               Allow camera access in your browser settings, then reload.
             </Text>
+            <TouchableOpacity
+              style={styles.permGalleryBtn}
+              onPress={pickFromGallery}
+              disabled={galleryPicking || scanning}
+              activeOpacity={0.82}
+            >
+              {galleryPicking ? (
+                <ActivityIndicator color="#00d4aa" size="small" />
+              ) : (
+                <Feather name="image" size={22} color="#00d4aa" />
+              )}
+              <Text style={styles.permGalleryText}>
+                {galleryPicking ? "Analysing…" : "Pick from Gallery"}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       );
@@ -784,6 +815,22 @@ export default function LiveScreen() {
               <Text style={styles.glowBtnLabel}>ALLOW</Text>
             </TouchableOpacity>
           </View>
+          <Text style={[styles.permOrDivider, { color: colors.mutedForeground }]}>— or —</Text>
+          <TouchableOpacity
+            style={styles.permGalleryBtn}
+            onPress={pickFromGallery}
+            disabled={galleryPicking || scanning}
+            activeOpacity={0.82}
+          >
+            {galleryPicking ? (
+              <ActivityIndicator color="#00d4aa" size="small" />
+            ) : (
+              <Feather name="image" size={22} color="#00d4aa" />
+            )}
+            <Text style={styles.permGalleryText}>
+              {galleryPicking ? "Analysing…" : "Pick from Gallery"}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -810,6 +857,14 @@ const styles = StyleSheet.create({
   permSubtitle:{ fontSize: 13, fontFamily: "Inter_600SemiBold", letterSpacing: 3, marginTop: -10 },
   permTitle:   { fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center", color: "#fff" },
   permDesc:    { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22, color: "#ffffffaa" },
+  permOrDivider: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", marginVertical: 4 },
+  permGalleryBtn: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    borderWidth: 1.5, borderColor: "#00d4aa66", borderRadius: 32,
+    paddingVertical: 14, paddingHorizontal: 28,
+    backgroundColor: "#00d4aa14",
+  },
+  permGalleryText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#00d4aa" },
 
   glowWrap: { width: 190, height: 190, alignItems: "center", justifyContent: "center", marginTop: 12 },
   glowRing: {
