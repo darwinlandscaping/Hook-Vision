@@ -814,6 +814,337 @@ function FullIdCard({ result }: { result: FishIdResult }) {
   );
 }
 
+// ─── Catch Brain Analyser ──────────────────────────────────────────────────────
+// Shown after every complete 2-stage analysis: Barra Brain (40%) + GPT-4.1 (60%)
+function CatchBrainAnalyser({
+  barraCheck,
+  fullResult,
+}: {
+  barraCheck: BarraCheck;
+  fullResult:  FishIdResult;
+}) {
+  // Per-system signals
+  const bbScore   = barraCheck.confidence ?? 0;
+  const bbSignal  = barraCheck.isBarra === true;
+  const gptScore  = fullResult.confidence ?? 0;
+  const gptSignal = gptScore >= 60;
+
+  // Weighted brain score  (Barra Brain 40 % | GPT-4.1 60 %)
+  const brainScore = Math.round(bbScore * 0.40 + gptScore * 0.60);
+
+  // Consensus
+  const yeses = [bbSignal, gptSignal].filter(Boolean).length;
+  type CStatus = "CONFIRMED" | "PROBABLE" | "NOT DETECTED";
+  const consensus: CStatus =
+    yeses === 2 ? "CONFIRMED" : yeses === 1 ? "PROBABLE" : "NOT DETECTED";
+  const cc =
+    consensus === "CONFIRMED" ? "#00d4aa"
+    : consensus === "PROBABLE" ? "#ffd700"
+    : "#666666";
+  const scoreColor =
+    brainScore >= 75 ? "#00d4aa" : brainScore >= 50 ? "#ffd700" : "#ff8800";
+
+  // Feature counts
+  const featCount   = barraCheck.featuresDetected?.length ?? 0;
+  const totalFeats  = barraCheck.viewingAngle === "top" ? 8 : 9;
+
+  // Entry animation
+  const scale = useSharedValue(0.93);
+  React.useEffect(() => { scale.value = withSpring(1, { damping: 14 }); }, [scale]);
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  return (
+    <Animated.View style={[CB.card, anim]}>
+      {/* Teal accent top bar */}
+      <View style={{ height: 4, backgroundColor: "#00d4aa" }} />
+
+      {/* Header */}
+      <View style={CB.header}>
+        <MaterialCommunityIcons name="brain" size={18} color="#00d4aa" />
+        <Text style={CB.title}>TOTAL BRAIN ANALYSIS</Text>
+        <View style={[CB.scoreBadge, {
+          backgroundColor: scoreColor + "20",
+          borderColor:     scoreColor + "50",
+        }]}>
+          <Text style={[CB.scoreBadgeText, { color: scoreColor }]}>{brainScore}%</Text>
+        </View>
+      </View>
+      <Text style={CB.subtitle}>2 AI systems · weighted confidence consensus</Text>
+
+      {/* Neural node row */}
+      <View style={CB.nodeRow}>
+        {/* BARRA BRAIN */}
+        <View style={CB.nodeWrap}>
+          <View style={[CB.node, { borderColor: "#00d4aa" }]}>
+            <MaterialCommunityIcons name="fish" size={22} color="#00d4aa" />
+            <Text style={[CB.nodeLabel, { color: "#00d4aa" }]}>BARRA{"\n"}BRAIN</Text>
+            <Text style={[CB.nodeScore, { color: "#ffffff" }]}>{bbScore}%</Text>
+          </View>
+          <Text style={[CB.nodeWeight, { color: "#00d4aa60" }]}>40% wt</Text>
+        </View>
+
+        <View style={CB.connectorWrap}>
+          <View style={CB.connLine} />
+          <MaterialCommunityIcons name="chevron-right" size={13} color="#ffffff25" />
+        </View>
+
+        {/* GPT-4.1 */}
+        <View style={CB.nodeWrap}>
+          <View style={[CB.node, { borderColor: "#7c5cfc" }]}>
+            <MaterialCommunityIcons name="chip" size={22} color="#7c5cfc" />
+            <Text style={[CB.nodeLabel, { color: "#7c5cfc" }]}>GPT-4.1{"\n"}FULL ID</Text>
+            <Text style={[CB.nodeScore, { color: "#ffffff" }]}>{gptScore}%</Text>
+          </View>
+          <Text style={[CB.nodeWeight, { color: "#7c5cfc60" }]}>60% wt</Text>
+        </View>
+      </View>
+
+      {/* Brain score fill-bar */}
+      <View style={CB.scoreBarWrap}>
+        <View style={CB.scoreBarTrack}>
+          <View style={[CB.scoreBarFill, {
+            width:           `${brainScore}%` as any,
+            backgroundColor: scoreColor,
+          }]} />
+        </View>
+        <Text style={[CB.scoreBarLabel, { color: scoreColor }]}>
+          BRAIN SCORE  {brainScore}%
+        </Text>
+      </View>
+
+      {/* System verdict rows */}
+      <View style={CB.verdictList}>
+        {/* Barra Brain row */}
+        <View style={CB.verdictRow}>
+          <View style={[CB.verdictDot, { backgroundColor: bbSignal ? "#00d4aa" : "#555" }]} />
+          <Text style={CB.verdictSys}>BARRA BRAIN</Text>
+          <Text style={[CB.verdictVal, { color: bbSignal ? "#00d4aa" : "#666" }]}>
+            {bbSignal ? "✓ BARRA CONFIRMED" : "✗ NOT A BARRA"}
+          </Text>
+          <Text style={[CB.verdictChip, {
+            color:           "#00d4aa",
+            borderColor:     "#00d4aa25",
+            backgroundColor: "#00d4aa0d",
+          }]}>
+            {featCount}/{totalFeats} feats
+          </Text>
+        </View>
+
+        {/* GPT-4.1 row */}
+        <View style={CB.verdictRow}>
+          <View style={[CB.verdictDot, { backgroundColor: gptSignal ? "#7c5cfc" : "#555" }]} />
+          <Text style={CB.verdictSys}>GPT-4.1</Text>
+          <Text style={[CB.verdictVal, { color: gptSignal ? "#7c5cfc" : "#666" }]}>
+            {gptSignal ? `✓ ${fullResult.species}` : `○ ${fullResult.species}`}
+          </Text>
+          <Text style={[CB.verdictChip, {
+            color:           "#7c5cfc",
+            borderColor:     "#7c5cfc25",
+            backgroundColor: "#7c5cfc0d",
+          }]}>
+            {fullResult.legalStatus.toUpperCase()}
+          </Text>
+        </View>
+      </View>
+
+      {/* Consensus banner */}
+      <View style={[CB.consensusBar, { backgroundColor: cc + "18", borderColor: cc + "44" }]}>
+        <MaterialCommunityIcons
+          name={
+            consensus === "CONFIRMED" ? "check-circle"
+            : consensus === "PROBABLE" ? "alert-circle"
+            : "close-circle"
+          }
+          size={18}
+          color={cc}
+        />
+        <Text style={[CB.consensusLabel, { color: cc }]}>
+          {consensus === "CONFIRMED" ? "BOTH SYSTEMS AGREE"
+           : consensus === "PROBABLE" ? "1 OF 2 SYSTEMS POSITIVE"
+           : "NO POSITIVE SIGNAL"}
+        </Text>
+        <Text style={[CB.consensusBadge, { color: cc }]}>{consensus}</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+const CB = StyleSheet.create({
+  card: {
+    borderRadius:    18,
+    borderWidth:     1.5,
+    borderColor:     "#00d4aa30",
+    backgroundColor: "#060e1c",
+    overflow:        "hidden",
+  },
+  header: {
+    flexDirection:    "row",
+    alignItems:       "center",
+    gap:              8,
+    paddingHorizontal: 16,
+    paddingTop:        14,
+    paddingBottom:     6,
+  },
+  title: {
+    flex:          1,
+    fontSize:      13,
+    fontFamily:    "Oswald_700Bold",
+    color:         "#00d4aa",
+    letterSpacing: 1.5,
+  },
+  scoreBadge: {
+    borderRadius:     8,
+    borderWidth:      1,
+    paddingHorizontal: 10,
+    paddingVertical:   4,
+  },
+  scoreBadgeText: {
+    fontSize:   14,
+    fontFamily: "Inter_700Bold",
+  },
+  subtitle: {
+    fontSize:         10,
+    fontFamily:       "Inter_400Regular",
+    color:            "#ffffff40",
+    paddingHorizontal: 16,
+    paddingBottom:     14,
+  },
+  // ── Nodes ─────────────────────────────────────────
+  nodeRow: {
+    flexDirection:    "row",
+    alignItems:       "flex-start",
+    justifyContent:   "center",
+    paddingHorizontal: 16,
+    paddingBottom:     14,
+    gap:              4,
+  },
+  nodeWrap: {
+    alignItems: "center",
+    gap:        4,
+    flex:       1,
+  },
+  node: {
+    borderWidth:     1.5,
+    borderRadius:    12,
+    backgroundColor: "#0c1a2e",
+    padding:         10,
+    alignItems:      "center",
+    gap:             3,
+    width:           "100%",
+  },
+  nodeLabel: {
+    fontSize:      8,
+    fontFamily:    "Inter_700Bold",
+    textAlign:     "center",
+    letterSpacing: 0.5,
+  },
+  nodeScore: {
+    fontSize:   16,
+    fontFamily: "Inter_700Bold",
+    marginTop:  2,
+  },
+  nodeWeight: {
+    fontSize:   9,
+    fontFamily: "Inter_400Regular",
+  },
+  connectorWrap: {
+    flexDirection: "row",
+    alignItems:    "center",
+    marginTop:     22,
+    gap:           0,
+    paddingHorizontal: 2,
+  },
+  connLine: {
+    flex:            1,
+    height:          1,
+    backgroundColor: "#ffffff15",
+    minWidth:        8,
+  },
+  // ── Brain score bar ───────────────────────────────
+  scoreBarWrap: {
+    paddingHorizontal: 16,
+    paddingBottom:     14,
+    gap:               6,
+  },
+  scoreBarTrack: {
+    height:          6,
+    borderRadius:    3,
+    backgroundColor: "#ffffff10",
+    overflow:        "hidden",
+  },
+  scoreBarFill: {
+    height:       6,
+    borderRadius: 3,
+  },
+  scoreBarLabel: {
+    fontSize:      10,
+    fontFamily:    "Inter_700Bold",
+    letterSpacing: 1.2,
+    textAlign:     "right",
+  },
+  // ── Verdict rows ──────────────────────────────────
+  verdictList: {
+    borderTopWidth: 1,
+    borderTopColor: "#ffffff08",
+    paddingVertical: 4,
+  },
+  verdictRow: {
+    flexDirection:    "row",
+    alignItems:       "center",
+    gap:              8,
+    paddingHorizontal: 16,
+    paddingVertical:   7,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ffffff06",
+  },
+  verdictDot: {
+    width:        7,
+    height:       7,
+    borderRadius: 4,
+  },
+  verdictSys: {
+    fontSize:      9,
+    fontFamily:    "Inter_700Bold",
+    color:         "#ffffff60",
+    letterSpacing: 0.8,
+    width:         80,
+  },
+  verdictVal: {
+    flex:       1,
+    fontSize:   10,
+    fontFamily: "Inter_700Bold",
+  },
+  verdictChip: {
+    fontSize:         9,
+    fontFamily:       "Inter_700Bold",
+    letterSpacing:    0.5,
+    borderWidth:      1,
+    borderRadius:     6,
+    paddingHorizontal: 6,
+    paddingVertical:   2,
+  },
+  // ── Consensus banner ──────────────────────────────
+  consensusBar: {
+    flexDirection:    "row",
+    alignItems:       "center",
+    gap:              10,
+    paddingHorizontal: 16,
+    paddingVertical:   12,
+    borderTopWidth:    1,
+  },
+  consensusLabel: {
+    flex:          1,
+    fontSize:      11,
+    fontFamily:    "Inter_700Bold",
+    letterSpacing: 0.6,
+  },
+  consensusBadge: {
+    fontSize:      10,
+    fontFamily:    "Inter_700Bold",
+    letterSpacing: 1.2,
+  },
+});
+
 /** Empty state */
 function EmptyState({
   onCamera, onGallery, brain, topViewMode, onToggleTopView,
@@ -1191,6 +1522,11 @@ export default function CatchIdScreen() {
               </View>
             )}
             {fullResult && <FullIdCard result={fullResult} />}
+
+            {/* Total Brain Analysis — shown once both stages complete */}
+            {barraCheck && fullResult && !stage1Loading && !stage2Loading && (
+              <CatchBrainAnalyser barraCheck={barraCheck} fullResult={fullResult} />
+            )}
           </View>
         )}
       </ScrollView>
