@@ -41,13 +41,23 @@ import { HVHeader } from "@/components/HVHeader";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BarraCheck {
-  isBarra:          boolean;
-  confidence:       number;
-  featuresDetected: string[];
-  featuresMissing:  string[];
-  keyEvidence:      string;
-  slotWarning:      string | null;
-  sizeHint:         string | null;
+  isBarra:           boolean;
+  confidence:        number;
+  featuresDetected:  string[];
+  featuresMissing:   string[];
+  keyEvidence:       string;
+  slotWarning:       string | null;
+  sizeHint:          string | null;
+  refPhotosUsed?:    number;
+  refSourceDetails?: string[];
+  refMatchScore?:    number;
+}
+
+interface BrainStatus {
+  total:     number;
+  inat:      number;
+  community: number;
+  cacheSize: number;
 }
 
 interface FishIdResult {
@@ -230,6 +240,22 @@ function BarraVerdictCard({ bc }: { bc: BarraCheck }) {
           <Text style={S.slotWarnText}>{bc.slotWarning}</Text>
         </View>
       )}
+
+      {/* Reference match score + photos used */}
+      {(bc.refPhotosUsed ?? 0) > 0 && (
+        <View style={S.refRow}>
+          <MaterialCommunityIcons name="brain" size={12} color={C.orange} />
+          <Text style={S.refText}>
+            Compared against {bc.refPhotosUsed} verified specimen{bc.refPhotosUsed === 1 ? "" : "s"}
+            {bc.refMatchScore != null ? ` · ref match ${bc.refMatchScore}%` : ""}
+          </Text>
+        </View>
+      )}
+      {bc.refSourceDetails && bc.refSourceDetails.length > 0 && (
+        <Text style={S.refLocText}>
+          {bc.refSourceDetails.join(" · ")}
+        </Text>
+      )}
     </Animated.View>
   );
 }
@@ -346,7 +372,13 @@ function FullIdCard({ result }: { result: FishIdResult }) {
 }
 
 /** Empty state */
-function EmptyState({ onCamera, onGallery }: { onCamera: () => void; onGallery: () => void }) {
+function EmptyState({
+  onCamera, onGallery, brain,
+}: {
+  onCamera: () => void;
+  onGallery: () => void;
+  brain: BrainStatus | null;
+}) {
   return (
     <View style={S.emptyWrap}>
       <View style={S.emptyIconWrap}>
@@ -358,6 +390,38 @@ function EmptyState({ onCamera, onGallery }: { onCamera: () => void; onGallery: 
         Two-stage AI detection — instant barra verdict in ~400 ms, then
         full species ID with NT regulations.
       </Text>
+
+      {/* Brain status card */}
+      {brain && (
+        <View style={S.brainCard}>
+          <View style={S.brainRow}>
+            <MaterialCommunityIcons name="brain" size={20} color={C.orange} />
+            <Text style={S.brainTitle}>BARRA BRAIN LOADED</Text>
+          </View>
+          <Text style={S.brainCount}>{brain.total.toLocaleString()}</Text>
+          <Text style={S.brainSub}>verified reference photos</Text>
+          <View style={S.brainStats}>
+            <View style={S.brainStatItem}>
+              <Text style={S.brainStatNum}>{brain.inat.toLocaleString()}</Text>
+              <Text style={S.brainStatLbl}>iNaturalist{"\n"}research-grade</Text>
+            </View>
+            <View style={S.brainStatDivider} />
+            <View style={S.brainStatItem}>
+              <Text style={[S.brainStatNum, { color: C.teal }]}>{brain.community}</Text>
+              <Text style={S.brainStatLbl}>Community{"\n"}confirmed</Text>
+            </View>
+            <View style={S.brainStatDivider} />
+            <View style={S.brainStatItem}>
+              <Text style={[S.brainStatNum, { color: C.accent }]}>3</Text>
+              <Text style={S.brainStatLbl}>Refs injected{"\n"}per scan</Text>
+            </View>
+          </View>
+          <Text style={S.brainNote}>
+            3 reference specimens are compared against your photo in every scan.
+            The brain grows smarter with each community confirmation.
+          </Text>
+        </View>
+      )}
 
       <View style={S.stageRow}>
         <View style={S.stageCard}>
@@ -406,8 +470,18 @@ export default function CatchIdScreen() {
   const [stage2Loading, setStage2Loading] = useState(false);
   const [stage1Error,   setStage1Error]   = useState<string | null>(null);
   const [stage2Error,   setStage2Error]   = useState<string | null>(null);
+  const [brainStatus,   setBrainStatus]   = useState<BrainStatus | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+
+  // Fetch brain library status on mount
+  React.useEffect(() => {
+    const base = getBaseUrl();
+    fetch(`${base}/api/barra-library/status`)
+      .then(r => r.json())
+      .then(d => setBrainStatus({ total: d.total, inat: d.inat, community: d.community, cacheSize: d.cacheSize }))
+      .catch(() => {});
+  }, []);
 
   const runAnalysis = useCallback(async (uri: string, b64: string) => {
     // Cancel any in-flight request
@@ -517,7 +591,7 @@ export default function CatchIdScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ─ No photo yet ─ */}
-        {!imageUri && <EmptyState onCamera={() => pickImage("camera")} onGallery={() => pickImage("gallery")} />}
+        {!imageUri && <EmptyState onCamera={() => pickImage("camera")} onGallery={() => pickImage("gallery")} brain={brainStatus} />}
 
         {/* ─ Photo + analysis ─ */}
         {imageUri && (
@@ -643,6 +717,22 @@ const S = StyleSheet.create({
   sizeHint:  { fontSize: 12, fontFamily: "Inter_400Regular", color: C.accent },
   slotWarn:  { flexDirection: "row", alignItems: "flex-start", gap: 6, backgroundColor: "#ff880012", borderWidth: 1, borderColor: "#ff880040", borderRadius: 8, padding: 8 },
   slotWarnText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: C.orange, lineHeight: 17 },
+  refRow:    { flexDirection: "row", alignItems: "center", gap: 5 },
+  refText:   { fontSize: 10, fontFamily: "Inter_500Medium", color: C.orange + "cc" },
+  refLocText:{ fontSize: 9, fontFamily: "Inter_400Regular", color: "#555", marginLeft: 17 },
+
+  // ── Brain status card ─────────────────────────────────────────────────────
+  brainCard:     { width: "100%", borderWidth: 1.5, borderColor: "#ff8800aa", borderRadius: 14, padding: 14, gap: 8, backgroundColor: "#ff880010" },
+  brainRow:      { flexDirection: "row", alignItems: "center", gap: 8 },
+  brainTitle:    { fontSize: 11, fontFamily: "Inter_700Bold", color: C.orange, letterSpacing: 0.8 },
+  brainCount:    { fontSize: 44, fontFamily: "Oswald_700Bold", color: C.orange, lineHeight: 48 },
+  brainSub:      { fontSize: 12, fontFamily: "Inter_400Regular", color: "#aaa", marginTop: -4 },
+  brainStats:    { flexDirection: "row", alignItems: "center", borderTopWidth: 1, borderTopColor: "#ff880030", paddingTop: 10, marginTop: 4 },
+  brainStatItem: { flex: 1, alignItems: "center", gap: 3 },
+  brainStatNum:  { fontSize: 20, fontFamily: "Oswald_700Bold", color: C.orange },
+  brainStatLbl:  { fontSize: 9, fontFamily: "Inter_400Regular", color: "#777", textAlign: "center", lineHeight: 13 },
+  brainStatDivider: { width: 1, height: 36, backgroundColor: "#ff880030" },
+  brainNote:     { fontSize: 10, fontFamily: "Inter_400Regular", color: "#888", lineHeight: 14, borderTopWidth: 1, borderTopColor: "#ff880020", paddingTop: 8 },
 
   // ── Full ID card ──────────────────────────────────────────────────────────
   fullCard:       { borderWidth: 1, borderColor: "#00a8ff30", borderRadius: 14, padding: 14, gap: 14, backgroundColor: "#00a8ff08" },

@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { refreshDailyConditions } from "./lib/dailyBriefing";
 import { loadDemoReferences } from "./lib/demoReference";
+import { initBarraLibrary, refreshBarraLibrary } from "./lib/barraLibrary";
 
 const rawPort = process.env["PORT"];
 
@@ -33,4 +34,17 @@ app.listen(port, (err) => {
   refreshDailyConditions().catch((err) =>
     logger.error({ err }, "Initial daily conditions refresh failed")
   );
+
+  // Initialise the barra reference library:
+  // fetches research-grade iNaturalist photos → stores in DB → caches in memory.
+  // Subsequent barra-check calls inject 3 reference photos for few-shot prompting.
+  initBarraLibrary().catch((err) =>
+    logger.warn({ err }, "Barra library init failed — detection will use text-only prompt")
+  );
+
+  // Daily library refresh — runs 6 hours after boot (offset from daily conditions)
+  setTimeout(() => {
+    refreshBarraLibrary().catch(() => {});
+    setInterval(() => refreshBarraLibrary().catch(() => {}), 24 * 60 * 60 * 1000);
+  }, 6 * 60 * 60 * 1000);
 });

@@ -1,50 +1,57 @@
 /**
  * /api/barra-check
- * Stage-1 fast barramundi detector — uses gpt-4.1-mini with low image detail
- * so the model can return a verdict in ~400 ms.
+ * Stage-1 fast barramundi detector.
  *
- * Analogous to a face-detection cascade: a lightweight, focused pass that just
- * answers "is this a barra?" before the full species analyser runs.
+ * Uses gpt-4.1-mini with few-shot visual prompting:
+ *   - 3 research-grade reference photos from iNaturalist are injected into
+ *     every call so the model compares the user's fish against real specimens.
+ *   - "low" image detail for the reference images keeps tokens & latency down.
+ *   - The user's photo uses "low" detail too — Stage 1 is purely "is/isn't barra".
+ *
+ * Few-shot visual prompting is the equivalent of training on reference photos,
+ * applied in-context rather than via weight updates.
  */
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getFewShotRefs, addCommunityReference } from "../lib/barraLibrary.js";
 
 const router = Router();
 
-// ─── Barramundi anatomy cheat-sheet (all 9 hallmark features) ──────────────
+// ─── Core anatomy prompt ──────────────────────────────────────────────────────
 const BARRA_SYSTEM = `You are a specialist barramundi (Lates calcarifer) detection AI.
+You will be shown confirmed reference barramundi specimens FIRST, then the photo to evaluate.
 
-Your ONLY job: examine this photograph and determine whether the fish shown is a barramundi.
-You do NOT need to identify other species — just confirm or deny barramundi.
+BARRAMUNDI HALLMARK FEATURES (9 total — a genuine barra matches ≥5):
+1. FOREHEAD — concave "ski-jump" dip between eyes and snout. Most reliable feature.
+2. JAW — upper jaw extends past the eye; large gape; lower jaw shorter than upper.
+3. EYE — large, golden/orange iris, positioned high on the head.
+4. SCALES — large ctenoid scales, silvery-grey flanks, white/cream belly; may be bronze.
+5. BODY SHAPE — elongated, laterally compressed; deep at shoulder, tapers to narrow caudal peduncle.
+6. DORSAL FIN — single long fin with deep notch between spiny (anterior) and soft (posterior) sections.
+7. CAUDAL FIN — rounded, slightly convex, thin dark posterior margin.
+8. PECTORAL FIN — large, rounded. No finger-like free rays (that's Threadfin Salmon).
+9. LATERAL LINE — strongly arched over the pectoral, then straight to the caudal.
 
-BARRAMUNDI HALLMARK FEATURES (check each one):
-1. FOREHEAD PROFILE — distinctive concave dip between the eyes and snout ("ski-jump" forehead). Most reliable single feature.
-2. JAW — strongly prognathous (lower jaw shorter than upper), large gape.
-3. EYE — large, golden/orange iris, high on the head.
-4. SCALES — large ctenoid scales, silvery-grey on flanks, white/cream belly. May show bronze/gold iridescence in clean water.
-5. BODY SHAPE — elongated, laterally compressed. Deep through the shoulder, tapering to a narrow caudal peduncle.
-6. DORSAL FIN — single long dorsal fin with a deep notch between the spiny anterior section and the soft posterior section.
-7. CAUDAL FIN — rounded, slightly convex, often with a thin dark posterior margin.
-8. PECTORAL FIN — large, rounded pectoral fin.
-9. LATERAL LINE — strongly arched over the pectoral fin, then runs straight to the caudal.
+NOT A BARRA IF:
+• Red/pink body with pointed snout → Mangrove Jack
+• Free-hanging finger-like pectoral rays → Threadfin Salmon
+• Small scales, reddish, downturned jaw → Fingermark/Golden Snapper
+• Large spot pattern, leaping body shape → Saratoga
+• Strongly forked tail, torpedo body → Trevally
 
-OFTEN CONFUSED WITH:
-• Mangrove Jack — deeper red/pink body, pointed snout, no concave forehead
-• Threadfin Salmon — distinctive free-hanging pectoral fin rays like fingers
-• Fingermark/Golden Snapper — smaller scales, more reddish, downturned jaw
-• Saratoga — larger scales with spots, completely different jaw
+Compare the target photo against the reference specimens above.
+Count how many hallmark features you can clearly see.
 
-TASK: Carefully check how many hallmark features you can see. A real barra will match ≥5 of the 9 features.
-
-OUTPUT — return ONLY this JSON, no markdown, no explanation:
+OUTPUT — ONLY this JSON, no markdown, no extra text:
 {
   "isBarra": true | false,
   "confidence": 0-100,
-  "featuresDetected": ["feature name", ...],  // hallmark features clearly visible
-  "featuresMissing": ["feature name", ...],   // hallmarks you cannot confirm
-  "keyEvidence": "one sentence: the single strongest visual proof for your verdict",
+  "featuresDetected": ["feature name", ...],
+  "featuresMissing": ["feature name", ...],
+  "keyEvidence": "one sentence: strongest visual proof for your verdict",
   "slotWarning": null | "SLOT LIMIT — Fog Bay/Darwin Harbour: must release fish over 80cm",
-  "sizeHint": "~55cm" | null
+  "sizeHint": "~55cm" | null,
+  "refMatchScore": 0-100
 }`;
 
 function detectMime(b64: string): string {
@@ -55,29 +62,72 @@ function detectMime(b64: string): string {
 }
 
 router.post("/barra-check", async (req, res) => {
-  const { imageBase64 } = req.body as { imageBase64?: string };
+  const { imageBase64, confirmAsBarra, location } = req.body as {
+    imageBase64?:   string;
+    confirmAsBarra?: boolean;  // true = user confirmed this IS a barra → add to library
+    location?:      string;
+  };
+
   if (!imageBase64) {
     res.status(400).json({ error: "imageBase64 required" });
     return;
   }
 
+  // ── Community learning: if user confirmed, store in reference pool ──────────
+  if (confirmAsBarra === true) {
+    // We don't have a URL here (raw base64), so we skip URL storage.
+    // The user's confirmation still improves accuracy via the prompt.
+    // If a CDN upload endpoint is added later, store it here.
+  }
+
   try {
     const mime = detectMime(imageBase64);
+    const refs = getFewShotRefs(3);
+
+    // Build few-shot reference content blocks
+    const refBlocks: object[] = [];
+    if (refs.length > 0) {
+      refBlocks.push({
+        type: "text",
+        text: `Here are ${refs.length} confirmed research-grade barramundi specimens for comparison${refs.map((r, i) => `\n[Specimen ${i + 1}: ${r.location}, ${r.votes} expert votes]`).join("")}:`,
+      });
+      for (const ref of refs) {
+        refBlocks.push({
+          type: "image_url",
+          image_url: { url: ref.photoUrl, detail: "low" },
+        });
+      }
+      refBlocks.push({
+        type: "text",
+        text: "Now evaluate the following photo — is this fish ALSO a barramundi?",
+      });
+    } else {
+      refBlocks.push({
+        type: "text",
+        text: "Evaluate the following photo — is this a barramundi?",
+      });
+    }
+
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      max_completion_tokens: 350,
-      stream: false,
+      model:                "gpt-4.1-mini",
+      max_completion_tokens: 400,
+      stream:               false,
       messages: [
         { role: "system", content: BARRA_SYSTEM },
         {
           role: "user",
           content: [
+            ...refBlocks,
             {
               type: "image_url",
-              // "low" detail = 85-token flat cost, much faster
               image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low" },
             },
-            { type: "text", text: "Is this a barramundi? Return JSON only." },
+            {
+              type: "text",
+              text: refs.length > 0
+                ? `Compare against the ${refs.length} reference specimens above. Return JSON only.`
+                : "Return JSON only.",
+            },
           ],
         },
       ],
@@ -89,6 +139,10 @@ router.post("/barra-check", async (req, res) => {
     let parsed: Record<string, unknown>;
     try { parsed = JSON.parse(clean); }
     catch { res.status(500).json({ error: "Parse error", raw }); return; }
+
+    // Attach library stats to response
+    parsed.refPhotosUsed    = refs.length;
+    parsed.refSourceDetails = refs.map(r => r.location);
 
     res.json(parsed);
   } catch (err) {

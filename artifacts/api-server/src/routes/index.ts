@@ -13,6 +13,7 @@ import communityRouter from "./community";
 import brainRouter from "./brain";
 import fishidRouter from "./fishid";
 import barracheckRouter from "./barracheck";
+import barralibraryRouter from "./barralibrary";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(communityRouter);
 router.use(brainRouter);
 router.use(fishidRouter);
 router.use(barracheckRouter);
+router.use(barralibraryRouter);
 
 export default router;
