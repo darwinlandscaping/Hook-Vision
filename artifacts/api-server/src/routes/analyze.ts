@@ -4,6 +4,7 @@ import { db, brainVideos, communityInsights, communityReports } from "@workspace
 import { desc, eq } from "drizzle-orm";
 import { getConditionsContext } from "../lib/dailyBriefing";
 import { analyzeSonarImage, formatCvContext, generateZoomCrops } from "../lib/vision";
+import { getSonarFewShotRefs } from "../lib/sonarBrain.js";
 
 const router = Router();
 
@@ -616,12 +617,31 @@ router.post("/analyze", async (req, res) => {
     // Detect actual image MIME type so vision API gets correct format header
     const mimeType = detectMimeType(imageBase64);
 
-    // ── Build vision message content — full image + zoom crops ───────────
+    // ── Sonar Brain: inject few-shot reference images ─────────────────────
+    // Prepend 2 confirmed barra arch refs + 1 negative contrast ref before the
+    // user's sonar image so the model compares against known patterns first.
+    const sonarRefs = getSonarFewShotRefs();
     type ImagePart = { type: 'image_url'; image_url: { url: string; detail: 'high' | 'low' } };
     type TextPart  = { type: 'text'; text: string };
-    const content: Array<ImagePart | TextPart> = [
-      { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'high' } },
-    ];
+    const content: Array<ImagePart | TextPart> = [];
+
+    if (sonarRefs.length > 0) {
+      const posRefs = sonarRefs.filter(r => r.isPositive);
+      const negRefs = sonarRefs.filter(r => !r.isPositive);
+      content.push({ type: 'text', text: `SONAR BRAIN — ${sonarRefs.length} REFERENCE IMAGES (study before analysing user's sonar):` });
+      for (const ref of posRefs) {
+        content.push({ type: 'image_url', image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: 'low' } });
+        content.push({ type: 'text', text: `↑ CONFIRMED BARRAMUNDI — ${ref.brand}: ${ref.label.split('\n')[0]}` });
+      }
+      for (const ref of negRefs) {
+        content.push({ type: 'image_url', image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: 'low' } });
+        content.push({ type: 'text', text: `↑ NOT BARRAMUNDI (contrast ref) — ${ref.brand}: ${ref.label.split('\n')[0]}` });
+      }
+      content.push({ type: 'text', text: `NOW ANALYSE THE USER'S SONAR IMAGE BELOW (${zoomCrops ? 4 : 1} image${zoomCrops ? 's' : ''} including zoom crops):` });
+    }
+
+    // ── Build vision message content — full image + zoom crops ───────────
+    content.push({ type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'high' } });
     if (zoomCrops) {
       content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.leftHalf}`,  detail: 'high' } });
       content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.rightHalf}`, detail: 'high' } });

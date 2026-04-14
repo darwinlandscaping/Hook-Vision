@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { refreshDailyConditions } from "./lib/dailyBriefing";
 import { loadDemoReferences } from "./lib/demoReference";
 import { initBarraLibrary, refreshBarraLibrary } from "./lib/barraLibrary";
+import { initSonarBrain } from "./lib/sonarBrain";
 
 const rawPort = process.env["PORT"];
 
@@ -40,6 +41,12 @@ app.listen(port, (err) => {
   // Subsequent barra-check calls inject 3 reference photos for few-shot prompting.
   initBarraLibrary().catch((err) =>
     logger.warn({ err }, "Barra library init failed — detection will use text-only prompt")
+  );
+
+  // Initialise the sonar brain — uses the 5 demo images already in memory
+  // plus any community-confirmed sonar arch scans from the DB.
+  initSonarBrain().catch((err) =>
+    logger.warn({ err }, "Sonar brain init failed — analysis will use text-only prompt")
   );
 
   // Daily library refresh — runs 6 hours after boot (offset from daily conditions)

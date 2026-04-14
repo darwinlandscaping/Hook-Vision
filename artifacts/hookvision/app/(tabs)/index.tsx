@@ -150,6 +150,22 @@ export default function HomeScreen() {
   const [streamChars, setStreamChars] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [imageLayout, setImageLayout] = useState({ width: SCREEN_W - 32, height: 240 });
+
+  // ── Sonar Brain — Stage-1 fast barra arch detector ────────────────────────
+  interface SonarBarraResult {
+    isBarraArch:       boolean;
+    confidence:        number;
+    archCount:         number;
+    estimatedDepth:    string | null;
+    keyEvidence:       string;
+    sonarBrand:        string;
+    bottomType?:       string;
+    lureRecommendation:string | null;
+    refPhotosUsed:     number;
+    positiveRefsUsed:  number;
+  }
+  const [sonarBarraResult, setSonarBarraResult] = useState<SonarBarraResult | null>(null);
+  const [sonarBarraLoading, setSonarBarraLoading] = useState(false);
   const autoAnalyzeRef = useRef(false);
 
   // ── On-device vision engine ────────────────────────────────────────────────
@@ -208,6 +224,8 @@ export default function HomeScreen() {
     setError(null);
     setCapturedLocation(null);
     setCvScan(null);
+    setSonarBarraResult(null);
+    setSonarBarraLoading(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     // Kick off location grab in the background — runs while user taps "Analyze Sonar"
     locationPromiseRef.current = getNTLocationName(10_000);
@@ -257,7 +275,31 @@ export default function HomeScreen() {
     setStreamChars(0);
     setError(null);
     setAnalysis(null);
+    setSonarBarraResult(null);
+    setSonarBarraLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // ── Sonar Brain Stage-1: fire sonar-barra-check in parallel ──────────────
+    // Resolves in ~600ms — shows BARRA ARCH verdict while full analysis streams
+    {
+      const brDomain  = process.env.EXPO_PUBLIC_DOMAIN;
+      const brBaseUrl = brDomain ? `https://${brDomain}` : "";
+      fetch(`${brBaseUrl}/api/sonar-barra-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64 }),
+      })
+        .then(r => r.json())
+        .then((data: { isBarraArch?: boolean; confidence?: number }) => {
+          setSonarBarraResult(data as any);
+          if (data.isBarraArch && (data.confidence ?? 0) >= 60) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+        })
+        .catch(() => {/* non-fatal — full analysis still runs */})
+        .finally(() => setSonarBarraLoading(false));
+    }
+
     try {
       const domain = process.env.EXPO_PUBLIC_DOMAIN;
       const baseUrl = domain ? `https://${domain}` : "";
@@ -502,6 +544,92 @@ export default function HomeScreen() {
                 ? `AI reading sonar… ${Math.min(99, Math.round((streamChars / 680) * 100))}%`
                 : "Uploading scan…"}
             </Text>
+          </View>
+        )}
+
+        {/* ── Sonar Brain Stage-1 — instant barra arch verdict ────────────── */}
+        {(sonarBarraLoading || sonarBarraResult) && (
+          <View style={[styles.sonarBrainCard, {
+            backgroundColor: sonarBarraLoading
+              ? colors.card
+              : sonarBarraResult?.isBarraArch && (sonarBarraResult.confidence ?? 0) >= 60
+                ? "#00d4aa14"
+                : sonarBarraResult?.isBarraArch && (sonarBarraResult.confidence ?? 0) >= 40
+                  ? "#ff880014"
+                  : "#ffffff0a",
+            borderColor: sonarBarraLoading
+              ? "#ffffff18"
+              : sonarBarraResult?.isBarraArch && (sonarBarraResult.confidence ?? 0) >= 60
+                ? "#00d4aa66"
+                : sonarBarraResult?.isBarraArch && (sonarBarraResult.confidence ?? 0) >= 40
+                  ? "#ff880066"
+                  : "#ffffff22",
+          }]}>
+            {sonarBarraLoading ? (
+              <View style={styles.sonarBrainRow}>
+                <SonarPulse size={14} active />
+                <Text style={[styles.sonarBrainLabel, { color: colors.mutedForeground }]}>SONAR BRAIN SCANNING…</Text>
+                <Text style={[styles.sonarBrainSub, { color: colors.mutedForeground }]}>comparing against {2}+ confirmed barra arch refs</Text>
+              </View>
+            ) : sonarBarraResult ? (
+              <>
+                <View style={styles.sonarBrainRow}>
+                  <View style={[styles.sonarBrainDot, {
+                    backgroundColor: sonarBarraResult.isBarraArch && sonarBarraResult.confidence >= 60
+                      ? "#00d4aa"
+                      : sonarBarraResult.isBarraArch && sonarBarraResult.confidence >= 40
+                        ? "#ff8800"
+                        : "#888888",
+                  }]} />
+                  <Text style={[styles.sonarBrainVerdict, {
+                    color: sonarBarraResult.isBarraArch && sonarBarraResult.confidence >= 60
+                      ? "#00d4aa"
+                      : sonarBarraResult.isBarraArch && sonarBarraResult.confidence >= 40
+                        ? "#ff8800"
+                        : "#888888",
+                  }]}>
+                    {sonarBarraResult.isBarraArch && sonarBarraResult.confidence >= 60
+                      ? "⚡ BARRA ARCHES DETECTED"
+                      : sonarBarraResult.isBarraArch && sonarBarraResult.confidence >= 40
+                        ? "⚠ POSSIBLE BARRA ARCHES"
+                        : "NO BARRA ARCHES"}
+                  </Text>
+                  <View style={styles.sonarBrainBadge}>
+                    <Text style={styles.sonarBrainBadgeText}>{sonarBarraResult.confidence}%</Text>
+                  </View>
+                </View>
+                <View style={styles.sonarBrainMeta}>
+                  {sonarBarraResult.archCount > 0 && (
+                    <Text style={[styles.sonarBrainPill, { backgroundColor: "#ffffff14", color: "#aaaaaa" }]}>
+                      {sonarBarraResult.archCount} arch{sonarBarraResult.archCount !== 1 ? "es" : ""}
+                    </Text>
+                  )}
+                  {sonarBarraResult.estimatedDepth && (
+                    <Text style={[styles.sonarBrainPill, { backgroundColor: "#ffffff14", color: "#aaaaaa" }]}>
+                      {sonarBarraResult.estimatedDepth}
+                    </Text>
+                  )}
+                  {sonarBarraResult.sonarBrand && sonarBarraResult.sonarBrand !== "Unknown" && (
+                    <Text style={[styles.sonarBrainPill, { backgroundColor: "#00a8ff18", color: "#00a8ff" }]}>
+                      {sonarBarraResult.sonarBrand}
+                    </Text>
+                  )}
+                  <Text style={[styles.sonarBrainPill, { backgroundColor: "#ff880018", color: "#ff8800" }]}>
+                    {sonarBarraResult.positiveRefsUsed ?? 2} barra refs used
+                  </Text>
+                </View>
+                {sonarBarraResult.keyEvidence ? (
+                  <Text style={[styles.sonarBrainEvidence, { color: colors.mutedForeground }]}>
+                    {sonarBarraResult.keyEvidence}
+                  </Text>
+                ) : null}
+                {sonarBarraResult.isBarraArch && sonarBarraResult.lureRecommendation && (
+                  <Text style={[styles.sonarBrainLure, { color: "#ffd700" }]}>
+                    🎣 {sonarBarraResult.lureRecommendation}
+                  </Text>
+                )}
+              </>
+            ) : null}
           </View>
         )}
 
@@ -814,6 +942,21 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   streamingPill: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 30, backgroundColor: "#00d4aa18", borderWidth: 1, borderColor: "#00d4aa44" },
   streamingLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
+
+  /* Sonar Brain Stage-1 verdict card */
+  sonarBrainCard: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 10 },
+  sonarBrainRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  sonarBrainDot: { width: 8, height: 8, borderRadius: 4 },
+  sonarBrainLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
+  sonarBrainSub: { fontSize: 10, fontFamily: "Inter_400Regular", marginLeft: "auto" as any },
+  sonarBrainVerdict: { fontSize: 13, fontFamily: "Inter_700Bold", letterSpacing: 0.5, flex: 1 },
+  sonarBrainBadge: { backgroundColor: "#ffffff18", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  sonarBrainBadgeText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#ffffff" },
+  sonarBrainMeta: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  sonarBrainPill: { fontSize: 10, fontFamily: "Inter_500Medium", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  sonarBrainEvidence: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  sonarBrainLure: { fontSize: 12, fontFamily: "Inter_500Medium" },
+
   errorBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 14, borderRadius: 10, borderWidth: 1 },
   errorText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   newBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },

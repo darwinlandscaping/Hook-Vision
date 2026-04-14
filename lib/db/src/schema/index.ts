@@ -4,3 +4,4 @@ export * from "./community_reports";
 export * from "./community_insights";
 export * from "./brain_videos";
 export * from "./barra_references";
+export * from "./sonar_references";

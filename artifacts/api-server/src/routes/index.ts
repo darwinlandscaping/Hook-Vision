@@ -14,6 +14,8 @@ import brainRouter from "./brain";
 import fishidRouter from "./fishid";
 import barracheckRouter from "./barracheck";
 import barralibraryRouter from "./barralibrary";
+import sonarbarracheckRouter from "./sonarbarracheck";
+import sonarbrainRouter from "./sonarbrain";
 
 const router: IRouter = Router();
 
@@ -32,5 +34,7 @@ router.use(brainRouter);
 router.use(fishidRouter);
 router.use(barracheckRouter);
 router.use(barralibraryRouter);
+router.use(sonarbarracheckRouter);
+router.use(sonarbrainRouter);
 
 export default router;

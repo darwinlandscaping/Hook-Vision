@@ -80,6 +80,20 @@ Express 5 API server.
 - `GET  /api/forecast?lat=&lon=` — Here Fishy Fishy conditions → AI spot picks (GPT-4.1)
 - `POST /api/barra` — Trophy Barra depth predictions (GPT-4.1, 3 ranked predictions)
 - `POST /api/narrate` — Character-voiced narration text (GPT-4.1-mini, 4 characters × 11 languages)
+- `POST /api/fish-id` — Full species ID from fish photo (GPT-4.1)
+- `POST /api/barra-check` — Stage-1 fast barra photo check (GPT-4.1-mini, ~400ms, uses Barra Brain few-shot)
+- `GET  /api/barra-library/status` — Barra Brain stats (iNaturalist references, 267 photos)
+- `POST /api/sonar-barra-check` — Stage-1 fast sonar arch check (gpt-4.1-mini, ~600ms, uses Sonar Brain few-shot)
+- `GET  /api/sonar-brain/status` — Sonar Arch Brain stats (5 expert demos + community pool)
+- `POST /api/sonar-brain/submit` — Submit community-confirmed barra arch sonar scan
+
+**AI Brain Systems:**
+- **Barra Brain** (`lib/barraLibrary.ts`): 267 iNaturalist research-grade barramundi photos; 3 rotating refs injected into every barra-check call; daily refresh
+- **Sonar Arch Brain** (`lib/sonarBrain.ts`): 5 expert-labeled sonar demo images (Lowrance/Garmin/Humminbird/Simrad); 2 positive barra refs + 1 negative contrast ref injected into every sonar analysis + sonar-barra-check call; community pool grows via `/api/sonar-brain/submit`
+
+**DB Tables:**
+- `barra_references` — iNaturalist barramundi photo references
+- `sonar_references` — community-confirmed barramundi arch sonar scans
 
 ## Key Commands
 
