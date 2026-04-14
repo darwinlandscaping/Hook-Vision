@@ -815,48 +815,83 @@ function FullIdCard({ result }: { result: FishIdResult }) {
 }
 
 // ─── Catch Brain Analyser ──────────────────────────────────────────────────────
-// Shown after every complete 2-stage analysis: Barra Brain (40%) + GPT-4.1 (60%)
+// Appears the moment analysis starts. Nodes pulse while loading; light up with
+// live results as each stage resolves. Both stages shown simultaneously.
 function CatchBrainAnalyser({
   barraCheck,
   fullResult,
+  stage1Loading = false,
+  stage2Loading = false,
 }: {
-  barraCheck: BarraCheck;
-  fullResult:  FishIdResult;
+  barraCheck:    BarraCheck    | null;
+  fullResult:    FishIdResult  | null;
+  stage1Loading?: boolean;
+  stage2Loading?: boolean;
 }) {
-  // Per-system signals
-  const bbScore   = barraCheck.confidence ?? 0;
-  const bbSignal  = barraCheck.isBarra === true;
-  const gptScore  = fullResult.confidence ?? 0;
+  // ── Per-system signals ───────────────────────────────────────────────────
+  const bbScore  = barraCheck?.confidence ?? 0;
+  const bbSignal = barraCheck?.isBarra === true;
+  const gptScore = fullResult?.confidence ?? 0;
   const gptSignal = gptScore >= 60;
+  const featCount = barraCheck?.featuresDetected?.length ?? 0;
+  const totalFeats = barraCheck?.viewingAngle === "top" ? 8 : 9;
 
-  // Weighted brain score  (Barra Brain 40 % | GPT-4.1 60 %)
-  const brainScore = Math.round(bbScore * 0.40 + gptScore * 0.60);
+  // ── Brain score: partial score while loading ─────────────────────────────
+  const anyDone = !!barraCheck || !!fullResult;
+  const brainScore = anyDone
+    ? Math.round(bbScore * 0.40 + gptScore * 0.60)
+    : 0;
 
-  // Consensus
+  // ── Consensus ────────────────────────────────────────────────────────────
+  const bothDone = !!barraCheck && !!fullResult;
   const yeses = [bbSignal, gptSignal].filter(Boolean).length;
-  type CStatus = "CONFIRMED" | "PROBABLE" | "NOT DETECTED";
-  const consensus: CStatus =
-    yeses === 2 ? "CONFIRMED" : yeses === 1 ? "PROBABLE" : "NOT DETECTED";
+  type CStatus = "CONFIRMED" | "PROBABLE" | "NOT DETECTED" | "ANALYSING";
+  const consensus: CStatus = !anyDone
+    ? "ANALYSING"
+    : !bothDone
+    ? "ANALYSING"
+    : yeses === 2 ? "CONFIRMED"
+    : yeses === 1 ? "PROBABLE"
+    : "NOT DETECTED";
   const cc =
-    consensus === "CONFIRMED" ? "#00d4aa"
-    : consensus === "PROBABLE" ? "#ffd700"
+    consensus === "CONFIRMED"    ? "#00d4aa"
+    : consensus === "PROBABLE"   ? "#ffd700"
+    : consensus === "ANALYSING"  ? "#00a8ff"
     : "#666666";
   const scoreColor =
-    brainScore >= 75 ? "#00d4aa" : brainScore >= 50 ? "#ffd700" : "#ff8800";
+    brainScore >= 75 ? "#00d4aa" : brainScore >= 50 ? "#ffd700"
+    : anyDone ? "#ff8800" : "#333333";
 
-  // Feature counts
-  const featCount   = barraCheck.featuresDetected?.length ?? 0;
-  const totalFeats  = barraCheck.viewingAngle === "top" ? 8 : 9;
+  // ── Pulsing opacity for loading nodes ────────────────────────────────────
+  const pulse = useSharedValue(1);
+  React.useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(withTiming(0.25, { duration: 600 }), withTiming(1, { duration: 600 })),
+      -1, true
+    );
+  }, [pulse]);
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
   // Entry animation
   const scale = useSharedValue(0.93);
   React.useEffect(() => { scale.value = withSpring(1, { damping: 14 }); }, [scale]);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function NodeLoading({ color }: { color: string }) {
+    return (
+      <Animated.View style={pulseStyle}>
+        <Text style={{ fontSize: 9, fontFamily: "Inter_700Bold", color, letterSpacing: 0.8 }}>
+          SCANNING…
+        </Text>
+      </Animated.View>
+    );
+  }
+
   return (
     <Animated.View style={[CB.card, anim]}>
-      {/* Teal accent top bar */}
-      <View style={{ height: 4, backgroundColor: "#00d4aa" }} />
+      {/* Teal accent top bar — pulses blue while loading */}
+      <View style={{ height: 4, backgroundColor: stage1Loading && !anyDone ? "#00a8ff" : "#00d4aa" }} />
 
       {/* Header */}
       <View style={CB.header}>
@@ -866,21 +901,45 @@ function CatchBrainAnalyser({
           backgroundColor: scoreColor + "20",
           borderColor:     scoreColor + "50",
         }]}>
-          <Text style={[CB.scoreBadgeText, { color: scoreColor }]}>{brainScore}%</Text>
+          {anyDone ? (
+            <Text style={[CB.scoreBadgeText, { color: scoreColor }]}>{brainScore}%</Text>
+          ) : (
+            <Animated.Text style={[CB.scoreBadgeText, { color: "#00a8ff" }, pulseStyle]}>
+              —%
+            </Animated.Text>
+          )}
         </View>
       </View>
       <Text style={CB.subtitle}>2 AI systems · weighted confidence consensus</Text>
 
       {/* Neural node row */}
       <View style={CB.nodeRow}>
-        {/* BARRA BRAIN */}
+
+        {/* ── BARRA BRAIN node ── */}
         <View style={CB.nodeWrap}>
-          <View style={[CB.node, { borderColor: "#00d4aa" }]}>
-            <MaterialCommunityIcons name="fish" size={22} color="#00d4aa" />
-            <Text style={[CB.nodeLabel, { color: "#00d4aa" }]}>BARRA{"\n"}BRAIN</Text>
-            <Text style={[CB.nodeScore, { color: "#ffffff" }]}>{bbScore}%</Text>
+          <View style={[CB.node, {
+            borderColor: barraCheck ? "#00d4aa" : stage1Loading ? "#00a8ff" : "#2a2a2a",
+          }]}>
+            <MaterialCommunityIcons
+              name="fish"
+              size={22}
+              color={barraCheck ? "#00d4aa" : stage1Loading ? "#00a8ff" : "#333"}
+            />
+            <Text style={[CB.nodeLabel, {
+              color: barraCheck ? "#00d4aa" : stage1Loading ? "#00a8ff" : "#333",
+            }]}>BARRA{"\n"}BRAIN</Text>
+
+            {stage1Loading && !barraCheck ? (
+              <NodeLoading color="#00a8ff" />
+            ) : barraCheck ? (
+              <Text style={[CB.nodeScore, { color: "#ffffff" }]}>{bbScore}%</Text>
+            ) : (
+              <Text style={[CB.nodeScore, { color: "#333" }]}>—</Text>
+            )}
           </View>
-          <Text style={[CB.nodeWeight, { color: "#00d4aa60" }]}>40% wt</Text>
+          <Text style={[CB.nodeWeight, {
+            color: barraCheck ? "#00d4aa60" : "#33333360",
+          }]}>40% wt</Text>
         </View>
 
         <View style={CB.connectorWrap}>
@@ -888,27 +947,50 @@ function CatchBrainAnalyser({
           <MaterialCommunityIcons name="chevron-right" size={13} color="#ffffff25" />
         </View>
 
-        {/* GPT-4.1 */}
+        {/* ── GPT-4.1 node ── */}
         <View style={CB.nodeWrap}>
-          <View style={[CB.node, { borderColor: "#7c5cfc" }]}>
-            <MaterialCommunityIcons name="chip" size={22} color="#7c5cfc" />
-            <Text style={[CB.nodeLabel, { color: "#7c5cfc" }]}>GPT-4.1{"\n"}FULL ID</Text>
-            <Text style={[CB.nodeScore, { color: "#ffffff" }]}>{gptScore}%</Text>
+          <View style={[CB.node, {
+            borderColor: fullResult ? "#7c5cfc" : stage2Loading ? "#00a8ff" : "#2a2a2a",
+          }]}>
+            <MaterialCommunityIcons
+              name="chip"
+              size={22}
+              color={fullResult ? "#7c5cfc" : stage2Loading ? "#00a8ff" : "#333"}
+            />
+            <Text style={[CB.nodeLabel, {
+              color: fullResult ? "#7c5cfc" : stage2Loading ? "#00a8ff" : "#333",
+            }]}>GPT-4.1{"\n"}FULL ID</Text>
+
+            {stage2Loading && !fullResult ? (
+              <NodeLoading color="#00a8ff" />
+            ) : fullResult ? (
+              <Text style={[CB.nodeScore, { color: "#ffffff" }]}>{gptScore}%</Text>
+            ) : (
+              <Text style={[CB.nodeScore, { color: "#333" }]}>—</Text>
+            )}
           </View>
-          <Text style={[CB.nodeWeight, { color: "#7c5cfc60" }]}>60% wt</Text>
+          <Text style={[CB.nodeWeight, {
+            color: fullResult ? "#7c5cfc60" : "#33333360",
+          }]}>60% wt</Text>
         </View>
       </View>
 
       {/* Brain score fill-bar */}
       <View style={CB.scoreBarWrap}>
         <View style={CB.scoreBarTrack}>
-          <View style={[CB.scoreBarFill, {
-            width:           `${brainScore}%` as any,
-            backgroundColor: scoreColor,
-          }]} />
+          {anyDone ? (
+            <View style={[CB.scoreBarFill, {
+              width:           `${brainScore}%` as any,
+              backgroundColor: scoreColor,
+            }]} />
+          ) : (
+            <Animated.View style={[CB.scoreBarFill, {
+              width: "30%", backgroundColor: "#00a8ff30",
+            }, pulseStyle]} />
+          )}
         </View>
-        <Text style={[CB.scoreBarLabel, { color: scoreColor }]}>
-          BRAIN SCORE  {brainScore}%
+        <Text style={[CB.scoreBarLabel, { color: anyDone ? scoreColor : "#00a8ff60" }]}>
+          {anyDone ? `BRAIN SCORE  ${brainScore}%` : "BRAIN SCORE  CALCULATING…"}
         </Text>
       </View>
 
@@ -916,54 +998,81 @@ function CatchBrainAnalyser({
       <View style={CB.verdictList}>
         {/* Barra Brain row */}
         <View style={CB.verdictRow}>
-          <View style={[CB.verdictDot, { backgroundColor: bbSignal ? "#00d4aa" : "#555" }]} />
+          <View style={[CB.verdictDot, {
+            backgroundColor: barraCheck ? (bbSignal ? "#00d4aa" : "#555")
+              : stage1Loading ? "#00a8ff" : "#222",
+          }]} />
           <Text style={CB.verdictSys}>BARRA BRAIN</Text>
-          <Text style={[CB.verdictVal, { color: bbSignal ? "#00d4aa" : "#666" }]}>
-            {bbSignal ? "✓ BARRA CONFIRMED" : "✗ NOT A BARRA"}
-          </Text>
-          <Text style={[CB.verdictChip, {
-            color:           "#00d4aa",
-            borderColor:     "#00d4aa25",
-            backgroundColor: "#00d4aa0d",
-          }]}>
-            {featCount}/{totalFeats} feats
-          </Text>
+          {barraCheck ? (
+            <>
+              <Text style={[CB.verdictVal, { color: bbSignal ? "#00d4aa" : "#666" }]}>
+                {bbSignal ? "✓ BARRA CONFIRMED" : "✗ NOT A BARRA"}
+              </Text>
+              <Text style={[CB.verdictChip, {
+                color:           "#00d4aa",
+                borderColor:     "#00d4aa25",
+                backgroundColor: "#00d4aa0d",
+              }]}>
+                {featCount}/{totalFeats} feats
+              </Text>
+            </>
+          ) : (
+            <Animated.Text style={[CB.verdictVal, { color: "#00a8ff" }, pulseStyle]}>
+              {stage1Loading ? "scanning image…" : "waiting"}
+            </Animated.Text>
+          )}
         </View>
 
         {/* GPT-4.1 row */}
         <View style={CB.verdictRow}>
-          <View style={[CB.verdictDot, { backgroundColor: gptSignal ? "#7c5cfc" : "#555" }]} />
+          <View style={[CB.verdictDot, {
+            backgroundColor: fullResult ? (gptSignal ? "#7c5cfc" : "#555")
+              : stage2Loading ? "#00a8ff" : "#222",
+          }]} />
           <Text style={CB.verdictSys}>GPT-4.1</Text>
-          <Text style={[CB.verdictVal, { color: gptSignal ? "#7c5cfc" : "#666" }]}>
-            {gptSignal ? `✓ ${fullResult.species}` : `○ ${fullResult.species}`}
-          </Text>
-          <Text style={[CB.verdictChip, {
-            color:           "#7c5cfc",
-            borderColor:     "#7c5cfc25",
-            backgroundColor: "#7c5cfc0d",
-          }]}>
-            {fullResult.legalStatus.toUpperCase()}
-          </Text>
+          {fullResult ? (
+            <>
+              <Text style={[CB.verdictVal, { color: gptSignal ? "#7c5cfc" : "#666" }]}>
+                {gptSignal ? `✓ ${fullResult.species}` : `○ ${fullResult.species}`}
+              </Text>
+              <Text style={[CB.verdictChip, {
+                color:           "#7c5cfc",
+                borderColor:     "#7c5cfc25",
+                backgroundColor: "#7c5cfc0d",
+              }]}>
+                {fullResult.legalStatus.toUpperCase()}
+              </Text>
+            </>
+          ) : (
+            <Animated.Text style={[CB.verdictVal, { color: "#00a8ff" }, pulseStyle]}>
+              {stage2Loading ? "identifying species…" : "waiting for Stage 1"}
+            </Animated.Text>
+          )}
         </View>
       </View>
 
       {/* Consensus banner */}
       <View style={[CB.consensusBar, { backgroundColor: cc + "18", borderColor: cc + "44" }]}>
-        <MaterialCommunityIcons
-          name={
-            consensus === "CONFIRMED" ? "check-circle"
-            : consensus === "PROBABLE" ? "alert-circle"
-            : "close-circle"
-          }
-          size={18}
-          color={cc}
-        />
-        <Text style={[CB.consensusLabel, { color: cc }]}>
-          {consensus === "CONFIRMED" ? "BOTH SYSTEMS AGREE"
-           : consensus === "PROBABLE" ? "1 OF 2 SYSTEMS POSITIVE"
-           : "NO POSITIVE SIGNAL"}
-        </Text>
-        <Text style={[CB.consensusBadge, { color: cc }]}>{consensus}</Text>
+        {consensus === "ANALYSING" ? (
+          <Animated.View style={[{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }, pulseStyle]}>
+            <MaterialCommunityIcons name="brain" size={18} color={cc} />
+            <Text style={[CB.consensusLabel, { color: cc }]}>AI SYSTEMS PROCESSING…</Text>
+          </Animated.View>
+        ) : (
+          <>
+            <MaterialCommunityIcons
+              name={consensus === "CONFIRMED" ? "check-circle" : consensus === "PROBABLE" ? "alert-circle" : "close-circle"}
+              size={18}
+              color={cc}
+            />
+            <Text style={[CB.consensusLabel, { color: cc }]}>
+              {consensus === "CONFIRMED" ? "BOTH SYSTEMS AGREE"
+               : consensus === "PROBABLE" ? "1 OF 2 SYSTEMS POSITIVE"
+               : "NO POSITIVE SIGNAL"}
+            </Text>
+            <Text style={[CB.consensusBadge, { color: cc }]}>{consensus}</Text>
+          </>
+        )}
       </View>
     </Animated.View>
   );
@@ -1523,9 +1632,14 @@ export default function CatchIdScreen() {
             )}
             {fullResult && <FullIdCard result={fullResult} />}
 
-            {/* Total Brain Analysis — shown once both stages complete */}
-            {barraCheck && fullResult && !stage1Loading && !stage2Loading && (
-              <CatchBrainAnalyser barraCheck={barraCheck} fullResult={fullResult} />
+            {/* Total Brain Analysis — appears the moment analysis starts */}
+            {(stage1Loading || stage2Loading || !!barraCheck || !!fullResult) && (
+              <CatchBrainAnalyser
+                barraCheck={barraCheck}
+                fullResult={fullResult}
+                stage1Loading={stage1Loading}
+                stage2Loading={stage2Loading}
+              />
             )}
           </View>
         )}
