@@ -94,9 +94,13 @@ export default function HomeScreen() {
     keyEvidence:        string;
     sonarBrand:         string;
     bottomType?:        string;
+    archFeatures?:      string[];
+    missingFeatures?:   string[];
+    refMatchScore?:     number;
     lureRecommendation: string | null;
     refPhotosUsed:      number;
     positiveRefsUsed:   number;
+    negativeRefsUsed?:  number;
     barraBodyRefsUsed?: number;
   }
   const [sonarBarraResult, setSonarBarraResult] = useState<SonarBarraResult | null>(null);
@@ -637,6 +641,56 @@ export default function HomeScreen() {
                     {sonarBarraResult.keyEvidence}
                   </Text>
                 ) : null}
+
+                {/* Arch features detected */}
+                {(sonarBarraResult.archFeatures?.length ?? 0) > 0 && (
+                  <View style={styles.sonarFeatureSection}>
+                    <Text style={styles.sonarFeatureSectionLabel}>
+                      ARCH FEATURES DETECTED ({sonarBarraResult.archFeatures!.length})
+                    </Text>
+                    <View style={styles.sonarPillRow}>
+                      {sonarBarraResult.archFeatures!.map((f, i) => (
+                        <View key={i} style={[styles.sonarPill, { borderColor: "#00d4aa40", backgroundColor: "#00d4aa18" }]}>
+                          <Text style={[styles.sonarPillText, { color: "#00d4aa" }]}>✓ {f}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Missing features */}
+                {(sonarBarraResult.missingFeatures?.length ?? 0) > 0 && (
+                  <View style={styles.sonarFeatureSection}>
+                    <Text style={styles.sonarFeatureSectionLabel}>COULD NOT CONFIRM</Text>
+                    <View style={styles.sonarPillRow}>
+                      {sonarBarraResult.missingFeatures!.slice(0, 4).map((f, i) => (
+                        <View key={i} style={[styles.sonarPill, { borderColor: "#ffffff18", backgroundColor: "#ffffff08" }]}>
+                          <Text style={[styles.sonarPillText, { color: "#555" }]}>○ {f}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Bottom type + ref match */}
+                {(sonarBarraResult.bottomType || sonarBarraResult.refMatchScore != null) && (
+                  <View style={styles.sonarBrainMeta}>
+                    {sonarBarraResult.bottomType && sonarBarraResult.bottomType !== "unknown" && (
+                      <Text style={[styles.sonarBrainPill, {
+                        backgroundColor: sonarBarraResult.bottomType === "hard" ? "#00d4aa18" : "#ffffff10",
+                        color: sonarBarraResult.bottomType === "hard" ? "#00d4aa" : "#888",
+                      }]}>
+                        {sonarBarraResult.bottomType === "hard" ? "🪨 HARD BOTTOM" : "💧 SOFT BOTTOM"}
+                      </Text>
+                    )}
+                    {sonarBarraResult.refMatchScore != null && (
+                      <Text style={[styles.sonarBrainPill, { backgroundColor: "#ff880018", color: "#ff8800" }]}>
+                        ref match {sonarBarraResult.refMatchScore}%
+                      </Text>
+                    )}
+                  </View>
+                )}
+
                 {sonarBarraResult.isBarraArch && sonarBarraResult.lureRecommendation && (
                   <Text style={[styles.sonarBrainLure, { color: "#ffd700" }]}>
                     🎣 {sonarBarraResult.lureRecommendation}
@@ -955,6 +1009,12 @@ const styles = StyleSheet.create({
   sonarBrainPill: { fontSize: 10, fontFamily: "Inter_500Medium", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   sonarBrainEvidence: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
   sonarBrainLure: { fontSize: 12, fontFamily: "Inter_500Medium" },
+
+  sonarFeatureSection:      { gap: 5 },
+  sonarFeatureSectionLabel: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#555", letterSpacing: 0.8 },
+  sonarPillRow:             { flexDirection: "row", flexWrap: "wrap", gap: 5 },
+  sonarPill:                { borderWidth: 1, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  sonarPillText:            { fontSize: 10, fontFamily: "Inter_500Medium" },
 
   errorBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 14, borderRadius: 10, borderWidth: 1 },
   errorText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
