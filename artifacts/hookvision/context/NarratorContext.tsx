@@ -325,10 +325,10 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ─── Build TTS URL (native only) ───────────────────────────────────────────
-  const ttsUrl = useCallback((text: string) => {
+  const ttsUrl = useCallback((text: string, char: NarratorCharacter) => {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
-    return `${baseUrl}/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(languageRef.current)}`;
+    return `${baseUrl}/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(languageRef.current)}&character=${encodeURIComponent(char)}`;
   }, []);
 
   // ─── Web: speechSynthesis with character-matched voice + tuning ───────────
@@ -368,7 +368,7 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
   const playTTSNative = useCallback(async (text: string, char: NarratorCharacter) => {
     setSpeaking(true);
 
-    const worked = await playNativeUrl(ttsUrl(text), () => setSpeaking(false));
+    const worked = await playNativeUrl(ttsUrl(text, char), () => setSpeaking(false));
 
     if (!worked) {
       const gender  = CHARACTER_GENDER[char];

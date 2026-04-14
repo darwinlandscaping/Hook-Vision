@@ -123,7 +123,6 @@ function ClassicTabLayout() {
           borderTopColor: "#00d4aa",
           elevation: 0,
           ...(isWeb  ? { height: 60 } : {}),
-          ...(isAndroid ? { height: 62, paddingBottom: 6 } : {}),
         },
         tabBarBackground: () =>
           isIOS ? (

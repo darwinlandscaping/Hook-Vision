@@ -20,6 +20,7 @@
     "drizzle-orm": "catalog:",
     "express": "^5",
     "jpeg-js": "^0.4.4",
+    "msedge-tts": "^2.0.4",
     "onnxruntime-node": "^1.24.3",
     "opencv-wasm": "4.3.0-10",
     "pino": "^9",
