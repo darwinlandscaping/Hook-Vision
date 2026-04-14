@@ -4,6 +4,7 @@
  * Row 2: Barra · Zones · Fishy · Demo · History · Intel
  */
 import React from "react";
+// @ts-ignore — types bundled with expo-router at runtime
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { View, TouchableOpacity, Text, StyleSheet, Dimensions } from "react-native";
 import Svg, {
@@ -87,7 +88,7 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
 
   // Strip routes that are hidden from the tab bar (href: null in layout)
   const HIDDEN = new Set(["fishy", "map"]);
-  const visibleRoutes = routes.filter(r => !HIDDEN.has(r.name));
+  const visibleRoutes = routes.filter((r: any) => !HIDDEN.has(r.name));
 
   // Layout constants
   const SKIN_H    = 20;
@@ -247,10 +248,10 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
       </Svg>
 
       {/* ── Row 1 touch targets ── */}
-      {row1.map((route, col) => renderTab(route, col, row1Y))}
+      {row1.map((route: any, col: number) => renderTab(route, col, row1Y))}
 
       {/* ── Row 2 touch targets ── */}
-      {row2.map((route, col) => renderTab(route, col, row2Y))}
+      {row2.map((route: any, col: number) => renderTab(route, col, row2Y))}
     </View>
   );
 }

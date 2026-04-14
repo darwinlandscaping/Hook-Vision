@@ -1321,7 +1321,7 @@ const styles = StyleSheet.create({
   feedHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   liveRow:    { flexDirection: "row", alignItems: "center", gap: 8 },
   livePulse:  { width: 8, height: 8, borderRadius: 4, backgroundColor: C.teal },
-  feedTitle:  { fontSize: 12, fontFamily: "Inter_700Bold" ?? "Inter_600SemiBold", letterSpacing: 1.2 },
+  feedTitle:  { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 1.2 },
   feedTotal:  { fontSize: 11, fontFamily: "Inter_400Regular" },
   feedEmpty:  { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", paddingVertical: 8 },
   feedRow: {

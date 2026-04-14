@@ -467,6 +467,7 @@ const styles = StyleSheet.create({
   },
   depthRulerWater: { ...StyleSheet.absoluteFillObject },
   depthRulerFill: { position: "absolute", left: 0, right: 0, opacity: 0.7 },
+  depthBarFill: { position: "absolute", left: 0, right: 0 },
   depthRulerTick: {
     position: "absolute",
     left: 0,

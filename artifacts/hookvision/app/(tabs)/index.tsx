@@ -325,7 +325,7 @@ export default function HomeScreen() {
             depth:      data.depth ?? null,
             aiSummary:  data.suggestion ?? "",
             tips:       [data.technique, data.rig, data.lure].filter(Boolean) as string[],
-            location:   capturedLocation?.name ?? null,
+            location:   capturedLocation ?? null,
             fishCount:  data.fishCount ?? 0,
           }),
         }).catch(() => {/* silent — don't interrupt the user */});

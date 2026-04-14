@@ -156,7 +156,7 @@ export default function HomeScreen() {
           </View>
         </View>
         <TouchableOpacity
-          onPress={() => router.push("/(tabs)/index")}
+          onPress={() => router.push("/(tabs)/index" as any)}
           style={[S.analyzeBtn, { backgroundColor: "#00d4aa22", borderColor: "#00d4aa55" }]}
         >
           <MaterialCommunityIcons name="fish" size={18} color="#00d4aa" />

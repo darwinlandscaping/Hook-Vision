@@ -93,7 +93,7 @@ export default function DemoScreen() {
       // Store in a simple module-level ref so AnalyzeTab can pick it up
       DemoStore.pendingUri = url;
       DemoStore.pendingBase64 = base64;
-      router.navigate("/(tabs)/");
+      router.navigate("/(tabs)/" as any);
     } catch {
       Alert.alert("Error", "Could not load demo image.");
     } finally {

@@ -100,9 +100,9 @@ function ClassicTabLayout() {
         const idx = TAB_ROUTES.indexOf(seg as typeof TAB_ROUTES[number]);
         if (idx === -1) return;
         if (gs.dx < 0 && idx < TAB_ROUTES.length - 1) {
-          router.navigate(tabPath(TAB_ROUTES[idx + 1]));   // swipe left → next
+          router.navigate(tabPath(TAB_ROUTES[idx + 1]) as any);   // swipe left → next
         } else if (gs.dx > 0 && idx > 0) {
-          router.navigate(tabPath(TAB_ROUTES[idx - 1]));   // swipe right → prev
+          router.navigate(tabPath(TAB_ROUTES[idx - 1]) as any);   // swipe right → prev
         }
       },
     })
