@@ -732,27 +732,29 @@ router.post("/analyze", async (req, res) => {
       { role: 'user'   as const, content },
     ];
 
-    // ── Dual-scan: fire scan 1 (streaming → client) + scan 2 (background) ──
-    const [stream, scan2Promise] = await Promise.all([
-      openai.chat.completions.create({
-        model: "gpt-4.1",
-        max_completion_tokens: 600,
-        temperature: 0,
-        seed: 1,
-        stream: true,
-        messages: sharedMessages,
-      }),
-      openai.chat.completions.create({
-        model: "gpt-4.1",
-        max_completion_tokens: 600,
-        temperature: 0.3,
-        seed: 2,
-        stream: false,
-        messages: sharedMessages,
-      }),
-    ]);
+    // ── Dual-scan: fire BOTH calls simultaneously without blocking each other ──
+    // scan2 fires here but is NOT awaited — it runs in the background
+    // scan1 streams to the client immediately; by the time scan1 finishes streaming,
+    // scan2 should already be done (both started at the same time)
+    const scan2Promise = openai.chat.completions.create({
+      model: "gpt-4.1",
+      max_completion_tokens: 600,
+      temperature: 0.3,
+      seed: 2,
+      stream: false,
+      messages: sharedMessages,
+    });
 
-    // Stream scan 1 directly to client — first bytes in ~1s
+    // Open scan1 stream immediately — first bytes arrive in ~1s
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4.1",
+      max_completion_tokens: 600,
+      temperature: 0,
+      seed: 1,
+      stream: true,
+      messages: sharedMessages,
+    });
+
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('X-Accel-Buffering', 'no');
@@ -777,9 +779,11 @@ router.post("/analyze", async (req, res) => {
     }
 
     // ── Append scan 2 consensus token ───────────────────────────────────────
-    // scan2Promise already resolved (it runs non-streaming in parallel with the stream)
+    // scan2 has been running in background the whole time scan1 was streaming;
+    // it should be done by now — await is near-instant at this point
     try {
-      const raw2   = scan2Promise.choices[0]?.message?.content ?? "{}";
+      const scan2Result = await scan2Promise;
+      const raw2   = scan2Result.choices[0]?.message?.content ?? "{}";
       const clean2 = raw2.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
       const match2 = clean2.match(/\{[\s\S]*\}/);
       if (match2) {
