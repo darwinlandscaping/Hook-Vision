@@ -5,6 +5,7 @@ import { desc, eq } from "drizzle-orm";
 import { getConditionsContext } from "../lib/dailyBriefing";
 import { analyzeSonarImage, formatCvContext, generateZoomCrops } from "../lib/vision";
 import { getSonarFewShotRefs } from "../lib/sonarBrain.js";
+import { getFewShotRefs as getBarraBodyRefs } from "../lib/barraLibrary.js";
 
 const router = Router();
 
@@ -617,27 +618,53 @@ router.post("/analyze", async (req, res) => {
     // Detect actual image MIME type so vision API gets correct format header
     const mimeType = detectMimeType(imageBase64);
 
-    // ── Sonar Brain: inject few-shot reference images ─────────────────────
-    // Prepend 2 confirmed barra arch refs + 1 negative contrast ref before the
-    // user's sonar image so the model compares against known patterns first.
-    const sonarRefs = getSonarFewShotRefs();
+    // ── Sonar Brain: inject cross-modal few-shot references ───────────────
+    // ORDER:
+    //   1. Barramundi BODY PHOTO (from Barra Brain / iNaturalist) — anatomy lesson:
+    //      shows the physostomous swim bladder that creates the thick arch + shadow void.
+    //   2. Confirmed sonar arch demos (Lowrance barra, Humminbird barra w/ shadows).
+    //   3. Negative contrast demo (Garmin threadfin school).
+    // This cross-modal grounding ties body anatomy knowledge to sonar arch physics.
+    const sonarRefs    = getSonarFewShotRefs();
+    const barraBodyRef = getBarraBodyRefs(1);   // 1 iNaturalist research-grade barra photo
+
     type ImagePart = { type: 'image_url'; image_url: { url: string; detail: 'high' | 'low' } };
     type TextPart  = { type: 'text'; text: string };
     const content: Array<ImagePart | TextPart> = [];
 
-    if (sonarRefs.length > 0) {
+    const hasBrainRefs = sonarRefs.length > 0 || barraBodyRef.length > 0;
+    if (hasBrainRefs) {
+      content.push({ type: 'text', text: 'SONAR BRAIN — cross-modal reference package (study all before analysing):' });
+
+      // Step 1: Body anatomy (cross-modal bridge)
+      if (barraBodyRef.length > 0) {
+        const bp = barraBodyRef[0];
+        content.push({ type: 'text', text: `STEP 1 — BARRAMUNDI BODY ANATOMY (iNaturalist, ${bp.location}):\nThe large PHYSOSTOMOUS SWIM BLADDER (pale gas sac in upper body cavity) is enormously reflective — it creates the THICK BRIGHT ARCH + SHADOW VOID on sonar. Deep laterally-compressed body = wider/taller arch than threadfin.` });
+        content.push({ type: 'image_url', image_url: { url: bp.photoUrl, detail: 'low' } });
+        content.push({ type: 'text', text: `↑ Confirmed barramundi — ${bp.location} (${bp.votes} expert votes). Connect this anatomy to the sonar arch signatures below.` });
+      }
+
+      // Step 2: Sonar arch positive refs
       const posRefs = sonarRefs.filter(r => r.isPositive);
       const negRefs = sonarRefs.filter(r => !r.isPositive);
-      content.push({ type: 'text', text: `SONAR BRAIN — ${sonarRefs.length} REFERENCE IMAGES (study before analysing user's sonar):` });
-      for (const ref of posRefs) {
-        content.push({ type: 'image_url', image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: 'low' } });
-        content.push({ type: 'text', text: `↑ CONFIRMED BARRAMUNDI — ${ref.brand}: ${ref.label.split('\n')[0]}` });
+      if (posRefs.length > 0) {
+        content.push({ type: 'text', text: `STEP 2 — CONFIRMED BARRAMUNDI SONAR ARCHES (${posRefs.length} expert demos):` });
+        for (const ref of posRefs) {
+          content.push({ type: 'image_url', image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: 'low' } });
+          content.push({ type: 'text', text: `↑ CONFIRMED BARRAMUNDI — ${ref.brand}: ${ref.label.split('\n')[0]}` });
+        }
       }
-      for (const ref of negRefs) {
-        content.push({ type: 'image_url', image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: 'low' } });
-        content.push({ type: 'text', text: `↑ NOT BARRAMUNDI (contrast ref) — ${ref.brand}: ${ref.label.split('\n')[0]}` });
+
+      // Step 3: Negative contrast ref
+      if (negRefs.length > 0) {
+        content.push({ type: 'text', text: `STEP 3 — CONTRAST (NOT BARRA):` });
+        for (const ref of negRefs) {
+          content.push({ type: 'image_url', image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: 'low' } });
+          content.push({ type: 'text', text: `↑ NOT BARRAMUNDI — ${ref.brand}: ${ref.label.split('\n')[0]}` });
+        }
       }
-      content.push({ type: 'text', text: `NOW ANALYSE THE USER'S SONAR IMAGE BELOW (${zoomCrops ? 4 : 1} image${zoomCrops ? 's' : ''} including zoom crops):` });
+
+      content.push({ type: 'text', text: `STEP 4 — NOW ANALYSE THE USER'S SONAR IMAGE BELOW (${zoomCrops ? 4 : 1} image${zoomCrops ? 's' : ''} including zoom crops). Apply cross-modal reasoning: body anatomy → sonar physics → verdict.` });
     }
 
     // ── Build vision message content — full image + zoom crops ───────────

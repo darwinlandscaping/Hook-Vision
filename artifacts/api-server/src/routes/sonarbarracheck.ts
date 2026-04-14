@@ -14,10 +14,23 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getSonarFewShotRefs, addCommunityBarraArch } from "../lib/sonarBrain.js";
+import { getFewShotRefs } from "../lib/barraLibrary.js";
 
 const router = Router();
 
 const SONAR_BARRA_SYSTEM = `You are an expert sonar fish arch detector specialising in barramundi (Lates calcarifer) in Northern Territory Australia.
+
+CROSS-MODAL REFERENCE SYSTEM — you will receive images in this order:
+  1. BARRAMUNDI BODY ANATOMY PHOTO(S) — real specimens from iNaturalist research-grade records.
+     Study these carefully. The barramundi's large PHYSOSTOMOUS SWIM BLADDER (the gas-filled organ
+     visible as a pale sac in the body cavity) is the key anatomy: it is enormously reflective to sonar
+     and creates the thick, bright arch return + acoustic shadow void you see on fish finders.
+     The deep laterally-compressed body also produces a wide, tall arch (taller than threadfin arches).
+     Connect what you see in the body photo to what you expect the sonar arch to look like.
+  2. CONFIRMED BARRAMUNDI SONAR ARCH REFERENCES — expert-labeled sonar screenshots showing
+     known barra arch signatures across different brands (Lowrance, Humminbird, Garmin, Simrad).
+  3. NOT-BARRA CONTRAST REFERENCE — threadfin arch pattern so you can discriminate.
+  4. THE USER'S SONAR IMAGE — evaluate against all references above.
 
 You will first be shown REFERENCE sonar images with confirmed species labels, then the sonar image to evaluate.
 
@@ -96,16 +109,36 @@ router.post("/sonar-barra-check", async (req, res) => {
 
   try {
     const mime = detectMime(imageBase64);
-    const refs = getSonarFewShotRefs();
+    const refs         = getSonarFewShotRefs();
+    const barraPhotos  = getFewShotRefs(1);   // 1 real barramundi body photo from iNaturalist
 
-    // Build few-shot reference blocks
+    // Build few-shot reference blocks — CROSS-MODAL: body photo first, then sonar refs
     const refBlocks: object[] = [];
+
+    // ── Step 1: Barra body anatomy reference (cross-modal bridge) ────────────
+    if (barraPhotos.length > 0) {
+      const bp = barraPhotos[0];
+      refBlocks.push({
+        type: "text",
+        text: `STEP 1 — BARRAMUNDI BODY ANATOMY (iNaturalist research-grade specimen — ${bp.location}):\nStudy the deep laterally-compressed body and locate where the large PHYSOSTOMOUS SWIM BLADDER sits (pale gas-filled sac in the upper body cavity). This organ is enormously reflective to sonar — it creates the THICK BRIGHT ARCH + SHADOW VOID you must look for. The wide body also produces a TALLER arch than threadfin (which has a smaller swim bladder and narrower body).`,
+      });
+      refBlocks.push({
+        type: "image_url",
+        image_url: { url: bp.photoUrl, detail: "low" },
+      });
+      refBlocks.push({
+        type: "text",
+        text: `↑ Confirmed barramundi — ${bp.location} (${bp.votes} expert votes). Connect this body shape to the sonar arch signatures below.`,
+      });
+    }
+
+    // ── Step 2: Sonar arch references (positive + negative) ──────────────────
     if (refs.length > 0) {
       const positives = refs.filter(r => r.isPositive);
       const negatives = refs.filter(r => !r.isPositive);
 
       if (positives.length > 0) {
-        refBlocks.push({ type: "text", text: `CONFIRMED BARRAMUNDI SONAR REFERENCES (${positives.length} images):` });
+        refBlocks.push({ type: "text", text: `STEP 2 — CONFIRMED BARRAMUNDI SONAR ARCH REFERENCES (${positives.length} expert-labeled images):` });
         for (const ref of positives) {
           refBlocks.push({
             type: "image_url",
@@ -115,7 +148,7 @@ router.post("/sonar-barra-check", async (req, res) => {
         }
       }
       if (negatives.length > 0) {
-        refBlocks.push({ type: "text", text: `CONTRAST REFERENCE — NOT BARRAMUNDI (${negatives.length} image):` });
+        refBlocks.push({ type: "text", text: `STEP 3 — CONTRAST: NOT BARRAMUNDI (${negatives.length} image — study differences vs Step 2):` });
         for (const ref of negatives) {
           refBlocks.push({
             type: "image_url",
@@ -124,7 +157,9 @@ router.post("/sonar-barra-check", async (req, res) => {
           refBlocks.push({ type: "text", text: `↑ ${ref.brand} — ${ref.label.split("\n")[0]}` });
         }
       }
-      refBlocks.push({ type: "text", text: "Now evaluate the following sonar image — does it show barramundi arches?" });
+      refBlocks.push({ type: "text", text: "STEP 4 — Now evaluate the following sonar image. Compare arch shape, thickness, brightness, and position against the references above." });
+    } else if (barraPhotos.length > 0) {
+      refBlocks.push({ type: "text", text: "Now evaluate the following sonar image for barramundi arches, using the body anatomy reference above." });
     } else {
       refBlocks.push({ type: "text", text: "Evaluate the following sonar image for barramundi arches." });
     }
@@ -145,9 +180,11 @@ router.post("/sonar-barra-check", async (req, res) => {
             },
             {
               type: "text",
-              text: refs.length > 0
-                ? `Compare against the ${refs.filter(r => r.isPositive).length} barramundi arch references above. Return JSON only.`
-                : "Return JSON only.",
+              text: [
+                barraPhotos.length > 0 ? `1 barramundi body anatomy photo` : null,
+                refs.filter(r => r.isPositive).length > 0 ? `${refs.filter(r => r.isPositive).length} confirmed sonar arch reference${refs.filter(r => r.isPositive).length > 1 ? "s" : ""}` : null,
+                refs.filter(r => !r.isPositive).length > 0 ? `${refs.filter(r => !r.isPositive).length} contrast reference` : null,
+              ].filter(Boolean).join(" + ") + " shown above. Apply cross-modal reasoning: body anatomy → sonar arch physics → verdict. Return JSON only.",
             },
           ],
         },
@@ -161,9 +198,10 @@ router.post("/sonar-barra-check", async (req, res) => {
     try { parsed = JSON.parse(clean); }
     catch { res.status(500).json({ error: "Parse error", raw }); return; }
 
-    parsed.refPhotosUsed    = refs.length;
+    parsed.refPhotosUsed    = refs.length + barraPhotos.length;
     parsed.positiveRefsUsed = refs.filter(r => r.isPositive).length;
     parsed.negativeRefsUsed = refs.filter(r => !r.isPositive).length;
+    parsed.barraBodyRefsUsed = barraPhotos.length;
 
     res.json(parsed);
   } catch (err) {

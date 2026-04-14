@@ -153,16 +153,17 @@ export default function HomeScreen() {
 
   // ── Sonar Brain — Stage-1 fast barra arch detector ────────────────────────
   interface SonarBarraResult {
-    isBarraArch:       boolean;
-    confidence:        number;
-    archCount:         number;
-    estimatedDepth:    string | null;
-    keyEvidence:       string;
-    sonarBrand:        string;
-    bottomType?:       string;
-    lureRecommendation:string | null;
-    refPhotosUsed:     number;
-    positiveRefsUsed:  number;
+    isBarraArch:        boolean;
+    confidence:         number;
+    archCount:          number;
+    estimatedDepth:     string | null;
+    keyEvidence:        string;
+    sonarBrand:         string;
+    bottomType?:        string;
+    lureRecommendation: string | null;
+    refPhotosUsed:      number;
+    positiveRefsUsed:   number;
+    barraBodyRefsUsed?: number;
   }
   const [sonarBarraResult, setSonarBarraResult] = useState<SonarBarraResult | null>(null);
   const [sonarBarraLoading, setSonarBarraLoading] = useState(false);
@@ -615,7 +616,9 @@ export default function HomeScreen() {
                     </Text>
                   )}
                   <Text style={[styles.sonarBrainPill, { backgroundColor: "#ff880018", color: "#ff8800" }]}>
-                    {sonarBarraResult.positiveRefsUsed ?? 2} barra refs used
+                    {(sonarBarraResult.barraBodyRefsUsed ?? 0) > 0
+                      ? `${sonarBarraResult.barraBodyRefsUsed} photo + ${sonarBarraResult.positiveRefsUsed ?? 2} sonar refs`
+                      : `${sonarBarraResult.positiveRefsUsed ?? 2} sonar refs`}
                   </Text>
                 </View>
                 {sonarBarraResult.keyEvidence ? (
