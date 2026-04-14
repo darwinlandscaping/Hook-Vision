@@ -914,6 +914,25 @@ export default function HomeScreen() {
         }).catch(() => {/* silent — don't interrupt the user */});
       }
 
+      // ── Auto-teach Sonar Brain: high-confidence scans feed the collective ──
+      // Fires when GPT-4.1 is ≥75% confident AND at least 1 fish was detected.
+      // This is a fire-and-forget background call — never blocks the user.
+      if ((data.confidence ?? 0) >= 75 && (data.fishCount ?? 0) > 0 && imageBase64) {
+        const brainDomain = process.env.EXPO_PUBLIC_DOMAIN;
+        const brainBase   = brainDomain ? `https://${brainDomain}` : "";
+        const scanDate    = new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+        fetch(`${brainBase}/api/sonar-brain/submit`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageBase64,
+            depth:       data.depth ?? null,
+            fishCount:   data.fishCount ?? 0,
+            description: `Auto-learn: ${data.species} — ${data.confidence}% confidence — ${data.fishCount} fish — depth ${data.depth ?? "?"} — ${scanDate}`,
+          }),
+        }).catch(() => {/* silent — Sonar Brain submission is non-critical */});
+      }
+
       // ── CROC ALERT — native dialog fires immediately ──────────────────────
       if (data.crocAlert) {
         Alert.alert(
