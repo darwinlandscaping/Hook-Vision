@@ -671,6 +671,8 @@ router.post("/analyze", async (req, res) => {
     const stream = await openai.chat.completions.create({
       model: "gpt-4.1",
       max_completion_tokens: 600,
+      temperature: 0,
+      seed: 42,
       stream: true,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
