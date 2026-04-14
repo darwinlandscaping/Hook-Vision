@@ -465,11 +465,13 @@ function FullIdCard({ result }: { result: FishIdResult }) {
 
 /** Empty state */
 function EmptyState({
-  onCamera, onGallery, brain,
+  onCamera, onGallery, brain, topViewMode, onToggleTopView,
 }: {
   onCamera: () => void;
   onGallery: () => void;
   brain: BrainStatus | null;
+  topViewMode: boolean;
+  onToggleTopView: () => void;
 }) {
   return (
     <View style={S.emptyWrap}>
@@ -527,6 +529,27 @@ function EmptyState({
         </View>
       </View>
 
+      {/* Top-view mode toggle */}
+      <TouchableOpacity
+        style={[S.topViewToggle, topViewMode && S.topViewToggleActive]}
+        onPress={onToggleTopView}
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons
+          name="eye-arrow-up"
+          size={16}
+          color={topViewMode ? C.teal : "#555"}
+        />
+        <Text style={[S.topViewToggleTxt, topViewMode && { color: C.teal }]}>
+          📐 TOP VIEW MODE
+        </Text>
+        <View style={[S.topViewTogglePill, topViewMode && S.topViewTogglePillOn]}>
+          <Text style={[S.topViewTogglePillTxt, topViewMode && { color: C.teal }]}>
+            {topViewMode ? "ON" : "OFF"}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
       <View style={S.emptyBtns}>
         <TouchableOpacity style={S.btnPrimary} onPress={onCamera} activeOpacity={0.8}>
           <Feather name="camera" size={20} color={C.navy} />
@@ -564,6 +587,9 @@ export default function CatchIdScreen() {
   const [stage1Error,   setStage1Error]   = useState<string | null>(null);
   const [stage2Error,   setStage2Error]   = useState<string | null>(null);
   const [brainStatus,   setBrainStatus]   = useState<BrainStatus | null>(null);
+  const [topViewMode,   setTopViewMode]   = useState(false);
+  const topViewModeRef = useRef(false);
+  topViewModeRef.current = topViewMode;
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -595,7 +621,7 @@ export default function CatchIdScreen() {
     const stage1 = fetch(`${base}/api/barra-check`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ imageBase64: b64 }),
+      body:    JSON.stringify({ imageBase64: b64, topViewHint: topViewModeRef.current }),
       signal:  ac.signal,
     })
       .then(r => r.json() as Promise<BarraCheck>)
@@ -684,7 +710,7 @@ export default function CatchIdScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ─ No photo yet ─ */}
-        {!imageUri && <EmptyState onCamera={() => pickImage("camera")} onGallery={() => pickImage("gallery")} brain={brainStatus} />}
+        {!imageUri && <EmptyState onCamera={() => pickImage("camera")} onGallery={() => pickImage("gallery")} brain={brainStatus} topViewMode={topViewMode} onToggleTopView={() => setTopViewMode(v => !v)} />}
 
         {/* ─ Photo + analysis ─ */}
         {imageUri && (
@@ -798,6 +824,24 @@ const S = StyleSheet.create({
   speedText:       { fontSize: 9, fontFamily: "Inter_700Bold", color: C.gold, letterSpacing: 0.5 },
   topViewBadge:    { paddingHorizontal: 8, paddingVertical: 3, backgroundColor: "#00a8ff18", borderWidth: 1, borderColor: "#00a8ff60", borderRadius: 8 },
   topViewBadgeText:{ fontSize: 9, fontFamily: "Inter_700Bold", color: C.accent, letterSpacing: 0.5 },
+
+  // ── Top View Mode toggle ──────────────────────────────────────────────────
+  topViewToggle: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderWidth: 1, borderColor: "#ffffff20", borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 9,
+    backgroundColor: "#ffffff08", width: "100%",
+  },
+  topViewToggleActive: {
+    borderColor: C.teal + "60", backgroundColor: C.teal + "12",
+  },
+  topViewToggleTxt: { flex: 1, fontSize: 11, fontFamily: "Inter_700Bold", color: "#555", letterSpacing: 0.5 },
+  topViewTogglePill: {
+    paddingHorizontal: 8, paddingVertical: 2,
+    borderRadius: 6, borderWidth: 1, borderColor: "#ffffff20", backgroundColor: "#ffffff08",
+  },
+  topViewTogglePillOn: { borderColor: C.teal + "60", backgroundColor: C.teal + "18" },
+  topViewTogglePillTxt: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#555", letterSpacing: 0.5 },
 
   verdictSection:{ gap: 6 },
   verdictMeta:   { fontSize: 9, fontFamily: "Inter_700Bold", color: "#555", letterSpacing: 0.8 },

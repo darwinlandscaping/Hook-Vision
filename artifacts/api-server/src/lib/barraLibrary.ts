@@ -21,6 +21,7 @@ import { db, barraReferences } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { logger } from "./logger.js";
 import { makeThumbnailFromUrl } from "./imageUtils.js";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 // ─── iNaturalist API types (minimal) ─────────────────────────────────────────
 interface InatPhoto {
@@ -42,11 +43,12 @@ interface InatResponse {
 }
 
 // ─── In-memory cache (avoids hitting DB on every request) ────────────────────
-interface CachedRef {
-  photoUrl:     string;
-  location:     string;
-  votes:        number;
-  thumbBase64?: string;   // pre-compressed 512px JPEG — avoids OpenAI fetching the URL
+export interface CachedRef {
+  photoUrl:      string;
+  location:      string;
+  votes:         number;
+  thumbBase64?:  string;                          // pre-compressed 512px JPEG
+  viewingAngle?: "top" | "side" | "angled";       // classified at startup by gpt-4.1-mini
 }
 let cache: CachedRef[] = [];
 let lastFetch = 0;
@@ -187,6 +189,84 @@ async function prewarmThumbnails(): Promise<void> {
       ) },
     "Barra thumbnail pre-warm complete"
   );
+
+  // After compression, classify each thumbnail by viewing angle (one batch call)
+  classifyAngles().catch(() => {});
+}
+
+/**
+ * Send all pre-warmed thumbnails to gpt-4.1-mini in ONE batch call and tag
+ * each CachedRef with its viewingAngle ("top" | "side" | "angled").
+ *
+ * Top-view refs are then prioritised in getFewShotRefs() so the model always
+ * has at least one dorsal-view example when the user submits a top-view photo.
+ */
+async function classifyAngles(): Promise<void> {
+  // Only classify refs that have a base64 thumb and haven't been classified yet
+  const unclassified = cache.filter(r => r.thumbBase64 && !r.viewingAngle);
+  if (unclassified.length === 0) return;
+
+  logger.info({ count: unclassified.length }, "Classifying barra ref viewing angles…");
+
+  // Build content array: one numbered text label + one image per ref
+  const content: Array<{type: string; text?: string; image_url?: {url: string; detail: string}}> = [
+    {
+      type: "text",
+      text: [
+        "You are classifying barramundi fish photos by camera angle.",
+        "For each numbered image below, determine the camera perspective:",
+        "  'top'    — camera is directly above the fish, showing dorsal (back) surface",
+        "  'side'   — classic lateral profile view",
+        "  'angled' — somewhere in-between / oblique",
+        "",
+        `There are ${unclassified.length} images numbered 0 to ${unclassified.length - 1}.`,
+        "Return ONLY valid JSON: [{\"idx\":0,\"angle\":\"side\"},{\"idx\":1,\"angle\":\"top\"},...]",
+        "No explanation, no markdown.",
+      ].join("\n"),
+    },
+  ];
+
+  unclassified.forEach((ref, idx) => {
+    content.push({
+      type: "text",
+      text: `Image ${idx}:`,
+    } as {type: string; text: string});
+    content.push({
+      type: "image_url",
+      image_url: { url: `data:image/jpeg;base64,${ref.thumbBase64}`, detail: "low" },
+    } as {type: string; image_url: {url: string; detail: string}});
+  });
+
+  try {
+    const resp = await openai.chat.completions.create({
+      model:       "gpt-4.1-mini",
+      max_tokens:  300,
+      temperature: 0,
+      messages: [{ role: "user", content: content as Parameters<typeof openai.chat.completions.create>[0]["messages"][0]["content"] }],
+    });
+
+    const raw = resp.choices[0]?.message?.content?.trim() ?? "[]";
+    // Extract JSON array from response (may have markdown wrapper)
+    const jsonMatch = raw.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error("No JSON array in response");
+
+    const results: Array<{ idx: number; angle: string }> = JSON.parse(jsonMatch[0]);
+    let topCount = 0;
+    for (const { idx, angle } of results) {
+      const ref = unclassified[idx];
+      if (!ref) continue;
+      if (angle === "top" || angle === "side" || angle === "angled") {
+        ref.viewingAngle = angle;
+        if (angle === "top") topCount++;
+      }
+    }
+    logger.info(
+      { classified: results.length, topView: topCount, sideView: results.length - topCount },
+      "Barra ref angle classification complete"
+    );
+  } catch (err) {
+    logger.warn({ err }, "Angle classification failed — refs will be used without angle tags");
+  }
 }
 
 // ─── Main public API ─────────────────────────────────────────────────────────
@@ -256,21 +336,55 @@ export async function addCommunityReference(photoUrl: string, location?: string)
 }
 
 /**
- * Return N reference image URLs for use as few-shot examples.
- * Rotates through the pool so different images are used each time.
- * Returns highest-voted images first (most reliable specimens).
+ * Return N reference images for few-shot prompting.
+ *
+ * When preferTop=true (caller knows the user's photo is top-view):
+ *   Returns as many top-view refs as possible, padded with side-view if needed.
+ *
+ * Default (preferTop=false):
+ *   Returns a smart mix — always includes 1 top-view ref if one exists, so
+ *   the model has a dorsal example on every call even for unknown angles.
+ *
+ * Refs with pre-compressed base64 thumbs are preferred over URL-only refs.
  */
-export function getFewShotRefs(n = 3): CachedRef[] {
+export function getFewShotRefs(n = 3, preferTop = false): CachedRef[] {
   // Refresh cache from DB if stale
   if (Date.now() - lastFetch > CACHE_TTL_MS) {
-    rebuildCache().catch(() => {});   // fire-and-forget; stale cache still works
+    rebuildCache().catch(() => {});
   }
   if (cache.length === 0) return [];
 
-  // Pick from the top 50% (highest voted) with a random offset for variety
-  const topHalf = cache.slice(0, Math.max(n, Math.floor(cache.length / 2)));
-  const start   = Math.floor(Math.random() * Math.max(1, topHalf.length - n));
-  return topHalf.slice(start, start + n);
+  // Split into pools (base64 refs are far more reliable for the model)
+  const withThumb  = cache.filter(r => r.thumbBase64);
+  const pool       = withThumb.length >= n ? withThumb : cache;
+
+  const topPool    = pool.filter(r => r.viewingAngle === "top");
+  const sidePool   = pool.filter(r => r.viewingAngle !== "top");
+
+  if (preferTop) {
+    // All-top-view if we have enough, otherwise pad with side-view
+    const topSlice  = topPool.slice(0, n);
+    const padNeeded = n - topSlice.length;
+    const sideSlice = sidePool.slice(0, padNeeded);
+    const result    = [...topSlice, ...sideSlice];
+    if (result.length > 0) return result;
+  }
+
+  // Default: inject 1 top-view ref (if any) + (n-1) side/unclassified refs
+  const topAnchor  = topPool.length > 0 ? topPool[Math.floor(Math.random() * topPool.length)] : null;
+  const fillPool   = topAnchor ? pool.filter(r => r !== topAnchor) : pool;
+  const topHalf    = fillPool.slice(0, Math.max(n, Math.floor(fillPool.length / 2)));
+  const fillCount  = topAnchor ? n - 1 : n;
+  const start      = Math.floor(Math.random() * Math.max(1, topHalf.length - fillCount));
+  const fillRefs   = topHalf.slice(start, start + fillCount);
+  return topAnchor ? [topAnchor, ...fillRefs] : fillRefs;
+}
+
+/**
+ * Convenience: return only top-view classified refs (for status/debug).
+ */
+export function getTopViewRefCount(): number {
+  return cache.filter(r => r.viewingAngle === "top").length;
 }
 
 /**

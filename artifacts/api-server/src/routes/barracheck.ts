@@ -96,10 +96,11 @@ function detectMime(b64: string): string {
 }
 
 router.post("/barra-check", async (req, res) => {
-  const { imageBase64, confirmAsBarra, location } = req.body as {
-    imageBase64?:   string;
+  const { imageBase64, confirmAsBarra, location, topViewHint } = req.body as {
+    imageBase64?:    string;
     confirmAsBarra?: boolean;  // true = user confirmed this IS a barra → add to library
-    location?:      string;
+    location?:       string;
+    topViewHint?:    boolean;  // true = caller believes photo is a top/dorsal view
   };
 
   if (!imageBase64) {
@@ -116,14 +117,19 @@ router.post("/barra-check", async (req, res) => {
 
   try {
     const mime = detectMime(imageBase64);
-    const refs = getFewShotRefs(3);
+    // When caller hints top-view, prioritise dorsal reference images
+    const refs = getFewShotRefs(3, topViewHint === true);
 
     // Build few-shot reference content blocks
     const refBlocks: object[] = [];
     if (refs.length > 0) {
+      const refLabels = refs.map((r, i) => {
+        const angleBadge = r.viewingAngle === "top" ? "📐 TOP VIEW" : r.viewingAngle === "angled" ? "↗ ANGLED" : "◀ SIDE VIEW";
+        return `\n[Specimen ${i + 1}: ${r.location}, ${r.votes} expert votes, ${angleBadge}]`;
+      }).join("");
       refBlocks.push({
         type: "text",
-        text: `Here are ${refs.length} confirmed research-grade barramundi specimens for comparison${refs.map((r, i) => `\n[Specimen ${i + 1}: ${r.location}, ${r.votes} expert votes]`).join("")}:`,
+        text: `Here are ${refs.length} confirmed research-grade barramundi specimens for comparison${refLabels}:`,
       });
       for (const ref of refs) {
         // Use pre-compressed base64 thumb when available — eliminates OpenAI → iNat URL fetches
