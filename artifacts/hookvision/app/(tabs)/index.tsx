@@ -22,6 +22,10 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withRepeat,
+  withTiming,
+  withSequence,
+  Easing,
 } from "react-native-reanimated";
 
 import { AnalysisCard } from "@/components/AnalysisCard";
@@ -143,10 +147,47 @@ export default function HomeScreen() {
   const cameraScale = useSharedValue(1);
   const galleryScale = useSharedValue(1);
   const analyzeScale = useSharedValue(1);
+  const scanLine     = useSharedValue(-8);
+  const dotOpacity   = useSharedValue(1);
+  const progressBar  = useSharedValue(0);
 
-  const animatedCameraStyle = useAnimatedStyle(() => ({ transform: [{ scale: cameraScale.value }] }));
+  const animatedCameraStyle  = useAnimatedStyle(() => ({ transform: [{ scale: cameraScale.value }] }));
   const animatedGalleryStyle = useAnimatedStyle(() => ({ transform: [{ scale: galleryScale.value }] }));
   const animatedAnalyzeStyle = useAnimatedStyle(() => ({ transform: [{ scale: analyzeScale.value }] }));
+  const scanLineStyle = useAnimatedStyle(() => ({ top: scanLine.value }));
+  const dotStyle      = useAnimatedStyle(() => ({ opacity: dotOpacity.value }));
+  const progressStyle = useAnimatedStyle(() => ({ width: `${progressBar.value}%` as any }));
+
+  // ── Scan animations (sweep line + dot blink + progress bar) ─────────────────
+  useEffect(() => {
+    if (loading) {
+      scanLine.value    = -8;
+      dotOpacity.value  = 1;
+      progressBar.value = 4;
+      scanLine.value    = withRepeat(
+        withTiming(268, { duration: 1600, easing: Easing.inOut(Easing.sine) }),
+        -1, true
+      );
+      dotOpacity.value  = withRepeat(
+        withSequence(
+          withTiming(0.15, { duration: 450 }),
+          withTiming(1,    { duration: 450 })
+        ),
+        -1
+      );
+    } else {
+      scanLine.value    = -8;
+      dotOpacity.value  = 1;
+      progressBar.value = 0;
+    }
+  }, [loading]);
+
+  // Update progress bar from stream chars
+  useEffect(() => {
+    if (!loading) return;
+    const pct = streaming ? Math.min(95, 10 + Math.round((streamChars / 680) * 82)) : 8;
+    progressBar.value = withTiming(pct, { duration: 400 });
+  }, [streaming, streamChars, loading]);
 
   const handleImageSelected = useCallback((uri: string, base64: string | null | undefined) => {
     setImageUri(uri);
@@ -465,15 +506,55 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           )}
+
+          {/* Animated scan sweep line */}
+          {loading && (
+            <>
+              <View style={styles.scanDimmer} />
+              <Animated.View style={[styles.scanSweepLine, scanLineStyle]} />
+              <View style={styles.scanSweepGlow} />
+            </>
+          )}
         </View>
 
+        {/* ── ANALYSING CARD ── */}
         {loading && (
-          <View style={styles.streamingPill}>
-            <SonarPulse size={18} active />
-            <Text style={[styles.streamingLabel, { color: colors.primary }]}>
-              {streaming
-                ? `AI reading sonar… ${Math.min(99, Math.round((streamChars / 680) * 100))}%`
-                : "Uploading scan…"}
+          <View style={[styles.analysingCard, { backgroundColor: colors.card, borderColor: "#00d4aa44" }]}>
+            {/* Header */}
+            <View style={styles.analysingHeader}>
+              <Animated.View style={[styles.analysingDot, dotStyle]} />
+              <Text style={styles.analysingTitle}>ANALYSING</Text>
+              <Text style={[styles.analysingEngine, { color: colors.mutedForeground }]}>GPT-4.1 Vision</Text>
+            </View>
+
+            {/* Stage steps */}
+            <View style={styles.analysingStages}>
+              <View style={styles.analysingStageRow}>
+                <View style={[styles.stageDot, { backgroundColor: "#00d4aa" }]} />
+                <Text style={[styles.stageLabel, { color: "#00d4aa" }]}>Image uploaded</Text>
+              </View>
+              <View style={styles.analysingStageRow}>
+                <View style={[styles.stageDot, { backgroundColor: "#00d4aa" }]} />
+                <Text style={[styles.stageLabel, { color: "#00d4aa" }]}>CV engine scanning arches</Text>
+              </View>
+              <View style={styles.analysingStageRow}>
+                <Animated.View style={[styles.stageDot, dotStyle, { backgroundColor: streaming ? "#00d4aa" : "#ff8800" }]} />
+                <Text style={[styles.stageLabel, { color: streaming ? "#00d4aa" : "#ff8800" }]}>
+                  {streaming ? `AI reading sonar… ${Math.min(99, Math.round((streamChars / 680) * 100))}%` : "GPT-4.1 reading sonar…"}
+                </Text>
+              </View>
+              <View style={[styles.analysingStageRow, { opacity: streaming ? 0.4 : 0.25 }]}>
+                <View style={[styles.stageDot, { backgroundColor: "#ffffff40" }]} />
+                <Text style={[styles.stageLabel, { color: "#ffffff40" }]}>Building report</Text>
+              </View>
+            </View>
+
+            {/* Progress bar */}
+            <View style={[styles.progressTrack, { backgroundColor: colors.secondary }]}>
+              <Animated.View style={[styles.progressFill, progressStyle]} />
+            </View>
+            <Text style={[styles.analysingHint, { color: colors.mutedForeground }]}>
+              Species · depth · lure advice · croc check · arch analysis
             </Text>
           </View>
         )}
@@ -831,6 +912,35 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   streamingPill: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 30, backgroundColor: "#00d4aa18", borderWidth: 1, borderColor: "#00d4aa44" },
   streamingLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
+
+  /* Scan sweep overlay */
+  scanDimmer:    { ...StyleSheet.absoluteFillObject, backgroundColor: "#00000060" },
+  scanSweepLine: {
+    position: "absolute", left: 0, right: 0, height: 2,
+    backgroundColor: "#00d4aa",
+    shadowColor: "#00d4aa", shadowRadius: 10, shadowOpacity: 1, shadowOffset: { width: 0, height: 0 },
+  },
+  scanSweepGlow: {
+    position: "absolute", left: 0, right: 0, height: 24,
+    backgroundColor: "#00d4aa18",
+    top: 0,
+  },
+
+  /* Analysing card */
+  analysingCard: {
+    borderRadius: 16, borderWidth: 1.5, padding: 18, gap: 14,
+  },
+  analysingHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  analysingDot:    { width: 10, height: 10, borderRadius: 5, backgroundColor: "#00d4aa" },
+  analysingTitle:  { fontSize: 16, fontFamily: "Oswald_700Bold", color: "#00d4aa", letterSpacing: 2, flex: 1 },
+  analysingEngine: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
+  analysingStages: { gap: 10 },
+  analysingStageRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  stageDot:        { width: 7, height: 7, borderRadius: 3.5 },
+  stageLabel:      { fontSize: 13, fontFamily: "Inter_500Medium" },
+  progressTrack:   { height: 4, borderRadius: 2, overflow: "hidden" },
+  progressFill:    { height: 4, borderRadius: 2, backgroundColor: "#00d4aa" },
+  analysingHint:   { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 },
 
   /* Sonar Brain Stage-1 verdict card */
   sonarBrainCard: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 10 },
