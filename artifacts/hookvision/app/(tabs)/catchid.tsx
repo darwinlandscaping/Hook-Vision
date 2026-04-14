@@ -208,7 +208,7 @@ function TopViewScanOverlay({ active }: { active: boolean }) {
       {/* Zone labels */}
       {TV_ZONES.map((z, i) => (
         <View key={i} style={[ST.zoneTag, {
-          top:   z.top,
+          top:   z.top   as any,
           left:  z.left  as any,
           right: z.right as any,
         }]}>
@@ -536,7 +536,7 @@ function EmptyState({
         activeOpacity={0.8}
       >
         <MaterialCommunityIcons
-          name="eye-arrow-up"
+          name="arrow-up-bold-box-outline"
           size={16}
           color={topViewMode ? C.teal : "#555"}
         />
@@ -735,8 +735,8 @@ export default function CatchIdScreen() {
   const isAnalysing  = stage1Loading || stage2Loading;
 
   return (
-    <View style={[S.root, { backgroundColor: colors.background }]}>
-      <HVHeader title="CATCH ID" subtitle="Two-Stage AI Fish Detection" topPad={topPad} />
+    <View style={[S.root, { backgroundColor: colors.background, paddingTop: topPad }]}>
+      <HVHeader subtitle="Two-Stage AI Fish Detection" />
 
       <ScrollView
         style={S.scroll}
