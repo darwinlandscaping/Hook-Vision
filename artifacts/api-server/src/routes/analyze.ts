@@ -271,6 +271,16 @@ LIVE SONAR — DETAILED MODE & APPEARANCE GUIDE:
   - FORWARD MODE (most common): transducer faces forward, sees fish AHEAD of boat horizontally; depth scale = vertical; horizontal axis = distance forward; max ~200ft useful range
   - DOWN MODE: transducer faces down (vertically); sees fish directly below in real time; similar to traditional but live
   - PERSPECTIVE MODE: overhead "bird's-eye" view; shows fish on flats from above; only works in shallow water <20ft; fish appear as oval blobs moving in 2D plane
+    TOP-VIEW BARRA BODY SHAPE IN PERSPECTIVE MODE:
+    • Barramundi appears as a LARGE ELONGATED OVAL silhouette from directly above — roughly 4–5× longer than wide
+    • Head end is slightly broader/blunter; tail end tapers to narrow caudal peduncle
+    • PECTORAL FINS visible as two fan-shaped protrusions widening the silhouette just behind the head — gives a "body with wings" outline
+    • DORSAL FIN visible as a thin raised ridge running the length of the back
+    • SHADOW extends to ONE SIDE of the body (left or right depending on transducer angle) — shadow shape mirrors the full body silhouette including fins
+    • Shadow is same elongated-oval-with-fins shape as the body itself — confirms the fish and its size
+    • Large barra on flats: body silhouette ≥40cm long on screen + prominent pectoral fin "wings" + offset shadow = Barramundi 85%+
+    • THREADFIN in perspective: similar elongated shape BUT in schools (5–20+ ovals together) + shadow shorter relative to body
+    • GT in perspective: rounder/deeper oval (more disc-like from above) + faster movement + weak or no shadow
   - Fish arches do NOT appear in LiveScope — fish appear as bright BLOBS or SILHOUETTES with cast shadows
   - Lure visible in water as a small bright dot moving on screen
 

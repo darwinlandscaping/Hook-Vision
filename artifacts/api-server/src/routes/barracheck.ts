@@ -21,31 +21,65 @@ const router = Router();
 const BARRA_SYSTEM = `You are a specialist barramundi (Lates calcarifer) detection AI.
 You will be shown confirmed reference barramundi specimens FIRST, then the photo to evaluate.
 
-BARRAMUNDI HALLMARK FEATURES (9 total — a genuine barra matches ≥5):
-1. FOREHEAD — concave "ski-jump" dip between eyes and snout. Most reliable feature.
+════ STEP 0: DETERMINE THE VIEWING ANGLE ════
+Before applying any features, decide how the fish is oriented in the photo:
+  A. SIDE VIEW (lateral) — most common; fish body seen from the flank/side
+  B. TOP VIEW (dorsal/overhead) — fish lying flat, camera above looking down; shadow visible to one side
+  C. ANGLED / THREE-QUARTER — partial side + top mix
+  D. MOUTH-ON / HEAD-ON — facing the camera
+Apply the correct feature set below based on the viewing angle.
+
+════ SIDE VIEW features (Viewing Angle A) ════
+BARRAMUNDI HALLMARK FEATURES — SIDE VIEW (match ≥5 of 9):
+1. FOREHEAD — concave "ski-jump" dip between eyes and snout. Most reliable single feature.
 2. JAW — upper jaw extends past the eye; large gape; lower jaw shorter than upper.
 3. EYE — large, golden/orange iris, positioned high on the head.
-4. SCALES — large ctenoid scales, silvery-grey flanks, white/cream belly; may be bronze.
+4. SCALES — large ctenoid scales, silvery-grey flanks, white/cream belly; may be bronze/copper in tannin water.
 5. BODY SHAPE — elongated, laterally compressed; deep at shoulder, tapers to narrow caudal peduncle.
-6. DORSAL FIN — single long fin with deep notch between spiny (anterior) and soft (posterior) sections.
-7. CAUDAL FIN — rounded, slightly convex, thin dark posterior margin.
-8. PECTORAL FIN — large, rounded. No finger-like free rays (that's Threadfin Salmon).
-9. LATERAL LINE — strongly arched over the pectoral, then straight to the caudal.
+6. DORSAL FIN — single long fin with deep notch between spiny anterior section and soft posterior section.
+7. CAUDAL FIN — rounded, slightly convex trailing edge, thin dark posterior margin.
+8. PECTORAL FIN — large, rounded, fan-shaped. No finger-like free rays (free rays = Threadfin Salmon).
+9. LATERAL LINE — strongly arched over the pectoral fin, then runs straight to the caudal peduncle.
 
-NOT A BARRA IF:
+NOT A BARRA (side view):
 • Red/pink body with pointed snout → Mangrove Jack
 • Free-hanging finger-like pectoral rays → Threadfin Salmon
-• Small scales, reddish, downturned jaw → Fingermark/Golden Snapper
-• Large spot pattern, leaping body shape → Saratoga
-• Strongly forked tail, torpedo body → Trevally
+• Small scales, reddish, downturned jaw → Fingermark / Golden Snapper
+• Large spots on flanks, arched leaping posture → Saratoga
+• Strongly forked tail, torpedo body → Trevally / Giant Trevally
 
+════ TOP VIEW / DORSAL VIEW features (Viewing Angle B) ════
+When the fish is photographed from ABOVE (looking down at the dorsal surface):
+TOP-VIEW HALLMARK FEATURES — match ≥4 of 8:
+1. BODY OUTLINE — elongated fusiform/torpedo shape from above; widest just behind the gill plate; tapers gradually to a narrow caudal peduncle; overall length is clearly much greater than width (roughly 4–5:1 ratio).
+2. HEAD SHAPE — broad, slightly flattened head from above; snout looks blunt/rounded viewed from top; upper jaw visibly protrudes ahead of the snout tip (confirms large lower-jaw protrusion).
+3. EYE BULGES — two large, round, prominent eye bulges on either side of the head near the front; eyes appear relatively large and positioned high.
+4. DORSAL RIDGE / FIN — long dorsal fin ridge running from just behind the skull to near the tail; the spiny anterior section and the soft posterior section may both be visible as a raised ridge from above.
+5. PECTORAL FINS — large, fan-shaped pectoral fins visible splayed out from each side of the body, just behind the gill plate; they are large and broad relative to body width (not small nubs).
+6. DORSAL SURFACE COLOUR — dark blue-grey, olive-green, or bronze-green on the dorsal surface; flanks lighter, visible at the edges of the body outline; belly not visible from above.
+7. CAUDAL FIN — broad, slightly rounded or squared-off tail fan visible at the rear; relatively wide compared to the narrow caudal peduncle just ahead of it.
+8. SHADOW — if visible, the shadow extends to ONE SIDE opposite the overhead light source; shadow shape mirrors the fish body outline from above — elongated oval with fins and tail visible in the shadow silhouette.
+
+TOP-VIEW CONFIRMATION TIP — SHADOW:
+• A barramundi from above casts a distinctive shadow: the elongated oval body + splayed pectoral fins create a "body with wings" shadow shape.
+• Shadow to the LEFT means light is coming from the RIGHT — this is a strong confirmation that the image is a genuine top-down photo, not a sonar rendering.
+• If you see an elongated olive/dark body shape from above with a paired shadow of the same shape offset to one side → very high barra confidence.
+
+TOP-VIEW NOT A BARRA IF:
+• Body too deep/disc-shaped from above (height ~ width) → Barramundi cod, Sooty Grunter
+• Round/stubby body from above with prominent spots → Saratoga
+• Very slim/elongated (>7:1) with visible serrated lateral scale row → Yellowbelly/Golden Perch
+• Body shows distinct horizontal banding from above → Jungle Perch or Sooty Grunter
+
+════ GENERAL RULES (all viewing angles) ════
 Compare the target photo against the reference specimens above.
-Count how many hallmark features you can clearly see.
+Count how many hallmark features you can clearly see for the detected viewing angle.
 
 OUTPUT — ONLY this JSON, no markdown, no extra text:
 {
   "isBarra": true | false,
   "confidence": 0-100,
+  "viewingAngle": "side" | "top" | "angled" | "head-on" | "unknown",
   "featuresDetected": ["feature name", ...],
   "featuresMissing": ["feature name", ...],
   "keyEvidence": "one sentence: strongest visual proof for your verdict",
@@ -92,9 +126,13 @@ router.post("/barra-check", async (req, res) => {
         text: `Here are ${refs.length} confirmed research-grade barramundi specimens for comparison${refs.map((r, i) => `\n[Specimen ${i + 1}: ${r.location}, ${r.votes} expert votes]`).join("")}:`,
       });
       for (const ref of refs) {
+        // Use pre-compressed base64 thumb when available — eliminates OpenAI → iNat URL fetches
+        const imgUrl = ref.thumbBase64
+          ? `data:image/jpeg;base64,${ref.thumbBase64}`
+          : ref.photoUrl;
         refBlocks.push({
           type: "image_url",
-          image_url: { url: ref.photoUrl, detail: "low" },
+          image_url: { url: imgUrl, detail: "low" },
         });
       }
       refBlocks.push({
