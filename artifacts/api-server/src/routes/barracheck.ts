@@ -14,6 +14,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getFewShotRefs, addCommunityReference } from "../lib/barraLibrary.js";
+import { makeThumbnailFromBase64 } from "../lib/imageUtils.js";
 
 const router = Router();
 
@@ -191,6 +192,50 @@ router.post("/barra-check", async (req, res) => {
     res.json(parsed);
   } catch (err) {
     res.status(500).json({ error: "Barra check failed", detail: String(err) });
+  }
+});
+
+/**
+ * POST /api/barra-confirm
+ * Store a community-confirmed barramundi catch in the reference brain.
+ *
+ * Called when a user taps "Confirm + Save to Brain" after a positive ID result.
+ * Compresses the photo to a ~3 KB JPEG thumbnail and stores it in the DB.
+ * The thumbnail is immediately injected into the live reference cache — the
+ * very next scan will compare against this confirmed specimen.
+ */
+router.post("/barra-confirm", async (req, res) => {
+  const { imageBase64, location, viewingAngle } = req.body as {
+    imageBase64?:  string;
+    location?:     string;
+    viewingAngle?: "top" | "side" | "angled";
+  };
+
+  if (!imageBase64) {
+    res.status(400).json({ error: "imageBase64 required" });
+    return;
+  }
+
+  try {
+    const thumb = await makeThumbnailFromBase64(imageBase64, 512, 70);
+    if (!thumb) {
+      res.status(422).json({ error: "Could not compress image — unsupported format" });
+      return;
+    }
+
+    await addCommunityReference({
+      base64Thumb:  thumb,
+      location:     location ?? "NT, Australia",
+      viewingAngle: viewingAngle ?? undefined,
+    });
+
+    res.json({
+      success:   true,
+      thumbKb:   Math.round(thumb.length / 1024 * 10) / 10,
+      message:   "Confirmed catch saved to Barra Brain — next scan will compare against your fish!",
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save confirmation", detail: String(err) });
   }
 });
 

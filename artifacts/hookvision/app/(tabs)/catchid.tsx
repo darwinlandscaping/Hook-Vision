@@ -591,6 +591,8 @@ export default function CatchIdScreen() {
   const topViewModeRef = useRef(false);
   topViewModeRef.current = topViewMode;
 
+  const [confirmState,  setConfirmState]  = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
+
   const abortRef = useRef<AbortController | null>(null);
 
   // Fetch brain library status on mount
@@ -614,6 +616,9 @@ export default function CatchIdScreen() {
     setStage2Error(null);
     setStage1Loading(true);
     setStage2Loading(true);
+    setConfirmState("idle");
+    imageB64Ref.current   = b64;
+    barraCheckRef.current = null;
 
     const base = getBaseUrl();
 
@@ -627,6 +632,7 @@ export default function CatchIdScreen() {
       .then(r => r.json() as Promise<BarraCheck>)
       .then(data => {
         if (ac.signal.aborted) return;
+        barraCheckRef.current = data;
         setBarraCheck(data);
         setStage1Loading(false);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -695,7 +701,35 @@ export default function CatchIdScreen() {
     setStage2Error(null);
     setStage1Loading(false);
     setStage2Loading(false);
+    setConfirmState("idle");
   }, []);
+
+  // Store the latest base64 so the confirm handler can access it from state
+  const imageB64Ref = useRef<string | null>(null);
+
+  const confirmBarra = useCallback(async () => {
+    if (!imageB64Ref.current) return;
+    setConfirmState("confirming");
+    try {
+      const base = getBaseUrl();
+      const resp = await fetch(`${base}/api/barra-confirm`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64:  imageB64Ref.current,
+          viewingAngle: barraCheckRef.current?.viewingAngle ?? undefined,
+        }),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setConfirmState("confirmed");
+    } catch {
+      setConfirmState("error");
+    }
+  }, []);
+
+  // Keep a ref to the latest barraCheck result for the confirm handler
+  const barraCheckRef = useRef<BarraCheck | null>(null);
 
   const hasAnyResult = barraCheck !== null || fullResult !== null;
   const isAnalysing  = stage1Loading || stage2Loading;
@@ -734,6 +768,39 @@ export default function CatchIdScreen() {
               </View>
             )}
             {barraCheck && <BarraVerdictCard bc={barraCheck} />}
+
+            {/* Confirm + Save to Brain — shown after a positive barra result */}
+            {barraCheck?.isBarra && !stage1Loading && (
+              <View style={S.confirmWrap}>
+                {confirmState === "confirmed" ? (
+                  <View style={S.confirmDone}>
+                    <MaterialCommunityIcons name="brain" size={18} color={C.teal} />
+                    <Text style={S.confirmDoneText}>Saved to Barra Brain!</Text>
+                    <Text style={S.confirmDoneSub}>Next scan learns from your fish.</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[S.confirmBtn, confirmState === "confirming" && { opacity: 0.6 }]}
+                    onPress={confirmBarra}
+                    disabled={confirmState === "confirming"}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons
+                      name={confirmState === "error" ? "alert" : "brain"}
+                      size={18}
+                      color={confirmState === "error" ? C.red : C.teal}
+                    />
+                    <Text style={[S.confirmBtnText, confirmState === "error" && { color: C.red }]}>
+                      {confirmState === "confirming"
+                        ? "Saving to Brain…"
+                        : confirmState === "error"
+                        ? "Save failed — tap to retry"
+                        : "✓ Confirm + Save to Brain"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
 
             {/* Stage 2 status */}
             {stage2Loading && (
@@ -842,6 +909,24 @@ const S = StyleSheet.create({
   },
   topViewTogglePillOn: { borderColor: C.teal + "60", backgroundColor: C.teal + "18" },
   topViewTogglePillTxt: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#555", letterSpacing: 0.5 },
+
+  // ── Confirm + Save to Brain ────────────────────────────────────────────────
+  confirmWrap:   { width: "100%" },
+  confirmBtn: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    borderWidth: 1.5, borderColor: C.teal + "60", borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: C.teal + "14",
+  },
+  confirmBtnText: { flex: 1, fontSize: 13, fontFamily: "Inter_700Bold", color: C.teal, letterSpacing: 0.3 },
+  confirmDone: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderWidth: 1.5, borderColor: C.teal + "40", borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: C.teal + "10",
+  },
+  confirmDoneText: { fontSize: 13, fontFamily: "Inter_700Bold", color: C.teal },
+  confirmDoneSub:  { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: C.teal + "aa" },
 
   verdictSection:{ gap: 6 },
   verdictMeta:   { fontSize: 9, fontFamily: "Inter_700Bold", color: "#555", letterSpacing: 0.8 },

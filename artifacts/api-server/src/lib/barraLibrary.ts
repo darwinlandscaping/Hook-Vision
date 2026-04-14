@@ -18,7 +18,7 @@
  * new high-quality observations are added to the pool.
  */
 import { db, barraReferences } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { logger } from "./logger.js";
 import { makeThumbnailFromUrl } from "./imageUtils.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -134,9 +134,11 @@ async function upsertObservations(obs: InatObservation[]): Promise<number> {
 async function rebuildCache(): Promise<void> {
   const rows = await db
     .select({
-      photoUrl: barraReferences.photoUrl,
-      location: barraReferences.location,
-      votes:    barraReferences.votes,
+      photoUrl:     barraReferences.photoUrl,
+      location:     barraReferences.location,
+      votes:        barraReferences.votes,
+      thumbBase64:  barraReferences.thumbBase64,
+      viewingAngle: barraReferences.viewingAngle,
     })
     .from(barraReferences)
     .where(eq(barraReferences.active, true))
@@ -144,13 +146,19 @@ async function rebuildCache(): Promise<void> {
     .limit(500);   // top 500 in memory
 
   cache = rows.map(r => ({
-    photoUrl: r.photoUrl ?? "",
-    location: r.location ?? "Australia",
-    votes:    r.votes ?? 0,
-  })).filter(r => r.photoUrl.length > 0);
+    photoUrl:     r.photoUrl ?? "",
+    location:     r.location ?? "Australia",
+    votes:        r.votes ?? 0,
+    thumbBase64:  r.thumbBase64 ?? undefined,
+    viewingAngle: (r.viewingAngle as CachedRef["viewingAngle"]) ?? undefined,
+    // Community refs use "community" as photoUrl sentinel — still valid as long as thumbBase64 is set
+  })).filter(r => r.photoUrl.length > 0 || !!r.thumbBase64);
 
   lastFetch = Date.now();
-  logger.info({ count: cache.length }, "Barra reference library cache rebuilt");
+  logger.info(
+    { count: cache.length, withThumb: cache.filter(r => r.thumbBase64).length },
+    "Barra reference library cache rebuilt"
+  );
 
   // Fire-and-forget thumbnail pre-warming — compress top photos into base64
   // so OpenAI doesn't have to fetch them from iNaturalist on every call.
@@ -264,6 +272,25 @@ async function classifyAngles(): Promise<void> {
       { classified: results.length, topView: topCount, sideView: results.length - topCount },
       "Barra ref angle classification complete"
     );
+
+    // Persist classifications to DB so they survive restarts
+    // Group by angle to do bulk updates
+    const byAngle: Record<string, string[]> = {};
+    for (const { idx, angle } of results) {
+      const ref = unclassified[idx];
+      if (!ref?.photoUrl || ref.photoUrl === "community") continue;
+      if (angle === "top" || angle === "side" || angle === "angled") {
+        (byAngle[angle] ??= []).push(ref.photoUrl);
+      }
+    }
+    for (const [angle, urls] of Object.entries(byAngle)) {
+      if (urls.length === 0) continue;
+      await db
+        .update(barraReferences)
+        .set({ viewingAngle: angle })
+        .where(inArray(barraReferences.photoUrl, urls))
+        .catch(() => {});
+    }
   } catch (err) {
     logger.warn({ err }, "Angle classification failed — refs will be used without angle tags");
   }
@@ -316,20 +343,51 @@ export async function refreshBarraLibrary(): Promise<void> {
 
 /**
  * Add a community-confirmed catch to the reference pool.
+ *
  * Called when a HookVision user confirms "yes, this is a barra".
+ * The compressed base64 thumbnail is stored directly in the DB
+ * (~3 KB per record — no external storage needed) and is immediately
+ * injected into the in-memory cache so the very next scan benefits.
+ *
+ * @param opts.base64Thumb  - compressed JPEG base64 (~3 KB)
+ * @param opts.photoUrl     - original photo URL if available (falls back to "community")
+ * @param opts.location     - where the fish was caught
+ * @param opts.viewingAngle - "top" | "side" | "angled" if known
  */
-export async function addCommunityReference(photoUrl: string, location?: string): Promise<void> {
+export async function addCommunityReference({
+  base64Thumb,
+  photoUrl = "community",
+  location = "NT, Australia",
+  viewingAngle,
+}: {
+  base64Thumb: string;
+  photoUrl?:     string;
+  location?:     string;
+  viewingAngle?: "top" | "side" | "angled";
+}): Promise<void> {
   try {
     await db.insert(barraReferences).values({
       source:       "community",
       photoUrl,
+      thumbBase64:  base64Thumb,
       qualityGrade: "confirmed",
-      location:     location ?? "NT, Australia",
-      votes:        1,
+      location,
+      viewingAngle: viewingAngle ?? null,
+      votes:        5,   // start community refs with 5 votes — confirmed > iNat speculative
       active:       true,
     });
-    // Invalidate cache so it picks up on next request
-    lastFetch = 0;
+
+    // Immediately inject into the live cache so the next scan already benefits.
+    // Put community refs at the TOP of the cache (highest votes).
+    const ref: CachedRef = {
+      photoUrl,
+      location,
+      votes:        5,
+      thumbBase64:  base64Thumb,
+      viewingAngle: viewingAngle ?? undefined,
+    };
+    cache.unshift(ref);   // insert at front — highest priority
+    logger.info({ location, angle: viewingAngle ?? "unknown" }, "Community barra reference added to brain");
   } catch (err) {
     logger.warn({ err: String(err) }, "Failed to add community barra reference");
   }

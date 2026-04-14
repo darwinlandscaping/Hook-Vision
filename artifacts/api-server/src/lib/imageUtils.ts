@@ -88,3 +88,36 @@ export async function makeThumbnailFromUrl(
     return null;
   }
 }
+
+/**
+ * Compress a raw base64-encoded image (JPEG or PNG) to a small JPEG thumbnail.
+ * Used when storing community-confirmed catches — no URL fetch needed.
+ * Returns null on error.
+ */
+export async function makeThumbnailFromBase64(
+  b64: string,
+  maxDim = 512,
+  quality = 65
+): Promise<string | null> {
+  try {
+    const buf        = Buffer.from(b64, "base64");
+    const jpegModule = await import("jpeg-js");
+
+    if (buf[0] === 0xff && buf[1] === 0xd8) {
+      // JPEG input
+      const decoded = jpegModule.default.decode(buf, { useTArray: true, formatAsRGBA: true });
+      const { data, width, height } = downscaleRGBA(decoded.data, decoded.width, decoded.height, maxDim);
+      const encoded = jpegModule.default.encode({ data, width, height }, quality);
+      return Buffer.from(encoded.data).toString("base64");
+    }
+
+    if (buf[0] === 0x89 && buf[1] === 0x50) {
+      // PNG input
+      return makeThumbnailFromBuf(buf, maxDim, quality);
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
