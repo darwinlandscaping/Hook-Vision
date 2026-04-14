@@ -2,20 +2,30 @@
  * Demo Reference Library
  *
  * Loads the 5 labeled demo sonar images at server startup.
- * These are injected into every analyze call as visual ground-truth references,
- * so the AI can compare the unknown scan against known labeled examples.
+ * Each image is loaded TWICE:
+ *   • base64      — full quality PNG (for CV analysis and zoom crops)
+ *   • thumbBase64 — compressed 512px JPEG, ~30–50KB each (for few-shot prompting)
+ *
+ * The thumbnail is used for all OpenAI "low" detail reference injections.
+ * At "low" detail OpenAI rescales to 512×512 anyway, so sending a 30KB JPEG
+ * is identical in quality to sending a 2MB PNG — 50–100× less upload overhead.
+ *
+ * Compression: PNG → nearest-neighbour downscale to ≤512px → JPEG q65
+ * Uses the already-installed jpeg-js + pngjs packages.
  */
 
-import * as fs from "node:fs";
+import * as fs   from "node:fs";
 import * as path from "node:path";
 import { logger } from "./logger";
+import { makeThumbnailFromBuf } from "./imageUtils.js";
 
 export interface DemoRef {
-  num: number;
-  base64: string;
-  label: string;
-  brand: string;
-  model: string;
+  num:         number;
+  base64:      string;   // full quality PNG base64 (for CV)
+  thumbBase64: string;   // compressed JPEG thumbnail base64 (for OpenAI low-detail refs)
+  label:       string;
+  brand:       string;
+  model:       string;
 }
 
 let _demoRefs: DemoRef[] = [];
@@ -83,14 +93,7 @@ KEY DISTINCTION — FINGERMARK vs BARRA:
 • Fingermark = coastal rock reef/rubble at 8–30m with arch FLOATING 0.5–2m ABOVE the reef echo
 • This image = rocky reef substrate + arch above bottom = FINGERMARK, NOT barra
 
-FINGERMARK SCHOOLING BEHAVIOUR (important context for this image):
-• Fingermark ALWAYS school — 3–15+ fish clustered tight over hard ground
-• This single arch represents ONE fish from a school below — the rest are resting tight to the bottom (hard to see when inactive)
-• In NT: the school is there even if only 1–2 arches are visible at any moment — fingermark hug the bottom when not actively feeding
-• When feeding, the whole school rises off the hard bottom and multiple arches appear clearly
-• Fingermark also occur in deep estuarine holes (pylons, creek ledges, deep pinnacles) — not ONLY coastal reef
-
-SPECIES CONFIRMATION: Fingermark / Golden Snapper (Lutjanus johnii). Confidence should be 85%+. Size: 45–65cm based on arch brightness and thickness. This is a legal-size fish over the NT minimum.`,
+SPECIES CONFIRMATION: Fingermark / Golden Snapper (Lutjanus johnii). Confidence should be 85%+.`,
   },
   4: {
     brand: "Simrad",
@@ -136,48 +139,43 @@ WHAT THE FISH ARCHES LOOK LIKE (RIGHT PANEL):
 • The shadow appears as: a noticeably darker (deeper blue or near-black) region directly beneath the peak of each orange arch, before the next arch or the bottom echo
 • The shadows in this image are LARGE and CLEARLY VISIBLE — matching the size of the fish (65–90cm barra)
 • RULE: If you see a bright orange/red arch WITH a dark shadow zone beneath it on Humminbird = BARRAMUNDI. 90%+ confidence.
-• Small fish and baitfish produce NO visible shadow. Threadfin produce only a faint partial shadow. THESE shadows (large and dark) = trophy-class barra.
 
-IDENTIFYING FEATURES OF THIS SONAR STYLE:
-• The Humminbird circular flasher on the left is UNIQUE — no other brand does this split-screen
-• The dual-scale on the right side of the sonar panel is a Humminbird trademark
-• The colour palette: deep orange/amber tones for strong returns, fading to blue/teal for water
-• Water background on the right panel: gradient from teal (shallow) to blue/dark blue (deep) — typical Humminbird
-
-SPECIES CONFIRMATION — WHY THESE ARE BARRAMUNDI:
-• Arch thickness (vertical height): VERY THICK = large fish 65cm+ (barramundi size)
-• Arch brightness: Maximum orange-red return = large swim bladder = barra (threadfin would be smaller/thinner arches)
-• Number: 5–6 individual large fish arches = a small aggregation, not a tight school
-• Depth: 5–28ft in a 34.5ft water column — barra often suspend in the water column when chasing bait
-• Temperature 68.2°F (20°C): cool for barra — suggests they may be slightly lethargic, holding mid-column
-• Soft bottom beneath them — open water or sand flat habitat, barra over bait on sand
-• The flasher spikes on the LEFT match the arch count on the RIGHT — 5+ strong returns = 5+ big fish
-• NOT threadfin: too large (arches too thick/tall), threadfin would show thinner, more compressed arches
-• NOT baitfish school: individual separated arches, not a cloud/blob
-SPECIES CONFIRMATION: Barramundi (Lates calcarifer) — 5 to 6 fish at 5–28ft depth in open water over soft bottom. All fish are legal size 65–90cm based on arch thickness. Confidence should be 90%+.
-
-TECHNIQUE FOR THIS SITUATION: Fish are mid-column/open water — use a mid-water lure or livebait suspended at the fish depth. Try 50g vibes or deep-diving hardbodies at 8–15ft. If fish are slightly lethargic (68°F is cool), slow down the retrieve.`,
+SPECIES CONFIRMATION: Barramundi (Lates calcarifer) — 5 to 6 fish at 5–28ft depth in open water over soft bottom. All fish are legal size 65–90cm based on arch thickness. Confidence should be 90%+.`,
   },
 };
 
-/** Load all demo images from disk into memory as base64 */
-export function loadDemoReferences(): void {
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+/** Load all demo images from disk, store full PNG base64 + compressed thumbnail */
+export async function loadDemoReferences(): Promise<void> {
   const demosDir = path.join(process.cwd(), "public", "demos");
 
   for (let i = 1; i <= 5; i++) {
     const filePath = path.join(demosDir, `sonar-demo-${i}.png`);
     try {
-      const buf = fs.readFileSync(filePath);
-      const base64 = buf.toString("base64");
-      const meta = DEMO_LABELS[i]!;
-      _demoRefs.push({
-        num: i,
-        base64,
-        label: meta.label,
-        brand: meta.brand,
-        model: meta.model,
-      });
-      logger.info({ demo: i, brand: meta.brand, sizeKb: Math.round(base64.length / 1024) }, "Demo reference loaded");
+      const buf       = fs.readFileSync(filePath);
+      const base64    = buf.toString("base64");
+      const meta      = DEMO_LABELS[i]!;
+
+      // Compress to thumbnail for fast reference injection (~37× smaller)
+      let thumbBase64 = base64;   // fallback: full quality if compression fails
+      try {
+        thumbBase64 = await makeThumbnailFromBuf(buf, 512, 65);
+        logger.info(
+          {
+            demo:     i,
+            brand:    meta.brand,
+            fullKb:   Math.round(base64.length    / 1024),
+            thumbKb:  Math.round(thumbBase64.length / 1024),
+            ratio:    `${Math.round(base64.length / thumbBase64.length)}×`,
+          },
+          "Demo reference loaded + thumbnail compressed"
+        );
+      } catch (compErr) {
+        logger.warn({ err: compErr, demo: i }, "Thumbnail compression failed — using full PNG");
+      }
+
+      _demoRefs.push({ num: i, base64, thumbBase64, label: meta.label, brand: meta.brand, model: meta.model });
     } catch (err) {
       logger.warn({ err, demo: i, filePath }, "Failed to load demo reference image — ID accuracy will be reduced");
     }

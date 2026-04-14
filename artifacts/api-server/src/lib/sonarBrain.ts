@@ -48,11 +48,13 @@ const CACHE_TTL   = 4 * 60 * 60 * 1000;   // 4 hours
 const POSITIVE_DEMO_NUMS = [1, 5];
 const NEGATIVE_DEMO_NUMS = [2];
 
-// ─── Build reference from a DemoRef ──────────────────────────────────────────
+// ─── Build reference from a DemoRef — use compressed thumbnail ───────────────
+// thumbBase64 is a 512px JPEG (~30–50KB) vs the full PNG (1.4–2.3MB).
+// OpenAI "low" detail mode rescales to 512×512 anyway — zero quality difference.
 function demoToRef(d: DemoRef, isPositive: boolean): SonarFewShotRef {
   return {
-    base64:     d.base64,
-    mimeType:   "image/png",
+    base64:     d.thumbBase64,  // compressed thumbnail, not the full PNG
+    mimeType:   "image/jpeg",
     label:      d.label,
     brand:      d.brand,
     isPositive,

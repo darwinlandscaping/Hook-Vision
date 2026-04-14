@@ -640,7 +640,11 @@ router.post("/analyze", async (req, res) => {
       if (barraBodyRef.length > 0) {
         const bp = barraBodyRef[0];
         content.push({ type: 'text', text: `STEP 1 — BARRAMUNDI BODY ANATOMY (iNaturalist, ${bp.location}):\nThe large PHYSOSTOMOUS SWIM BLADDER (pale gas sac in upper body cavity) is enormously reflective — it creates the THICK BRIGHT ARCH + SHADOW VOID on sonar. Deep laterally-compressed body = wider/taller arch than threadfin.` });
-        content.push({ type: 'image_url', image_url: { url: bp.photoUrl, detail: 'low' } });
+        // Use pre-compressed base64 thumb when available (avoids OpenAI → iNat URL fetch)
+        const barraImgUrl = bp.thumbBase64
+          ? `data:image/jpeg;base64,${bp.thumbBase64}`
+          : bp.photoUrl;
+        content.push({ type: 'image_url', image_url: { url: barraImgUrl, detail: 'low' } });
         content.push({ type: 'text', text: `↑ Confirmed barramundi — ${bp.location} (${bp.votes} expert votes). Connect this anatomy to the sonar arch signatures below.` });
       }
 
