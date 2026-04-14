@@ -1,7 +1,7 @@
 /**
  * CrocTabBar — 2-row croc-mouth navigation bar
  * Row 1: Scan · Live · Home · Boof · Tides · Species
- * Row 2: Barra · Zones · Fishy · Demo · History · Intel
+ * Row 2: Barra · Zones · Fishy · Catch · History · Intel
  */
 import React from "react";
 // @ts-ignore — types bundled with expo-router at runtime
@@ -50,7 +50,7 @@ const META: Record<string, { label: string; icon: (c: string, s: number) => Reac
   barra:     { label: "Barra",   icon: (c, s) => <MaterialCommunityIcons name="crosshairs-gps"    size={s} color={c} /> },
   zones:     { label: "Zones",   icon: (c, s) => <MaterialCommunityIcons name="map-marker-radius"  size={s} color={c} /> },
   forecast:  { label: "Fishy",   icon: (c, s) => <MaterialCommunityIcons name="weather-windy"     size={s} color={c} /> },
-  demo:      { label: "Demo",    icon: (c, s) => <MaterialCommunityIcons name="image-multiple"     size={s} color={c} /> },
+  catchid:   { label: "Catch",   icon: (c, s) => <MaterialCommunityIcons name="camera-iris"        size={s} color={c} /> },
   history:   { label: "History", icon: (c, s) => <Feather                name="clock"              size={s} color={c} /> },
   community: { label: "Brain",   icon: (c, s) => <MaterialCommunityIcons name="brain"              size={s} color={c} /> },
 };

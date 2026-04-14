@@ -11,6 +11,7 @@ import lureSearchRouter from "./lureSearch";
 import dataStatusRouter from "./dataStatus";
 import communityRouter from "./community";
 import brainRouter from "./brain";
+import fishidRouter from "./fishid";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(lureSearchRouter);
 router.use(dataStatusRouter);
 router.use(communityRouter);
 router.use(brainRouter);
+router.use(fishidRouter);
 
 export default router;

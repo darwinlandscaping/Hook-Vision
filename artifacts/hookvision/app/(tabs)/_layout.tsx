@@ -14,7 +14,7 @@ import { CrocTabBar } from "@/components/CrocTabBar";
 // Ordered list of all tab route names (must match Tabs.Screen order below)
 const TAB_ROUTES = [
   "index", "live", "home", "buff", "tides", "species",
-  "barra", "zones", "forecast", "demo", "history", "community",
+  "barra", "zones", "forecast", "catchid", "history", "community",
 ] as const;
 
 function tabPath(name: string) {
@@ -60,9 +60,9 @@ function NativeTabLayout() {
         <Icon sf={{ default: "fish.fill", selected: "fish.fill" }} />
         <Label>Fishy</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="demo">
-        <Icon sf={{ default: "photo.on.rectangle", selected: "photo.on.rectangle.angled" }} />
-        <Label>Demo</Label>
+      <NativeTabs.Trigger name="catchid">
+        <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
+        <Label>Catch ID</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="history">
         <Icon sf={{ default: "clock", selected: "clock.fill" }} />
@@ -254,17 +254,18 @@ function ClassicTabLayout() {
         options={{ href: null }}
       />
       <Tabs.Screen
-        name="demo"
+        name="catchid"
         options={{
-          title: "Demo",
+          title: "Catch ID",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="photo.on.rectangle" tintColor={color} size={22} />
+              <SymbolView name="camera.viewfinder" tintColor={color} size={22} />
             ) : (
-              <MaterialCommunityIcons name="image-multiple" size={22} color={color} />
+              <MaterialCommunityIcons name="camera-iris" size={22} color={color} />
             ),
         }}
       />
+      <Tabs.Screen name="demo" options={{ href: null }} />
       <Tabs.Screen
         name="history"
         options={{
