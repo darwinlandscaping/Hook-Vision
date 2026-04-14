@@ -125,6 +125,53 @@ LIVE SONAR BRANDS:
 • Humminbird MEGA Live / MEGA 360: orange accent colours, "MEGA LIVE" or "360" label visible, fish blobs on dark background, 360 mode shows a round sweep view
 • Simrad ForwardScan / 3D Sonar: Navico branding, similar to Lowrance palette
 
+═══ STEP 0F: TOP-VIEW / OVERHEAD SONAR — MANDATORY CHECK ON EVERY SCAN ═══
+CRITICAL: Run this BEFORE arch analysis. In top-view sonar there are NO ARCHES. If you skip this step you will miss every fish in these modes.
+
+TOP-VIEW SONAR MODES — identify ANY of these first:
+① GARMIN LIVESCOPE PERSPECTIVE ("LIVESCOPE" label, shallow water <20ft/6m, overhead bird's-eye, fish appear as flat ovals on a 2D horizontal plane)
+② HUMMINBIRD MEGA 360 (circular radar-like display, boat at centre, 360° sweep, "MEGA 360" or "360°" label, fish as bright dots/short arcs at radial distance)
+③ HUMMINBIRD SIDE IMAGING / DOWN IMAGING (fish as bright commas/smears off bottom line)
+④ SIMRAD STRUCTURESCAN (similar to Humminbird side imaging)
+⑤ LOWRANCE STRUCTURESCAN / TOTALSCAN (comma/smear marks)
+⑥ DEEPER PRO PERSPECTIVE (phone app in bird's-eye mode)
+
+HOW TO RECOGNISE TOP-VIEW MODE (check ALL of these):
+• NO scrolling time axis from right to left — the image is STATIC or sweeping
+• NO traditional U-shaped arch returns — fish do NOT look like arches
+• Bottom echo is NOT a horizontal line at the bottom — the whole image IS the bottom plane
+• Fish appear as SHORT OVAL BLOBS or BRIGHT DOTS, viewed from above
+• In MEGA 360: circular display with rings = distance from centre; fish = dots/arcs
+
+TOP-VIEW BARRA DETECTION — WHAT TO LOOK FOR:
+GARMIN PERSPECTIVE MODE:
+• Large ELONGATED OVAL body silhouette — ≈4–5× longer than wide, seen from directly above
+• Head end: broader/blunter; tail end: tapers to narrow caudal peduncle
+• PECTORAL FINS visible as fan-shaped "wings" widening the outline just behind the head — "body with wings" shape
+• DORSAL FIN: thin ridge running along the top centre of the body
+• SHADOW: extends to ONE SIDE of the body (L or R depending on transducer angle) — shadow shape mirrors the body + fins = elongated oval with wing protrusions
+• Shadow to one side (not below) CONFIRMS this is top-view, not forward-view
+• Large barra body silhouette (≥40cm on screen) + pectoral fin "wings" + offset shadow = BARRAMUNDI 85%+
+• SOLO or pairs (1–3 fish) on shallow flats = classic NT dry-season barra sight-fishing scenario
+
+HUMMINBIRD MEGA 360:
+• Barramundi: large bright dot or short arc at their distance from centre; isolated or paired; near visible structure arc
+• School = NOT barra; solo isolated marks near structure = barra or jack
+• Structure: bright curved arc/band at consistent radial distance; fish marks are OFFSET from structure centre
+
+SIDE IMAGING (Humminbird/Simrad/Lowrance):
+• Fish appear as bright COMMA shapes or WHITE SMEARS off the bottom line (left or right channel)
+• The "comma tail" trails away from the fish in the direction of the sonar beam sweep
+• Large bright comma = large fish; small dots = baitfish
+• Barra in side imaging: large bright comma NEXT TO structure arc/return, isolated or in pairs
+
+TOP-VIEW vs FORWARD-VIEW vs 2D — HOW TO TELL:
+• TOP-VIEW: no time scrolling, ovals/blobs from above, shadow to SIDE, whole screen = bottom plane
+• FORWARD-VIEW (live scope forward): vertical depth scale on side, horizontal = distance ahead, fish have shadow BELOW them
+• TRADITIONAL 2D: horizontal bottom line at screen bottom, arches visible, scrolls R→L over time
+
+MANDATORY RULE: If ANY top-view indicator is present → STOP looking for arches → APPLY top-view blob detection rules above → set sonarMode to "perspective-top-view" | "mega-360" | "side-imaging" accordingly.
+
 ═══ STEP 1: ARCH PHYSICS (traditional 2D sonar only) ═══
 • Arch THICKNESS (vertical height) = fish SIZE. Tall fat arch = big fish. Hairline = tiny fish.
 • Arch COLOR/BRIGHTNESS = swim bladder echo strength:
@@ -413,15 +460,27 @@ Return ONLY valid JSON — no markdown fences, no explanation, no surrounding te
 const ANALYSIS_STEP_PROMPT = `Analyse the sonar image using BOTH methods simultaneously. Output JSON only.
 
 STEPS (run ALL of them, every time):
+0. TOP-VIEW CHECK FIRST — MANDATORY BEFORE ARCH ANALYSIS:
+   Ask: Is this image a TOP-VIEW / OVERHEAD sonar mode? Look for:
+   - Garmin LiveScope PERSPECTIVE: "LIVESCOPE" label + overhead bird's-eye + no scrolling + fish as flat ovals + shadow to SIDE
+   - Humminbird MEGA 360: circular radar-like display + boat at centre + "360" label + fish as dots/arcs at radial distance
+   - Side Imaging (Humminbird/Simrad/Lowrance): boat at top-centre + left/right channels + fish as bright comma/smear shapes off bottom line
+   IF TOP-VIEW DETECTED → do NOT look for arches → apply TOP-VIEW BARRA DETECTION rules from STEP 0F above:
+     • Perspective: find elongated ovals with pectoral fin "wings" + side shadow → BARRAMUNDI
+     • MEGA 360: isolated bright dots near structure → BARRAMUNDI or JACK
+     • Side Imaging: large bright commas next to structure → BARRAMUNDI
+   Set sonarMode = "perspective-top-view" | "mega-360" | "side-imaging" and proceed to step 6 (skip arch steps 3–4).
+   IF NOT TOP-VIEW → continue to steps 1–5 as normal.
+
 1. LAYOUT & MODE: Is the image a single panel or split screen? Identify EACH panel:
    - Traditional 2D scroll (time axis right→left, arched returns)
    - Live sonar Forward (horizontal distance axis, fish as blobs looking ahead)
    - Live sonar Down (real-time vertical view directly below)
-   - Live sonar Perspective (overhead bird's-eye, shallow water)
+   - Live sonar Perspective (overhead bird's-eye, shallow water) — already handled in step 0
    - Live sonar Scout (ActiveTarget 2 only — looking BEHIND boat)
-   - MEGA 360 circular (radar-like 360° radial sweep, round display)
+   - MEGA 360 circular (radar-like 360° radial sweep, round display) — already handled in step 0
    - Humminbird Flasher Wheel (circular rotating ping on left panel of split screen)
-   - StructureScan / Side Imaging (fish as comma/smear marks off bottom line)
+   - StructureScan / Side Imaging (fish as comma/smear marks off bottom line) — already handled in step 0
    - Deeper app (phone UI, blue gradient, fish icons with depth labels)
 
 2. BRAND & FREQUENCY:

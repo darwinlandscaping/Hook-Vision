@@ -50,10 +50,28 @@ NOT BARRA IF:
 • Half-arch embedded in/inside bottom echo → Mangrove Jack
 • Multiple fish at identical depth in open water → Schooling species (threadfin, queenfish)
 
-LIVE SONAR (LiveScope/ActiveTarget/MEGA Live) — barra signature:
-• Elongated body silhouette (3:1 to 4:1 ratio), high brightness, PROMINENT dark shadow
+LIVE SONAR FORWARD-VIEW (LiveScope/ActiveTarget/MEGA Live) — barra signature:
+• Elongated body silhouette (3:1 to 4:1 ratio), high brightness, PROMINENT dark shadow below
 • Stationary or slow-moving near structure (barra hold position; threadfin cruise)
 • Blunt-nose forward profile visible on forward-facing sonar
+
+TOP-VIEW / OVERHEAD SONAR — CRITICAL CHECK (run BEFORE arch analysis):
+IMPORTANT: If the image is a top-view sonar mode, there will be NO ARCHES. Do not return isBarraArch=false just because you see no arches — check for top-view mode first.
+
+Identify top-view if ANY of these are true:
+• GARMIN LIVESCOPE PERSPECTIVE: "LIVESCOPE" text + overhead bird's-eye view + fish appear as flat ovals + shadow extends SIDEWAYS (not below) + no time-scrolling axis
+• HUMMINBIRD MEGA 360: circular radar-like display + boat at centre + "360" or "MEGA 360" label + fish as dots/arcs at radial distance
+• SIDE IMAGING (Humminbird/Simrad/Lowrance): boat at top-centre + left and right channels + fish as bright comma/smear marks off the bottom line
+
+BARRAMUNDI IN TOP-VIEW MODE:
+• PERSPECTIVE: Large ELONGATED OVAL silhouette ≈4–5× longer than wide + pectoral fin "wings" (widening behind head) + shadow extending to ONE SIDE = isBarraArch true, confidence 75–90%
+• MEGA 360: Isolated large bright dot or short arc near structure echo = isBarraArch true, confidence 60–80%
+• SIDE IMAGING: Large bright comma mark adjacent to structure return, isolated or pairs = isBarraArch true, confidence 65–85%
+
+NOT BARRA IN TOP-VIEW:
+• Multiple ovals clustered together (school) → Threadfin or baitfish
+• Round/disc-shaped blob (not elongated) → GT or Trevally
+• Dense cloud of tiny dots → Baitfish school
 
 OUTPUT — return ONLY this JSON, no markdown:
 {
