@@ -362,6 +362,220 @@ function TopViewShapeCard({ bc }: { bc: BarraCheck }) {
   );
 }
 
+// ─── Side-view anatomy zone overlay ───────────────────────────────────────────
+// Shown over the photo for side-view / angled / head-on photos during scanning
+// and after results arrive — zones colour-coded by detection outcome.
+
+interface SVZone {
+  label:          string;
+  featureKeyword: string;
+  top:            string;
+  left?:          string;
+  right?:         string;
+  defaultColor:   string;
+}
+const SV_ZONES: SVZone[] = [
+  { label: "FOREHEAD",     featureKeyword: "FOREHEAD",  top: "18%", left:  "6%",             defaultColor: "#00d4aa" },
+  { label: "EYE",          featureKeyword: "EYE",       top: "40%", left:  "9%",             defaultColor: "#00d4aa" },
+  { label: "JAW",          featureKeyword: "JAW",       top: "65%", left:  "3%",             defaultColor: "#ffd700" },
+  { label: "DORSAL FIN",   featureKeyword: "DORSAL",    top:  "7%", left: "40%",             defaultColor: "#00a8ff" },
+  { label: "LATERAL LINE", featureKeyword: "LATERAL",   top: "55%", left: "38%",             defaultColor: "#00a8ff" },
+  { label: "SCALES",       featureKeyword: "SCALE",     top: "36%", left: "52%",             defaultColor: "#ffd700" },
+  { label: "PECT. FIN",    featureKeyword: "PECTORAL",  top: "66%", left: "24%",             defaultColor: "#ffd700" },
+  { label: "CAUDAL FIN",   featureKeyword: "CAUDAL",    top: "40%",             right:  "4%", defaultColor: "#00d4aa" },
+  { label: "BODY",         featureKeyword: "BODY",      top: "13%",             right: "18%", defaultColor: "#00a8ff" },
+];
+
+function matchSVFeature(list: string[], keyword: string): boolean {
+  return list.some(f => f.toUpperCase().includes(keyword));
+}
+
+function SideViewScanOverlay({
+  active,
+  scanning,
+  detectedFeatures,
+  missingFeatures,
+}: {
+  active:            boolean;
+  scanning?:         boolean;
+  detectedFeatures?: string[];
+  missingFeatures?:  string[];
+}) {
+  const scanX  = useSharedValue(0);
+  const pulse  = useSharedValue(0.4);
+  const fadein = useSharedValue(0);
+
+  const hasResults = (detectedFeatures?.length ?? 0) > 0 || (missingFeatures?.length ?? 0) > 0;
+
+  const detectedZoneCount = React.useMemo(() => {
+    const seen = new Set<string>();
+    SV_ZONES.forEach(z => {
+      if (!seen.has(z.featureKeyword) && matchSVFeature(detectedFeatures ?? [], z.featureKeyword)) {
+        seen.add(z.featureKeyword);
+      }
+    });
+    return seen.size;
+  }, [detectedFeatures]);
+
+  React.useEffect(() => {
+    if (!active) { fadein.value = withTiming(0, { duration: 200 }); return; }
+    fadein.value = withTiming(1, { duration: 350 });
+    if (!hasResults || scanning) {
+      scanX.value = withRepeat(withTiming(1, { duration: 1600 }), -1, false);
+    } else {
+      scanX.value = withTiming(1.05, { duration: 400 });
+    }
+    pulse.value = withRepeat(withSequence(
+      withTiming(1,   { duration: 700 }),
+      withTiming(0.4, { duration: 700 }),
+    ), -1, true);
+  }, [active, hasResults, scanning, fadein, scanX, pulse]);
+
+  const scanAnimX = useAnimatedStyle(() => ({
+    left: `${interpolate(scanX.value, [0, 1], [0, 100])}%`,
+  }));
+  const containerAnim = useAnimatedStyle(() => ({ opacity: fadein.value }));
+  const cornerAnim    = useAnimatedStyle(() => ({
+    opacity: interpolate(pulse.value, [0.4, 1], [0.5, 1]),
+  }));
+
+  if (!active) return null;
+  return (
+    <Animated.View style={[ST.tvOverlay, containerAnim]} pointerEvents="none">
+      {(["tl","tr","bl","br"] as const).map(pos => (
+        <Animated.View key={pos} style={[ST.corner, ST[`corner_${pos}`], cornerAnim]} />
+      ))}
+
+      {/* Vertical sweep line — moves left-to-right like a facial recognition scan */}
+      {(!hasResults || scanning) && (
+        <Animated.View style={[SSV.scanLineV, scanAnimX]} />
+      )}
+
+      {/* Zone labels — colour-coded by detection outcome */}
+      {SV_ZONES.map((z, i) => {
+        const detected = hasResults && matchSVFeature(detectedFeatures ?? [], z.featureKeyword);
+        const missing  = hasResults && matchSVFeature(missingFeatures  ?? [], z.featureKeyword);
+        const color    = !hasResults ? z.defaultColor : detected ? "#00d4aa" : missing ? "#ff4400" : "#555555";
+        const opacity  = !hasResults ? 0.85 : detected ? 1 : missing ? 0.85 : 0.3;
+        const prefix   = !hasResults ? "" : detected ? "✓ " : missing ? "✗ " : "○ ";
+        return (
+          <View key={i} style={[ST.zoneTag, {
+            top:   z.top   as any,
+            left:  z.left  as any,
+            right: z.right as any,
+            opacity,
+          }]}>
+            <View style={[ST.zoneDot, { backgroundColor: color }]} />
+            <Text style={[ST.zoneLabel, { color }]}>{prefix}{z.label}</Text>
+          </View>
+        );
+      })}
+
+      <View style={ST.tvBadge}>
+        <Text style={ST.tvBadgeText}>
+          {hasResults && !scanning
+            ? `👁 ${detectedZoneCount}/9 FEATURES CONFIRMED`
+            : "👁 SIDE VIEW SCAN"}
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─── Side-view shape analysis card ────────────────────────────────────────────
+// Full 9-hallmark checklist for side-view / angled / head-on catches.
+
+const SIDE_HALLMARKS = [
+  { label: "FOREHEAD",     keyword: "FOREHEAD", detail: "Concave ski-jump dip — most reliable" },
+  { label: "JAW",          keyword: "JAW",      detail: "Upper jaw extends past eye; large gape" },
+  { label: "EYE",          keyword: "EYE",      detail: "Large, golden/orange iris, high-set" },
+  { label: "SCALES",       keyword: "SCALE",    detail: "Large ctenoid, silvery-grey flanks" },
+  { label: "BODY SHAPE",   keyword: "BODY",     detail: "Elongated, deep shoulder, narrow peduncle" },
+  { label: "DORSAL FIN",   keyword: "DORSAL",   detail: "Long, deep notch: spiny + soft section" },
+  { label: "CAUDAL FIN",   keyword: "CAUDAL",   detail: "Rounded, convex edge, dark thin margin" },
+  { label: "PECTORAL FIN", keyword: "PECTORAL", detail: "Large, fan-shaped — no free finger rays" },
+  { label: "LATERAL LINE", keyword: "LATERAL",  detail: "Arches over pectoral, then runs straight" },
+] as const;
+
+function SideViewShapeCard({ bc }: { bc: BarraCheck }) {
+  const scale = useSharedValue(0.94);
+  React.useEffect(() => {
+    scale.value = withSpring(1, { damping: 14, stiffness: 160 });
+  }, [scale]);
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const detected = bc.featuresDetected ?? [];
+  const missing  = bc.featuresMissing  ?? [];
+
+  const confirmedCount = SIDE_HALLMARKS.filter(h =>
+    matchSVFeature(detected, h.keyword)
+  ).length;
+
+  const minToConfirm = 5;
+  const passes = confirmedCount >= minToConfirm;
+  const angle  = bc.viewingAngle;
+  const headerLabel =
+    angle === "angled"  ? "↗ ANGLED VIEW SHAPE ANALYSIS"
+    : angle === "head-on" ? "👁 HEAD-ON SHAPE ANALYSIS"
+    : "◀ SIDE VIEW SHAPE ANALYSIS";
+
+  return (
+    <Animated.View style={[STV.card, { borderColor: C.teal + "40", backgroundColor: C.teal + "08" }, anim]}>
+      {/* Header */}
+      <View style={STV.header}>
+        <MaterialCommunityIcons name="eye-outline" size={16} color={C.teal} />
+        <Text style={STV.headerTitle}>{headerLabel}</Text>
+        <View style={[STV.countBadge, { borderColor: passes ? C.teal + "80" : C.orange + "80" }]}>
+          <Text style={[STV.countText, { color: passes ? C.teal : C.orange }]}>
+            {confirmedCount}/9
+          </Text>
+        </View>
+      </View>
+
+      {/* 2-column hallmark grid */}
+      <View style={STV.grid}>
+        {SIDE_HALLMARKS.map((h) => {
+          const isDetected = matchSVFeature(detected, h.keyword);
+          const isMissing  = matchSVFeature(missing,  h.keyword);
+          const status     = isDetected ? "detected" : isMissing ? "missing" : "neutral";
+          const dotColor   = status === "detected" ? C.teal : status === "missing" ? C.red : "#444";
+          const labelColor = status === "detected" ? C.teal : status === "missing" ? C.red : "#666";
+          const icon       = status === "detected" ? "✓" : status === "missing" ? "✗" : "○";
+
+          return (
+            <View key={h.keyword} style={[STV.hallmarkRow, {
+              backgroundColor: status === "detected" ? "#00d4aa0e" : status === "missing" ? "#ff440010" : "transparent",
+              borderColor:     status === "detected" ? C.teal + "30" : status === "missing" ? C.red + "25" : "#ffffff12",
+            }]}>
+              <View style={[STV.hallmarkDot, { backgroundColor: dotColor }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={[STV.hallmarkLabel, { color: labelColor }]}>
+                  {icon} {h.label}
+                </Text>
+                <Text style={STV.hallmarkDetail}>{h.detail}</Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Footer note */}
+      <View style={STV.footer}>
+        <MaterialCommunityIcons
+          name={passes ? "check-circle" : "alert-circle"}
+          size={12}
+          color={passes ? C.teal : C.orange}
+        />
+        <Text style={[STV.footerText, { color: passes ? C.teal + "cc" : C.orange + "cc" }]}>
+          {passes
+            ? `${confirmedCount} of 9 hallmarks confirmed — minimum 5 required ✓`
+            : `${confirmedCount} of 9 confirmed — need ≥5 for side-view barra ID`}
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
+
 /** Stage 1 — Instant barra verdict card */
 function BarraVerdictCard({ bc }: { bc: BarraCheck }) {
   const scale = useSharedValue(0.88);
@@ -888,11 +1102,24 @@ export default function CatchIdScreen() {
         {/* ─ Photo + analysis ─ */}
         {imageUri && (
           <View style={S.analysisWrap}>
-            {/* Photo thumbnail + top-view target zone overlay */}
+            {/* Photo thumbnail + anatomy zone overlays */}
             <View style={S.photoWrap}>
               <Image source={{ uri: imageUri }} style={S.photo} resizeMode="cover" />
+
+              {/* Top-view overlay: active when top-view mode ON or AI detected top-view */}
               <TopViewScanOverlay
-                active={barraCheck?.viewingAngle === "top" || (stage1Loading && topViewMode)}
+                active={topViewMode || barraCheck?.viewingAngle === "top"}
+                scanning={stage1Loading}
+                detectedFeatures={barraCheck?.featuresDetected}
+                missingFeatures={barraCheck?.featuresMissing}
+              />
+
+              {/* Side-view overlay: active for non-top-view scans */}
+              <SideViewScanOverlay
+                active={
+                  !topViewMode &&
+                  (stage1Loading || (!!barraCheck && barraCheck.viewingAngle !== "top"))
+                }
                 scanning={stage1Loading}
                 detectedFeatures={barraCheck?.featuresDetected}
                 missingFeatures={barraCheck?.featuresMissing}
@@ -912,7 +1139,11 @@ export default function CatchIdScreen() {
               </View>
             )}
             {barraCheck && <BarraVerdictCard bc={barraCheck} />}
+            {/* Shape analysis cards — top-view or side-view depending on AI angle */}
             {barraCheck?.viewingAngle === "top" && <TopViewShapeCard bc={barraCheck} />}
+            {barraCheck && barraCheck.viewingAngle !== "top" && (
+              <SideViewShapeCard bc={barraCheck} />
+            )}
 
             {/* Confirm + Save to Brain — shown after a positive barra result */}
             {barraCheck?.isBarra && !stage1Loading && (
@@ -1171,7 +1402,7 @@ const ST = StyleSheet.create({
   corner_bl: { bottom: 8, left:  8,  borderBottomWidth: CORNER_W, borderLeftWidth:  CORNER_W },
   corner_br: { bottom: 8, right: 8,  borderBottomWidth: CORNER_W, borderRightWidth: CORNER_W },
 
-  // Horizontal sweep line
+  // Horizontal sweep line (top-view)
   scanLine: {
     position: "absolute",
     left: 0, right: 0,
@@ -1220,6 +1451,16 @@ const ST = StyleSheet.create({
     fontFamily:  "Inter_700Bold",
     color:       C.accent,
     letterSpacing: 0.5,
+  },
+});
+
+// Vertical scan line for SideViewScanOverlay (sweeps left → right)
+const SSV = StyleSheet.create({
+  scanLineV: {
+    position: "absolute",
+    top: 0, bottom: 0,
+    width: 1.5,
+    backgroundColor: C.teal + "55",
   },
 });
 
