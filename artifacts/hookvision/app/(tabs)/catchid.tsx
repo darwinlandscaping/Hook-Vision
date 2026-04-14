@@ -148,78 +148,215 @@ function ConfBar({ value, color }: { value: number; color: string }) {
 }
 
 // ─── Top-view target zone overlay ─────────────────────────────────────────────
-// Shown over the photo when viewingAngle === "top" is confirmed.
-// Animated scan line + 5 zone labels (eye bulges, pectoral wings, dorsal ridge,
-// caudal fin, shadow zone) teach the user exactly what the AI is reading.
+// Shown over the photo when top-view mode is active.
+// During scanning: sweep line runs, zones show at default colours.
+// After results arrive: sweep stops, zones light up teal (detected),
+// red (missing), or grey (not mentioned by AI).
 
 interface TVZone {
-  label: string;
-  top:   string;
-  left?: string;
-  right?: string;
-  color: string;
+  label:          string;
+  featureKeyword: string;   // substring matched against featuresDetected / featuresMissing
+  top:            string;
+  left?:          string;
+  right?:         string;
+  defaultColor:   string;
 }
 const TV_ZONES: TVZone[] = [
-  { label: "EYE L",        top: "17%",  left:   "8%",              color: "#00d4aa" },
-  { label: "EYE R",        top: "17%",              right:  "8%",  color: "#00d4aa" },
-  { label: "DORSAL RIDGE", top:  "8%",  left:  "28%",              color: "#00a8ff" },
-  { label: "PECT. FIN ◀",  top: "44%",  left:   "2%",              color: "#ffd700" },
-  { label: "▶ PECT. FIN",  top: "44%",              right:  "2%",  color: "#ffd700" },
-  { label: "CAUDAL FIN",   top: "76%",  left:  "30%",              color: "#00d4aa" },
-  { label: "SHADOW ZONE",  top: "60%",  left:  "56%",              color: "#ff8800" },
+  { label: "EYE L",        featureKeyword: "EYE",      top: "17%", left:   "8%",             defaultColor: "#00d4aa" },
+  { label: "EYE R",        featureKeyword: "EYE",      top: "17%",             right:  "8%", defaultColor: "#00d4aa" },
+  { label: "DORSAL RIDGE", featureKeyword: "DORSAL",   top:  "8%", left:  "28%",             defaultColor: "#00a8ff" },
+  { label: "PECT. FIN ◀",  featureKeyword: "PECTORAL", top: "44%", left:   "2%",             defaultColor: "#ffd700" },
+  { label: "▶ PECT. FIN",  featureKeyword: "PECTORAL", top: "44%",             right:  "2%", defaultColor: "#ffd700" },
+  { label: "CAUDAL FIN",   featureKeyword: "CAUDAL",   top: "76%", left:  "30%",             defaultColor: "#00d4aa" },
+  { label: "SHADOW ZONE",  featureKeyword: "SHADOW",   top: "60%", left:  "56%",             defaultColor: "#ff8800" },
 ];
 
-function TopViewScanOverlay({ active }: { active: boolean }) {
-  const scanY   = useSharedValue(0);
-  const pulse   = useSharedValue(0.4);
-  const fadein  = useSharedValue(0);
+function matchFeature(list: string[], keyword: string): boolean {
+  return list.some(f => f.toUpperCase().includes(keyword));
+}
+
+function TopViewScanOverlay({
+  active,
+  scanning,
+  detectedFeatures,
+  missingFeatures,
+}: {
+  active:            boolean;
+  scanning?:         boolean;
+  detectedFeatures?: string[];
+  missingFeatures?:  string[];
+}) {
+  const scanY  = useSharedValue(0);
+  const pulse  = useSharedValue(0.4);
+  const fadein = useSharedValue(0);
+
+  const hasResults = (detectedFeatures?.length ?? 0) > 0 || (missingFeatures?.length ?? 0) > 0;
+
+  // Count unique feature zones confirmed
+  const detectedZoneCount = React.useMemo(() => {
+    const seen = new Set<string>();
+    TV_ZONES.forEach(z => {
+      if (!seen.has(z.featureKeyword) && matchFeature(detectedFeatures ?? [], z.featureKeyword)) {
+        seen.add(z.featureKeyword);
+      }
+    });
+    return seen.size;
+  }, [detectedFeatures]);
 
   React.useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      fadein.value = withTiming(0, { duration: 200 });
+      return;
+    }
     fadein.value = withTiming(1, { duration: 350 });
-    scanY.value  = withRepeat(withTiming(1, { duration: 1800 }), -1, false);
-    pulse.value  = withRepeat(withSequence(
+    if (!hasResults || scanning) {
+      scanY.value = withRepeat(withTiming(1, { duration: 1800 }), -1, false);
+    } else {
+      scanY.value = withTiming(-0.05, { duration: 400 });
+    }
+    pulse.value = withRepeat(withSequence(
       withTiming(1,   { duration: 700 }),
       withTiming(0.4, { duration: 700 }),
     ), -1, true);
-  }, [active, fadein, scanY, pulse]);
+  }, [active, hasResults, scanning, fadein, scanY, pulse]);
 
   const scanAnim = useAnimatedStyle(() => ({
     top: `${interpolate(scanY.value, [0, 1], [0, 100])}%`,
   }));
-  const containerAnim = useAnimatedStyle(() => ({
-    opacity: fadein.value,
-  }));
-  const cornerAnim = useAnimatedStyle(() => ({
+  const containerAnim = useAnimatedStyle(() => ({ opacity: fadein.value }));
+  const cornerAnim    = useAnimatedStyle(() => ({
     opacity: interpolate(pulse.value, [0.4, 1], [0.5, 1]),
   }));
 
   if (!active) return null;
   return (
     <Animated.View style={[ST.tvOverlay, containerAnim]} pointerEvents="none">
-      {/* Corner brackets */}
       {(["tl","tr","bl","br"] as const).map(pos => (
         <Animated.View key={pos} style={[ST.corner, ST[`corner_${pos}`], cornerAnim]} />
       ))}
 
-      {/* Sweep line */}
-      <Animated.View style={[ST.scanLine, scanAnim]} />
+      {/* Sweep line — only while scanning */}
+      {(!hasResults || scanning) && (
+        <Animated.View style={[ST.scanLine, scanAnim]} />
+      )}
 
-      {/* Zone labels */}
-      {TV_ZONES.map((z, i) => (
-        <View key={i} style={[ST.zoneTag, {
-          top:   z.top   as any,
-          left:  z.left  as any,
-          right: z.right as any,
-        }]}>
-          <View style={[ST.zoneDot, { backgroundColor: z.color }]} />
-          <Text style={[ST.zoneLabel, { color: z.color }]}>{z.label}</Text>
-        </View>
-      ))}
+      {/* Zone labels — colored by detection result */}
+      {TV_ZONES.map((z, i) => {
+        const detected = hasResults && matchFeature(detectedFeatures ?? [], z.featureKeyword);
+        const missing  = hasResults && matchFeature(missingFeatures  ?? [], z.featureKeyword);
+        const color    = !hasResults ? z.defaultColor
+                       : detected   ? "#00d4aa"
+                       : missing    ? "#ff4400"
+                       : "#555555";
+        const opacity  = !hasResults ? 0.9 : detected ? 1 : missing ? 0.85 : 0.35;
+        const prefix   = !hasResults ? "" : detected ? "✓ " : missing ? "✗ " : "○ ";
+        return (
+          <View key={i} style={[ST.zoneTag, {
+            top:   z.top   as any,
+            left:  z.left  as any,
+            right: z.right as any,
+            opacity,
+          }]}>
+            <View style={[ST.zoneDot, { backgroundColor: color }]} />
+            <Text style={[ST.zoneLabel, { color }]}>{prefix}{z.label}</Text>
+          </View>
+        );
+      })}
 
-      {/* Mode badge */}
       <View style={ST.tvBadge}>
-        <Text style={ST.tvBadgeText}>📐 TOP VIEW SCAN</Text>
+        <Text style={ST.tvBadgeText}>
+          {hasResults && !scanning
+            ? `📐 ${detectedZoneCount}/5 ZONES CONFIRMED`
+            : "📐 TOP VIEW SCAN"}
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─── Top-view shape analysis card ─────────────────────────────────────────────
+// Full 8-hallmark checklist card shown after a top-view barra detection.
+
+const TV_HALLMARKS = [
+  { label: "BODY OUTLINE",   keyword: "BODY",     detail: "4:1–5:1 length:width torpedo" },
+  { label: "HEAD SHAPE",     keyword: "HEAD",     detail: "Broad, blunt; jaw protrudes" },
+  { label: "EYE BULGES",     keyword: "EYE",      detail: "Large, high-set, prominent" },
+  { label: "DORSAL RIDGE",   keyword: "RIDGE",    detail: "Spiny + soft section ridge" },
+  { label: "PECTORAL FINS",  keyword: "PECTORAL", detail: "Large fan-shaped, splayed wide" },
+  { label: "DORSAL COLOUR",  keyword: "COLOUR",   detail: "Dark blue-grey / olive-green" },
+  { label: "CAUDAL FIN",     keyword: "CAUDAL",   detail: "Broad, slightly rounded tail" },
+  { label: "SHADOW",         keyword: "SHADOW",   detail: "Body+fin silhouette, offset" },
+] as const;
+
+function TopViewShapeCard({ bc }: { bc: BarraCheck }) {
+  const scale = useSharedValue(0.94);
+  React.useEffect(() => {
+    scale.value = withSpring(1, { damping: 14, stiffness: 160 });
+  }, [scale]);
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const detected = bc.featuresDetected ?? [];
+  const missing  = bc.featuresMissing  ?? [];
+
+  const confirmedCount = TV_HALLMARKS.filter(h =>
+    matchFeature(detected, h.keyword)
+  ).length;
+
+  const minToConfirm = 4;
+  const passes = confirmedCount >= minToConfirm;
+
+  return (
+    <Animated.View style={[STV.card, anim]}>
+      {/* Header */}
+      <View style={STV.header}>
+        <MaterialCommunityIcons name="fish" size={16} color={C.accent} />
+        <Text style={STV.headerTitle}>TOP VIEW SHAPE ANALYSIS</Text>
+        <View style={[STV.countBadge, { borderColor: passes ? C.teal + "80" : C.orange + "80" }]}>
+          <Text style={[STV.countText, { color: passes ? C.teal : C.orange }]}>
+            {confirmedCount}/8
+          </Text>
+        </View>
+      </View>
+
+      {/* 2-column hallmark grid */}
+      <View style={STV.grid}>
+        {TV_HALLMARKS.map((h) => {
+          const isDetected = matchFeature(detected, h.keyword);
+          const isMissing  = matchFeature(missing,  h.keyword);
+          const status     = isDetected ? "detected" : isMissing ? "missing" : "neutral";
+          const dotColor   = status === "detected" ? C.teal : status === "missing" ? C.red : "#444";
+          const labelColor = status === "detected" ? C.teal : status === "missing" ? C.red : "#666";
+          const icon       = status === "detected" ? "✓" : status === "missing" ? "✗" : "○";
+
+          return (
+            <View key={h.keyword} style={[STV.hallmarkRow, {
+              backgroundColor: status === "detected" ? "#00d4aa0e" : status === "missing" ? "#ff440010" : "transparent",
+              borderColor:     status === "detected" ? C.teal + "30" : status === "missing" ? C.red + "25" : "#ffffff12",
+            }]}>
+              <View style={[STV.hallmarkDot, { backgroundColor: dotColor }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={[STV.hallmarkLabel, { color: labelColor }]}>
+                  {icon} {h.label}
+                </Text>
+                <Text style={STV.hallmarkDetail}>{h.detail}</Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Footer note */}
+      <View style={STV.footer}>
+        <MaterialCommunityIcons
+          name={passes ? "check-circle" : "alert-circle"}
+          size={12}
+          color={passes ? C.teal : C.orange}
+        />
+        <Text style={[STV.footerText, { color: passes ? C.teal + "cc" : C.orange + "cc" }]}>
+          {passes
+            ? `${confirmedCount} of 8 hallmarks confirmed — minimum 4 required ✓`
+            : `${confirmedCount} of 8 confirmed — need ≥4 to confirm top-view barra`}
+        </Text>
       </View>
     </Animated.View>
   );
@@ -754,7 +891,12 @@ export default function CatchIdScreen() {
             {/* Photo thumbnail + top-view target zone overlay */}
             <View style={S.photoWrap}>
               <Image source={{ uri: imageUri }} style={S.photo} resizeMode="cover" />
-              <TopViewScanOverlay active={barraCheck?.viewingAngle === "top"} />
+              <TopViewScanOverlay
+                active={barraCheck?.viewingAngle === "top" || (stage1Loading && topViewMode)}
+                scanning={stage1Loading}
+                detectedFeatures={barraCheck?.featuresDetected}
+                missingFeatures={barraCheck?.featuresMissing}
+              />
             </View>
 
             {/* Stage 1 status */}
@@ -770,6 +912,7 @@ export default function CatchIdScreen() {
               </View>
             )}
             {barraCheck && <BarraVerdictCard bc={barraCheck} />}
+            {barraCheck?.viewingAngle === "top" && <TopViewShapeCard bc={barraCheck} />}
 
             {/* Confirm + Save to Brain — shown after a positive barra result */}
             {barraCheck?.isBarra && !stage1Loading && (
@@ -1077,5 +1220,87 @@ const ST = StyleSheet.create({
     fontFamily:  "Inter_700Bold",
     color:       C.accent,
     letterSpacing: 0.5,
+  },
+});
+
+// ─── TopViewShapeCard styles ───────────────────────────────────────────────────
+const STV = StyleSheet.create({
+  card: {
+    borderWidth: 1.5,
+    borderColor: C.accent + "40",
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
+    backgroundColor: C.accent + "08",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: C.accent,
+    letterSpacing: 0.8,
+  },
+  countBadge: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  countText: {
+    fontSize: 12,
+    fontFamily: "Oswald_700Bold",
+    letterSpacing: 0.3,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  hallmarkRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    width: "47.5%",
+  },
+  hallmarkDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 4,
+  },
+  hallmarkLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
+  },
+  hallmarkDetail: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    color: "#666",
+    lineHeight: 12,
+    marginTop: 1,
+  },
+  footer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: C.accent + "20",
+    paddingTop: 10,
+  },
+  footerText: {
+    flex: 1,
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 14,
   },
 });
