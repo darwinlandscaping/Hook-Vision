@@ -58,6 +58,27 @@ let _cache: DailyConditions | null = null;
 let _refreshTimer: ReturnType<typeof setTimeout> | null = null;
 let _refreshCount = 0;
 
+// Short-TTL weather cache: BOM updates every ~30min, we refresh every 20min
+const WEATHER_TTL_MS = 20 * 60 * 1000;
+let _weatherCache: { data: DarwinWeather | null; fetchedAt: number } | null = null;
+
+/** Returns fresh BOM weather — fetches at most once per 20 minutes. */
+export async function getLiveWeather(): Promise<DarwinWeather | null> {
+  const now = Date.now();
+  if (_weatherCache && now - _weatherCache.fetchedAt < WEATHER_TTL_MS) {
+    return _weatherCache.data;
+  }
+  const data = await fetchDarwinWeather();
+  _weatherCache = { data, fetchedAt: now };
+  return data;
+}
+
+/** Compute moon phase for right now (Darwin time). Free — pure math. */
+export function computeMoonNow(): MoonData {
+  const darwinOffsetMs = 9.5 * 60 * 60 * 1000;
+  return computeMoon(new Date(Date.now() + darwinOffsetMs));
+}
+
 export function getDailyConditions(): DailyConditions | null {
   return _cache;
 }

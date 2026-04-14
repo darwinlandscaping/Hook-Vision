@@ -264,7 +264,12 @@ function TideEntryRow({ tide, colors }: { tide: TideEntry; colors: ReturnType<ty
 
 // ─── Next tide card ────────────────────────────────────────────────────────────
 function NextTideCard({ data, colors }: { data: TideDay[]; colors: ReturnType<typeof useColors> }) {
-  const now = Date.now();
+  const [now, setNow] = React.useState(Date.now);
+  React.useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const all = data.flatMap((d) => d.tides);
   const next = all.find((t) => t.timestamp > now);
   const prev = [...all].reverse().find((t) => t.timestamp <= now);
@@ -345,7 +350,8 @@ function TideDetailView({ loc, region, onBack, colors, topPad, bottomPad }: {
   const { data, isLoading, error, refetch, isRefetching } = useQuery<TideResponse>({
     queryKey: ["tides-loc", loc.id],
     queryFn: () => fetchTidesForLocation(loc.id),
-    staleTime: 30 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,  // BOM tide schedule: re-fetch if >30min old
+    refetchOnMount: "always",    // always check freshness when screen renders
     retry: 1,
   });
 

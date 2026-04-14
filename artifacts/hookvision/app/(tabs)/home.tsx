@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { router } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 
@@ -106,20 +107,46 @@ export default function HomeScreen() {
   const colors  = useColors();
   const insets  = useSafeAreaInsets();
   const topPad  = Platform.OS === "web" ? 0 : insets.top;
-  const darwin  = useMemo(getDarwinTime, []);
+
+  // Darwin clock ticks every minute so golden hour updates live
+  const [darwin, setDarwin] = useState(getDarwinTime);
+  useEffect(() => {
+    const id = setInterval(() => setDarwin(getDarwinTime()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const [conds, setConds]       = useState<DailyConditions | null>(null);
   const [loading, setLoading]   = useState(true);
   const [fetchErr, setFetchErr] = useState(false);
+  const [fetchedAt, setFetchedAt] = useState<number | null>(null);
 
-  useEffect(() => {
+  const fetchConditions = useCallback(() => {
     const domain  = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
     fetch(`${baseUrl}/api/daily-conditions`)
       .then((r) => r.json())
-      .then((d) => { setConds(d as DailyConditions); setLoading(false); })
+      .then((d) => {
+        setConds(d as DailyConditions);
+        setFetchedAt(Date.now());
+        setLoading(false);
+        setFetchErr(false);
+      })
       .catch(() => { setFetchErr(true); setLoading(false); });
   }, []);
+
+  // Fetch on mount
+  useEffect(() => { fetchConditions(); }, [fetchConditions]);
+
+  // Re-fetch every time the tab comes into focus
+  useFocusEffect(useCallback(() => {
+    fetchConditions();
+  }, [fetchConditions]));
+
+  // Auto-refresh every 5 minutes while screen is mounted
+  useEffect(() => {
+    const id = setInterval(() => fetchConditions(), 5 * 60_000);
+    return () => clearInterval(id);
+  }, [fetchConditions]);
 
   const narrate = conds
     ? `Welcome to HookVision. Today's NT conditions: ${conds.season.emoji} ${conds.season.name}. Moon: ${conds.moon.emoji} ${conds.moon.name}. ${conds.barraActivity.replace(/[^a-zA-Z0-9 .—!%\/]/g, "").trim()}. ${darwin.isGolden ? "Golden hour is active — prime feeding time right now!" : ""} Today's briefing: ${conds.aiBriefing}`
@@ -131,10 +158,14 @@ export default function HomeScreen() {
   const barraScore = conds ? (parseInt(conds.barraActivity.match(/\((\d+)\/100\)/)?.[1] ?? "0", 10)) : 0;
   const barraColor = barraScore >= 80 ? "#00d4aa" : barraScore >= 60 ? "#ffd700" : barraScore >= 40 ? "#ff9800" : "#ff2200";
 
-  const lastRefreshedLabel = conds
+  // Show how long ago data was fetched from the server (seconds/minutes)
+  const lastRefreshedLabel = fetchedAt
     ? (() => {
-        const d = new Date(conds.lastRefreshed);
-        return d.toLocaleString("en-AU", { timeZone: "Australia/Darwin", hour: "2-digit", minute: "2-digit", hour12: true });
+        const secs = Math.floor((Date.now() - fetchedAt) / 1000);
+        if (secs < 10) return "just now";
+        if (secs < 60) return `${secs}s ago`;
+        const mins = Math.floor(secs / 60);
+        return mins === 1 ? "1 min ago" : `${mins} mins ago`;
       })()
     : "";
 

@@ -1,19 +1,73 @@
 import { Router } from "express";
-import { getDailyConditions, refreshDailyConditions } from "../lib/dailyBriefing";
+import {
+  getDailyConditions,
+  refreshDailyConditions,
+  getLiveWeather,
+  computeMoonNow,
+} from "../lib/dailyBriefing";
 
 const router = Router();
 
-/** GET /api/daily-conditions — returns today's cached NT fishing conditions */
-router.get("/daily-conditions", (_req, res) => {
-  const conditions = getDailyConditions();
-  if (!conditions) {
+/**
+ * GET /api/daily-conditions
+ *
+ * Returns live NT fishing conditions. Every request:
+ *   - Moon phase: recomputed from current Darwin time (free math, no API)
+ *   - Weather: served from a 20-minute BOM cache (fresh within 20min always)
+ *   - Barra activity: recomputed from fresh moon + weather
+ *   - AI briefing, sonar tip, season: served from the daily cache (refreshes midnight Darwin)
+ *   - lastRefreshed: set to NOW so the client shows the correct fetch time
+ */
+router.get("/daily-conditions", async (req, res) => {
+  const base = getDailyConditions();
+  if (!base) {
     res.status(503).json({ error: "Daily conditions not yet loaded. Try again in a moment." });
     return;
   }
-  res.json(conditions);
+
+  // Recompute moon from current Darwin time — pure math, instant
+  const moon = computeMoonNow();
+
+  // Fetch fresh BOM weather (cached max 20min)
+  const weather = await getLiveWeather();
+
+  // Recompute barra activity with fresh moon + weather
+  let score = 50;
+  if (moon.name === "New Moon" || moon.name === "Full Moon") score += 25;
+  else if (moon.name === "First Quarter" || moon.name === "Last Quarter") score += 20;
+  else if (moon.name.includes("Crescent")) score += 10;
+  else score += 15;
+
+  if (base.season.name === "Run-off") score += 20;
+  else if (base.season.name === "Build-up") score += 15;
+  else if (base.season.name === "Wet Season") score += 10;
+  else score += 5;
+
+  if (weather) {
+    if (weather.pressureTrend === "falling") score += 15;
+    if (weather.pressureHpa < 1005) score += 10;
+    if (weather.pressureTrend === "rising") score += 5;
+    if (weather.windSpeedKmh > 25) score -= 10;
+  }
+  score = Math.min(99, Math.max(20, score));
+
+  let barraActivity: string;
+  if (score >= 85) barraActivity = `🔥 EXCEPTIONAL (${score}/100) — Multiple feeding windows. Fish are active and aggressive.`;
+  else if (score >= 70) barraActivity = `✅ VERY GOOD (${score}/100) — Strong feeding windows. Worth an early start.`;
+  else if (score >= 55) barraActivity = `👍 GOOD (${score}/100) — Standard conditions. Fish on the right tide phase.`;
+  else if (score >= 40) barraActivity = `⚠️ MODERATE (${score}/100) — Selective. Focus on structure. Live bait may outperform lures.`;
+  else barraActivity = `🌀 TOUGH (${score}/100) — Difficult conditions. Target deep holes and sheltered water. Patience required.`;
+
+  res.json({
+    ...base,
+    moon,
+    weather,
+    barraActivity,
+    lastRefreshed: new Date().toISOString(),
+  });
 });
 
-/** POST /api/daily-conditions/refresh — manually trigger a refresh (admin use) */
+/** POST /api/daily-conditions/refresh — manually trigger a full daily refresh (admin use) */
 router.post("/daily-conditions/refresh", async (_req, res) => {
   try {
     await refreshDailyConditions();
