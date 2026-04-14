@@ -8,6 +8,8 @@ import {
   View,
 } from "react-native";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -257,13 +259,14 @@ export default function LiveScreen() {
   const [webPermission, setWebPermission] = useState<"unknown" | "requesting" | "granted" | "denied">("unknown");
   const [webReady, setWebReady]           = useState(false);
 
-  const [scanning, setScanning]   = useState(false);
-  const [result, setResult]       = useState<FishAnalysis | null>(null);
-  const [error, setError]         = useState<string | null>(null);
-  const [autoSpeak, setAutoSpeak] = useState(true);
-  const [boatMode, setBoatMode]   = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  const [scanCount, setScanCount] = useState(0);
+  const [scanning, setScanning]         = useState(false);
+  const [galleryPicking, setGalleryPicking] = useState(false);
+  const [result, setResult]             = useState<FishAnalysis | null>(null);
+  const [error, setError]               = useState<string | null>(null);
+  const [autoSpeak, setAutoSpeak]       = useState(true);
+  const [boatMode, setBoatMode]         = useState(false);
+  const [countdown, setCountdown]       = useState(0);
+  const [scanCount, setScanCount]       = useState(0);
 
   const nativeCamRef = useRef<any>(null);
   const webCamRef    = useRef<any>(null);
@@ -371,6 +374,87 @@ export default function LiveScreen() {
       setScanning(false);
     }
   }, [scanning, autoSpeak, boatMode, speakResult, addEntry]);
+
+  // ── Pick from gallery & analyse ──────────────────────────────────────────
+  const pickFromGallery = useCallback(async () => {
+    if (galleryPicking || scanning) return;
+
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        setError("Gallery access denied — allow Photos in Settings.");
+        return;
+      }
+
+      setGalleryPicking(true);
+      const picked = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 1,
+        allowsEditing: false,
+        base64: false,
+      });
+
+      if (picked.canceled || !picked.assets?.length) return;
+
+      const asset = picked.assets[0];
+      setScanning(true);
+      setError(null);
+
+      // Convert to JPEG base64 (fixes WebP / HEIC on Android/iOS)
+      const jpeg = await manipulateAsync(
+        asset.uri,
+        [],
+        { compress: 0.85, format: SaveFormat.JPEG, base64: true }
+      );
+      if (!jpeg.base64) throw new Error("Could not read image.");
+
+      const domain = process.env.EXPO_PUBLIC_DOMAIN;
+      const baseUrl = domain ? `https://${domain}` : "";
+      const response = await fetch(`${baseUrl}/api/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: jpeg.base64 }),
+      });
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody?.error ?? "Analysis failed. Try again.");
+      }
+
+      const data: FishAnalysis = await response.json();
+      setResult(data);
+      setScanCount((n) => n + 1);
+
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+
+      if (autoSpeak) speakResult(data);
+
+      addEntry({
+        id: Date.now().toString() + Math.random().toString(36).slice(2, 9),
+        imageUri: asset.uri,
+        timestamp: Date.now(),
+        fishCount: data.fishCount,
+        species: data.species,
+        depth: data.depth,
+        suggestion: data.suggestion,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Gallery analysis failed.";
+      setError(msg);
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    } finally {
+      setScanning(false);
+      setGalleryPicking(false);
+    }
+  }, [galleryPicking, scanning, autoSpeak, speakResult, addEntry]);
 
   // ── Boat mode auto-scan loop ──────────────────────────────────────────────
   const stopBoatLoop = useCallback(() => {
@@ -526,12 +610,36 @@ export default function LiveScreen() {
 
         {/* Bottom bar */}
         <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
-          <GlowButton
-            onPress={scanNow}
-            scanning={scanning}
-            boatMode={boatMode}
-            ready={isNative ? true : webReady}
-          />
+          {/* Scan row: [GALLERY] [● SCAN ●] [spacer] */}
+          <View style={styles.scanRow}>
+            {!boatMode ? (
+              <TouchableOpacity
+                style={[styles.galleryBtn, (galleryPicking || scanning) && { opacity: 0.45 }]}
+                onPress={pickFromGallery}
+                disabled={galleryPicking || scanning}
+                activeOpacity={0.78}
+              >
+                {galleryPicking ? (
+                  <ActivityIndicator color="#00d4aa" size="small" />
+                ) : (
+                  <Feather name="image" size={26} color="#00d4aa" />
+                )}
+                <Text style={styles.galleryBtnText}>GALLERY</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.gallerySpacer} />
+            )}
+
+            <GlowButton
+              onPress={scanNow}
+              scanning={scanning}
+              boatMode={boatMode}
+              ready={isNative ? true : webReady}
+            />
+
+            {/* Mirror spacer so the scan button stays centred */}
+            <View style={styles.gallerySpacer} />
+          </View>
 
           {/* BOAT MODE big toggle button */}
           <TouchableOpacity
@@ -797,4 +905,33 @@ const styles = StyleSheet.create({
     backgroundColor: "#00d4aa0d", marginTop: 2,
   },
   sonarPhotoBtnText: { fontSize: 11, fontFamily: "Oswald_700Bold", color: "#00d4aa", letterSpacing: 2 },
+
+  // ── Gallery button ────────────────────────────────────────────────────────
+  scanRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 20,
+  },
+  galleryBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: "#00d4aa14",
+    borderWidth: 1.5,
+    borderColor: "#00d4aa55",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+  },
+  galleryBtnText: {
+    fontSize: 8,
+    fontFamily: "Oswald_700Bold",
+    color: "#00d4aa",
+    letterSpacing: 1.5,
+  },
+  gallerySpacer: {
+    width: 72,
+    height: 72,
+  },
 });
