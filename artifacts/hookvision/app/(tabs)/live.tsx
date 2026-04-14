@@ -456,6 +456,74 @@ export default function LiveScreen() {
     }
   }, [galleryPicking, scanning, autoSpeak, speakResult, addEntry]);
 
+  // ── Open native camera app (same as Scan Sonar tab) ──────────────────────
+  const openCamera = useCallback(async () => {
+    if (galleryPicking || scanning) return;
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        setError("Camera access denied — allow in Settings.");
+        return;
+      }
+      setGalleryPicking(true);
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        quality: 0.85,
+        allowsEditing: false,
+        exif: false,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+      setScanning(true);
+      setError(null);
+      const jpeg = await manipulateAsync(
+        asset.uri,
+        [],
+        { compress: 0.85, format: SaveFormat.JPEG, base64: true }
+      );
+      if (!jpeg.base64) throw new Error("Could not read image.");
+      const domain = process.env.EXPO_PUBLIC_DOMAIN;
+      const baseUrl = domain ? `https://${domain}` : "";
+      const response = await fetch(`${baseUrl}/api/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: jpeg.base64 }),
+      });
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody?.error ?? "Analysis failed. Try again.");
+      }
+      const data: FishAnalysis = await response.json();
+      setResult(data);
+      setScanCount((n) => n + 1);
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      if (autoSpeak) speakResult(data);
+      addEntry({
+        id: Date.now().toString() + Math.random().toString(36).slice(2, 9),
+        imageUri: asset.uri,
+        timestamp: Date.now(),
+        fishCount: data.fishCount,
+        species: data.species,
+        depth: data.depth,
+        suggestion: data.suggestion,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Camera failed.";
+      setError(msg);
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    } finally {
+      setScanning(false);
+      setGalleryPicking(false);
+    }
+  }, [galleryPicking, scanning, autoSpeak, speakResult, addEntry]);
+
   // ── Boat mode auto-scan loop ──────────────────────────────────────────────
   const stopBoatLoop = useCallback(() => {
     if (mountTimer.current) { clearInterval(mountTimer.current); mountTimer.current = null; }
@@ -724,22 +792,35 @@ export default function LiveScreen() {
                 </TouchableOpacity>
               </View>
             )}
-            <Text style={[styles.permOrDivider, { color: colors.mutedForeground }]}>— or —</Text>
-            <TouchableOpacity
-              style={styles.permGalleryBtn}
-              onPress={pickFromGallery}
-              disabled={galleryPicking || scanning}
-              activeOpacity={0.82}
-            >
-              {galleryPicking ? (
-                <ActivityIndicator color="#00d4aa" size="small" />
-              ) : (
-                <Feather name="image" size={22} color="#00d4aa" />
-              )}
-              <Text style={styles.permGalleryText}>
-                {galleryPicking ? "Analysing…" : "Pick from Gallery"}
-              </Text>
-            </TouchableOpacity>
+            <Text style={[styles.permOrDivider, { color: colors.mutedForeground }]}>— or pick a photo —</Text>
+            <View style={styles.pickRow}>
+              <TouchableOpacity
+                style={styles.pickCameraBtn}
+                onPress={openCamera}
+                disabled={galleryPicking || scanning}
+                activeOpacity={0.85}
+              >
+                {galleryPicking ? (
+                  <ActivityIndicator color="#0a1628" size="small" />
+                ) : (
+                  <Feather name="camera" size={17} color="#0a1628" />
+                )}
+                <Text style={styles.pickCameraBtnText}>{galleryPicking ? "Analysing…" : "Camera"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.pickGalleryBtn}
+                onPress={pickFromGallery}
+                disabled={galleryPicking || scanning}
+                activeOpacity={0.82}
+              >
+                {galleryPicking ? (
+                  <ActivityIndicator color="#00d4aa" size="small" />
+                ) : (
+                  <Feather name="image" size={17} color="#00d4aa" />
+                )}
+                <Text style={styles.pickGalleryBtnText}>{galleryPicking ? "Analysing…" : "Gallery"}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       );
@@ -755,21 +836,26 @@ export default function LiveScreen() {
             <Text style={[styles.permDesc, { color: colors.mutedForeground }]}>
               Allow camera access in your browser settings, then reload.
             </Text>
-            <TouchableOpacity
-              style={styles.permGalleryBtn}
-              onPress={pickFromGallery}
-              disabled={galleryPicking || scanning}
-              activeOpacity={0.82}
-            >
-              {galleryPicking ? (
-                <ActivityIndicator color="#00d4aa" size="small" />
-              ) : (
-                <Feather name="image" size={22} color="#00d4aa" />
-              )}
-              <Text style={styles.permGalleryText}>
-                {galleryPicking ? "Analysing…" : "Pick from Gallery"}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.pickRow}>
+              <TouchableOpacity
+                style={styles.pickCameraBtn}
+                onPress={openCamera}
+                disabled={galleryPicking || scanning}
+                activeOpacity={0.85}
+              >
+                {galleryPicking ? <ActivityIndicator color="#0a1628" size="small" /> : <Feather name="camera" size={17} color="#0a1628" />}
+                <Text style={styles.pickCameraBtnText}>{galleryPicking ? "Analysing…" : "Camera"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.pickGalleryBtn}
+                onPress={pickFromGallery}
+                disabled={galleryPicking || scanning}
+                activeOpacity={0.82}
+              >
+                {galleryPicking ? <ActivityIndicator color="#00d4aa" size="small" /> : <Feather name="image" size={17} color="#00d4aa" />}
+                <Text style={styles.pickGalleryBtnText}>{galleryPicking ? "Analysing…" : "Gallery"}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       );
@@ -815,22 +901,27 @@ export default function LiveScreen() {
               <Text style={styles.glowBtnLabel}>ALLOW</Text>
             </TouchableOpacity>
           </View>
-          <Text style={[styles.permOrDivider, { color: colors.mutedForeground }]}>— or —</Text>
-          <TouchableOpacity
-            style={styles.permGalleryBtn}
-            onPress={pickFromGallery}
-            disabled={galleryPicking || scanning}
-            activeOpacity={0.82}
-          >
-            {galleryPicking ? (
-              <ActivityIndicator color="#00d4aa" size="small" />
-            ) : (
-              <Feather name="image" size={22} color="#00d4aa" />
-            )}
-            <Text style={styles.permGalleryText}>
-              {galleryPicking ? "Analysing…" : "Pick from Gallery"}
-            </Text>
-          </TouchableOpacity>
+          <Text style={[styles.permOrDivider, { color: colors.mutedForeground }]}>— or pick a photo —</Text>
+          <View style={styles.pickRow}>
+            <TouchableOpacity
+              style={styles.pickCameraBtn}
+              onPress={openCamera}
+              disabled={galleryPicking || scanning}
+              activeOpacity={0.85}
+            >
+              {galleryPicking ? <ActivityIndicator color="#0a1628" size="small" /> : <Feather name="camera" size={17} color="#0a1628" />}
+              <Text style={styles.pickCameraBtnText}>{galleryPicking ? "Analysing…" : "Camera"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.pickGalleryBtn}
+              onPress={pickFromGallery}
+              disabled={galleryPicking || scanning}
+              activeOpacity={0.82}
+            >
+              {galleryPicking ? <ActivityIndicator color="#00d4aa" size="small" /> : <Feather name="image" size={17} color="#00d4aa" />}
+              <Text style={styles.pickGalleryBtnText}>{galleryPicking ? "Analysing…" : "Gallery"}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -865,6 +956,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#00d4aa14",
   },
   permGalleryText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#00d4aa" },
+
+  pickRow: { flexDirection: "row", gap: 12, width: "100%" },
+  pickCameraBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    backgroundColor: "#00d4aa", borderRadius: 12, paddingVertical: 14,
+  },
+  pickCameraBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#0a1628" },
+  pickGalleryBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    borderWidth: 1.5, borderColor: "#00d4aa55", backgroundColor: "#00d4aa14",
+    borderRadius: 12, paddingVertical: 14,
+  },
+  pickGalleryBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#00d4aa" },
 
   glowWrap: { width: 190, height: 190, alignItems: "center", justifyContent: "center", marginTop: 12 },
   glowRing: {
