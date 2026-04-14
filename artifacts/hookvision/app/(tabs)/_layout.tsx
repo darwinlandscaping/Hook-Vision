@@ -13,7 +13,7 @@ import { CrocTabBar } from "@/components/CrocTabBar";
 
 // Ordered list of all tab route names (must match Tabs.Screen order below)
 const TAB_ROUTES = [
-  "index", "live", "home", "buff", "tides", "species",
+  "live", "home", "buff", "tides", "species",
   "barra", "zones", "forecast", "catchid", "history", "community",
 ] as const;
 
@@ -24,10 +24,6 @@ function tabPath(name: string) {
 function NativeTabLayout() {
   return (
     <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "waveform", selected: "waveform" }} />
-        <Label>Analyze</Label>
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="live">
         <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
         <Label>Live</Label>
@@ -142,15 +138,7 @@ function ClassicTabLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{
-          title: "Analyze",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="waveform" tintColor={color} size={22} />
-            ) : (
-              <MaterialCommunityIcons name="radar" size={22} color={color} />
-            ),
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="live"

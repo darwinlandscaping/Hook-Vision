@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
@@ -279,10 +280,8 @@ export default function LiveScreen() {
   useEffect(() => {
     if (boatMode) {
       activateKeepAwakeAsync().catch(() => {});
-    } else {
-      deactivateKeepAwake();
     }
-    return () => { deactivateKeepAwake(); };
+    return () => { try { deactivateKeepAwake(); } catch {} };
   }, [boatMode]);
 
   const requestWebCamera = useCallback(async () => {
@@ -562,6 +561,22 @@ export default function LiveScreen() {
             )}
           </TouchableOpacity>
 
+          {/* Scan a saved sonar photo */}
+          {!boatMode && (
+            <TouchableOpacity
+              style={styles.sonarPhotoBtn}
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.navigate("/(tabs)/index" as any);
+              }}
+              activeOpacity={0.82}
+            >
+              <Feather name="image" size={14} color="#00d4aa" />
+              <Text style={styles.sonarPhotoBtnText}>SCAN SONAR PHOTO</Text>
+              <MaterialCommunityIcons name="radar" size={14} color="#00d4aa88" />
+            </TouchableOpacity>
+          )}
+
           <Text style={[styles.hint, { color: "#ffffffcc" }]}>
             {boatMode
               ? `Screen stays on · auto-scan every ${AUTO_INTERVAL}s · voice ON`
@@ -775,4 +790,11 @@ const styles = StyleSheet.create({
     width: 8, height: 8, borderRadius: 4, backgroundColor: "#0a1628",
   },
   hint: { fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 4, textAlign: "center", paddingHorizontal: 20 },
+  sonarPhotoBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7,
+    borderWidth: 1, borderColor: "#00d4aa44", borderRadius: 8,
+    paddingVertical: 9, paddingHorizontal: 18,
+    backgroundColor: "#00d4aa0d", marginTop: 2,
+  },
+  sonarPhotoBtnText: { fontSize: 11, fontFamily: "Oswald_700Bold", color: "#00d4aa", letterSpacing: 2 },
 });
