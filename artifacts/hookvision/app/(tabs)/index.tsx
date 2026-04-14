@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
-  Dimensions,
   Image,
   Platform,
   ScrollView,
@@ -56,77 +55,8 @@ interface FishAnalysis {
   archReasoning?: string;
 }
 
-const SCREEN_W = Dimensions.get("window").width;
 const H_PAD = 14;
-const GAP = 10;
-const SQUARE_SIZE = (SCREEN_W - H_PAD * 2 - GAP) / 2;
-
-type IconLib = "MCIcon" | "Feather";
-interface GridItem {
-  route: string;
-  iconLib: IconLib;
-  icon: string;
-  title: string;
-  desc: string;
-  accent: string;
-  tag?: string;
-}
-
-const GRID_ITEMS: GridItem[] = [
-  { route: "/(tabs)/live",     iconLib: "Feather", icon: "video",         title: "Live Camera",    desc: "AI real-time overlay",         accent: "#00a8ff", tag: "LIVE" },
-  { route: "/(tabs)/tides",    iconLib: "MCIcon",  icon: "wave",          title: "NT Tides",       desc: "BOM Darwin predictions",       accent: "#4fc3f7", tag: "BOM"  },
-  { route: "/(tabs)/species",  iconLib: "MCIcon",  icon: "fish",          title: "Species Guide",  desc: "Bag limits & size rules",      accent: "#66bb6a" },
-  { route: "/(tabs)/barra",    iconLib: "MCIcon",  icon: "crosshairs-gps",title: "Trophy Barra",   desc: "AI 70cm+ predictor",           accent: "#ffd700", tag: "AI"  },
-  { route: "/(tabs)/zones",    iconLib: "MCIcon",  icon: "chart-bar",     title: "Strike Zones",   desc: "Optimal depth per species",    accent: "#ff7043" },
-  { route: "/(tabs)/forecast", iconLib: "MCIcon",  icon: "calendar-star", title: "Here Fishy",     desc: "Bite forecast & conditions",   accent: "#ab47bc", tag: "HOT" },
-];
-
-function SquareTile({ item, colors }: { item: GridItem; colors: any }) {
-  const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const Icon = item.iconLib === "MCIcon"
-    ? (props: any) => <MaterialCommunityIcons {...props} />
-    : (props: any) => <Feather {...props} />;
-
-  return (
-    <Animated.View style={[animStyle, { width: SQUARE_SIZE }]}>
-      <TouchableOpacity
-        style={[styles.squareTile, { backgroundColor: colors.card, borderColor: item.accent + "55", height: SQUARE_SIZE * 0.92 }]}
-        activeOpacity={0.82}
-        onPress={() => {
-          scale.value = withSpring(0.93, {}, () => { scale.value = withSpring(1); });
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          router.navigate(item.route as any);
-        }}
-      >
-        {/* Top accent bar */}
-        <View style={[styles.tileAccentBar, { backgroundColor: item.accent }]} />
-
-        <View style={styles.tileBody}>
-          {/* Icon circle */}
-          <View style={[styles.tileIconCircle, { backgroundColor: item.accent + "22", borderWidth: 1.5, borderColor: item.accent + "99" }]}>
-            <Icon name={item.icon} size={26} color={item.accent} />
-          </View>
-
-          {item.tag && (
-            <View style={[styles.tileTag, { backgroundColor: item.accent + "30" }]}>
-              <Text style={[styles.tileTagText, { color: item.accent }]}>{item.tag}</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.tileFoot}>
-          <Text style={[styles.tileTitle, { color: colors.foreground }]} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={[styles.tileDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
-            {item.desc}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
+const GAP = 14;
 
 /** Ensure any picked image (WebP, HEIF, etc) is re-encoded as JPEG before upload */
 async function toJpeg(uri: string): Promise<{ uri: string; base64: string }> {
@@ -149,7 +79,7 @@ export default function HomeScreen() {
   const [streaming, setStreaming] = useState(false);
   const [streamChars, setStreamChars] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [imageLayout, setImageLayout] = useState({ width: SCREEN_W - 32, height: 240 });
+  const [imageLayout, setImageLayout] = useState({ width: 360, height: 240 });
 
   // ── Sonar Brain — Stage-1 fast barra arch detector ────────────────────────
   interface SonarBarraResult {
@@ -772,80 +702,79 @@ export default function HomeScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: Platform.OS === "web" ? 72 : insets.bottom + 24, paddingHorizontal: H_PAD, gap: GAP }}
+      contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: Platform.OS === "web" ? 72 : insets.bottom + 28, paddingHorizontal: H_PAD, gap: GAP }}
       showsVerticalScrollIndicator={false}
     >
       <HVHeader subtitle="NT Australia Fishing" />
 
-      {/* ── RECTANGLE 1: Scan Sonar ── */}
-      <View style={[styles.rectCard, { backgroundColor: colors.card, borderColor: "#00d4aa55" }]}>
-        <View style={[styles.rectAccent, { backgroundColor: "#00d4aa" }]} />
-        <View style={styles.rectBody}>
-          <View style={styles.rectLeft}>
-            <View style={[styles.rectIconCircle, { backgroundColor: "#00d4aa20" }]}>
-              <SonarPulse size={32} active />
+      {/* ── HERO CARD 1: Scan Sonar ── */}
+      <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: "#00d4aa55" }]}>
+        <View style={[styles.heroAccentTop, { backgroundColor: "#00d4aa" }]} />
+        <View style={styles.heroInner}>
+          {/* Icon + title row */}
+          <View style={styles.heroTitleRow}>
+            <View style={[styles.heroIconCircle, { backgroundColor: "#00d4aa18", borderColor: "#00d4aa55" }]}>
+              <SonarPulse size={44} active />
             </View>
             <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-                <Text style={[styles.rectTitle, { color: colors.foreground }]}>Scan Sonar</Text>
-                <View style={[styles.tileTag, { backgroundColor: "#00d4aa30" }]}>
-                  <Text style={[styles.tileTagText, { color: "#00d4aa" }]}>AI</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={[styles.heroTitle, { color: colors.foreground }]}>Scan Sonar</Text>
+                <View style={styles.heroAiTag}>
+                  <Text style={styles.heroAiTagText}>AI</Text>
                 </View>
               </View>
-              <Text style={[styles.rectDesc, { color: colors.mutedForeground }]}>
-                Photo your sonar · get species, depth & lure advice
-              </Text>
+              <Text style={[styles.heroSubtitle, { color: "#00d4aa" }]}>GPT-4.1 Vision Analysis</Text>
             </View>
           </View>
-          <View style={styles.rectBtns}>
-            <Animated.View style={animatedCameraStyle}>
-              <TouchableOpacity style={[styles.rectBtn, { backgroundColor: "#00d4aa" }]} onPress={openCamera} activeOpacity={0.85}>
-                <Feather name="camera" size={17} color="#0a1628" />
-                <Text style={styles.rectBtnTextDark}>Camera</Text>
+
+          {/* Description */}
+          <Text style={[styles.heroDesc, { color: colors.mutedForeground }]}>
+            Photo or pick a saved sonar screenshot — AI instantly identifies fish species, depth,
+            bottom structure, lure advice and croc alerts.
+          </Text>
+
+          {/* Camera + Gallery buttons */}
+          <View style={styles.heroBtnRow}>
+            <Animated.View style={[animatedCameraStyle, { flex: 1 }]}>
+              <TouchableOpacity style={styles.heroCameraBtn} onPress={openCamera} activeOpacity={0.85}>
+                <Feather name="camera" size={20} color="#0a1628" />
+                <Text style={styles.heroCameraBtnText}>Camera</Text>
               </TouchableOpacity>
             </Animated.View>
-            <Animated.View style={animatedGalleryStyle}>
-              <TouchableOpacity style={[styles.rectBtn, { borderColor: "#00d4aa55", borderWidth: 1, backgroundColor: colors.secondary }]} onPress={openGallery} activeOpacity={0.8}>
-                <Feather name="image" size={17} color="#00d4aa" />
-                <Text style={[styles.rectBtnTextTeal, { color: "#00d4aa" }]}>Gallery</Text>
+            <Animated.View style={[animatedGalleryStyle, { flex: 1 }]}>
+              <TouchableOpacity style={[styles.heroGalleryBtn, { borderColor: "#00d4aa55", backgroundColor: colors.secondary }]} onPress={openGallery} activeOpacity={0.8}>
+                <Feather name="image" size={20} color="#00d4aa" />
+                <Text style={styles.heroGalleryBtnText}>Gallery</Text>
               </TouchableOpacity>
             </Animated.View>
           </View>
         </View>
       </View>
 
-      {/* ── RECTANGLE 2: Demo Sonar ── */}
+      {/* ── HERO CARD 2: Demo Sonar ── */}
       <TouchableOpacity
-        style={[styles.rectCard, { backgroundColor: colors.card, borderColor: "#7c5cfc55" }]}
+        style={[styles.heroCard, { backgroundColor: colors.card, borderColor: "#7c5cfc55" }]}
         onPress={() => router.navigate("/(tabs)/demo" as any)}
         activeOpacity={0.83}
       >
-        <View style={[styles.rectAccent, { backgroundColor: "#7c5cfc" }]} />
-        <View style={styles.rectBody}>
-          <View style={styles.rectLeft}>
-            <View style={[styles.rectIconCircle, { backgroundColor: "#7c5cfc20" }]}>
-              <MaterialCommunityIcons name="image-multiple" size={24} color="#7c5cfc" />
+        <View style={[styles.heroAccentTop, { backgroundColor: "#7c5cfc" }]} />
+        <View style={styles.heroInner}>
+          <View style={styles.heroTitleRow}>
+            <View style={[styles.heroIconCircle, { backgroundColor: "#7c5cfc18", borderColor: "#7c5cfc55" }]}>
+              <MaterialCommunityIcons name="image-multiple" size={34} color="#7c5cfc" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.rectTitle, { color: colors.foreground }]}>Demo Sonar Scans</Text>
-              <Text style={[styles.rectDesc, { color: colors.mutedForeground }]}>
-                Try AI analysis on sample sonar images
-              </Text>
+              <Text style={[styles.heroTitle, { color: colors.foreground }]}>Demo Sonar Scans</Text>
+              <Text style={[styles.heroSubtitle, { color: "#7c5cfc" }]}>Tap to explore samples</Text>
             </View>
+            <Feather name="chevron-right" size={24} color="#7c5cfc" />
           </View>
-          <Feather name="chevron-right" size={20} color={colors.mutedForeground} style={{ marginRight: 4 }} />
+          <Text style={[styles.heroDesc, { color: colors.mutedForeground }]}>
+            Try AI analysis on real NT sonar screenshots — barra arches, structure maps,
+            side-imaging and live sonar examples included.
+          </Text>
         </View>
       </TouchableOpacity>
-
-      {/* ── Section label ── */}
-      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>EXPLORE FEATURES</Text>
-
-      {/* ── 6 SQUARES grid ── */}
-      <View style={styles.squareGrid}>
-        {GRID_ITEMS.map((item) => (
-          <SquareTile key={item.route} item={item} colors={colors} />
-        ))}
-      </View>
     </ScrollView>
   );
 }
@@ -853,85 +782,42 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  /* Rectangle cards */
-  rectCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: "hidden",
-    flexDirection: "row",
-  },
-  rectAccent: { width: 5 },
-  rectBody: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 12,
-  },
-  rectLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
-  rectIconCircle: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center" },
-  rectTitle: { fontSize: 15, fontFamily: "Oswald_700Bold", letterSpacing: 0.4 },
-  rectDesc: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15, marginTop: 2 },
-  rectBtns: { flexDirection: "column", gap: 6 },
-  rectBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
+  /* Hero cards */
+  heroCard: {
     borderRadius: 20,
-    minWidth: 90,
-  },
-  rectBtnTextDark: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#0a1628" },
-  rectBtnTextTeal: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-
-  /* Section label */
-  sectionLabel: {
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    textAlign: "center",
-    marginTop: 2,
-  },
-
-  /* Square grid */
-  squareGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: GAP,
-  },
-
-  /* Square tile */
-  squareTile: {
-    borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 1.5,
     overflow: "hidden",
-    flexDirection: "column",
   },
-  tileAccentBar: { height: 4, width: "100%" },
-  tileBody: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingTop: 12,
+  heroAccentTop: { height: 5, width: "100%" },
+  heroInner: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 22,
+    gap: 14,
   },
-  tileIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
+  heroTitleRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  heroIconCircle: {
+    width: 72, height: 72, borderRadius: 36,
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1.5,
   },
-  tileTag: { borderRadius: 5, paddingHorizontal: 6, paddingVertical: 3, alignSelf: "flex-start" },
-  tileTagText: { fontSize: 8, fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
-  tileFoot: { paddingHorizontal: 12, paddingBottom: 12, gap: 2 },
-  tileTitle: { fontSize: 13, fontFamily: "Oswald_700Bold", letterSpacing: 0.3 },
-  tileDesc: { fontSize: 10, fontFamily: "Inter_400Regular", lineHeight: 14 },
+  heroTitle: { fontSize: 22, fontFamily: "Oswald_700Bold", letterSpacing: 0.5 },
+  heroSubtitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.3, marginTop: 2 },
+  heroAiTag: { backgroundColor: "#00d4aa30", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  heroAiTagText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#00d4aa", letterSpacing: 1 },
+  heroDesc: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  heroBtnRow: { flexDirection: "row", gap: 12 },
+  heroCameraBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, backgroundColor: "#00d4aa", borderRadius: 14,
+    paddingVertical: 15,
+  },
+  heroCameraBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#0a1628" },
+  heroGalleryBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, borderWidth: 1.5, borderRadius: 14, paddingVertical: 15,
+  },
+  heroGalleryBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#00d4aa" },
 
   /* Analyze view */
   imageContainer: { borderRadius: 16, overflow: "hidden", borderWidth: 1, position: "relative", minHeight: 260 },
