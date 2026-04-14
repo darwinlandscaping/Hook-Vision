@@ -170,7 +170,7 @@ router.post("/sonar-barra-check", async (req, res) => {
 
     const response = await openai.chat.completions.create({
       model:                "gpt-4.1-mini",
-      max_completion_tokens: 450,
+      max_completion_tokens: 200,
       stream:               false,
       messages: [
         { role: "system", content: SONAR_BARRA_SYSTEM },

@@ -119,7 +119,7 @@ router.post("/barra-check", async (req, res) => {
   try {
     const mime = detectMime(imageBase64);
     // When caller hints top-view, prioritise dorsal reference images
-    const refs = getFewShotRefs(3, topViewHint === true);
+    const refs = getFewShotRefs(2, topViewHint === true);
 
     // Build few-shot reference content blocks
     const refBlocks: object[] = [];
@@ -155,7 +155,7 @@ router.post("/barra-check", async (req, res) => {
 
     const response = await openai.chat.completions.create({
       model:                "gpt-4.1-mini",
-      max_completion_tokens: 400,
+      max_completion_tokens: 200,
       stream:               false,
       messages: [
         { role: "system", content: BARRA_SYSTEM },

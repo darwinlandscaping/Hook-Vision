@@ -412,23 +412,6 @@ Return ONLY valid JSON — no markdown fences, no explanation, no surrounding te
 
 const ANALYSIS_STEP_PROMPT = `Analyse the sonar image using BOTH methods simultaneously. Output JSON only.
 
-CALIBRATION — TRADITIONAL 2D:
-Demo A: Lowrance HDS Live (red/orange palette) — 3 Barramundi at 5.2m, thick bright red/orange arches ON hard bottom structure. Perfect symmetrical arches = full beam pass. Shadow voids beneath each arch confirm large physostomous bladder.
-Demo B: Humminbird HELIX 10 (orange palette) — Fingermark school at 8m. Medium-brightness arches floating 2m ABOVE ragged rocky rubble bottom. Arches do NOT touch bottom echo — they float above it. Rubble bottom echo is rough and irregular.
-Demo C: Humminbird split-screen — 5–6 Barramundi mid-column. Left panel = FLASHER WHEEL (circular rotating display). Right panel = traditional 2D scroll showing stacked arches with clear DARK SHADOW voids beneath each.
-Demo H: Deeper PRO app (phone screenshot, blue UI) — arches with depth labels shown as icons. Wide 47° beam means arches at screen edges are fish at the edge of the cone, not directly below. Central arches most reliable.
-Demo I: Garmin ECHOMAP CHIRP (aqua palette, white=strongest) — single thick white-core arch at 4.5m with clear shadow. Garmin's palette = white core surrounded by blue/green halo = very strong Tier 1 return = barra or fingermark.
-Demo J: Simrad NSS with StructureScan — LEFT = traditional 2D (red/orange palette); RIGHT = side imaging showing fish as bright comma-shaped marks off the bottom line on both sides of the centre.
-
-CALIBRATION — LIVE SONAR:
-Demo D: Garmin LiveScope Forward (dark green-grey bg, "LIVESCOPE" text) — single large Barramundi at 4m near timber pylon. Bright white oval body with a LONG dark "post-cast shadow" extending behind/below the body — shadow ≈ same length as body. Blunt-nosed profile. Stationary.
-Demo E: Humminbird MEGA Live (orange accents, "MEGA LIVE" text) — school of Threadfin Salmon mid-column. 8–12 smaller bright oval-orange blobs at the same depth, each with a short shadow. Warmer orange tint vs Garmin's cooler grey-white.
-Demo F: Garmin LiveScope Forward — Mangrove Jack tight against timber. Compact round body partially merged into bright structure echo, minimal shadow. Fish barely moves.
-Demo G: SPLIT SCREEN — LEFT = traditional 2D with barra arch ON structure; RIGHT = LiveScope showing same fish as bright oval body with long shadow next to bright echo. Both confirm Barramundi → confidence +15%.
-Demo K: Lowrance ActiveTarget 2 SCOUT MODE — fish visible BEHIND the boat (transducer facing rearward). Fish appear as blobs moving toward boat from the rear. Navy/grey background, "ACTIVE TARGET" or "ACTIVETARGET 2" label.
-Demo L: Humminbird MEGA 360 — CIRCULAR bird's-eye display (radar-like), boat at centre. Fish appear as bright dots or short arcs at their distance from centre on the 360° sweep. NOT a traditional scroll — it's a top-down radial view.
-Demo M: Garmin LiveScope PERSPECTIVE mode — overhead/angled bird's-eye view of shallow flats (<20ft). Fish appear as oval blobs moving on a 2D plane. Used for sight-fishing on flats.
-
 STEPS (run ALL of them, every time):
 1. LAYOUT & MODE: Is the image a single panel or split screen? Identify EACH panel:
    - Traditional 2D scroll (time axis right→left, arched returns)
@@ -669,23 +652,17 @@ router.post("/analyze", async (req, res) => {
         }
       }
 
-      // Step 3: Negative contrast ref
-      if (negRefs.length > 0) {
-        content.push({ type: 'text', text: `STEP 3 — CONTRAST (NOT BARRA):` });
-        for (const ref of negRefs) {
-          content.push({ type: 'image_url', image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: 'low' } });
-          content.push({ type: 'text', text: `↑ NOT BARRAMUNDI — ${ref.brand}: ${ref.label.split('\n')[0]}` });
-        }
-      }
-
-      content.push({ type: 'text', text: `STEP 4 — NOW ANALYSE THE USER'S SONAR IMAGE BELOW (${zoomCrops ? 4 : 1} image${zoomCrops ? 's' : ''} including zoom crops). Apply cross-modal reasoning: body anatomy → sonar physics → verdict.` });
+      content.push({ type: 'text', text: `STEP 3 — ANALYSE THE USER'S SONAR IMAGE BELOW (${zoomCrops ? 4 : 1} image${zoomCrops ? 's' : ''} including zoom crops). Apply cross-modal reasoning: body anatomy → sonar physics → verdict.` });
     }
 
-    // ── Build vision message content — full image + zoom crops ───────────
-    content.push({ type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'high' } });
+    // ── Build vision message content ──────────────────────────────────────
+    // Full frame at LOW detail (context: depth scale, brand, layout) — 85 tokens
+    content.push({ type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'low' } });
     if (zoomCrops) {
-      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.leftHalf}`,  detail: 'high' } });
-      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.rightHalf}`, detail: 'high' } });
+      // Half-crops at LOW detail — overview coverage, minimal tokens
+      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.leftHalf}`,  detail: 'low' } });
+      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.rightHalf}`, detail: 'low' } });
+      // Tight crop at HIGH detail — primary arch/blob detection surface
       content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.blobCrop}`,  detail: 'high' } });
     }
     content.push({ type: 'text', text: analysisPrompt });
@@ -693,7 +670,7 @@ router.post("/analyze", async (req, res) => {
     // ── Streaming OpenAI call ─────────────────────────────────────────────
     const stream = await openai.chat.completions.create({
       model: "gpt-4.1",
-      max_completion_tokens: 1400,
+      max_completion_tokens: 600,
       stream: true,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
