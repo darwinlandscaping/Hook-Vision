@@ -12,6 +12,7 @@ import dataStatusRouter from "./dataStatus";
 import communityRouter from "./community";
 import brainRouter from "./brain";
 import fishidRouter from "./fishid";
+import barracheckRouter from "./barracheck";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(dataStatusRouter);
 router.use(communityRouter);
 router.use(brainRouter);
 router.use(fishidRouter);
+router.use(barracheckRouter);
 
 export default router;
