@@ -165,7 +165,7 @@ export default function HomeScreen() {
       dotOpacity.value  = 1;
       progressBar.value = 4;
       scanLine.value    = withRepeat(
-        withTiming(268, { duration: 1600, easing: Easing.inOut(Easing.sine) }),
+        withTiming(268, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
         -1, true
       );
       dotOpacity.value  = withRepeat(
