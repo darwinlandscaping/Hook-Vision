@@ -104,14 +104,10 @@ export default function WelcomeScreen() {
   const flagOpacity  = useRef(new Animated.Value(0)).current;
   const btnOpacity   = useRef(new Animated.Value(0)).current;
   const btnScale     = useRef(new Animated.Value(0.9)).current;
-  const barraY       = useRef(new Animated.Value(60)).current;
-  const barraOpacity = useRef(new Animated.Value(0)).current;
   const windAnim     = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(barraOpacity, { toValue: 1, duration: 700, useNativeDriver: true }),
-      Animated.timing(barraY, { toValue: 0, duration: 750, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.sequence([
         Animated.delay(150),
         Animated.parallel([
@@ -154,10 +150,10 @@ export default function WelcomeScreen() {
       <LinearGradient colors={["transparent", BG]} style={styles.barraTopFade} pointerEvents="none" />
 
       {/* ── Kimberley — bottom half ── */}
-      <Animated.View style={[styles.buffContainer, { opacity: barraOpacity, transform: [{ translateY: barraY }] }]}>
+      <View style={styles.buffContainer}>
         <Image source={KIMBERLEY} style={styles.buffImg} resizeMode="cover" />
         <LinearGradient colors={[BG, "transparent", "transparent"]} locations={[0, 0.35, 1]} style={styles.buffFade} pointerEvents="none" />
-      </Animated.View>
+      </View>
 
       {/* ── Centre dark band ── */}
       <LinearGradient
