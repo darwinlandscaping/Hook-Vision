@@ -638,7 +638,7 @@ export const RIVER_SYSTEMS: RiverSystem[] = [
         lure: "Suspending minnow 90–100mm, rattling hard-body 90mm",
         hotness: "hot",
         notes:
-          "The Wenlock tidal estuary has received virtually no recreational fishing pressure compared to NT and Kimberley systems. Mangrove jack to 4 kg and barra over 90 cm are encountered regularly. Fish with standard 30 lb braid and 40 lb leader — the structure is heavy.",
+          "The Wenlock tidal estuary has received virtually no recreational fishing pressure compared to Gulf Country and Kimberley systems. Mangrove jack to 4 kg and barra over 90 cm are encountered regularly. Fish with standard 30 lb braid and 40 lb leader — the structure is heavy.",
       },
       {
         minM: 6,
