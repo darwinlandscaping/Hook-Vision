@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -32,6 +33,8 @@ import { useHistory } from "@/context/HistoryContext";
 import { CHARACTERS, useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
 import { LiveScanStore } from "@/stores/LiveScanStore";
 import { useInsta360 } from "@/hooks/useInsta360";
+import { useInsta360Pipelines } from "@/hooks/useInsta360Pipelines";
+import { Insta360PipelineCard } from "@/components/Insta360PipelineCard";
 
 // ─── Conditional IntentLauncher (Android only) ────────────────────────────────
 let IntentLauncher: any = null;
@@ -285,8 +288,11 @@ export default function LiveScreen() {
 
   // ── Insta360 ──────────────────────────────────────────────────────────────
   const insta360 = useInsta360();
-  const [insta360Panel, setInsta360Panel] = useState(false);
+  const [insta360Panel, setInsta360Panel]       = useState(false);
   const [insta360Snapping, setInsta360Snapping] = useState(false);
+
+  // ── Insta360 Dual Pipelines (bait-birds + croc vision) ────────────────────
+  const pipelines = useInsta360Pipelines(insta360);
 
   const AUTO_INTERVAL = 40;
 
@@ -649,15 +655,21 @@ export default function LiveScreen() {
               top: (isNative ? insets.top : topPad) + 60,
               left: 12,
               right: 12,
+              maxHeight: 560,
               backgroundColor: "#0a1628ee",
               borderRadius: 16,
               borderWidth: 1,
               borderColor:
                 insta360.status === "connected" ? "#00d4aa66" : "#ffd70044",
-              padding: 16,
-              gap: 12,
               zIndex: 50,
+              overflow: "hidden",
             }}
+          >
+          <ScrollView
+            style={{ padding: 16 }}
+            contentContainerStyle={{ gap: 12, paddingBottom: 8 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
             {/* Header */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -781,6 +793,23 @@ export default function LiveScreen() {
                 </TouchableOpacity>
               )}
             </View>
+
+            {/* ── Pipeline 1 + 2 — only shown when connected ───────────────── */}
+            {insta360.status === "connected" && (
+              <View style={{ marginTop: 4 }}>
+                <Insta360PipelineCard
+                  surface={pipelines.surface}
+                  croc={pipelines.croc}
+                  scanning={pipelines.scanning}
+                  running={pipelines.running}
+                  scanCount={pipelines.scanCount}
+                  lastError={pipelines.lastError}
+                  onStart={pipelines.start}
+                  onStop={pipelines.stop}
+                />
+              </View>
+            )}
+          </ScrollView>
           </View>
         )}
 

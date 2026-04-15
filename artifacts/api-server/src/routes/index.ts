@@ -18,6 +18,8 @@ import sonarbarracheckRouter from "./sonarbarracheck";
 import sonarbrainRouter from "./sonarbrain";
 import crocbrainRouter from "./crocbrain";
 import sonarvalidateRouter from "./sonarvalidate";
+import insta360surfaceRouter from "./insta360surface";
+import insta360crocRouter from "./insta360croc";
 
 const router: IRouter = Router();
 
@@ -40,5 +42,7 @@ router.use(sonarbarracheckRouter);
 router.use(sonarbrainRouter);
 router.use(crocbrainRouter);
 router.use(sonarvalidateRouter);
+router.use(insta360surfaceRouter);
+router.use(insta360crocRouter);
 
 export default router;
