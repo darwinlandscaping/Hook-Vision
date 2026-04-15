@@ -46,6 +46,7 @@ interface FishAnalysis {
   confidence: number;
   suggestion: string;
   lure?: string;
+  lureType?: string;
   technique?: string;
   rig?: string;
   waterTemp?: string;

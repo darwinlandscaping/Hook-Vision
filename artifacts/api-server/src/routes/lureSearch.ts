@@ -98,6 +98,22 @@ async function searchCraigs(query: string): Promise<CraigsProduct[]> {
 }
 
 /**
+ * Maps AI lureType enum → reliable Craig's search query.
+ * These are hand-verified to return matching product images on Craig's website.
+ */
+const LURE_TYPE_SEARCH: Record<string, string> = {
+  surface_popper: "killalure flatz ratz",
+  hardbody:       "classic barra bling minnow",
+  bibless_minnow: "rapala flat rap",
+  soft_plastic:   "zman paddle tail soft plastic",
+  stickbait:      "raptor stickbait pencil",
+  metal_slug:     "bomber bling metal slug",
+  slow_jig:       "killalure barrabait jig",
+  frog:           "frog surface lure",
+  live_bait:      "",
+};
+
+/**
  * Maps lure keywords → Craig's search terms that yield results
  */
 const LURE_KEYWORD_MAP: Array<{ keywords: string[]; search: string }> = [
@@ -157,26 +173,40 @@ function resolveSearch(lureSuggestion: string): string {
 }
 
 router.get("/lure-search", async (req, res) => {
-  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
-  if (!q) {
-    res.status(400).json({ error: "q is required" });
+  const q        = typeof req.query.q        === "string" ? req.query.q.trim()        : "";
+  const lureType = typeof req.query.lureType === "string" ? req.query.lureType.trim() : "";
+
+  if (!q && !lureType) {
+    res.status(400).json({ error: "q or lureType is required" });
     return;
   }
 
   try {
-    // Try exact search first, then mapped search
-    let products = await searchCraigs(q);
-    if (products.length === 0) {
-      const mappedSearch = resolveSearch(q);
-      if (mappedSearch !== q) {
-        products = await searchCraigs(mappedSearch);
+    let products: CraigsProduct[] = [];
+    let searchTerm = q;
+
+    // 1. If AI provided a lureType enum, use the guaranteed search map first
+    if (lureType && LURE_TYPE_SEARCH[lureType]) {
+      searchTerm = LURE_TYPE_SEARCH[lureType];
+      products = await searchCraigs(searchTerm);
+    }
+
+    // 2. If lureType gave no results (or no lureType), fall back to keyword map on q
+    if (products.length === 0 && q) {
+      products = await searchCraigs(q);
+      if (products.length === 0) {
+        const mappedSearch = resolveSearch(q);
+        if (mappedSearch !== q) {
+          searchTerm = mappedSearch;
+          products = await searchCraigs(mappedSearch);
+        }
       }
     }
 
     res.json({
-      query: q,
+      query: q || lureType,
       products: products.slice(0, 4),
-      searchUrl: `${CRAIGS_BASE}/?s=${encodeURIComponent(resolveSearch(q))}&post_type=product`,
+      searchUrl: `${CRAIGS_BASE}/?s=${encodeURIComponent(searchTerm || resolveSearch(q))}&post_type=product`,
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch Craig's products" });

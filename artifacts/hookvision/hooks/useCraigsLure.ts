@@ -14,7 +14,10 @@ export interface CraigsResult {
 
 const cache = new Map<string, CraigsResult>();
 
-export function useCraigsLure(lureText: string | undefined): {
+export function useCraigsLure(
+  lureText: string | undefined,
+  lureType?: string | undefined
+): {
   result: CraigsResult | null;
   loading: boolean;
 } {
@@ -22,10 +25,10 @@ export function useCraigsLure(lureText: string | undefined): {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!lureText) return;
+    if (!lureText && !lureType) return;
 
-    const q = lureText.trim();
-    const cached = cache.get(q);
+    const cacheKey = `${lureType ?? ""}|${lureText ?? ""}`;
+    const cached = cache.get(cacheKey);
     if (cached) {
       setResult(cached);
       return;
@@ -35,22 +38,27 @@ export function useCraigsLure(lureText: string | undefined): {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
 
-    fetch(`${baseUrl}/api/lure-search?q=${encodeURIComponent(q)}`)
+    const params = new URLSearchParams();
+    if (lureText) params.set("q", lureText.trim());
+    if (lureType) params.set("lureType", lureType.trim());
+
+    fetch(`${baseUrl}/api/lure-search?${params.toString()}`)
       .then((r) => r.json())
       .then((data: CraigsResult) => {
-        cache.set(q, data);
+        cache.set(cacheKey, data);
         setResult(data);
       })
       .catch(() => {
+        const q = lureText ?? lureType ?? "";
         const fallback: CraigsResult = {
           products: [],
           searchUrl: `https://craigsfishingwarehouse.com.au/?s=${encodeURIComponent(q)}&post_type=product`,
         };
-        cache.set(q, fallback);
+        cache.set(cacheKey, fallback);
         setResult(fallback);
       })
       .finally(() => setLoading(false));
-  }, [lureText]);
+  }, [lureText, lureType]);
 
   return { result, loading };
 }

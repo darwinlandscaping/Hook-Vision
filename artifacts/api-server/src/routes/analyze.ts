@@ -444,7 +444,8 @@ Return ONLY valid JSON — no markdown fences, no explanation, no surrounding te
   "archXFrac": 0.5,
   "archYFrac": 0.6,
   "suggestion": "2-sentence lure and technique recommendation",
-  "lure": "specific lure name and size",
+  "lure": "specific lure name and size e.g. Zerek Live Shrimp 75mm — Phantom",
+  "lureType": "surface_popper",
   "technique": "technique description",
   "rig": "leader and rig setup",
   "tidal": "incoming",
@@ -455,7 +456,18 @@ Return ONLY valid JSON — no markdown fences, no explanation, no surrounding te
   "crocAlert": false,
   "crocWarning": null,
   "archReasoning": "2D scan: [what arches/shadows were found or 'no arches detected']. Live scan: [what body shapes/shadows were found or 'no body shapes detected']. Cross-reference: [do both methods agree? final confidence reasoning]."
-}`;
+}
+
+FIELD RULES — lureType MUST be exactly one of:
+surface_popper (Killalure Flatz Ratz, poppers, surface chuggers)
+hardbody (bibbed minnows, crankbaits, Jackall Chubby, Zerek HB)
+bibless_minnow (Rapala Flat Rap, Barra Bling, bibless hardbodies)
+soft_plastic (Zman, Berkley Gulp paddletails, prawn plastics)
+stickbait (pencil baits, walk-the-dog, Nomad Madscad, Raptor)
+metal_slug (chrome slugs, Bomber Bling, casting spoons)
+slow_jig (slow pitch jigs, Killalure Barrabait)
+frog (frog/toad surface lures for snags/lily pads)
+live_bait (live or cut bait, mullet, prawns, yabbies)`;
 
 const ANALYSIS_STEP_PROMPT = `Analyse the sonar image using BOTH methods simultaneously. Output JSON only.
 

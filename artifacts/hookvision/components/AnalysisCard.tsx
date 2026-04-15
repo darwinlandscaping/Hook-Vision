@@ -15,6 +15,7 @@ interface FishAnalysis {
   confidence: number;
   suggestion: string;
   lure?: string;
+  lureType?: string;
   technique?: string;
   rig?: string;
   waterTemp?: string;
@@ -211,7 +212,8 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
   const { speak, stop, speaking } = useVoice();
   const fishImageUrl = useFishImage(analysis.crocAlert ? "saltwater crocodile" : analysis.species);
   const { result: craigsResult, loading: craigsLoading } = useCraigsLure(
-    analysis.crocAlert ? undefined : analysis.lure
+    analysis.crocAlert ? undefined : analysis.lure,
+    analysis.crocAlert ? undefined : analysis.lureType
   );
   const craigsProduct = craigsResult?.products[0] ?? null;
 
