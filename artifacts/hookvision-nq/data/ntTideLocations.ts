@@ -49,7 +49,7 @@ export const NT_TIDE_REGIONS: TideRegion[] = [
         access: "Sealed road from Normanton. Free public ramp. Very popular — arrive early on weekends.",
       },
       {
-        id: "normanton-wharf",
+        id: "normanton",
         name: "Normanton Wharf Deep Hole",
         type: "harbour",
         emoji: "⚓",
@@ -97,7 +97,7 @@ export const NT_TIDE_REGIONS: TideRegion[] = [
         access: "Boat from Karumba (75 km). Remote — self-sufficiency essential. No facilities.",
       },
       {
-        id: "burketown-albert",
+        id: "albert-river",
         name: "Burketown / Albert River",
         type: "boat_ramp",
         emoji: "🪨",
@@ -140,7 +140,7 @@ export const NT_TIDE_REGIONS: TideRegion[] = [
         access: "Sealed road in Weipa township. No ramp needed for causeway casting. Ramp at Evans Landing for boat access.",
       },
       {
-        id: "weipa-ramp",
+        id: "evans-landing",
         name: "Evans Landing Ramp (Weipa)",
         type: "boat_ramp",
         emoji: "🚢",
@@ -181,7 +181,7 @@ export const NT_TIDE_REGIONS: TideRegion[] = [
     refNote: "Cairns BOM reference (QLD_TP003)",
     locations: [
       {
-        id: "cairns-ramp",
+        id: "marlin-marina",
         name: "Cairns Marlin Marina",
         type: "harbour",
         emoji: "⚓",
@@ -213,7 +213,7 @@ export const NT_TIDE_REGIONS: TideRegion[] = [
         access: "Port Douglas marina. Ramp usable all tides — concrete. 65 km north of Cairns on Captain Cook Hwy.",
       },
       {
-        id: "cooktown-ramp",
+        id: "cooktown-marina",
         name: "Cooktown / Endeavour River",
         type: "boat_ramp",
         emoji: "🚢",
