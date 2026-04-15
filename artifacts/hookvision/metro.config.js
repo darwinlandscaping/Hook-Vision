@@ -43,7 +43,11 @@ config.server.rewriteRequestUrl = (url) => {
     return BASE + "/" + qs;
   }
   // Deep-link routes (e.g. /some-screen) that the proxy forwards without prefix.
-  if (!urlPath.includes(".") && !urlPath.startsWith(BASE + "/")) {
+  // Exclude Metro internal paths: /assets/, /_expo/, /hot, /symbolicate — they
+  // should reach Metro as-is (no BASE prefix) so Metro serves binary/JSON correctly.
+  const isMetroInternalPath = urlPath.startsWith("/assets") || urlPath.startsWith("/_expo") ||
+    urlPath === "/hot" || urlPath === "/symbolicate" || urlPath === "/open-stack-frame";
+  if (!isMetroInternalPath && !urlPath.includes(".") && !urlPath.startsWith(BASE + "/")) {
     return BASE + urlPath + qs;
   }
   // Asset/bundle requests that still carry the BASE prefix → strip it.
@@ -59,8 +63,12 @@ config.server.rewriteRequestUrl = (url) => {
 config.server.enhanceMiddleware = (middleware) => {
   return (req, res, next) => {
     const urlPath = (req.url || "").split("?")[0];
-    const isHtmlRequest = urlPath === BASE + "/" || urlPath === BASE ||
-      urlPath === "/" || urlPath === "" || !urlPath.includes(".");
+    // Exclude Metro internal paths (/assets/, /_expo/, /hot, /symbolicate etc.)
+    // even though they have no dots — they serve binary/JSON, not HTML.
+    const isMetroInternal = urlPath.startsWith("/assets") || urlPath.startsWith("/_expo") ||
+      urlPath === "/hot" || urlPath === "/symbolicate" || urlPath === "/open-stack-frame";
+    const isHtmlRequest = !isMetroInternal && (urlPath === BASE + "/" || urlPath === BASE ||
+      urlPath === "/" || urlPath === "" || !urlPath.includes("."));
 
     if (!isHtmlRequest) {
       return middleware(req, res, next);
