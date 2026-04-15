@@ -3,7 +3,6 @@ previewPath = "/hookvision-nq/"
 title = "HookVision NQ"
 version = "1.0.0"
 id = "artifacts/hookvision-nq"
-router = "expo-domain"
 
 [[integratedSkills]]
 name = "expo"
