@@ -54,6 +54,11 @@ config.server.rewriteRequestUrl = (url) => {
   if (url.startsWith(BASE + "/")) {
     return url.slice(BASE.length);
   }
+  // NQ/NT asset requests routed through WA's Metro — strip their prefix so
+  // Metro looks in WA's own assets directory (where their files are mirrored).
+  if ((urlPath.startsWith("/hookvision-nq/") || urlPath.startsWith("/hookvision-nt/")) && urlPath.includes(".")) {
+    return url.replace(/^\/(hookvision-nq|hookvision-nt)/, "");
+  }
   return url;
 };
 
