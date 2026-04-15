@@ -636,6 +636,51 @@ function boatNick(raw: string) {
   for (const [k, v] of Object.entries(BOAT_SLANG)) if (s.includes(k)) return v;
   return raw.replace(/\s*\(\d+%\)/, "");
 }
+function buildBoatSummary(scans: FishAnalysis[], character: NarratorCharacter): string {
+  const total = scans.reduce((s, a) => s + a.fishCount, 0);
+  const blanks = scans.filter(a => a.fishCount === 0).length;
+
+  // Top species by fish count
+  const tally: Record<string, number> = {};
+  for (const a of scans) if (a.fishCount > 0) {
+    const k = boatNick(a.species);
+    tally[k] = (tally[k] ?? 0) + a.fishCount;
+  }
+  const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "fish";
+  const speciesCount = Object.keys(tally).length;
+
+  // Depth range — parseFloat handles "4.2m", "3.0m (estimated)" etc.
+  const depths = scans.map(a => parseFloat(a.depth)).filter(d => !isNaN(d) && d > 0);
+  const minD = depths.length ? Math.min(...depths).toFixed(1) : null;
+  const maxD = depths.length ? Math.max(...depths).toFixed(1) : null;
+  const depthStr = (minD && maxD && minD !== maxD) ? `${minD}–${maxD}m` : minD ? `${minD}m` : "various depths";
+
+  // Trend: first 5 vs last 5
+  const first5 = scans.slice(0, 5).reduce((s, a) => s + a.fishCount, 0);
+  const last5  = scans.slice(5).reduce((s, a)  => s + a.fishCount, 0);
+  const trend  = last5 > first5 + 2 ? "on the rise" : last5 < first5 - 2 ? "dropping off" : "holding steady";
+
+  // Blank-scan advice
+  const moveAdvice   = blanks >= 7 ? "Strongly recommend moving to a new spot." : blanks >= 4 ? "Might be worth trying a different area." : "";
+  const stayAdvice   = blanks < 4 ? (trend === "on the rise" ? "Activity is building — stay put and keep at it." : "Fish are sitting here — keep working the area.") : "";
+  const advice = moveAdvice || stayAdvice;
+
+  const mixNote = speciesCount > 1 ? ` Mixed species showing — ${top} dominating.` : "";
+
+  switch (character) {
+    case "BENAUD":
+      return `Ten scans complete and the picture is becoming clear. ${total} fish observed in total, predominantly ${top} ranging between ${depthStr}. Activity is ${trend}${mixNote} ${blanks >= 5 ? "Several blank passes suggest repositioning may be wise." : "The signs are genuinely encouraging."} ${advice}`;
+    case "CHOPPER":
+      return `Alright listen up — ten scans done ya mugs. ${total} fish counted, mostly ${top} sitting at ${depthStr}, activity's ${trend}.${mixNote} ${blanks >= 5 ? "Too many blanks — move the bloody boat now." : "She's still firing, keep at it."} ${advice}`;
+    case "ATTENBOROUGH":
+      return `After ten extraordinary scans of these ancient waters, we document ${total} fish in total — primarily ${top} — inhabiting depths of ${depthStr}. Activity is ${trend}${mixNote} ${blanks >= 5 ? "The blanks suggest these creatures have ventured elsewhere." : "These waters continue to reward the patient observer."} ${advice}`;
+    case "WIFE":
+      return `Okay, ten scans. You found ${total} fish — mainly ${top} at ${depthStr} if you must know. Activity is ${trend}.${mixNote} ${blanks >= 5 ? "Mostly blank — maybe actually move the boat this time?" : "Not bad I suppose, for once."} ${advice}`;
+    default:
+      return `Ten scan summary mate — ${total} fish total, mostly ${top} between ${depthStr}. Activity's ${trend} across the session.${mixNote} ${blanks >= 5 ? "Heaps of blanks though — reckon it's time to shift spots." : "Fish are definitely here, crack on!"} ${advice}`;
+  }
+}
+
 function buildBoatSpeech(a: FishAnalysis, character: NarratorCharacter): string {
   const nick = boatNick(a.species);
   const n    = a.fishCount;
@@ -679,6 +724,10 @@ export default function HomeScreen() {
   // Previous scan — shown below scanner while the next image is being analysed
   const [prevAnalysis, setPrevAnalysis] = useState<FishAnalysis | null>(null);
   const [prevImageUri, setPrevImageUri] = useState<string | null>(null);
+
+  // 10-scan summary
+  const boatHistoryRef   = useRef<FishAnalysis[]>([]);
+  const [summaryText, setSummaryText] = useState<string | null>(null);
 
   // ── Sonar Brain — Stage-1 fast barra arch detector ────────────────────────
   const [sonarBarraResult, setSonarBarraResult] = useState<SonarBarraResult | null>(null);
@@ -1077,13 +1126,43 @@ export default function HomeScreen() {
     }
   }, [imageBase64, analyzeImage]);
 
-  // Speak short 5-8s commentary when a boat/live mode result arrives
+  // Speak commentary when a boat/live mode result arrives;
+  // every 10th boat scan delivers a 15-second overall summary instead.
   useEffect(() => {
-    if (analysis && (scanSource === 'boat' || scanSource === 'live') && autoSpeak) {
-      stopSpeaking();
-      speak(buildBoatSpeech(analysis, character));
+    if (!analysis || (scanSource !== 'boat' && scanSource !== 'live')) return;
+
+    if (scanSource === 'boat') {
+      boatHistoryRef.current = [...boatHistoryRef.current, analysis];
+
+      if (boatHistoryRef.current.length >= 10) {
+        const summary = buildBoatSummary(boatHistoryRef.current, character);
+        boatHistoryRef.current = [];
+        setSummaryText(summary);
+        if (autoSpeak) {
+          stopSpeaking();
+          speak(summary);
+        }
+      } else {
+        if (autoSpeak) {
+          stopSpeaking();
+          speak(buildBoatSpeech(analysis, character));
+        }
+      }
+    } else {
+      if (autoSpeak) {
+        stopSpeaking();
+        speak(buildBoatSpeech(analysis, character));
+      }
     }
   }, [analysis, scanSource]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear scan history and summary when boat mode stops
+  useEffect(() => {
+    if (!boatActive) {
+      boatHistoryRef.current = [];
+      setSummaryText(null);
+    }
+  }, [boatActive]);
 
   // ── Learn why two species differ on sonar ─────────────────────────────────
   const learnWhy = useCallback(async (expected: string, found: string) => {
@@ -1438,6 +1517,53 @@ export default function HomeScreen() {
         )}
 
         {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} cvRegions={cvRegions} />}
+
+        {/* ── 10-scan summary card ── */}
+        {summaryText && (
+          <View style={{
+            borderRadius: 14,
+            borderWidth: 1.5,
+            borderColor: "#ffd70066",
+            backgroundColor: "#ffd70010",
+            padding: 16,
+            gap: 10,
+          }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ fontSize: 20 }}>🏆</Text>
+              <View>
+                <Text style={{ color: "#ffd700", fontWeight: "800", fontSize: 13, letterSpacing: 1 }}>
+                  10-SCAN SUMMARY
+                </Text>
+                <Text style={{ color: "#ffd700aa", fontSize: 10 }}>
+                  {`${boatHistoryRef.current.length === 0 ? "New session starting" : `${boatHistoryRef.current.length}/10 scans`}`}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={{ marginLeft: "auto", padding: 4 }}
+                onPress={() => setSummaryText(null)}
+              >
+                <Feather name="x" size={14} color="#ffd70088" />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ color: "#ffffffdd", fontSize: 13, lineHeight: 20 }}>
+              {summaryText}
+            </Text>
+            {autoSpeak && (
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row", alignItems: "center", gap: 6,
+                  alignSelf: "flex-start",
+                  backgroundColor: "#ffd70018", borderWidth: 1, borderColor: "#ffd70044",
+                  borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+                }}
+                onPress={() => { stopSpeaking(); speak(summaryText); }}
+              >
+                <Feather name="volume-2" size={13} color="#ffd700" />
+                <Text style={{ color: "#ffd700", fontSize: 12, fontWeight: "600" }}>Replay Summary</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* ── Previous scan — visible while next boat mode image is analysing ── */}
         {loading && prevAnalysis && prevImageUri && (
