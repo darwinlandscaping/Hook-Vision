@@ -1,0 +1,103 @@
+{
+  "expo": {
+    "name": "HookVision",
+    "slug": "hookvision",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "hookvision",
+    "description": "NT Australia's AI-powered barramundi fishing guide. Sonar analysis, tide predictions, species identification, live camera overlay, and Barra Brain community learning.",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-barra.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0a1628"
+    },
+    "androidStatusBar": {
+      "style": "light",
+      "backgroundColor": "#00000000",
+      "translucent": true
+    },
+    "androidNavigationBar": {
+      "style": "dark",
+      "backgroundColor": "#0a1628"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "HookVision uses the camera for live AI sonar overlay and barra recognition.",
+        "NSPhotoLibraryUsageDescription": "HookVision needs access to your photos to analyse sonar screenshots.",
+        "NSLocationWhenInUseUsageDescription": "HookVision uses your location to identify your NT fishing spot and show nearby hotspot data.",
+        "NSMicrophoneUsageDescription": "HookVision uses the microphone for AI voice narration recording."
+      }
+    },
+    "android": {
+      "package": "com.hookvision.app",
+      "versionCode": 1,
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0a1628"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.CHANGE_WIFI_STATE",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.CHANGE_NETWORK_STATE",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png",
+      "backgroundColor": "#0a1628",
+      "themeColor": "#0a1628"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      "expo-audio",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "HookVision needs camera access for live AI sonar overlay and barra recognition.",
+          "microphonePermission": "HookVision uses the microphone for AI voice narration.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "HookVision uses your location to identify your NT fishing spot and show accurate hotspot data.",
+          "locationWhenInUsePermission": "HookVision uses your location to identify your NT fishing spot and show accurate hotspot data.",
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "HookVision needs access to your photos to analyse sonar screenshots."
+        }
+      ],
+      "expo-video"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true,
+      "baseUrl": "/hookvision-nt"
+    }
+  }
+}

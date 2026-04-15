@@ -20,6 +20,10 @@ author = "agent"
 task = "workflow.run"
 args = "artifacts/hookvision-nq: expo"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/hookvision-nt: expo"
+
 [[workflows.workflow]]
 name = "artifacts/hookvision-nq: expo"
 author = "agent"
@@ -27,6 +31,18 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/hookvision-nq run dev"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow]]
+name = "artifacts/hookvision-nt: expo"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/hookvision-nt run dev"
+waitForPort = 25353
 
 [workflows.workflow.metadata]
 outputType = "webview"
