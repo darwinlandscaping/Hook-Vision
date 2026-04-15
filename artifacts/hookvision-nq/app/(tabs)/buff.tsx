@@ -104,7 +104,7 @@ const PRODUCTS: Product[] = [
   { id:"ln4", name:"Unitika Gyogun 80lb",   desc:"Heavy mono leader for XL barra season. Used by NQ guides for snag country where lighter gear gets cut off.",          price:"$39.95", category:"LINE", hot:true,  color:C.red  },
 
   { id:"b1", name:"Barra Hunter Boof",      desc:"UV-block cooling neck gaiter in croc red. UPF50+ fabric. Keeps the sun and flies off your face all day long.",    price:"$39.95", category:"BUFFS", hot:true, color:C.red  },
-  { id:"b2", name:"Territory Tough Boof",   desc:"Crimson and gold — 100% UV50+ shield. Represents the Territory with every cast. One size fits all.",        price:"$39.95", category:"BUFFS",           color:C.gold },
+  { id:"b2", name:"Gulf Country Tough Boof", desc:"Crimson and gold — 100% UV50+ shield. Represents the Gulf Country with every cast. One size fits all.", price:"$39.95", category:"BUFFS",           color:C.gold },
   { id:"b3", name:"Sunrise Session Boof",   desc:"Pink and gold NQ Gulf sunrise print. Unisex design, quick-dry fabric. Perfect for dawn sessions on the water.",      price:"$39.95", category:"BUFFS",           color:C.pink },
   { id:"b4", name:"Stealth Barra Boof",     desc:"Tactical black-on-black NQ Gulf design. Stealth mode for sneaky barra hunters. No-logo low-profile fishing style.",          price:"$39.95", category:"BUFFS", hot:true, color:C.red  },
   { id:"b5", name:"Barramundi Nation Boof", desc:"Full-sublimation trophy barra art. Gallery-quality barramundi illustration wrapped around UPF50+ cooling fabric.",          price:"$44.95", category:"BUFFS",           color:C.gold },

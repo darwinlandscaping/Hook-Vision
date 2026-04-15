@@ -326,7 +326,7 @@ export default function HomeScreen() {
       {/* ── WEATHER DETAIL ── */}
       {conds?.weather && (
         <>
-          <Text style={[S.sectionHead, { color: colors.mutedForeground }]}>DARWIN LIVE WEATHER</Text>
+          <Text style={[S.sectionHead, { color: colors.mutedForeground }]}>NQ LIVE WEATHER</Text>
           <LilyPadCard innerStyle={S.weatherInner}>
             <View style={S.weatherGrid}>
               <WeatherCell emoji="🌡️" label="Air Temp"     value={`${conds.weather.tempC}°C`}            accent="#ff9800" />
