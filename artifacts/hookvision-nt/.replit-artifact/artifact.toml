@@ -11,7 +11,7 @@ version = "1.0.0"
 [[services]]
 ensurePreviewReachable = "/status"
 name = "expo"
-paths = [ "/" ]
+paths = [ "/hookvision-nt" ]
 localPort = 25353
 
 [services.development]
@@ -23,4 +23,4 @@ run = [ "pnpm", "--filter", "@workspace/hookvision-nt", "run", "serve" ]
 
 [services.env]
 PORT = "25353"
-BASE_PATH = "/"
+BASE_PATH = "/hookvision-nt"

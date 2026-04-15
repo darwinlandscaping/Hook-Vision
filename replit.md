@@ -113,6 +113,38 @@ Express 5 API server.
 - `barra_references` — iNaturalist barramundi photo references
 - `sonar_references` — community-confirmed barramundi arch sonar scans
 
+## Critical pnpm-store Patches (MUST survive reinstalls — re-apply if lost)
+
+The Replit proxy strips path prefixes before forwarding to Metro, so three Expo Router
+internals needed patching to make all three editions work simultaneously:
+
+### 1. `fork/getPathFromState.js` — the REAL `appendBaseUrl`
+Path: `node_modules/.pnpm/expo-router@6.0.23_.../node_modules/expo-router/build/fork/getPathFromState.js`
+Change line ~330: `if (process.env.NODE_ENV !== 'development') {` → `if (true) { // PATCHED`
+Reason: this is the function actually called by `useLinking.js`; without the patch,
+`appendBaseUrl` is a no-op in dev and the router navigates to bare `/` instead of `/hookvision-nq/`.
+
+### 2. `fork/getPathFromState-forks.js` + `fork/getStateFromPath-forks.js`
+Same `NODE_ENV` guard pattern — also patched to `if (true)`.
+
+### 3. Metro `HmrServer.js`
+Path: `node_modules/.pnpm/metro@0.83.3/.../metro/src/HmrServer.js`
+Wrapped `this._registerEntryPoint(...)` with `.catch(() => {})` at line ~196.
+Reason: NQ/NT browsers connect HMR websocket to the bare proxy (no path prefix), which
+routes to WA Metro; WA would crash trying to resolve a foreign entry point.
+
+### Per-artifact config requirements
+Each edition needs three things aligned in its `metro.config.js` + `app.json`:
+- `metro.config.js`: `rewriteRequestUrl` (converts `/` → `/<BASE>/`) + `enhanceMiddleware`
+  (prepends `/<BASE>` to asset src/href, changes `lazy=true` → `lazy=false`)
+- `app.json`: `experiments.baseUrl = "/<BASE>"` so Metro injects `transform.baseUrl` into HTML
+
+| Edition | BASE          | Port  |
+|---------|---------------|-------|
+| WA      | /hookvision   | $PORT |
+| NQ      | /hookvision-nq| 25352 |
+| NT      | /hookvision-nt| 25353 |
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages

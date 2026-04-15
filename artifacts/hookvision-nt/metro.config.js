@@ -19,50 +19,65 @@ config.watchFolders = [
   path.resolve(workspaceRoot, "lib"),
 ];
 
+// The Replit proxy routes /hookvision-nt/* to port 25353 and strips the prefix.
+// Strategy:
+//   - Root request "/" → rewrite to "/hookvision-nt/" so Metro includes
+//     transform.baseUrl=%2Fhookvision-nt in the generated HTML bundle URL.
+//   - Asset/bundle requests arrive without prefix (already stripped by proxy)
+//     or with prefix (direct Metro access) → strip prefix so Metro serves them.
 config.server.rewriteRequestUrl = (url) => {
+  const [urlPath, query] = url.split("?");
+  const qs = query ? "?" + query : "";
+  // Navigation URLs (no extension = Expo Router deep link) → add BASE prefix so
+  // Metro generates the HTML with transform.baseUrl=%2Fhookvision-nt.
+  if (urlPath === "/" || urlPath === "" || urlPath === BASE || urlPath === BASE + "/") {
+    return BASE + "/" + qs;
+  }
+  // Deep-link routes (e.g. /some-screen) that the proxy forwards without prefix.
+  if (!urlPath.includes(".") && !urlPath.startsWith(BASE + "/")) {
+    return BASE + urlPath + qs;
+  }
+  // Asset/bundle requests that still carry the BASE prefix → strip it.
   if (url.startsWith(BASE + "/")) {
     return url.slice(BASE.length);
-  }
-  if (url.startsWith(BASE + "?")) {
-    return "/" + url.slice(BASE.length);
   }
   return url;
 };
 
+// Intercept Metro's HTML response: disable lazy bundling so the full
+// app bundle loads synchronously (avoids a flash of the not-found screen
+// while lazy route modules are still downloading).
 config.server.enhanceMiddleware = (middleware) => {
   return (req, res, next) => {
     // Strip explicit port from the Host header so Expo's CorsMiddleware
-    // accepts requests routed via the Replit proxy (which adds :3003).
+    // accepts requests routed via the Replit proxy.
     if (req.headers && req.headers.host && req.headers.host.includes(":")) {
       req.headers.host = req.headers.host.replace(/:\d+$/, "");
     }
 
-    const originalWrite = res.write.bind(res);
+    const urlPath = (req.url || "").split("?")[0];
+    const isHtmlRequest = urlPath === BASE + "/" || urlPath === BASE ||
+      urlPath === "/" || urlPath === "" || !urlPath.includes(".");
+
+    if (!isHtmlRequest) {
+      return middleware(req, res, next);
+    }
+
     const originalEnd = res.end.bind(res);
-    let isHtml = false;
     let buf = "";
 
-    const origSetHeader = res.setHeader.bind(res);
-    res.setHeader = (name, value) => {
-      if (name.toLowerCase() === "content-type" && String(value).includes("text/html")) {
-        isHtml = true;
-      }
-      origSetHeader(name, value);
-    };
-
-    res.write = (chunk, ...args) => {
-      if (isHtml) {
-        buf += typeof chunk === "string" ? chunk : chunk.toString("utf8");
-        return true;
-      }
-      return originalWrite(chunk, ...args);
+    res.write = (chunk) => {
+      buf += typeof chunk === "string" ? chunk : chunk.toString("utf8");
+      return true;
     };
 
     res.end = (chunk, ...args) => {
-      if (isHtml) {
-        if (chunk) {
-          buf += typeof chunk === "string" ? chunk : chunk.toString("utf8");
-        }
+      if (chunk) {
+        buf += typeof chunk === "string" ? chunk : chunk.toString("utf8");
+      }
+      if (buf.includes("<html") || buf.includes("<!DOCTYPE")) {
+        // 1. Add /hookvision-nt prefix to root-relative asset URLs so the
+        //    Replit proxy routes them to THIS Metro server (port 25353).
         buf = buf
           .replace(/src="\/node_modules\//g, `src="${BASE}/node_modules/`)
           .replace(/href="\/node_modules\//g, `href="${BASE}/node_modules/`)
@@ -70,10 +85,14 @@ config.server.enhanceMiddleware = (middleware) => {
           .replace(/href="\/assets\//g, `href="${BASE}/assets/`)
           .replace(/src="\/_expo\//g, `src="${BASE}/_expo/`)
           .replace(/href="\/_expo\//g, `href="${BASE}/_expo/`);
+        // Force eager bundle loading — swap lazy=true → lazy=false so ALL route
+        // modules are included in the initial download. This avoids the brief
+        // not-found flash while lazy route modules are still downloading.
+        buf = buf.replace(/\blazy=true\b/g, "lazy=false");
         res.setHeader("Content-Length", Buffer.byteLength(buf, "utf8"));
         return originalEnd(buf, "utf8");
       }
-      return originalEnd(chunk, ...args);
+      return originalEnd(buf || chunk, ...args);
     };
 
     middleware(req, res, next);
