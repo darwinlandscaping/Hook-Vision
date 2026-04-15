@@ -138,7 +138,7 @@ function ClassicTabLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ href: null }}
+        options={{ title: "Scan" }}
       />
       <Tabs.Screen
         name="live"
