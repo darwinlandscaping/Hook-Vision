@@ -640,6 +640,9 @@ export default function HomeScreen() {
   const [imageLayout, setImageLayout] = useState({ width: 360, height: 240 });
   const [scanSource, setScanSource] = useState<'manual' | 'live' | 'boat'>('manual');
   const [boatActive, setBoatActive] = useState(false);
+  // Previous scan — shown below scanner while the next image is being analysed
+  const [prevAnalysis, setPrevAnalysis] = useState<FishAnalysis | null>(null);
+  const [prevImageUri, setPrevImageUri] = useState<string | null>(null);
 
   // ── Sonar Brain — Stage-1 fast barra arch detector ────────────────────────
   const [sonarBarraResult, setSonarBarraResult] = useState<SonarBarraResult | null>(null);
@@ -698,9 +701,10 @@ export default function HomeScreen() {
     const unsub = LiveScanStore.subscribe((payload) => {
       setBoatActive(LiveScanStore.boatActive);
       setScanSource(payload.source);
-      setImageUri(payload.uri);
+      // Snapshot the current result so the user can see it while the next scan runs
+      setAnalysis((prev) => { if (prev) setPrevAnalysis(prev); return null; });
+      setImageUri((prev) => { if (prev) setPrevImageUri(prev); return payload.uri; });
       setImageBase64(payload.base64);
-      setAnalysis(null);
       setSonarBarraResult(null);
       setError(null);
       autoAnalyzeRef.current = true;
@@ -1091,7 +1095,7 @@ export default function HomeScreen() {
             </View>
             {boatActive && (
               <Text style={{ color: "#aaff00aa", fontSize: 11 }}>
-                Auto-scanning every 30s · Results stream in real time
+                Auto-scanning every 40s · Results stream in real time
               </Text>
             )}
           </View>
@@ -1390,6 +1394,38 @@ export default function HomeScreen() {
         )}
 
         {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} cvRegions={cvRegions} />}
+
+        {/* ── Previous scan — visible while next boat mode image is analysing ── */}
+        {loading && prevAnalysis && prevImageUri && (
+          <View style={{
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: "#00d4aa33",
+            backgroundColor: "#00d4aa0a",
+            overflow: "hidden",
+          }}>
+            <View style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#00d4aa22",
+            }}>
+              <MaterialCommunityIcons name="history" size={14} color="#00d4aaaa" />
+              <Text style={{ color: "#00d4aaaa", fontSize: 12, fontWeight: "600", letterSpacing: 0.5 }}>
+                LAST SCAN RESULT
+              </Text>
+            </View>
+            <Image
+              source={{ uri: prevImageUri }}
+              style={{ width: "100%", height: 160 }}
+              resizeMode="cover"
+            />
+            <AnalysisCard analysis={prevAnalysis} imageUri={prevImageUri} cvRegions={[]} />
+          </View>
+        )}
 
         {/* ── Dual-scan consensus badge ──────────────────────────────────── */}
         {analysis && scan2Consensus && (

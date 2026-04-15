@@ -275,7 +275,7 @@ export default function LiveScreen() {
   const mountTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
   const cdTimer      = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const AUTO_INTERVAL = 30;
+  const AUTO_INTERVAL = 40;
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
   const topPad   = Platform.OS === "web" ? 20 : insets.top;
