@@ -109,6 +109,31 @@ function ZoneBadge({ label, active }: { label: string; active: boolean }) {
   );
 }
 
+// ─── Brain result type ────────────────────────────────────────────────────────
+interface BrainResult {
+  summary: string;
+  activityLevel: "none" | "low" | "medium" | "high";
+  castZone: "left" | "centre" | "right" | "all" | "none";
+  birds: { detected: boolean; species: string[]; urgency: string; description: string };
+  surface: { bustUp: boolean; baitBall: boolean; description: string };
+  water: { colour: string; conditions: string; visibility: string };
+  crocRisk: "none" | "low" | "medium" | "high";
+  crocDetail: string;
+  structure: string;
+  tactics: { lure: string; technique: string; depth: string; priority: string };
+  weatherRead: string;
+  confidence: number;
+  birdRefCount: number;
+  crocRefCount: number;
+}
+
+const ACTIVITY_COLOR: Record<string, string> = {
+  none: C.mute, low: C.blue, medium: C.orange, high: C.red,
+};
+const CROC_RISK_COLOR: Record<string, string> = {
+  none: C.mute, low: C.blue, medium: C.orange, high: C.red,
+};
+
 // ─── Main screen ─────────────────────────────────────────────────────────────
 export default function Insta360Screen() {
   const insets = useSafeAreaInsets();
@@ -116,8 +141,16 @@ export default function Insta360Screen() {
   const { status, cameraInfo, snapping, connectionHint, startSearch, stopSearch, takeSnapshot } = camera;
 
   const [previewUri,      setPreviewUri]      = useState<string | null>(null);
+  const [previewBase64,   setPreviewBase64]   = useState<string | null>(null);
   const [samsungGuide,    setSamsungGuide]     = useState(false);
   const [snappingManual,  setSnappingManual]   = useState(false);
+  const [brainResult,     setBrainResult]      = useState<BrainResult | null>(null);
+  const [brainLoading,    setBrainLoading]     = useState(false);
+  const [brainError,      setBrainError]       = useState<string | null>(null);
+
+  const baseUrl = process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+    : "";
 
   const isConnected  = status === "connected";
   const isSearching  = status === "searching";
@@ -134,17 +167,49 @@ export default function Insta360Screen() {
     isSearching  ? "SEARCHING…"   :
     "DISCONNECTED";
 
-  // Manual snapshot
+  // Manual snapshot — also stores base64 for brain analysis
   const doSnapshot = useCallback(async () => {
     if (!isConnected || snapping || snappingManual) return;
     setSnappingManual(true);
     try {
       const snap = await takeSnapshot();
-      if (snap) setPreviewUri(snap.uri);
+      if (snap) {
+        setPreviewUri(snap.uri);
+        setPreviewBase64(snap.base64);
+        // Auto-clear old brain result when new snapshot is taken
+        setBrainResult(null);
+        setBrainError(null);
+      }
     } finally {
       setSnappingManual(false);
     }
   }, [isConnected, snapping, snappingManual, takeSnapshot]);
+
+  // Brain analysis — sends current snapshot to /api/insta360/brain
+  const doBrainAnalysis = useCallback(async () => {
+    if (!previewBase64 || brainLoading) return;
+    setBrainLoading(true);
+    setBrainError(null);
+    try {
+      const res = await fetch(`${baseUrl}/api/insta360/brain`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          imageBase64:  previewBase64,
+          sonarContext: pipelines.croc ? {
+            crocAlert: pipelines.croc.detected,
+          } : undefined,
+        }),
+      });
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json();
+      setBrainResult(data as BrainResult);
+    } catch (err: any) {
+      setBrainError(err.message ?? "Brain analysis failed");
+    } finally {
+      setBrainLoading(false);
+    }
+  }, [previewBase64, brainLoading, baseUrl, pipelines.croc]);
 
   // Open WiFi settings
   const openWifi = useCallback(() => {
@@ -260,6 +325,161 @@ export default function Insta360Screen() {
                 <Text style={{ color: C.mute, fontSize: 12, marginTop: 6 }}>Tap Capture to take a snapshot</Text>
               </View>
             )}
+          </View>
+        )}
+
+        {/* ── Brain Analysis ───────────────────────────────────────────────── */}
+        {isConnected && previewBase64 && (
+          <View style={styles.card}>
+            <View style={styles.cardRow}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <MaterialCommunityIcons name="brain" size={16} color={C.teal} />
+                <Text style={styles.cardLabel}>AI BRAIN ANALYSIS</Text>
+              </View>
+              <TouchableOpacity
+                onPress={doBrainAnalysis}
+                disabled={brainLoading}
+                style={[styles.miniBtn, { borderColor: C.teal + "99" }, brainLoading && { opacity: 0.4 }]}
+              >
+                <MaterialCommunityIcons name={brainLoading ? "loading" : "brain"} size={13} color={C.teal} />
+                <Text style={[styles.miniBtnText, { color: C.teal }]}>
+                  {brainLoading ? "Analysing…" : "Analyse Frame"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.cardSubtitle}>
+              GPT-4.1 reads the 360° frame: birds, surface busts, water colour, croc risk, tactics, cast zone.
+            </Text>
+            {brainError && (
+              <Text style={{ color: C.red, fontSize: 12, marginTop: 4 }}>{brainError}</Text>
+            )}
+          </View>
+        )}
+
+        {/* ── Brain Result Card ──────────────────────────────────────────────── */}
+        {brainResult && (
+          <View style={[styles.card, { borderColor: C.teal + "55", gap: 12 }]}>
+            {/* Header */}
+            <View style={styles.cardRow}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <MaterialCommunityIcons name="brain" size={16} color={C.teal} />
+                <Text style={[styles.cardLabel, { color: C.teal }]}>INSTA360 BRAIN</Text>
+              </View>
+              <View style={{ flexDirection: "row", gap: 6 }}>
+                <View style={[styles.miniChip, {
+                  backgroundColor: (ACTIVITY_COLOR[brainResult.activityLevel] ?? C.mute) + "22",
+                  borderColor:     (ACTIVITY_COLOR[brainResult.activityLevel] ?? C.mute) + "88",
+                }]}>
+                  <Text style={{ fontSize: 9, fontWeight: "800", color: ACTIVITY_COLOR[brainResult.activityLevel] ?? C.mute }}>
+                    {brainResult.activityLevel.toUpperCase()} ACTIVITY
+                  </Text>
+                </View>
+                <Text style={{ color: C.mute, fontSize: 10, alignSelf: "center" }}>
+                  {brainResult.confidence}%
+                </Text>
+              </View>
+            </View>
+
+            {/* Summary */}
+            <Text style={{ color: C.white, fontSize: 14, fontWeight: "700", lineHeight: 20 }}>
+              {brainResult.summary}
+            </Text>
+
+            {/* Cast zone */}
+            {brainResult.castZone !== "none" && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={{ color: C.dim, fontSize: 11 }}>CAST ZONE</Text>
+                <View style={{ flexDirection: "row", gap: 4 }}>
+                  {(brainResult.castZone === "all"
+                    ? ["left", "centre", "right"]
+                    : [brainResult.castZone]
+                  ).map((z) => (
+                    <View key={z} style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: C.teal + "33", borderWidth: 1, borderColor: C.teal }}>
+                      <Text style={{ color: C.teal, fontSize: 10, fontWeight: "700" }}>{z.toUpperCase()}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Priority action */}
+            {!!brainResult.tactics?.priority && (
+              <View style={{ backgroundColor: C.teal + "18", borderRadius: 10, borderWidth: 1, borderColor: C.teal + "55", padding: 10 }}>
+                <Text style={{ color: C.teal, fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 3 }}>▶ DO THIS NOW</Text>
+                <Text style={{ color: C.white, fontSize: 13, lineHeight: 20 }}>{brainResult.tactics.priority}</Text>
+              </View>
+            )}
+
+            {/* Tactics */}
+            {brainResult.tactics && (
+              <View style={{ gap: 4 }}>
+                <Text style={styles.cardLabel}>TACTICS</Text>
+                {!!brainResult.tactics.lure && <BrainRow icon="target" label="Lure" value={brainResult.tactics.lure} />}
+                {!!brainResult.tactics.technique && <BrainRow icon="activity" label="Technique" value={brainResult.tactics.technique} />}
+                {!!brainResult.tactics.depth && <BrainRow icon="chevrons-down" label="Depth" value={brainResult.tactics.depth} />}
+              </View>
+            )}
+
+            {/* Birds */}
+            {brainResult.birds?.detected && (
+              <View style={{ gap: 4 }}>
+                <Text style={styles.cardLabel}>🐦 BIRDS</Text>
+                {brainResult.birds.species.length > 0 && (
+                  <Text style={{ color: C.orange, fontSize: 13, fontWeight: "700" }}>
+                    {brainResult.birds.species.join(" · ")}
+                  </Text>
+                )}
+                <Text style={styles.cardSubtitle}>{brainResult.birds.description}</Text>
+              </View>
+            )}
+
+            {/* Surface */}
+            {(brainResult.surface?.bustUp || brainResult.surface?.baitBall) && (
+              <View style={{ gap: 3 }}>
+                <Text style={styles.cardLabel}>🌊 SURFACE</Text>
+                <View style={{ flexDirection: "row", gap: 6 }}>
+                  {brainResult.surface.bustUp  && <View style={[styles.miniChip, { backgroundColor: C.red + "22", borderColor: C.red + "88" }]}><Text style={{ color: C.red, fontSize: 10, fontWeight: "700" }}>BUST-UP</Text></View>}
+                  {brainResult.surface.baitBall && <View style={[styles.miniChip, { backgroundColor: C.orange + "22", borderColor: C.orange + "88" }]}><Text style={{ color: C.orange, fontSize: 10, fontWeight: "700" }}>BAIT BALL</Text></View>}
+                </View>
+                <Text style={styles.cardSubtitle}>{brainResult.surface.description}</Text>
+              </View>
+            )}
+
+            {/* Water */}
+            {brainResult.water && (
+              <View style={{ gap: 3 }}>
+                <Text style={styles.cardLabel}>💧 WATER</Text>
+                <Text style={styles.cardSubtitle}>
+                  {brainResult.water.colour} · {brainResult.water.conditions} · visibility {brainResult.water.visibility}
+                </Text>
+              </View>
+            )}
+
+            {/* Croc risk */}
+            {brainResult.crocRisk !== "none" && (
+              <View style={[styles.safetyBox, {
+                borderColor: (CROC_RISK_COLOR[brainResult.crocRisk] ?? C.mute) + "88",
+                backgroundColor: (CROC_RISK_COLOR[brainResult.crocRisk] ?? C.mute) + "18",
+              }]}>
+                <Feather name="alert-triangle" size={14} color={CROC_RISK_COLOR[brainResult.crocRisk] ?? C.mute} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: CROC_RISK_COLOR[brainResult.crocRisk] ?? C.mute, fontSize: 11, fontWeight: "800" }}>
+                    🐊 CROC RISK: {brainResult.crocRisk.toUpperCase()}
+                  </Text>
+                  {!!brainResult.crocDetail && (
+                    <Text style={{ color: C.dim, fontSize: 12, lineHeight: 18, marginTop: 3 }}>{brainResult.crocDetail}</Text>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Structure + Weather */}
+            {!!brainResult.structure && <BrainRow icon="anchor" label="Structure" value={brainResult.structure} />}
+            {!!brainResult.weatherRead && <BrainRow icon="cloud" label="Weather" value={brainResult.weatherRead} />}
+
+            <Text style={styles.refBadge}>
+              {brainResult.birdRefCount} bird refs · {brainResult.crocRefCount} croc refs injected
+            </Text>
           </View>
         )}
 
@@ -460,6 +680,19 @@ export default function Insta360Screen() {
           </Text>
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+// ─── Brain data row ───────────────────────────────────────────────────────────
+function BrainRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 2 }}>
+      <Feather name={icon as any} size={12} color={C.teal} style={{ marginTop: 2 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: C.mute, fontSize: 9, fontWeight: "700", letterSpacing: 1 }}>{label.toUpperCase()}</Text>
+        <Text style={{ color: C.white, fontSize: 12, lineHeight: 18 }}>{value}</Text>
+      </View>
     </View>
   );
 }

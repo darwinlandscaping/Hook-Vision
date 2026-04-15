@@ -20,6 +20,7 @@ import crocbrainRouter from "./crocbrain";
 import sonarvalidateRouter from "./sonarvalidate";
 import insta360surfaceRouter from "./insta360surface";
 import insta360crocRouter from "./insta360croc";
+import insta360brainRouter from "./insta360brain";
 import polarFilterRouter from "./polarfilter";
 import hudRouter from "./hud";
 
@@ -46,6 +47,7 @@ router.use(crocbrainRouter);
 router.use(sonarvalidateRouter);
 router.use(insta360surfaceRouter);
 router.use(insta360crocRouter);
+router.use(insta360brainRouter);
 router.use(polarFilterRouter);
 router.use(hudRouter);
 
