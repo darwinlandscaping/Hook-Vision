@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Linking,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -34,6 +36,7 @@ import { CHARACTERS, useNarrator, type NarratorCharacter } from "@/context/Narra
 import { LiveScanStore } from "@/stores/LiveScanStore";
 import { useInsta360 } from "@/hooks/useInsta360";
 import { useInsta360Pipelines } from "@/hooks/useInsta360Pipelines";
+import { useCamera2, DEFAULT_CAM2_IP, DEFAULT_CAM2_PATH } from "@/hooks/useCamera2";
 import { Insta360PipelineCard } from "@/components/Insta360PipelineCard";
 import { polarFilter } from "@/utils/polarFilter";
 
@@ -297,6 +300,13 @@ export default function LiveScreen() {
   // ── Insta360 Dual Pipelines (bait-birds + croc vision) ────────────────────
   const pipelines = useInsta360Pipelines(insta360);
 
+  // ── Camera 2 — generic WiFi sonar-screen camera ───────────────────────────
+  const cam2 = useCamera2();
+  const [cam2Panel,  setCam2Panel]  = useState(false);
+  const [cam2IpEdit, setCam2IpEdit] = useState<string | null>(null);  // null = not editing
+  const [cam2PathEdit, setCam2PathEdit] = useState<string | null>(null);
+  const cam2Connected = cam2.status === "connected";
+
   const AUTO_INTERVAL = 40;
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
@@ -375,7 +385,13 @@ export default function LiveScreen() {
       let base64 = "";
       let uri    = "";
 
-      if (Platform.OS === "web") {
+      // ── Branch: Camera 2 WiFi connected → use remote sonar camera ────────
+      if (cam2Connected && Platform.OS !== "web") {
+        const snap = await cam2.takeSnapshot();
+        if (!snap?.base64) throw new Error("Camera 2 snapshot failed — is it reachable?");
+        base64 = snap.base64;
+        uri    = snap.uri ?? "";
+      } else if (Platform.OS === "web") {
         const photo = await webCamRef.current?.takePicture?.();
         if (!photo?.base64) throw new Error("Camera not ready — please wait.");
         base64 = photo.base64;
@@ -415,7 +431,7 @@ export default function LiveScreen() {
       setPolarising(false);
       setScanning(false);
     }
-  }, [scanning, boatMode, polarOn, insta360]);
+  }, [scanning, boatMode, polarOn, cam2Connected, cam2, insta360]);
 
   // ── Pick from gallery & analyse ──────────────────────────────────────────
   const pickFromGallery = useCallback(async () => {
@@ -635,9 +651,11 @@ export default function LiveScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Insta360 status chip (top-right when not in boat mode) */}
+          {/* Camera chips (top-right when not in boat mode) */}
           {!boatMode && (
             <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 6 }}>
+
+              {/* ── Insta360 chip ─────────────────────────────────────────── */}
               <TouchableOpacity
                 style={[
                   styles.chip,
@@ -648,6 +666,7 @@ export default function LiveScreen() {
                     : { backgroundColor: "#ffffff11", borderColor: "#ffffff33" },
                 ]}
                 onPress={() => {
+                  setCam2Panel(false);
                   if (!insta360Panel) {
                     setInsta360Panel(true);
                     if (insta360.status === "disconnected") insta360.startSearch();
@@ -688,6 +707,60 @@ export default function LiveScreen() {
                     : "Insta360"}
                 </Text>
               </TouchableOpacity>
+
+              {/* ── Camera 2 chip ─────────────────────────────────────────── */}
+              <TouchableOpacity
+                style={[
+                  styles.chip,
+                  cam2.status === "connected"
+                    ? { backgroundColor: "#00a8ff22", borderColor: "#00a8ff88" }
+                    : cam2.status === "searching"
+                    ? { backgroundColor: "#ffd70022", borderColor: "#ffd70066" }
+                    : { backgroundColor: "#ffffff11", borderColor: "#ffffff33" },
+                ]}
+                onPress={() => {
+                  setInsta360Panel(false);
+                  if (!cam2Panel) {
+                    setCam2Panel(true);
+                    if (cam2.status === "disconnected") cam2.startSearch();
+                  } else {
+                    setCam2Panel(false);
+                    if (cam2.status === "searching") cam2.stopSearch();
+                  }
+                }}
+              >
+                <Feather
+                  name="monitor"
+                  size={13}
+                  color={
+                    cam2.status === "connected"
+                      ? "#00a8ff"
+                      : cam2.status === "searching"
+                      ? "#ffd700"
+                      : "#ffffff88"
+                  }
+                />
+                <Text
+                  style={[
+                    styles.chipText,
+                    {
+                      color:
+                        cam2.status === "connected"
+                          ? "#00a8ff"
+                          : cam2.status === "searching"
+                          ? "#ffd700"
+                          : "#ffffff88",
+                    },
+                  ]}
+                >
+                  {cam2.status === "connected"
+                    ? "📺 Cam 2"
+                    : cam2.status === "searching"
+                    ? "Searching…"
+                    : "Cam 2"}
+                </Text>
+              </TouchableOpacity>
+
               <NarratorSettingsTrigger />
             </View>
           )}
@@ -859,14 +932,224 @@ export default function LiveScreen() {
           </View>
         )}
 
+        {/* ── Camera 2 connection panel ────────────────────────────────────── */}
+        {cam2Panel && !boatMode && (
+          <View
+            style={{
+              position: "absolute",
+              top: (isNative ? insets.top : topPad) + 60,
+              left: 12,
+              right: 12,
+              maxHeight: 480,
+              backgroundColor: "#0a1628ee",
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: cam2.status === "connected" ? "#00a8ff66" : "#ffd70044",
+              zIndex: 50,
+              overflow: "hidden",
+            }}
+          >
+            <ScrollView
+              style={{ padding: 16 }}
+              contentContainerStyle={{ gap: 12, paddingBottom: 8 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Header */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Feather name="monitor" size={20} color="#00a8ff" />
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, letterSpacing: 0.5 }}>
+                    SONAR CAM 2
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => { setCam2Panel(false); if (cam2.status === "searching") cam2.stopSearch(); }}
+                >
+                  <Feather name="x" size={18} color="#ffffff88" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Status row */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                {cam2.status === "searching" && <ActivityIndicator size="small" color="#ffd700" />}
+                {cam2.status === "connected" && (
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#00a8ff" }} />
+                )}
+                {cam2.status === "disconnected" && (
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#ffffff44" }} />
+                )}
+                <Text style={{
+                  color: cam2.status === "connected" ? "#00a8ff" : cam2.status === "searching" ? "#ffd700" : "#ffffff88",
+                  fontWeight: "600", fontSize: 13, flex: 1,
+                }}>
+                  {cam2.status === "connected"
+                    ? `✓ Connected — ${cam2.ip}`
+                    : cam2.status === "searching"
+                    ? `Searching at ${cam2.ip}…`
+                    : "Not connected"}
+                </Text>
+              </View>
+
+              {/* IP address input */}
+              <View style={{ gap: 4 }}>
+                <Text style={{ color: "#ffffff88", fontSize: 11, fontWeight: "600", letterSpacing: 0.5 }}>
+                  CAMERA IP ADDRESS
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: "#ffffff0f", borderRadius: 8, borderWidth: 1,
+                    borderColor: "#00a8ff44", color: "#fff", fontFamily: "Inter_400Regular",
+                    fontSize: 14, paddingHorizontal: 12, paddingVertical: 8,
+                  }}
+                  value={cam2IpEdit ?? cam2.ip}
+                  onChangeText={(t) => setCam2IpEdit(t)}
+                  onBlur={() => {
+                    if (cam2IpEdit !== null) { cam2.setIp(cam2IpEdit); setCam2IpEdit(null); }
+                  }}
+                  placeholder={DEFAULT_CAM2_IP}
+                  placeholderTextColor="#ffffff44"
+                  keyboardType="decimal-pad"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                  onSubmitEditing={() => {
+                    if (cam2IpEdit !== null) { cam2.setIp(cam2IpEdit); setCam2IpEdit(null); }
+                  }}
+                />
+              </View>
+
+              {/* Snapshot path input */}
+              <View style={{ gap: 4 }}>
+                <Text style={{ color: "#ffffff88", fontSize: 11, fontWeight: "600", letterSpacing: 0.5 }}>
+                  SNAPSHOT PATH
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: "#ffffff0f", borderRadius: 8, borderWidth: 1,
+                    borderColor: "#00a8ff44", color: "#fff", fontFamily: "Inter_400Regular",
+                    fontSize: 14, paddingHorizontal: 12, paddingVertical: 8,
+                  }}
+                  value={cam2PathEdit ?? cam2.path}
+                  onChangeText={(t) => setCam2PathEdit(t)}
+                  onBlur={() => {
+                    if (cam2PathEdit !== null) { cam2.setPath(cam2PathEdit); setCam2PathEdit(null); }
+                  }}
+                  placeholder={DEFAULT_CAM2_PATH}
+                  placeholderTextColor="#ffffff44"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                  onSubmitEditing={() => {
+                    if (cam2PathEdit !== null) { cam2.setPath(cam2PathEdit); setCam2PathEdit(null); }
+                  }}
+                />
+                <Text style={{ color: "#ffffff44", fontSize: 10 }}>
+                  Full URL: http://{cam2.ip}{cam2.path}
+                </Text>
+              </View>
+
+              {/* Instructions */}
+              <View style={{ backgroundColor: "#ffffff0a", borderRadius: 10, padding: 12, gap: 6 }}>
+                <Text style={{ color: "#ffffffcc", fontSize: 12, lineHeight: 18 }}>
+                  Common snapshot paths:{"\n"}
+                  {"  "}/snapshot · /snapshot.jpg · /photo{"\n"}
+                  {"  "}/cgi-bin/snapshot.cgi (Hikvision){"\n"}
+                  {"  "}/image.jpg · /mjpeg/snap.jpg{"\n\n"}
+                  Connect your phone to the camera's WiFi,{"\n"}
+                  enter its IP, then tap Connect.
+                </Text>
+              </View>
+
+              {/* Action buttons */}
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity
+                  onPress={openWifiSettings}
+                  style={{
+                    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+                    gap: 6, backgroundColor: "#00a8ff22", borderRadius: 10,
+                    borderWidth: 1, borderColor: "#00a8ff66", paddingVertical: 10,
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="wifi" size={15} color="#00a8ff" />
+                  <Text style={{ color: "#00a8ff", fontWeight: "600", fontSize: 13 }}>WiFi Settings</Text>
+                </TouchableOpacity>
+
+                {cam2.status === "disconnected" ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (cam2IpEdit !== null) { cam2.setIp(cam2IpEdit); setCam2IpEdit(null); }
+                      if (cam2PathEdit !== null) { cam2.setPath(cam2PathEdit); setCam2PathEdit(null); }
+                      cam2.startSearch();
+                    }}
+                    style={{
+                      flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+                      gap: 6, backgroundColor: "#ffd70022", borderRadius: 10,
+                      borderWidth: 1, borderColor: "#ffd70066", paddingVertical: 10,
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name="radio" size={15} color="#ffd700" />
+                    <Text style={{ color: "#ffd700", fontWeight: "600", fontSize: 13 }}>Connect</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => cam2.stopSearch()}
+                    style={{
+                      flexDirection: "row", alignItems: "center", justifyContent: "center",
+                      gap: 6, backgroundColor: "#ff440022", borderRadius: 10,
+                      borderWidth: 1, borderColor: "#ff440066", paddingVertical: 10, paddingHorizontal: 14,
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name="square" size={14} color="#ff4400" />
+                    <Text style={{ color: "#ff4400", fontWeight: "600", fontSize: 13 }}>Disconnect</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Live preview thumbnail when connected */}
+              {cam2.status === "connected" && (
+                <View style={{ borderRadius: 10, overflow: "hidden", aspectRatio: 16 / 9 }}>
+                  <Image
+                    source={{ uri: `http://${cam2.ip}${cam2.path}?t=${cam2.tick}` }}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                    onLoad={cam2.onPreviewLoad}
+                    onError={cam2.onPreviewError}
+                  />
+                  <View style={{
+                    position: "absolute", bottom: 0, left: 0, right: 0,
+                    backgroundColor: "#00000066", paddingHorizontal: 8, paddingVertical: 4,
+                    flexDirection: "row", alignItems: "center", gap: 6,
+                  }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#00a8ff" }} />
+                    <Text style={{ color: "#00a8ffcc", fontSize: 10, fontWeight: "600" }}>
+                      LIVE · frame {cam2.tick}
+                    </Text>
+                    <Text style={{ color: "#ffffff66", fontSize: 10, marginLeft: "auto" }}>
+                      Tap SCAN to analyse
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Aim guide */}
         <View style={styles.aimGuide} pointerEvents="none">
-          <View style={[styles.aimCorner, styles.aimTL, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
-          <View style={[styles.aimCorner, styles.aimTR, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
-          <View style={[styles.aimCorner, styles.aimBL, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
-          <View style={[styles.aimCorner, styles.aimBR, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
-          <Text style={[styles.aimLabel, { color: boatMode ? "#aaff00" : colors.primary }]}>
-            {boatMode ? `📡 Scanning sonar every ${AUTO_INTERVAL}s` : "Aim at sonar screen"}
+          <View style={[styles.aimCorner, styles.aimTL, { borderColor: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]} />
+          <View style={[styles.aimCorner, styles.aimTR, { borderColor: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]} />
+          <View style={[styles.aimCorner, styles.aimBL, { borderColor: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]} />
+          <View style={[styles.aimCorner, styles.aimBR, { borderColor: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]} />
+          <Text style={[styles.aimLabel, { color: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]}>
+            {boatMode
+              ? `📡 Scanning sonar every ${AUTO_INTERVAL}s`
+              : cam2Connected
+                ? `📺 CAM 2 · ${cam2.ip} · frame ${cam2.tick}`
+                : "Aim at sonar screen"}
           </Text>
           {boatMode && scanCount > 0 && (
             <View style={[styles.cdBadge, { borderColor: "#aaff0066", backgroundColor: "#aaff0011" }]}>
@@ -1013,10 +1296,12 @@ export default function LiveScreen() {
             </TouchableOpacity>
           )}
 
-          <Text style={[styles.hint, { color: "#ffffffcc" }]}>
+          <Text style={[styles.hint, { color: cam2Connected ? "#00a8ff" : "#ffffffcc" }]}>
             {boatMode
               ? `Screen stays on · auto-scan every ${AUTO_INTERVAL}s · voice ON`
-              : "Point at sonar — tap to scan"}
+              : cam2Connected
+                ? "📺 Cam 2 active — tap SCAN to analyse sonar"
+                : "Point at sonar — tap to scan"}
           </Text>
         </View>
       </>
@@ -1189,8 +1474,26 @@ export default function LiveScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: "#000" }]}>
-      <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
-      <BarraSketches opacity={0.7} />
+      {/* ── Viewfinder ───────────────────────────────────────────────────────
+          Camera 2 connected: show the live remote JPEG feed (sonar screen).
+          Otherwise: phone camera.
+          CameraView stays mounted invisibly so it's ready if Cam2 drops. */}
+      {cam2Connected ? (
+        <Image
+          source={{ uri: `http://${cam2.ip}${cam2.path}?t=${cam2.tick}` }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          onLoad={cam2.onPreviewLoad}
+          onError={cam2.onPreviewError}
+        />
+      ) : (
+        <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
+      )}
+      {cam2Connected && (
+        <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" />
+      )}
+
+      <BarraSketches opacity={cam2Connected ? 0.25 : 0.7} />
       {renderOverlays(true)}
     </View>
   );
