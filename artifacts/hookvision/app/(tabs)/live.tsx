@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Linking,
   Platform,
   ScrollView,
@@ -35,6 +36,7 @@ import { LiveScanStore } from "@/stores/LiveScanStore";
 import { useInsta360 } from "@/hooks/useInsta360";
 import { useInsta360Pipelines } from "@/hooks/useInsta360Pipelines";
 import { Insta360PipelineCard } from "@/components/Insta360PipelineCard";
+import { useInsta360SonarPreview } from "@/hooks/useInsta360SonarPreview";
 import { polarFilter } from "@/utils/polarFilter";
 
 // ─── Conditional IntentLauncher (Android only) ────────────────────────────────
@@ -297,6 +299,16 @@ export default function LiveScreen() {
   // ── Insta360 Dual Pipelines (bait-birds + croc vision) ────────────────────
   const pipelines = useInsta360Pipelines(insta360);
 
+  // ── Insta360 Remote Sonar Preview ─────────────────────────────────────────
+  // When Insta360 WiFi is connected, poll a live preview frame every 2.5s.
+  // The phone camera is hidden; the Insta360 pointing at the sonar screen
+  // acts as the "camera" — SCAN button uses it instead of the phone lens.
+  const insta360Connected = insta360.status === "connected";
+  const sonarPreview = useInsta360SonarPreview(insta360, {
+    active:     insta360Connected && !boatMode,
+    intervalMs: 2500,
+  });
+
   const AUTO_INTERVAL = 40;
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
@@ -375,7 +387,17 @@ export default function LiveScreen() {
       let base64 = "";
       let uri    = "";
 
-      if (Platform.OS === "web") {
+      // ── Branch: Insta360 WiFi connected → use remote camera ────────────────
+      // When the Insta360 is connected via WiFi and pointed at the sonar screen,
+      // take a fresh snapshot from it instead of the phone camera.
+      if (insta360Connected && Platform.OS !== "web") {
+        const snap = await insta360.takeSnapshot();
+        if (!snap?.base64) throw new Error("Insta360 snapshot failed — is the camera on?");
+        base64 = snap.base64;
+        uri    = snap.uri ?? "";
+        // Update preview with the scan frame
+        if (snap.base64) sonarPreview.refresh().catch(() => {});
+      } else if (Platform.OS === "web") {
         const photo = await webCamRef.current?.takePicture?.();
         if (!photo?.base64) throw new Error("Camera not ready — please wait.");
         base64 = photo.base64;
@@ -415,7 +437,7 @@ export default function LiveScreen() {
       setPolarising(false);
       setScanning(false);
     }
-  }, [scanning, boatMode, polarOn]);
+  }, [scanning, boatMode, polarOn, insta360Connected, insta360, sonarPreview]);
 
   // ── Pick from gallery & analyse ──────────────────────────────────────────
   const pickFromGallery = useCallback(async () => {
@@ -861,13 +883,27 @@ export default function LiveScreen() {
 
         {/* Aim guide */}
         <View style={styles.aimGuide} pointerEvents="none">
-          <View style={[styles.aimCorner, styles.aimTL, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
-          <View style={[styles.aimCorner, styles.aimTR, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
-          <View style={[styles.aimCorner, styles.aimBL, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
-          <View style={[styles.aimCorner, styles.aimBR, { borderColor: boatMode ? "#aaff00" : colors.primary }]} />
-          <Text style={[styles.aimLabel, { color: boatMode ? "#aaff00" : colors.primary }]}>
-            {boatMode ? `📡 Scanning sonar every ${AUTO_INTERVAL}s` : "Aim at sonar screen"}
+          <View style={[styles.aimCorner, styles.aimTL, { borderColor: boatMode ? "#aaff00" : insta360Connected ? "#00d4aa" : colors.primary }]} />
+          <View style={[styles.aimCorner, styles.aimTR, { borderColor: boatMode ? "#aaff00" : insta360Connected ? "#00d4aa" : colors.primary }]} />
+          <View style={[styles.aimCorner, styles.aimBL, { borderColor: boatMode ? "#aaff00" : insta360Connected ? "#00d4aa" : colors.primary }]} />
+          <View style={[styles.aimCorner, styles.aimBR, { borderColor: boatMode ? "#aaff00" : insta360Connected ? "#00d4aa" : colors.primary }]} />
+          <Text style={[styles.aimLabel, { color: boatMode ? "#aaff00" : insta360Connected ? "#00d4aa" : colors.primary }]}>
+            {boatMode
+              ? `📡 Scanning sonar every ${AUTO_INTERVAL}s`
+              : insta360Connected
+                ? `📡 INSTA360 REMOTE · frame ${sonarPreview.frameCount}`
+                : "Aim at sonar screen"}
           </Text>
+          {/* Remote sonar mode: show last refresh time */}
+          {insta360Connected && !boatMode && sonarPreview.frameCount > 0 && (
+            <View style={[styles.cdBadge, { borderColor: "#00d4aa55", backgroundColor: "#00d4aa11" }]}>
+              {sonarPreview.refreshing
+                ? <ActivityIndicator size="small" color="#00d4aa" />
+                : <Text style={[styles.cdText, { color: "#00d4aa", fontSize: 12 }]}>📡</Text>
+              }
+              <Text style={[styles.cdSub, { color: "#00d4aa99" }]}>live</Text>
+            </View>
+          )}
           {boatMode && scanCount > 0 && (
             <View style={[styles.cdBadge, { borderColor: "#aaff0066", backgroundColor: "#aaff0011" }]}>
               <Text style={[styles.cdText, { color: "#aaff00" }]}>{scanCount}</Text>
@@ -1013,10 +1049,12 @@ export default function LiveScreen() {
             </TouchableOpacity>
           )}
 
-          <Text style={[styles.hint, { color: "#ffffffcc" }]}>
+          <Text style={[styles.hint, { color: insta360Connected ? "#00d4aa" : "#ffffffcc" }]}>
             {boatMode
               ? `Screen stays on · auto-scan every ${AUTO_INTERVAL}s · voice ON`
-              : "Point at sonar — tap to scan"}
+              : insta360Connected
+                ? "📡 Insta360 remote · point at sonar · tap to scan"
+                : "Point at sonar — tap to scan"}
           </Text>
         </View>
       </>
@@ -1189,8 +1227,36 @@ export default function LiveScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: "#000" }]}>
-      <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
-      <BarraSketches opacity={0.7} />
+      {/* ── Camera background ──────────────────────────────────────────────────
+          When Insta360 is connected via WiFi: show live remote preview image.
+          The Insta360 camera points at the sonar screen; phone camera hidden.
+          When not connected: standard phone camera viewfinder.
+      */}
+      {insta360Connected ? (
+        sonarPreview.previewBase64 ? (
+          <Image
+            source={{ uri: `data:image/jpeg;base64,${sonarPreview.previewBase64}` }}
+            style={[StyleSheet.absoluteFill, { resizeMode: "cover" }]}
+          />
+        ) : (
+          // Waiting for first frame — dark placeholder with spinner
+          <View style={[StyleSheet.absoluteFill, styles.remoteWaitBg]}>
+            <ActivityIndicator size="large" color="#00d4aa" />
+            <Text style={styles.remoteWaitText}>Connecting to Insta360…</Text>
+            <Text style={styles.remoteWaitSub}>Point camera at sonar screen</Text>
+          </View>
+        )
+      ) : (
+        <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
+      )}
+
+      {/* Keep CameraView mounted (off-screen) when Insta360 active so we
+          can still fall back instantly if WiFi drops */}
+      {insta360Connected && (
+        <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" />
+      )}
+
+      <BarraSketches opacity={insta360Connected ? 0.3 : 0.7} />
       {renderOverlays(true)}
     </View>
   );
@@ -1244,6 +1310,16 @@ const styles = StyleSheet.create({
 
   boatTint: { backgroundColor: "#aaff0006" },
   mountTint: { backgroundColor: "#ff450008" },
+
+  remoteWaitBg: {
+    backgroundColor: "#040d1a", alignItems: "center", justifyContent: "center", gap: 12,
+  },
+  remoteWaitText: {
+    color: "#00d4aa", fontSize: 15, fontFamily: "Inter_700Bold", letterSpacing: 0.5, marginTop: 8,
+  },
+  remoteWaitSub: {
+    color: "#ffffff55", fontSize: 12, fontFamily: "Inter_400Regular",
+  },
 
   topBar: {
     position: "absolute", top: 0, left: 0, right: 0,
