@@ -4,7 +4,7 @@
  * Stage 1 (FAST — ~400 ms): gpt-4.1-mini barra detector
  *   → instant "BARRA CONFIRMED / NOT A BARRA" verdict + confidence
  * Stage 2 (FULL — ~2 s):   gpt-4.1 species analyser
- *   → species, NT regulations, size estimate, handling advice
+ *   → species, QLD regulations, size estimate, handling advice
  *
  * Both calls fire simultaneously (Promise.race / Promise.all).
  * Stage 1 result appears the moment it resolves; Stage 2 fills in below it.
@@ -754,7 +754,7 @@ function FullIdCard({ result }: { result: FishIdResult }) {
           </View>
         )}
         <View style={S.regCell}>
-          <Text style={S.regKey}>NT MIN. SIZE</Text>
+          <Text style={S.regKey}>QLD MIN. SIZE</Text>
           <Text style={S.regVal}>{result.legalSizeNT}</Text>
         </View>
         <View style={S.regCell}>
@@ -794,7 +794,7 @@ function FullIdCard({ result }: { result: FishIdResult }) {
 
       {/* Habitat + Season */}
       <View style={S.section}>
-        <Text style={S.sectionTitle}>NT HABITAT & SEASON</Text>
+        <Text style={S.sectionTitle}>HABITAT & SEASON</Text>
         <Text style={S.bodyText}>{result.habitat}</Text>
         <Text style={[S.bodyText, { color: C.gold, marginTop: 4 }]}>{result.season}</Text>
       </View>
@@ -1273,7 +1273,7 @@ function EmptyState({
       <Text style={S.emptyTitle}>CATCH ID</Text>
       <Text style={S.emptySub}>
         Two-stage AI detection — instant barra verdict in ~400 ms, then
-        full species ID with NT regulations.
+        full species ID with QLD regulations.
       </Text>
 
       {/* Brain status card */}

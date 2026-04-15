@@ -305,7 +305,7 @@ export default function ForecastScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 0 : insets.top;
-  useAutoNarrate(() => "Here Fishy Fishy. AI bite forecast based on moon phase, NT season, tide stage and water temperature.");
+  useAutoNarrate(() => "Here Fishy Fishy. AI bite forecast based on moon phase, NQ season, tide stage and water temperature.");
 
   const now = new Date();
   const month = now.getMonth() + 1;
@@ -422,7 +422,7 @@ export default function ForecastScreen() {
           <NarratorSettingsTrigger />
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Conditions-based NT spot guide
+          Conditions-based NQ spot guide
         </Text>
       </View>
 
@@ -480,7 +480,7 @@ export default function ForecastScreen() {
         <View style={[styles.hintBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.hintTitle, { color: colors.mutedForeground }]}>WHAT YOU'LL GET</Text>
           {[
-            { e: "📍", t: "Top 3 fishing spots in NT right now based on conditions" },
+            { e: "📍", t: "Top 3 fishing spots in NQ Gulf Country right now based on conditions" },
             { e: "🌊", t: "Species targeting advice matched to current tide stage" },
             { e: "🎣", t: "Exactly where to fish, what lure & when to be there" },
             { e: "🌙", t: "Moon phase, season & water temp all factored in" },

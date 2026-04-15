@@ -98,7 +98,7 @@ function buildMapHtml(pins: MapPin[]): string {
       maxZoom: 18,
     }).addTo(map);
 
-    /* Background dots for all known NT spots */
+    /* Background dots for all known NQ spots */
     allSpots.forEach(function(spot) {
       const icon = L.divIcon({
         className: '',
@@ -107,7 +107,7 @@ function buildMapHtml(pins: MapPin[]): string {
       });
       L.marker([spot.lat, spot.lng], { icon })
         .addTo(map)
-        .bindPopup('<div class="pop-name">' + spot.name + '</div><div class="pop-row">NT fishing spot</div>');
+        .bindPopup('<div class="pop-name">' + spot.name + '</div><div class="pop-row">NQ fishing spot</div>');
     });
 
     /* Live hotspot pins */
@@ -220,7 +220,7 @@ export default function MapScreen() {
         </TouchableOpacity>
         <View>
           <Text style={styles.headerTitle}>LIVE SCAN MAP</Text>
-          <Text style={styles.headerSub}>NT Fishing Hotspots</Text>
+          <Text style={styles.headerSub}>NQ Fishing Hotspots</Text>
         </View>
         <TouchableOpacity onPress={loadHotspots} hitSlop={12} style={styles.refreshBtn}>
           <Feather name="refresh-cw" size={17} color="#00a8ff" />

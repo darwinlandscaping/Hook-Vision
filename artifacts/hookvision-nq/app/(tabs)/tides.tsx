@@ -120,7 +120,7 @@ function buildTideNarratorText(loc: TideLocation, data: TideResponse): string {
     }
   }
   if (data.isSecondary) {
-    text += `Times corrected from ${data.refPort === "darwin" ? "Darwin" : data.refPort === "gove" ? "Gove" : "Groote Eylandt"} BOM. Verify before use.`;
+    text += `Times corrected from ${data.refPort === "karumba" ? "Karumba" : data.refPort === "weipa" ? "Weipa" : data.refPort === "cairns" ? "Cairns" : "Cooktown"} BOM. Verify before use.`;
   }
   return text.trim();
 }
@@ -474,7 +474,7 @@ export default function TidesScreen() {
   const [selectedRegionId, setSelectedRegionId] = useState("karumba");
   const [selectedLoc, setSelectedLoc] = useState<TideLocation | null>(null);
 
-  useAutoNarrate(() => "NT Tides. 50 fishing locations across all NT rivers, boat ramps, river mouths and rock bars. Select a region to get water temp, hot spots, target species, best lures, access info and tide predictions.");
+  useAutoNarrate(() => "NQ Tides. 14 fishing locations across NQ Gulf rivers, boat ramps, river mouths and rock bars. Select a region to get water temp, hot spots, target species, best lures, access info and tide predictions.");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   const bottomPad = Platform.OS === "web" ? 70 : insets.bottom + 24;
@@ -497,7 +497,7 @@ export default function TidesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={{ paddingTop: topPad + 12, paddingHorizontal: 14, gap: 10, paddingBottom: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <HVHeader subtitle="NT Tide Predictions" />
+          <HVHeader subtitle="NQ Tide Predictions" />
           <NarratorSettingsTrigger />
         </View>
 
@@ -536,7 +536,7 @@ export default function TidesScreen() {
         <View style={[styles.disclaimer, { backgroundColor: colors.secondary, marginTop: 4 }]}>
           <Feather name="info" size={12} color={colors.mutedForeground} />
           <Text style={[styles.disclaimerText, { color: colors.mutedForeground }]}>
-            ★ marks iconic NT fishing locations. Tide times are in Brisbane time (AEST UTC+10). Secondary locations use BOM secondary port correction tables.
+            ★ marks iconic NQ fishing locations. Tide times are in Brisbane time (AEST UTC+10). Secondary locations use BOM secondary port correction tables.
           </Text>
         </View>
       </ScrollView>

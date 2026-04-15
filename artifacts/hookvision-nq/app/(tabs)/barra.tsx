@@ -92,7 +92,7 @@ const SPOT_POOL = [
   { name: "Wenlock River Pool",      river: "Wenlock River",     region: "Cape York Peninsula", lure: "Surface walker 80mm",   species: "Barra + Saratoga",        emoji: "🌅", bestMoon: ["any"],    bestSeason: ["Dry"],            tidal: false, baseScore: 68 },
 ];
 
-function calcHotSpots(moon: ReturnType<typeof getMoonPhase>, season: ReturnType<typeof getNTSeason>, darwinHour: number): HotSpot[] {
+function calcHotSpots(moon: ReturnType<typeof getMoonPhase>, season: ReturnType<typeof getNQSeason>, darwinHour: number): HotSpot[] {
   const isGoldHour = (darwinHour >= 5 && darwinHour <= 8) || (darwinHour >= 16 && darwinHour <= 20);
   const isSpringTide = moon.tideType === "spring";
 
@@ -486,7 +486,7 @@ export default function BarraScreen() {
       contentContainerStyle={[styles.content, { paddingTop: topPad + 16, paddingBottom: Platform.OS === "web" ? 70 : insets.bottom + 24 }]}
       showsVerticalScrollIndicator={false}
     >
-      <HVHeader subtitle="NQ Barra Nation — NT's Barramundi Hub" />
+      <HVHeader subtitle="NQ Barra Nation — Gulf's Barramundi Hub" />
 
       {/* Page title */}
       <View style={styles.header}>
@@ -498,7 +498,7 @@ export default function BarraScreen() {
           <NarratorSettingsTrigger />
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          NT's complete barramundi hub · AI predictions · live hot spots · comps · records
+          NQ Gulf's complete barramundi hub · AI predictions · live hot spots · comps · records
         </Text>
       </View>
 
@@ -525,7 +525,7 @@ export default function BarraScreen() {
       <MDFCard colors={colors} />
 
       {/* ── AI TROPHY PREDICTOR ── */}
-      <SectionTitle emoji="🎯" label="AI TROPHY PREDICTOR" sub="70cm+ fish · powered by 40yr NT data" color="#ff2200" />
+      <SectionTitle emoji="🎯" label="AI TROPHY PREDICTOR" sub="70cm+ fish · powered by 40yr NQ Gulf data" color="#ff2200" />
       <BigRedButton onPress={predict} loading={loading} />
 
       {error && (
@@ -542,7 +542,7 @@ export default function BarraScreen() {
             { e: "🎯", t: "Top 3 spots for 70cm+ barra right now" },
             { e: "📏", t: "Exact target depth per river based on tide & season" },
             { e: "🎣", t: "Lure, rig and retrieve technique" },
-            { e: "📖", t: "Powered by 40 years of NT river netting records" },
+            { e: "📖", t: "Powered by 40 years of NQ Gulf river netting records" },
           ].map(({ e, t }) => (
             <View key={t} style={styles.hintRow}>
               <Text style={styles.hintEmoji}>{e}</Text>
@@ -588,7 +588,7 @@ export default function BarraScreen() {
       <HotSpotsSection hotSpots={hotSpots} colors={colors} />
 
       {/* ── COMPETITIONS ── */}
-      <SectionTitle emoji="🏆" label="NT BARRA COMPS" sub="Tournaments, cash prizes & glory" color="#ffd700" />
+      <SectionTitle emoji="🏆" label="NQ BARRA COMPS" sub="Tournaments, cash prizes & glory" color="#ffd700" />
       {BARRA_COMPS.map((comp, i) => (
         <LilyPadCard
           key={i}

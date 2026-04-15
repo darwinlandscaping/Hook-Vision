@@ -1115,7 +1115,7 @@ export default function HomeScreen() {
         Alert.alert(
           "🐊 CROCODILE DETECTED",
           data.crocWarning
-            ? `${data.crocWarning}\n\n🚨 NT CROC SAFETY\n• Stay 5m back from the water's edge\n• Do NOT enter the water or lean over the side\n• Saltwater crocs can be submerged and unseen\n• Relocate immediately`
+            ? `${data.crocWarning}\n\n🚨 CROC SAFETY\n• Stay 5m back from the water's edge\n• Do NOT enter the water or lean over the side\n• Saltwater crocs can be submerged and unseen\n• Relocate immediately`
             : "A saltwater crocodile has been detected on your sonar.\n\n🚨 DO NOT ENTER THE WATER\n• Stay 5m back from the water's edge\n• Saltwater crocs can be submerged and unseen\n• Relocate immediately",
           [{ text: "UNDERSTOOD — MOVING AWAY", style: "destructive" }],
           { cancelable: false }
@@ -1816,7 +1816,7 @@ export default function HomeScreen() {
       contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: Platform.OS === "web" ? 72 : insets.bottom + 28, paddingHorizontal: H_PAD, gap: GAP }}
       showsVerticalScrollIndicator={false}
     >
-      <HVHeader subtitle="NT Australia Fishing" />
+      <HVHeader subtitle="NQ Gulf Country Fishing" />
 
       {/* ── HERO CARD 1: Scan Sonar ── */}
       <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: "#00d4aa55" }]}>
@@ -1881,7 +1881,7 @@ export default function HomeScreen() {
             <Feather name="chevron-right" size={24} color="#7c5cfc" />
           </View>
           <Text style={[styles.heroDesc, { color: colors.mutedForeground }]}>
-            Try AI analysis on real NT sonar screenshots — barra arches, structure maps,
+            Try AI analysis on real NQ sonar screenshots — barra arches, structure maps,
             side-imaging and live sonar examples included.
           </Text>
         </View>

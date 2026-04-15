@@ -46,7 +46,7 @@ const PLANS = [
       "Croc Brain + Bird Pipeline",
       "360° Camera integration",
       "Smart Glass HUD streaming",
-      "NT Tides + Conditions",
+      "NQ Tides + Conditions",
       "Catch ID + Species Guide",
       "Community Intel (Barra Brain)",
     ],
@@ -64,14 +64,14 @@ const PLANS = [
       "Offline sonar library",
       "Export scan history (CSV/PDF)",
       "Early access to new features",
-      "NT guide network access",
+      "NQ guide network access",
     ],
   },
 ];
 
 const FREE_FEATURES = [
   "5 AI scans per month",
-  "NT Tides (current day)",
+  "NQ Tides (current day)",
   "Species Guide (basic)",
   "Scan History (last 10)",
 ];
@@ -81,7 +81,7 @@ const PAID_FEATURES = [
   { icon: "crosshairs-gps",    label: "Barra Predictor + Trophy Alerts" },
   { icon: "brain",             label: "Barra Brain + Community Intel" },
   { icon: "shield-alert",      label: "Croc Brain + Vision Pipeline" },
-  { icon: "feather",           label: "NT Bird Library (500 species photos)" },
+  { icon: "feather",           label: "NQ Bird Library (500 species photos)" },
   { icon: "camera-wireless",   label: "Insta360 360° Camera + Dual Pipelines" },
   { icon: "glasses",           label: "Smart Glass HUD Streaming" },
   { icon: "television-play",   label: "Camera 2 WiFi Sonar Remote" },
@@ -195,7 +195,7 @@ export default function SubscriptionScreen() {
 
         {/* Tagline */}
         <Text style={styles.tagline}>
-          The complete AI fishing platform for NT Australia. Every scan, every tide, every croc — covered.
+          The complete AI fishing platform for NQ Gulf Country. Every scan, every tide, every croc — covered.
         </Text>
 
         {/* Plan selector */}

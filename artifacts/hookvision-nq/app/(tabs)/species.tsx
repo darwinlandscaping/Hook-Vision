@@ -193,7 +193,7 @@ export default function SpeciesScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<FishCategory | "all">("all");
-  useAutoNarrate(() => "NT Species Guide. Browse bag limits, minimum sizes, and fishing seasons for over 30 species found in NT waters.");
+  useAutoNarrate(() => "NQ Species Guide. Browse bag limits, minimum sizes, and fishing seasons for species found in Queensland Gulf Country and GBR waters.");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 
@@ -229,9 +229,9 @@ export default function SpeciesScreen() {
       scrollEnabled={filtered.length > 0}
       ListHeaderComponent={
         <View style={styles.headerBlock}>
-          <HVHeader subtitle="NT Species Guide" />
+          <HVHeader subtitle="NQ Species Guide" />
           <View style={styles.titleRow}>
-            <Text style={[styles.title, { color: colors.primary }]}>🐟 NT Species</Text>
+            <Text style={[styles.title, { color: colors.primary }]}>🐟 NQ Species</Text>
             <Text style={[styles.count, { color: colors.mutedForeground }]}>
               {filtered.length} of {NT_SPECIES.length}
             </Text>

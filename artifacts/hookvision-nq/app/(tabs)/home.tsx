@@ -60,7 +60,7 @@ interface DailyConditions {
 const TILES = [
   { label: "AI\nScan",        emoji: "📡", route: "/(tabs)/index",        border: "#00d4aa55" },
   { label: "Trophy\nBarra",   emoji: "🎯", route: "/(tabs)/barra",        border: "#ff220055" },
-  { label: "NT\nTides",       emoji: "🌊", route: "/(tabs)/tides",        border: "#00a8ff55" },
+  { label: "NQ\nTides",       emoji: "🌊", route: "/(tabs)/tides",        border: "#00a8ff55" },
   { label: "Species\nGuide",  emoji: "🐟", route: "/(tabs)/species",      border: "#4caf5055" },
   { label: "Fishy\nForecast", emoji: "🎣", route: "/(tabs)/forecast",     border: "#ffd70055" },
   { label: "Strike\nZones",   emoji: "🗺️",  route: "/(tabs)/zones",        border: "#ff980055" },
@@ -151,7 +151,7 @@ export default function HomeScreen() {
 
   const narrate = conds
     ? `Welcome to HookVision NQ. Today's NQ Gulf conditions: ${conds.season.emoji} ${conds.season.name}. Moon: ${conds.moon.emoji} ${conds.moon.name}. ${conds.barraActivity.replace(/[^a-zA-Z0-9 .—!%\/]/g, "").trim()}. ${darwin.isGolden ? "Golden hour is active — prime feeding time right now!" : ""} Today's briefing: ${conds.aiBriefing}`
-    : `Welcome to HookVision NQ. Loading today's NT fishing conditions.`;
+    : `Welcome to HookVision NQ. Loading today's NQ Gulf fishing conditions.`;
 
   useAutoNarrate(() => narrate);
 
@@ -183,7 +183,7 @@ export default function HomeScreen() {
           <View style={S.liveRow}>
             <LiveDot />
             <Text style={[S.tagline, { color: colors.mutedForeground }]}>
-              {loading ? "Fetching live NT data…" : fetchErr ? "NT's #1 fishing intelligence app" : `Live data · Updated ${lastRefreshedLabel}`}
+              {loading ? "Fetching live NQ data…" : fetchErr ? "NQ Gulf's #1 fishing intelligence app" : `Live data · Updated ${lastRefreshedLabel}`}
             </Text>
           </View>
         </View>
