@@ -99,14 +99,16 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const logoOpacity  = useRef(new Animated.Value(0)).current;
-  const logoY        = useRef(new Animated.Value(20)).current;
-  const flagOpacity  = useRef(new Animated.Value(0)).current;
-  const btnOpacity   = useRef(new Animated.Value(0)).current;
-  const btnScale     = useRef(new Animated.Value(0.9)).current;
-  const windAnim     = useRef(new Animated.Value(0)).current;
+  const logoOpacity   = useRef(new Animated.Value(0)).current;
+  const logoY         = useRef(new Animated.Value(20)).current;
+  const flagOpacity   = useRef(new Animated.Value(0)).current;
+  const btnOpacity    = useRef(new Animated.Value(0)).current;
+  const btnScale      = useRef(new Animated.Value(0.9)).current;
+  const windAnim      = useRef(new Animated.Value(0)).current;
+  const bottomOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    Animated.timing(bottomOpacity, { toValue: 1, duration: 800, useNativeDriver: true }).start();
     Animated.parallel([
       Animated.sequence([
         Animated.delay(150),
@@ -149,11 +151,11 @@ export default function WelcomeScreen() {
       <Image source={BARRA} style={styles.barraTopImg} resizeMode="cover" />
       <LinearGradient colors={["transparent", BG]} style={styles.barraTopFade} pointerEvents="none" />
 
-      {/* ── Coral — bottom half ── */}
-      <View style={styles.buffContainer}>
+      {/* ── Buffalo — bottom half ── */}
+      <Animated.View style={[styles.buffContainer, { opacity: bottomOpacity }]}>
         <Image source={BUFFALO} style={styles.buffImg} resizeMode="cover" />
         <LinearGradient colors={[BG, "transparent", "transparent"]} locations={[0, 0.35, 1]} style={styles.buffFade} pointerEvents="none" />
-      </View>
+      </Animated.View>
 
       {/* ── Centre dark band ── */}
       <LinearGradient
