@@ -1091,7 +1091,7 @@ export default function HomeScreen() {
             </View>
             {boatActive && (
               <Text style={{ color: "#aaff00aa", fontSize: 11 }}>
-                Auto-scanning every 20s · Results stream in real time
+                Auto-scanning every 30s · Results stream in real time
               </Text>
             )}
           </View>

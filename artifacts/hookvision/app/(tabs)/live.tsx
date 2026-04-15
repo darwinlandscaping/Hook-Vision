@@ -275,7 +275,7 @@ export default function LiveScreen() {
   const mountTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
   const cdTimer      = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const AUTO_INTERVAL = 20;
+  const AUTO_INTERVAL = 30;
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
   const topPad   = Platform.OS === "web" ? 20 : insets.top;
@@ -509,11 +509,20 @@ export default function LiveScreen() {
           )}
 
           {boatMode && (
-            <View style={[styles.chip, { backgroundColor: "#aaff0022", borderColor: "#aaff0066" }]}>
-              <MaterialCommunityIcons name="anchor" size={13} color="#aaff00" />
-              <Text style={[styles.chipText, { color: "#aaff00" }]}>
-                🚤 BOAT MODE — next scan in {countdown}s
-              </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={[styles.chip, { backgroundColor: "#aaff0022", borderColor: "#aaff0066" }]}>
+                <MaterialCommunityIcons name="anchor" size={13} color="#aaff00" />
+                <Text style={[styles.chipText, { color: "#aaff00" }]}>
+                  🚤 BOAT MODE — next scan in {countdown}s
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.chip, { backgroundColor: "#ff440022", borderColor: "#ff440066" }]}
+                onPress={() => setBoatMode(false)}
+              >
+                <Feather name="square" size={13} color="#ff4400" />
+                <Text style={[styles.chipText, { color: "#ff4400" }]}>STOP</Text>
+              </TouchableOpacity>
             </View>
           )}
 
