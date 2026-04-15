@@ -34,7 +34,7 @@ import { SonarOverlay } from "@/components/SonarOverlay";
 import { SonarPulse } from "@/components/SonarPulse";
 import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/context/HistoryContext";
-import { useNarrator } from "@/context/NarratorContext";
+import { useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { getVision, quickScan, visionStatusSync, type MobileSonarScan } from "@/services/vision";
 import { LiveScanStore } from "@/stores/LiveScanStore";
@@ -622,11 +622,47 @@ async function toJpeg(uri: string): Promise<{ uri: string; base64: string }> {
   return { uri: result.uri, base64: result.base64 ?? "" };
 }
 
+// ─── Boat mode short commentary (5-8 seconds ≈ 12-20 words) ─────────────────
+const BOAT_SLANG: Record<string, string> = {
+  barramundi: "barra", "mangrove jack": "jack",
+  "spanish mackerel": "spaniard", "giant trevally": "GT",
+  "coral trout": "coral", queenfish: "queenie",
+  "threadfin salmon": "threadie", "king threadfin": "threadie",
+  "black jewfish": "jewie", jewfish: "jewie",
+  "red emperor": "emperor",
+};
+function boatNick(raw: string) {
+  const s = raw.replace(/\s*\(\d+%\)/, "").toLowerCase();
+  for (const [k, v] of Object.entries(BOAT_SLANG)) if (s.includes(k)) return v;
+  return raw.replace(/\s*\(\d+%\)/, "");
+}
+function buildBoatSpeech(a: FishAnalysis, character: NarratorCharacter): string {
+  const nick = boatNick(a.species);
+  const n    = a.fishCount;
+  if (n === 0) {
+    switch (character) {
+      case "BENAUD":       return "Nothing on the sonar. We must look elsewhere.";
+      case "CHOPPER":      return "Sweet FA on the sonar, ya mug. Move the boat.";
+      case "ATTENBOROUGH": return "The depths reveal nothing. We must seek them elsewhere.";
+      case "WIFE":         return "Nothing. I told you to move the boat.";
+      default:             return "Sonar's blank mate. Chuck it somewhere else.";
+    }
+  }
+  const fish = n === 1 ? `one ${nick}` : `${n} ${nick}`;
+  switch (character) {
+    case "BENAUD":       return `${fish} at ${a.depth}, ${a.distance}. Marvellous.`;
+    case "CHOPPER":      return `${fish} showing — ${a.depth}. Get in there, deadset.`;
+    case "ATTENBOROUGH": return `${fish} detected at ${a.depth}. Remarkable.`;
+    case "WIFE":         return `${fish} at ${a.depth}. Don't stuff it up.`;
+    default:             return `${fish} at ${a.depth}, ${a.distance}. Get into 'em!`;
+  }
+}
+
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { addEntry } = useHistory();
-  const { autoSpeak } = useNarrator();
+  const { autoSpeak, speak, character, stop: stopSpeaking } = useNarrator();
 
   useAutoNarrate(() => "Sonar Analyser. Load a photo of your sonar screen, or tap the camera button to scan and get instant AI fish detection.");
 
@@ -1040,6 +1076,14 @@ export default function HomeScreen() {
       analyzeImage();
     }
   }, [imageBase64, analyzeImage]);
+
+  // Speak short 5-8s commentary when a boat/live mode result arrives
+  useEffect(() => {
+    if (analysis && (scanSource === 'boat' || scanSource === 'live') && autoSpeak) {
+      stopSpeaking();
+      speak(buildBoatSpeech(analysis, character));
+    }
+  }, [analysis, scanSource]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Learn why two species differ on sonar ─────────────────────────────────
   const learnWhy = useCallback(async (expected: string, found: string) => {
