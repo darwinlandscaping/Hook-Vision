@@ -68,6 +68,24 @@ A polished NT fishing mobile app built with Expo + React Native targeting NT Aus
 
 **Design tokens:** `constants/colors.ts` — Deep ocean navy (#0a1628) / teal (#00d4aa) / blue (#00a8ff) / gold (#ffd700); Trophy Barra red (#ff2200)
 
+### HookVision NQ (`artifacts/hookvision-nq`)
+
+North Queensland / Gulf Country Edition of HookVision — a complete standalone Expo + React Native app.
+
+**Key Differences from NT Edition:**
+- Welcome screen: Great Barrier Reef aerial photo + Queensland flag + "ENTER THE GULF" button
+- Queensland Fisheries bag/size limits (barra 5-fish 58cm; coral trout 8-fish 38cm; Spanish mack 5-fish 75cm, etc.)
+- NQ tide locations: Karumba, Norman River, Mitchell River, Weipa, Cairns, Cooktown, Burketown, Port Douglas
+- BOM ports: QLD_TP001 (Karumba), QLD_TP002 (Weipa), QLD_TP003 (Cairns), QLD_TP004 (Cooktown)
+- Brisbane time (AEST UTC+10) throughout — not Darwin UTC+9:30
+- NQ/Gulf Country river systems: Norman, Mitchell, Gilbert, Flinders, Embley (Weipa), Albert, Endeavour, Wenlock
+- NQ GPS hotspots: 35 NQ/Gulf Country fishing spots
+- No Million Dollar Fish — replaced with Karumba Barra Classic, Weipa GT & Barra Tournament, Cairns Offshore Classic, Burketown Barra Classic
+- NQ barra hotspots: Karumba Point, Norman River Cut Bank, Mitchell River Mouth, Weipa Causeway, Albert River, etc.
+- NQ species: Sooty Grunter, Golden Snapper (Fingermark), Coral Trout replacing NT-only species
+- All "Top End"/"NT Fisheries" terminology replaced with NQ/QLD equivalents
+- Package: `@workspace/hookvision-nq`; port 25352; scheme `hookvision-nq`
+
 ### API Server (`artifacts/api-server`)
 
 Express 5 API server.
@@ -75,8 +93,8 @@ Express 5 API server.
 **Routes:**
 - `GET  /api/healthz` — Health check
 - `POST /api/analyze` — Analyze sonar image (accepts `{ imageBase64: string }`, returns fish analysis JSON) — GPT-4 vision
-- `GET  /api/tides?port=darwin&days=3` — NT tide predictions from BOM (1-hour cache). Ports: darwin, gove, groote
-- `GET  /api/tides/ports` — List available NT ports
+- `GET  /api/tides?port=darwin&days=3` — NT/NQ tide predictions from BOM (1-hour cache). NT ports: darwin, gove, groote. NQ ports: karumba, weipa, cairns, cooktown. Also supports `?location=ID` for 60+ secondary locations with BOM secondary port corrections
+- `GET  /api/tides/locations` — List all secondary tide locations (NT + NQ combined)
 - `GET  /api/forecast?lat=&lon=` — Here Fishy Fishy conditions → AI spot picks (GPT-4.1)
 - `POST /api/barra` — Trophy Barra depth predictions (GPT-4.1, 3 ranked predictions)
 - `POST /api/narrate` — Character-voiced narration text (GPT-4.1-mini, 4 characters × 11 languages)

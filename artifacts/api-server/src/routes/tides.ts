@@ -24,6 +24,11 @@ const BOM_PORTS: Record<string, { code: string; name: string }> = {
   darwin: { code: "NT_TP001", name: "Darwin" },
   gove:   { code: "NT_TP002", name: "Gove (Nhulunbuy)" },
   groote: { code: "NT_TP003", name: "Groote Eylandt (Alyangula)" },
+  // ── NQ / Gulf Country ───────────────────────────────────────────────────────
+  karumba:  { code: "QLD_TP001", name: "Karumba" },
+  weipa:    { code: "QLD_TP002", name: "Weipa" },
+  cairns:   { code: "QLD_TP003", name: "Cairns" },
+  cooktown: { code: "QLD_TP004", name: "Cooktown" },
 };
 
 // ─── Secondary locations with corrections relative to a primary port ───────────
@@ -31,7 +36,7 @@ const BOM_PORTS: Record<string, { code: string; name: string }> = {
 // hwFactor / lwFactor: multiply reference port height by this factor
 interface LocationCfg {
   name: string;
-  refPort: "darwin" | "gove" | "groote";
+  refPort: "darwin" | "gove" | "groote" | "karumba" | "weipa" | "cairns" | "cooktown";
   offsetMinutes: number;
   hwFactor: number;
   lwFactor: number;
@@ -113,10 +118,58 @@ const NT_LOCATIONS: Record<string, LocationCfg> = {
   "robinson-river":     { name: "Robinson River Mouth",           refPort: "groote", offsetMinutes:+100, hwFactor: 0.86, lwFactor: 0.78 },
 };
 
+// ─── NQ / Gulf Country secondary locations ──────────────────────────────────────
+// All relative to primary BOM ports above
+const NQ_LOCATIONS: Record<string, LocationCfg> = {
+  // ── Gulf of Carpentaria (reference: karumba) ───────────────────────────────
+  "karumba-point":      { name: "Karumba Point Boat Ramp",       refPort: "karumba", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "norman-river-mouth": { name: "Norman River Mouth Bar ★",       refPort: "karumba", offsetMinutes:  +5, hwFactor: 0.98, lwFactor: 0.96 },
+  "normanton":          { name: "Normanton Wharf (Norman R.)",    refPort: "karumba", offsetMinutes: +45, hwFactor: 0.85, lwFactor: 0.75 },
+  "flinders-mouth":     { name: "Flinders River Mouth",           refPort: "karumba", offsetMinutes: +15, hwFactor: 0.96, lwFactor: 0.93 },
+  "gilbert-mouth":      { name: "Gilbert River Mouth",            refPort: "karumba", offsetMinutes: +25, hwFactor: 0.93, lwFactor: 0.88 },
+  "mitchell-mouth":     { name: "Mitchell River Mouth ★",         refPort: "karumba", offsetMinutes: -45, hwFactor: 1.05, lwFactor: 1.02 },
+  "albert-river":       { name: "Albert River (Burketown)",       refPort: "karumba", offsetMinutes: -90, hwFactor: 0.95, lwFactor: 0.88 },
+  "burketown":          { name: "Burketown Ramp",                 refPort: "karumba", offsetMinutes: -85, hwFactor: 0.94, lwFactor: 0.87 },
+  "karumba-bay":        { name: "Karumba Bay Open Water",         refPort: "karumba", offsetMinutes:  -5, hwFactor: 1.01, lwFactor: 1.00 },
+  "pormpuraaw":         { name: "Pormpuraaw Ramp",                refPort: "karumba", offsetMinutes: -30, hwFactor: 1.03, lwFactor: 1.01 },
+  "edward-river":       { name: "Edward River (Pormpuraaw)",      refPort: "karumba", offsetMinutes: -35, hwFactor: 1.02, lwFactor: 1.00 },
+
+  // ── Western Cape York (reference: weipa) ──────────────────────────────────
+  "weipa-causeway":     { name: "Weipa Causeway GT Spot ★",       refPort: "weipa",   offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "embley-river":       { name: "Embley River Upper (Weipa)",     refPort: "weipa",   offsetMinutes: +30, hwFactor: 0.90, lwFactor: 0.82 },
+  "evans-landing":      { name: "Evans Landing",                   refPort: "weipa",   offsetMinutes: +10, hwFactor: 0.97, lwFactor: 0.94 },
+  "ducie-river":        { name: "Ducie River Mouth",               refPort: "weipa",   offsetMinutes: +15, hwFactor: 0.96, lwFactor: 0.92 },
+  "archer-river":       { name: "Archer River Mouth",              refPort: "weipa",   offsetMinutes: +60, hwFactor: 0.88, lwFactor: 0.80 },
+  "wenlock-river":      { name: "Wenlock River Mouth",             refPort: "weipa",   offsetMinutes: -30, hwFactor: 1.04, lwFactor: 1.00 },
+
+  // ── Far North QLD (reference: cairns) ─────────────────────────────────────
+  "trinity-bay":        { name: "Trinity Bay Boat Ramp",           refPort: "cairns",  offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "barron-delta":       { name: "Barron River Delta (Cairns)",     refPort: "cairns",  offsetMinutes: +10, hwFactor: 0.97, lwFactor: 0.94 },
+  "port-douglas":       { name: "Port Douglas Marina",             refPort: "cairns",  offsetMinutes: -20, hwFactor: 1.02, lwFactor: 1.00 },
+  "marlin-marina":      { name: "Cairns Marlin Marina",            refPort: "cairns",  offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "agincourt-reef":     { name: "Agincourt Reef (outer GBR)",      refPort: "cairns",  offsetMinutes: -35, hwFactor: 0.85, lwFactor: 0.80 },
+
+  // ── Cooktown / FNQ Coast (reference: cooktown) ────────────────────────────
+  "endeavour-river":    { name: "Endeavour River (Cooktown) ★",   refPort: "cooktown", offsetMinutes:  +5, hwFactor: 0.98, lwFactor: 0.96 },
+  "cooktown-marina":    { name: "Cooktown Marina Ramp",            refPort: "cooktown", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "princess-charlotte": { name: "Princess Charlotte Bay",          refPort: "cooktown", offsetMinutes: -45, hwFactor: 1.05, lwFactor: 1.03 },
+  "laura-river":        { name: "Laura River Mouth",               refPort: "cooktown", offsetMinutes: -30, hwFactor: 1.02, lwFactor: 0.98 },
+};
+
+// Merge NQ locations into NT_LOCATIONS for uniform lookup
+Object.assign(NT_LOCATIONS, NQ_LOCATIONS);
+
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-// Format a UTC timestamp as Darwin local time (UTC+9:30)
-function formatDarwinTime(timestamp: number): string {
-  const offsetMs = 9.5 * 60 * 60 * 1000; // Darwin UTC+9:30
+// UTC offset hours by refPort (Darwin = 9.5, Brisbane = 10, Groote/Gove = 9.5)
+const PORT_UTC_OFFSET: Record<string, number> = {
+  darwin: 9.5, gove: 9.5, groote: 9.5,
+  karumba: 10, weipa: 10, cairns: 10, cooktown: 10,
+};
+
+// Format a UTC timestamp as local time for the given UTC offset
+function formatLocalTime(timestamp: number, utcOffsetHours: number = 9.5): string {
+  const offsetMs = utcOffsetHours * 60 * 60 * 1000;
   const local = new Date(timestamp + offsetMs);
   let h = local.getUTCHours();
   const min = local.getUTCMinutes();
@@ -125,9 +178,14 @@ function formatDarwinTime(timestamp: number): string {
   return `${h}:${min.toString().padStart(2, "0")} ${ampm}`;
 }
 
-// Get the Darwin local date string "YYYY-MM-DD" for a UTC timestamp
-function getDarwinDate(timestamp: number): string {
-  const offsetMs = 9.5 * 60 * 60 * 1000;
+// Legacy alias kept for any remaining references
+function formatDarwinTime(timestamp: number): string {
+  return formatLocalTime(timestamp, 9.5);
+}
+
+// Get local date string "YYYY-MM-DD" for a UTC timestamp
+function getLocalDate(timestamp: number, utcOffsetHours: number = 9.5): string {
+  const offsetMs = utcOffsetHours * 60 * 60 * 1000;
   const local = new Date(timestamp + offsetMs);
   const y = local.getUTCFullYear();
   const m = String(local.getUTCMonth() + 1).padStart(2, "0");
@@ -135,12 +193,18 @@ function getDarwinDate(timestamp: number): string {
   return `${y}-${m}-${d}`;
 }
 
-// Apply secondary port corrections to a set of Darwin/Gove/Groote tides
+// Legacy alias
+function getDarwinDate(timestamp: number): string {
+  return getLocalDate(timestamp, 9.5);
+}
+
+// Apply secondary port corrections — timezone-aware
 function applyCorrection(
   tides: TideDay[],
   offsetMinutes: number,
   hwFactor: number,
-  lwFactor: number
+  lwFactor: number,
+  utcOffsetHours: number = 9.5
 ): TideDay[] {
   const offsetMs = offsetMinutes * 60 * 1000;
 
@@ -148,7 +212,7 @@ function applyCorrection(
   const all: TideEntry[] = tides.flatMap((d) =>
     d.tides.map((t) => ({
       timestamp: t.timestamp + offsetMs,
-      time: formatDarwinTime(t.timestamp + offsetMs),
+      time: formatLocalTime(t.timestamp + offsetMs, utcOffsetHours),
       type: t.type,
       height: parseFloat(
         (t.height * (t.type === "HW" ? hwFactor : lwFactor)).toFixed(2)
@@ -156,10 +220,10 @@ function applyCorrection(
     }))
   );
 
-  // Regroup by Darwin date
+  // Regroup by local date
   const grouped = new Map<string, TideDay>();
   for (const t of all) {
-    const date = getDarwinDate(t.timestamp);
+    const date = getLocalDate(t.timestamp, utcOffsetHours);
     if (!grouped.has(date)) grouped.set(date, { date, tides: [] });
     grouped.get(date)!.tides.push(t);
   }
@@ -223,17 +287,22 @@ async function fetchBomTides(portCode: string, days: number): Promise<TideDay[]>
     return cache[cacheKey].data;
   }
 
-  const darwinDate = new Date().toLocaleDateString("en-CA", {
-    timeZone: "Australia/Darwin",
+  // Determine region and timezone from port code prefix
+  const isQLD = portCode.startsWith("QLD_");
+  const region = isQLD ? "QLD" : "NT";
+  const tz = isQLD ? "Australia/Brisbane" : "Australia/Darwin";
+
+  const localDate = new Date().toLocaleDateString("en-CA", {
+    timeZone: tz,
     year: "numeric", month: "2-digit", day: "2-digit",
   });
 
   const url = new URL("https://www.bom.gov.au/australia/tides/print.php");
   url.searchParams.set("aac", portCode);
   url.searchParams.set("type", "tide");
-  url.searchParams.set("date", darwinDate);
-  url.searchParams.set("region", "NT");
-  url.searchParams.set("tz", "Australia/Darwin");
+  url.searchParams.set("date", localDate);
+  url.searchParams.set("region", region);
+  url.searchParams.set("tz", tz);
   url.searchParams.set("days", String(days));
 
   const res = await fetch(url.toString(), {
@@ -275,11 +344,12 @@ router.get("/tides", async (req, res) => {
         return;
       }
       const port = BOM_PORTS[loc.refPort];
+      const utcOffset = PORT_UTC_OFFSET[loc.refPort] ?? 9.5;
       const rawTides = await fetchBomTides(port.code, days + 1); // fetch extra day to cover offset
-      const corrected = applyCorrection(rawTides, loc.offsetMinutes, loc.hwFactor, loc.lwFactor);
-      // Return only the requested number of days starting from today
-      const todayDarwin = getDarwinDate(Date.now());
-      const filtered = corrected.filter((d) => d.date >= todayDarwin).slice(0, days);
+      const corrected = applyCorrection(rawTides, loc.offsetMinutes, loc.hwFactor, loc.lwFactor, utcOffset);
+      // Return only the requested number of days starting from today (local)
+      const today = getLocalDate(Date.now(), utcOffset);
+      const filtered = corrected.filter((d) => d.date >= today).slice(0, days);
       res.json({ port: loc.name, portKey: locationId, data: filtered, isSecondary: true, refPort: loc.refPort });
       return;
     }

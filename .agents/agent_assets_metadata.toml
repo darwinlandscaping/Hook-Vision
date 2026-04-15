@@ -288,6 +288,18 @@ uri = "file://artifacts/hookvision/assets/images/store/op6-antiglare-film.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "7-dNn7SASG6tIthFNLo_7"
+uri = "file://artifacts/hookvision-nq/assets/images/splash-gbr.png"
+type = "image"
+title = "great-barrier-reef-aerial"
+
+[[generated]]
+id = "RRRJ353JDFfSMSfgJcECL"
+uri = "file://artifacts/hookvision-nq/assets/images/qld-flag.png"
+type = "image"
+title = "queensland-flag"
+
 [[outputs]]
 id = "56ji2_AK1cz0SSgKggKpF"
 uri = "file://hookvision-qr.png"

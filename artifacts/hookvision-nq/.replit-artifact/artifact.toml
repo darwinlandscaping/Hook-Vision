@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/hookvision-nq/"
+title = "HookVision NQ"
+version = "1.0.0"
+id = "artifacts/hookvision-nq"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 25352
+
+[services.development]
+run = "pnpm --filter @workspace/hookvision-nq run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hookvision-nq", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/hookvision-nq", "run", "serve" ]
+
+[services.env]
+PORT = "25352"
+BASE_PATH = "/"

@@ -1,0 +1,102 @@
+{
+  "expo": {
+    "name": "HookVision NQ",
+    "slug": "hookvision-nq",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "hookvision-nq",
+    "description": "North Queensland's AI-powered barramundi fishing guide. Sonar analysis, Gulf tide predictions, species identification, live camera overlay, and Barra Brain community learning.",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-barra.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0a1628"
+    },
+    "androidStatusBar": {
+      "style": "light",
+      "backgroundColor": "#00000000",
+      "translucent": true
+    },
+    "androidNavigationBar": {
+      "style": "dark",
+      "backgroundColor": "#0a1628"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "HookVision NQ uses the camera for live AI sonar overlay and barra recognition.",
+        "NSPhotoLibraryUsageDescription": "HookVision NQ needs access to your photos to analyse sonar screenshots.",
+        "NSLocationWhenInUseUsageDescription": "HookVision NQ uses your location to identify your NQ fishing spot and show nearby hotspot data.",
+        "NSMicrophoneUsageDescription": "HookVision NQ uses the microphone for AI voice narration recording."
+      }
+    },
+    "android": {
+      "package": "com.hookvision.nq",
+      "versionCode": 1,
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0a1628"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.CHANGE_WIFI_STATE",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.CHANGE_NETWORK_STATE",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png",
+      "backgroundColor": "#0a1628",
+      "themeColor": "#0a1628"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      "expo-audio",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "HookVision NQ needs camera access for live AI sonar overlay and barra recognition.",
+          "microphonePermission": "HookVision NQ uses the microphone for AI voice narration.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "HookVision NQ uses your location to identify your NQ fishing spot and show accurate hotspot data.",
+          "locationWhenInUsePermission": "HookVision NQ uses your location to identify your NQ fishing spot and show accurate hotspot data.",
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "HookVision NQ needs access to your photos to analyse sonar screenshots."
+        }
+      ],
+      "expo-video"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
