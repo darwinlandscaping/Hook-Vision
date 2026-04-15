@@ -378,6 +378,7 @@ export default function ForecastScreen() {
         waterTempRange: season.waterTemp,
         port: "karumba",
         localTime,
+        region: "nq" as const,
       };
       const resp = await fetch(`${baseUrl}/api/forecast`, {
         method: "POST",

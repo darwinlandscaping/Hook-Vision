@@ -31,6 +31,12 @@ config.server.rewriteRequestUrl = (url) => {
 
 config.server.enhanceMiddleware = (middleware) => {
   return (req, res, next) => {
+    // Strip explicit port from the Host header so Expo's CorsMiddleware
+    // accepts requests routed via the Replit proxy (which adds :3003).
+    if (req.headers && req.headers.host && req.headers.host.includes(":")) {
+      req.headers.host = req.headers.host.replace(/:\d+$/, "");
+    }
+
     const originalWrite = res.write.bind(res);
     const originalEnd = res.end.bind(res);
     let isHtml = false;

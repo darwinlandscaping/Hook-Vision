@@ -468,7 +468,7 @@ export default function BarraScreen() {
       const resp = await fetch(`${baseUrl}/api/barra`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ moonPhase: moon.name, moonDay: Math.round(moon.day), tideType: moon.tideType, season: season.name, month, waterTempRange: season.waterTemp, localTime, nextTide: nextTide ? { type: nextTide.type, height: nextTide.height, time: nextTide.time, minutesUntil: nextTide.minutesUntil } : null }),
+        body: JSON.stringify({ moonPhase: moon.name, moonDay: Math.round(moon.day), tideType: moon.tideType, season: season.name, month, waterTempRange: season.waterTemp, localTime, region: "nq", nextTide: nextTide ? { type: nextTide.type, height: nextTide.height, time: nextTide.time, minutesUntil: nextTide.minutesUntil } : null }),
       });
       if (!resp.ok) throw new Error("Prediction failed");
       setResult(await resp.json());

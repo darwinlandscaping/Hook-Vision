@@ -376,8 +376,9 @@ export default function ForecastScreen() {
             }
           : null,
         waterTempRange: season.waterTemp,
-        port: "darwin",
+        port: "broome",
         localTime,
+        region: "wa" as const,
       };
       const resp = await fetch(`${baseUrl}/api/forecast`, {
         method: "POST",
