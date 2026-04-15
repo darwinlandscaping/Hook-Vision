@@ -1237,6 +1237,27 @@ export default function HomeScreen() {
       >
         <HVHeader subtitle="AI Sonar Analysis" />
 
+        {/* ── Back button ── */}
+        {!boatActive && (
+          <TouchableOpacity
+            onPress={() => {
+              setImageUri(null); setImageBase64(null);
+              setAnalysis(null); setError(null);
+              setLoading(false); setStreaming(false); setStreamChars(0);
+              setSonarBarraResult(null); setSonarBarraLoading(false);
+              setScan2Consensus(null);
+              setCompareCard(null); setCompareExp(null);
+              setCapturedLocation(null); setCvScan(null); setCvRegions([]);
+              locationPromiseRef.current = null;
+            }}
+            activeOpacity={0.7}
+            style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingVertical: 4, paddingHorizontal: 2 }}
+          >
+            <Feather name="arrow-left" size={18} color="#00d4aa" />
+            <Text style={{ color: "#00d4aa", fontSize: 14, fontWeight: "600" }}>Back</Text>
+          </TouchableOpacity>
+        )}
+
         {/* ── Boat mode + source banner ── */}
         {(boatActive || scanSource !== 'manual') && (
           <View style={{
