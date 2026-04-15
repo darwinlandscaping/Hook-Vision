@@ -668,13 +668,7 @@ export default function LiveScreen() {
                 onPress={() => {
                   setCam2Panel(false);
                   setHudPanel(false);
-                  if (!insta360Panel) {
-                    setInsta360Panel(true);
-                    if (insta360.status === "disconnected") insta360.startSearch();
-                  } else {
-                    setInsta360Panel(false);
-                    if (insta360.status === "searching") insta360.stopSearch();
-                  }
+                  setInsta360Panel((v) => !v);
                 }}
               >
                 <MaterialCommunityIcons
