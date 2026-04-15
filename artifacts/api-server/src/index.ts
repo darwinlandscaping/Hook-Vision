@@ -5,6 +5,7 @@ import { loadDemoReferences } from "./lib/demoReference";
 import { initBarraLibrary, refreshBarraLibrary } from "./lib/barraLibrary";
 import { initSonarBrain } from "./lib/sonarBrain";
 import { initCrocLibrary, refreshCrocLibrary } from "./lib/crocLibrary";
+import { initBirdLibrary, refreshBirdLibrary } from "./lib/birdLibrary";
 
 const rawPort = process.env["PORT"];
 
@@ -52,21 +53,33 @@ app.listen(port, (err) => {
   );
 
   // Initialise the croc reference library:
-  // fetches research-grade iNaturalist Crocodylus porosus photos (target: 500)
-  // → stores in DB → caches top 20 as compressed base64 thumbnails.
-  // Injected into every sonar analysis as cross-modal shape references
-  // so the AI can compare sonar blobs against real croc body silhouettes.
+  // fetches up to 1,000 research-grade iNaturalist photos (Crocodylus porosus +
+  // Crocodylus johnstoni) → stores in DB → caches top 20 as compressed thumbnails.
+  // Injected into sonar analysis and Insta360 croc-vision pipeline (Pipeline 2)
+  // as few-shot cross-modal shape references.
   initCrocLibrary().catch((err) =>
     logger.warn({ err }, "Croc library init failed — croc detection will use text-only prompt")
+  );
+
+  // Initialise the bird reference library:
+  // fetches up to 500 research-grade iNaturalist photos across 10 NT water bird
+  // species (frigatebirds, terns, boobies, pelicans, osprey, brahminy kite, etc.)
+  // → stores in DB → classifies poses (diving/aerial/perched/water) → caches
+  // top 30 thumbnails. Injected into Insta360 surface-detect pipeline (Pipeline 1)
+  // as few-shot visual references so the model can ID species in real-world frames.
+  initBirdLibrary().catch((err) =>
+    logger.warn({ err }, "Bird library init failed — surface detection will use text-only prompt")
   );
 
   // Daily library refresh — runs 6 hours after boot (offset from daily conditions)
   setTimeout(() => {
     refreshBarraLibrary().catch(() => {});
     refreshCrocLibrary().catch(() => {});
+    refreshBirdLibrary().catch(() => {});
     setInterval(() => {
       refreshBarraLibrary().catch(() => {});
       refreshCrocLibrary().catch(() => {});
+      refreshBirdLibrary().catch(() => {});
     }, 24 * 60 * 60 * 1000);
   }, 6 * 60 * 60 * 1000);
 });

@@ -15,7 +15,7 @@
  *
  * iNaturalist taxon: Crocodylus porosus (taxon_id 26111)
  * We target Australia + SE Asia (the species' full range)
- * Target: 500 research-grade photos (5 pages × 100)
+ * Target: 1,000 research-grade photos (10 pages × 100)
  */
 
 import { db, crocReferences } from "@workspace/db";
@@ -66,16 +66,19 @@ function largeUrl(medUrl: string): string {
 }
 
 // ─── iNaturalist fetch ────────────────────────────────────────────────────────
-async function fetchInat(page = 1, perPage = 100): Promise<InatObservation[]> {
+async function fetchInat(
+  page = 1,
+  perPage = 100,
+  taxonName = "Crocodylus porosus",
+): Promise<InatObservation[]> {
   const params = new URLSearchParams({
-    taxon_name:    "Crocodylus porosus",
+    taxon_name:    taxonName,
     quality_grade: "research",
     photos:        "true",
     per_page:      String(perPage),
     page:          String(page),
     order:         "votes",
     order_by:      "votes",
-    // No place_id — global range (Australia, SE Asia, PNG, Indonesia)
   });
   const url = `https://api.inaturalist.org/v1/observations?${params}`;
   const resp = await fetch(url, {
@@ -272,13 +275,14 @@ async function classifyAngles(): Promise<void> {
 
 /**
  * Initialise on server startup.
- * Fetches up to 5 pages × 100 = 500 research-grade Crocodylus porosus photos.
+ * Fetches up to 10 pages × 100 = 1,000 research-grade Crocodylus porosus photos.
+ * Also fetches page 1 of Crocodylus johnstoni (freshwater croc) for NT river coverage.
  */
 export async function initCrocLibrary(): Promise<void> {
-  logger.info("Croc reference library: starting iNaturalist sync (target: 500 photos)…");
+  logger.info("Croc reference library: starting iNaturalist sync (target: 1,000 photos)…");
   try {
     let totalAdded = 0;
-    for (let page = 1; page <= 5; page++) {
+    for (let page = 1; page <= 10; page++) {
       try {
         const obs = await fetchInat(page, 100);
         if (obs.length === 0) break;
@@ -289,6 +293,19 @@ export async function initCrocLibrary(): Promise<void> {
         logger.warn({ page, err: String(pageErr) }, "Croc iNat page fetch failed, skipping");
       }
     }
+    // Freshwater croc (Crocodylus johnstoni) — NT rivers + estuaries
+    for (let page = 1; page <= 2; page++) {
+      try {
+        const obs = await fetchInat(page, 100, "Crocodylus johnstoni");
+        if (obs.length === 0) break;
+        const added = await upsertObservations(obs);
+        totalAdded += added;
+        logger.info({ page, fetched: obs.length, added }, "Freshwater croc iNat page synced");
+      } catch (pageErr) {
+        logger.warn({ page, err: String(pageErr) }, "Freshwater croc iNat page failed, skipping");
+      }
+    }
+
     logger.info({ totalAdded }, "Croc iNaturalist sync complete");
   } catch (err) {
     logger.warn({ err: String(err) }, "Croc iNat sync failed — will use DB cache only");

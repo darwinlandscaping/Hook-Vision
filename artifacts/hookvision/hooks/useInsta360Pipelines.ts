@@ -16,9 +16,11 @@ export interface SurfaceResult {
   activity: boolean;
   zones: ZoneMap;
   types: string[];
+  birdSpecies: string[];    // identified NT bird species (e.g. "Crested Tern", "Frigatebird")
   urgency: "none" | "low" | "high";
   confidence: number;
   description: string;
+  birdRefCount: number;     // how many library refs were injected
   ts: number;
 }
 
@@ -26,12 +28,14 @@ export interface CrocVisionResult {
   detected: boolean;
   zones: ZoneMap;
   parts: string[];
+  species: "salty" | "freshie" | "unknown" | "none";  // saltwater vs freshwater croc
   alertLevel: "none" | "possible" | "confirmed";
   visionOnly: string;
   confidence: number;
   description: string;
   safetyNote: string;
   sonarContributed: boolean;
+  crocRefCount: number;     // how many library refs were injected
   ts: number;
 }
 

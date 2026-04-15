@@ -99,6 +99,17 @@ function SurfacePipelineRow({ result, scanning }: { result: SurfaceResult | null
         </View>
       )}
 
+      {/* Bird species IDs */}
+      {result?.birdSpecies && result.birdSpecies.length > 0 && (
+        <View style={styles.typesRow}>
+          {result.birdSpecies.map((s) => (
+            <View key={s} style={[styles.typeBadge, { backgroundColor: "#00d4aa15", borderColor: "#00d4aa33" }]}>
+              <Text style={[styles.typeBadgeText, { color: "#00d4aa" }]}>🐦 {s}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* Description */}
       {result?.description ? (
         <Text style={styles.pipeDesc} numberOfLines={2}>{result.description}</Text>
@@ -106,9 +117,12 @@ function SurfacePipelineRow({ result, scanning }: { result: SurfaceResult | null
         <Text style={styles.pipeWaiting}>Waiting for first scan…</Text>
       ) : null}
 
-      {/* Confidence */}
+      {/* Confidence + ref library note */}
       {result && (
-        <Text style={styles.pipeConf}>{result.confidence}% confidence</Text>
+        <Text style={styles.pipeConf}>
+          {result.confidence}% confidence
+          {result.birdRefCount > 0 ? ` · ${result.birdRefCount} bird refs` : ""}
+        </Text>
       )}
     </View>
   );
@@ -168,6 +182,25 @@ function CrocPipelineRow({ result, scanning }: { result: CrocVisionResult | null
               <Text style={[styles.typeBadgeText, { color: alertColor }]}>{partEmoji[p] ?? "•"} {p}</Text>
             </View>
           ))}
+          {/* Species badge — salty vs freshie */}
+          {result.species && result.species !== "none" && (
+            <View style={[
+              styles.typeBadge,
+              result.species === "salty"
+                ? { borderColor: "#ff174466", backgroundColor: "#ff174418" }
+                : result.species === "freshie"
+                  ? { borderColor: "#ff880066", backgroundColor: "#ff880018" }
+                  : { borderColor: "#ffffff33", backgroundColor: "#ffffff11" },
+            ]}>
+              <Text style={[styles.typeBadgeText, {
+                color: result.species === "salty" ? "#ff4444" :
+                       result.species === "freshie" ? "#ff8800" : "#ffffff88",
+              }]}>
+                {result.species === "salty" ? "🐊 SALTY" :
+                 result.species === "freshie" ? "🐊 FRESHIE" : "🐊 ?"}
+              </Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -188,9 +221,12 @@ function CrocPipelineRow({ result, scanning }: { result: CrocVisionResult | null
         </View>
       ) : null}
 
-      {/* Confidence */}
+      {/* Confidence + ref library note */}
       {result && (
-        <Text style={styles.pipeConf}>{result.confidence}% confidence</Text>
+        <Text style={styles.pipeConf}>
+          {result.confidence}% confidence
+          {result.crocRefCount > 0 ? ` · ${result.crocRefCount} croc refs` : ""}
+        </Text>
       )}
     </View>
   );
@@ -269,7 +305,7 @@ export function Insta360PipelineCard({
 
       {/* Legend */}
       <Text style={styles.legend}>
-        Zones: LEFT · CTR · RIGHT  ·  Sonar croc data merged into Pipeline 2 when available
+        Zones: L · CTR · R  ·  P1: 500 NT bird refs  ·  P2: 1,000 croc refs  ·  Sonar merged
       </Text>
     </View>
   );
