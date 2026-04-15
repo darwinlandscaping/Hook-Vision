@@ -31,11 +31,11 @@ const P = {
   tongueTip:    "#ff8c30",
   tongueShine:  "#ffb060",
   veinColor:    "#6a2800",
-  activeIcon:   "#000000",
-  inactiveIcon: "#000000",
-  activeLbl:    "#000000",
-  inactiveLbl:  "#000000",
-  activeBg:     "#ffffff33",
+  activeIcon:   "#ffd700",
+  inactiveIcon: "rgba(255,255,255,0.80)",
+  activeLbl:    "#ffd700",
+  inactiveLbl:  "rgba(255,255,255,0.65)",
+  activeBg:     "#ffd70022",
   divider:      "#7a3800",
 };
 
@@ -114,7 +114,7 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
     if (!isActive && !ev.defaultPrevented) navigation.navigate(route.name);
   }
 
-  function renderTab(route: (typeof routes)[number], col: number, rowTopY: number) {
+  function renderTab(route: (typeof routes)[number], col: number, rowTopY: number, xOffset = 0) {
     const isActive  = state.index === routes.indexOf(route);
     const meta      = META[route.name] ?? {
       label: route.name,
@@ -122,7 +122,7 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
     };
     const ic = isActive ? P.activeIcon   : P.inactiveIcon;
     const lc = isActive ? P.activeLbl    : P.inactiveLbl;
-    const left = col * SLOT_W;
+    const left = col * SLOT_W + xOffset;
 
     return (
       <TouchableOpacity
@@ -251,8 +251,11 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
       {/* ── Row 1 touch targets ── */}
       {row1.map((route: any, col: number) => renderTab(route, col, row1Y))}
 
-      {/* ── Row 2 touch targets ── */}
-      {row2.map((route: any, col: number) => renderTab(route, col, row2Y))}
+      {/* ── Row 2 touch targets — centred when fewer than COLS ── */}
+      {(() => {
+        const xOff = row2.length < COLS ? ((COLS - row2.length) * SLOT_W) / 2 : 0;
+        return row2.map((route: any, col: number) => renderTab(route, col, row2Y, xOff));
+      })()}
     </View>
   );
 }
