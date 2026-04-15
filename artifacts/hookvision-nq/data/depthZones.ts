@@ -392,4 +392,273 @@ export const RIVER_SYSTEMS: RiverSystem[] = [
     lat: -15.489,
     lng: 145.266,
   },
+  {
+    id: "flinders",
+    name: "Flinders River",
+    shortName: "Flinders R.",
+    region: "Gulf of Carpentaria",
+    distanceFromKarumba: "290 km south-east (Cloncurry catchment)",
+    maxDepth: 7,
+    access: "Sealed road to Normanton (junction point). Upstream sections via Peninsula Developmental Road. 4WD recommended for river access tracks May–Oct.",
+    bestSeason: "Build-Up & Early Wet Oct–Feb",
+    character:
+      "The Flinders River is one of Queensland's longest inland rivers, flowing over 1000 km from the Greenvale plateau to the Gulf. Its lower tidal reaches west of Normanton hold resident barramundi and support major prawn nursery habitat. Fishing the tidal section during the build-up is exceptional.",
+    zones: [
+      {
+        minM: 0,
+        maxM: 2,
+        label: "Tidal Flat / Coastal Fringe",
+        species: ["Barramundi", "Threadfin Salmon", "Queenfish"],
+        tideStage: "Run-in — dawn session",
+        technique:
+          "Cast surface walkers and metal slices across the shallow tidal flats at the Flinders mouth on the run-in tide. Threadfin and queenfish patrol the sand edges while barra move onto the flat with the flooding water.",
+        lure: "Surface walker 90mm, metal slice 30g, chartreuse",
+        hotness: "hot",
+        notes:
+          "The Flinders tidal flat is rarely fished compared to the Norman — boat access requires a run from Karumba or a low-water crossing from the Normanton area. The reward is fresh country with minimal pressure.",
+      },
+      {
+        minM: 2,
+        maxM: 5,
+        label: "Mangrove Bank / Mid Estuary",
+        species: ["Barramundi", "Mangrove Jack", "Mud Crab"],
+        tideStage: "Run-out — 1–2 hrs after high",
+        technique:
+          "Work hard-body lures along the mangrove-lined banks on the run-out. The Flinders mid-estuary has dense mangrove cover and undercut banks that hold resident barra throughout the dry season.",
+        lure: "Rattling hard-body 90mm, bone or pearl",
+        hotness: "hot",
+        notes:
+          "Barra in the Flinders mid-estuary are less pressured than Norman River fish and tend to be larger on average. The junction of the Flinders and the Carron River is a productive convergence point worth targeting.",
+      },
+      {
+        minM: 5,
+        maxM: 7,
+        label: "Deep Hole / Channel Bend",
+        species: ["Black Jewfish", "Barramundi", "Mud Crab"],
+        tideStage: "Run-out at night",
+        technique:
+          "Drop heavy vibes or live mullet into the deepest channel bends on the Flinders lower reach. Jewfish and large barra hold in the deepest water through the middle of the day and feed actively at night on the run-out.",
+        lure: "Heavy vibe 60g, live mullet, cut bait",
+        hotness: "warm",
+        notes:
+          "The Flinders lower reach produces some of the biggest jewfish in the Gulf. Fish the deep bends at night during the run-out for best results. Set crab pots in the tidal zone on arrival.",
+      },
+    ],
+    historicalNote:
+      "The Flinders River was surveyed by explorer Frederick Walker in 1861. Commercial prawn trawling in the lower tidal reach and adjacent Gulf waters continued until the 1990s when Queensland Fisheries restructured effort limits. The river system remains a major barramundi nursery.",
+    proTip:
+      "Run south from Karumba Point to the Flinders mouth on a flood tide — the run across the Gulf flats is shallow and the timing means you arrive at the mouth as the run-out begins. A productive two-tide loop is possible from Karumba in a day.",
+    lat: -17.508,
+    lng: 140.499,
+  },
+  {
+    id: "leichhardt",
+    name: "Leichhardt River",
+    shortName: "Leichhardt R.",
+    region: "Southern Gulf",
+    distanceFromKarumba: "320 km south (Cloncurry area)",
+    maxDepth: 6,
+    access: "Burke Developmental Road to Burketown. River crossing at Julius Dam Road. 4WD required for lower estuary access. No boat ramp at tidal reach.",
+    bestSeason: "Dry Season May–Aug",
+    character:
+      "The Leichhardt River drains the Mount Isa plateau and enters the Gulf south of the Albert River system. Its lower tidal reaches hold resident barra in deeply undercut clay banks. The river is remote and rarely fished — one of the Gulf's sleeper destinations.",
+    zones: [
+      {
+        minM: 0,
+        maxM: 2,
+        label: "Outer Bar / Gulf Fringe",
+        species: ["Barramundi", "Queenfish", "Threadfin Salmon"],
+        tideStage: "Run-out at dawn",
+        technique:
+          "Work the outer bar and beach zone with surface lures and metal slices at the Leichhardt mouth. This section is accessible only by boat from Burketown — a 50 km run south-west across open Gulf water.",
+        lure: "Surface popper 90mm, metal slice 30g",
+        hotness: "warm",
+        notes:
+          "The Leichhardt mouth is extremely remote — plan a full-day or overnight trip from Burketown. The isolation means fish are large and naive. Queenfish run the bar hard in the dry season early mornings.",
+      },
+      {
+        minM: 2,
+        maxM: 6,
+        label: "Tidal Estuary / Deep Clay Banks",
+        species: ["Barramundi", "Mangrove Jack", "Mud Crab"],
+        tideStage: "Run-out — mid-tide",
+        technique:
+          "Cast hard-body lures to the deep clay banks where fallen timber creates ambush points. The Leichhardt's clay bank character differs from the mangrove systems further north — fish tight to the bank undercuts.",
+        lure: "Suspending minnow 90mm, rattling hard-body 85mm",
+        hotness: "hot",
+        notes:
+          "Deep undercut clay banks on the lower Leichhardt hold trophy barra year-round. The dry season concentrates fish in the remaining tidal pools — large resident fish that have never seen a lure are common.",
+      },
+    ],
+    historicalNote:
+      "Explorer Ludwig Leichhardt noted the river during his 1844–45 overland expedition from Moreton Bay to Port Essington. The river's lower reaches supported a remote cattle station economy from the 1870s. Commercial barramundi netting operated intermittently through the 20th century from Burketown.",
+    proTip:
+      "The Leichhardt is best fished in combination with the Albert River from a Burketown base. Run south to the Leichhardt mouth on day one, fish the evening and dawn sessions, then head back to the Albert for day two. Two river systems, two overnight tides, and almost no competition.",
+    lat: -17.912,
+    lng: 139.199,
+  },
+  {
+    id: "staaten",
+    name: "Staaten River",
+    shortName: "Staaten R.",
+    region: "Gulf of Carpentaria",
+    distanceFromKarumba: "130 km north",
+    maxDepth: 8,
+    access: "Boat access only from Karumba or Pormpuraaw. Extremely remote — full self-sufficiency required. No facilities or communications.",
+    bestSeason: "Build-Up Oct–Dec",
+    character:
+      "The Staaten River drains the vast Mitchell grass plains of the Gulf Country and enters the Gulf north of the Gilbert. Almost never fished, the Staaten represents one of Queensland's true frontier fishing destinations. Trophy barra in exceptional numbers characterise every trip that makes it in.",
+    zones: [
+      {
+        minM: 0,
+        maxM: 2,
+        label: "River Bar / Beach",
+        species: ["Barramundi", "Queenfish", "Threadfin Salmon"],
+        tideStage: "Run-out — any session",
+        technique:
+          "Work the Staaten mouth bar with surface lures — the fish here have never seen a lure and will attack almost anything. Threadfin to 10 kg run the outer bar. Cast across the current and work the lure back through the bar formation.",
+        lure: "Surface popper 100mm, metal slice 40g",
+        hotness: "fire",
+        notes:
+          "The Staaten mouth bar is one of the Gulf's best-kept secrets. Anglers who get here — typically via a long boat run from Karumba or Pormpuraaw — report exceptional fishing. All fish are large, all fish are naive.",
+      },
+      {
+        minM: 2,
+        maxM: 8,
+        label: "Lower Estuary / Snag Country",
+        species: ["Barramundi", "Mangrove Jack", "Mud Crab"],
+        tideStage: "Run-out and run-in both productive",
+        technique:
+          "Systematically work every timber snag and mangrove bank on both the run-in and run-out. Fish don't need to see many presentations before committing in a river this remote. Standard hard-body lures outperform at first and allow you to cover water efficiently.",
+        lure: "Hard-body minnow 90–100mm, rattling",
+        hotness: "fire",
+        notes:
+          "The Staaten's lower estuary may be the closest thing in Queensland to 'virgin' barra fishing. Fish the snag banks methodically — you will find resident barra at every significant timber feature. Keep fishing the same snag if you miss a strike, the fish will come back quickly.",
+      },
+    ],
+    historicalNote:
+      "The Staaten River was named during exploration of the Gulf of Carpentaria in the 17th century by Dutch navigator Jan Carstensz. Queensland Fisheries have identified it as a pristine barramundi and mud crab habitat — one of the few remaining Gulf systems with negligible recreational fishing pressure.",
+    proTip:
+      "Plan a 4–5 day live-aboard camping trip to the Staaten from Karumba — the boat run is long (3–4 hrs depending on conditions) and the tidal flats between the Norman and Staaten are shallow. A high-speed tinny on a spring tide flood is the most reliable approach. Fish for two full days to justify the run.",
+    lat: -16.243,
+    lng: 141.099,
+  },
+  {
+    id: "gregory",
+    name: "Gregory River",
+    shortName: "Gregory R.",
+    region: "Southern Gulf",
+    distanceFromKarumba: "240 km south-west (Lawn Hill area)",
+    maxDepth: 8,
+    access: "Sealed road to Gregory Downs pub (350 km from Mt Isa). Public boat ramp at Gregory Downs. River is accessible by 4WD to multiple bank-fishing spots.",
+    bestSeason: "Dry Season May–Sep",
+    character:
+      "The Gregory River near Gregory Downs is one of the Gulf's most beautiful fishing destinations — clear spring-fed water over sandstone substrate with pandanus-lined banks. Barra, sooty grunter, and tarpon share the system. The Gregory flows into the Nicholson River south of Burketown and ultimately the Albert system.",
+    zones: [
+      {
+        minM: 0,
+        maxM: 1.5,
+        label: "Shallow Run / Sand Bar",
+        species: ["Barramundi", "Sooty Grunter", "Jungle Perch"],
+        tideStage: "Dawn and dusk — any tide stage",
+        technique:
+          "Cast surface lures across shallow sand-bar runs in the Gregory River below Gregory Downs. Sooty grunter attack surface lures aggressively in the clear shallow runs. Barra hold in the first deep pool below each sand bar.",
+        lure: "Surface popper 65–80mm, small stickbait 70mm",
+        hotness: "hot",
+        notes:
+          "The Gregory is one of very few Gulf rivers with clear water — you can sight-fish for barra and sooty grunter in the shallower pools. Polaroiding for large barra in the first deep bend below a sand bar run is an exceptional experience unique to this river.",
+      },
+      {
+        minM: 1.5,
+        maxM: 5,
+        label: "Deep Pool / Sandstone Ledge",
+        species: ["Barramundi", "Sooty Grunter", "Golden Perch"],
+        tideStage: "Morning — falling barometer after cold front",
+        technique:
+          "Work suspending minnows slowly through the deep pools behind the Gregory Downs crossing and south towards the Nicholson junction. Barra hold behind sandstone ledges and large submerged boulders — different snag structure to the typical Gulf river.",
+        lure: "Suspending minnow 85–100mm, natural shad colours",
+        hotness: "hot",
+        notes:
+          "The Gregory's sandstone-bottom deep pools hold larger-than-average barra for the southern Gulf region. The clear water rewards stealth — approach pools from downstream and keep noise to a minimum. Light leader (20–30 lb fluorocarbon) is warranted.",
+      },
+      {
+        minM: 5,
+        maxM: 8,
+        label: "Lower Gregory / Nicholson Junction",
+        species: ["Barramundi", "Black Jewfish", "Mud Crab"],
+        tideStage: "Run-out at night",
+        technique:
+          "Fish the Nicholson River junction with the Gregory on the run-out tide. This is where tidal influence returns and the water deepens — black jewfish and large resident barra hold in the junction scour hole.",
+        lure: "Heavy vibe 60g, live mullet, fresh cut bait",
+        hotness: "warm",
+        notes:
+          "The Gregory/Nicholson junction is where the upper clear-water fishery meets the tidal estuarine fishery. The scour hole at the junction holds trophy barra and jewfish. Best fished at night on the run-out for the largest fish.",
+      },
+    ],
+    historicalNote:
+      "The Gregory River area was explored by A.C. Gregory in 1855–56 during his North Australian Exploring Expedition. The Gregory Downs area became one of the Gulf's premier cattle station districts. The river has been recognised by Queensland Parks and Wildlife as a spring-fed system of high ecological value.",
+    proTip:
+      "Fish the Gregory River on a falling barometer — the clear-water barra are highly sensitive to pressure changes and will switch on aggressively as a cold front approaches from the south in May–August. The Gregory Downs pub is the staging point; check in and get local intel on which pools are holding fish.",
+    lat: -18.566,
+    lng: 139.261,
+  },
+  {
+    id: "wenlock",
+    name: "Wenlock River",
+    shortName: "Wenlock R.",
+    region: "Western Cape York",
+    distanceFromKarumba: "600 km north-east (Weipa area)",
+    maxDepth: 10,
+    access: "Peninsula Developmental Road to Moreton Telegraph Station (unsealed). 4WD essential — road closes in wet season (Nov–Apr). Weipa-based charter operators run boat trips to the Wenlock mouth.",
+    bestSeason: "Dry Season May–Oct (road access); year-round by charter boat",
+    character:
+      "The Wenlock River drains central Cape York Peninsula and enters the Gulf near the Archer River system. Dense rainforest-to-savanna country characterises the Wenlock — one of the most diverse freshwater systems on Cape York. The tidal reach holds barramundi and mangrove jack; the freshwater reaches above tidal influence have sooty grunter, jungle perch, and saratoga.",
+    zones: [
+      {
+        minM: 0,
+        maxM: 2,
+        label: "River Mouth Bar / Beach",
+        species: ["Barramundi", "Queenfish", "Giant Trevally"],
+        tideStage: "Run-out — dawn to mid-morning",
+        technique:
+          "Work the Wenlock mouth bar with surface poppers and metal slices at first light. GTs and queenfish patrol the outer bar formation while barra hold in the current break on the river mouth point. Accurate casting into the current edge produces the best results.",
+        lure: "GT popper 140mm, surface walker 100mm, metal slice 40g",
+        hotness: "fire",
+        notes:
+          "The Wenlock mouth is accessible by boat from Weipa — a significant run (2–3 hrs) that keeps pressure minimal. The combination of GT, queenfish, and barra in the one location makes for an extraordinary dawn session. Fish the first 2 hours of the run-out for maximum action.",
+      },
+      {
+        minM: 2,
+        maxM: 6,
+        label: "Tidal Estuary / Mangrove System",
+        species: ["Barramundi", "Mangrove Jack", "Golden Snapper"],
+        tideStage: "Run-out — mid-estuary",
+        technique:
+          "Work suspending minnows and hard-body lures through the Wenlock tidal estuary. The dense mangrove structure and low fishing pressure produce excellent results with standard presentations. Work upstream on the run-out, targeting every point and snag.",
+        lure: "Suspending minnow 90–100mm, rattling hard-body 90mm",
+        hotness: "hot",
+        notes:
+          "The Wenlock tidal estuary has received virtually no recreational fishing pressure compared to NT and Kimberley systems. Mangrove jack to 4 kg and barra over 90 cm are encountered regularly. Fish with standard 30 lb braid and 40 lb leader — the structure is heavy.",
+      },
+      {
+        minM: 6,
+        maxM: 10,
+        label: "Freshwater Transition / Deep Pools",
+        species: ["Sooty Grunter", "Jungle Perch", "Saratoga"],
+        tideStage: "Morning — any tide in freshwater section",
+        technique:
+          "Work surface lures and small hard-bodies through the freshwater transition zone above tidal influence. Saratoga and jungle perch are surface-oriented — dawn and dusk sessions with 65–80mm poppers produce the most visual fishing of any Queensland river system.",
+        lure: "Small surface popper 65mm, shallow hard-body 75mm",
+        hotness: "hot",
+        notes:
+          "The Wenlock freshwater reaches above the tidal influence offer some of Queensland's most spectacular sportfishing — saratoga and jungle perch on surface lures in Cape York rainforest is a bucket-list experience. Accessible only in the dry season (May–October).",
+      },
+    ],
+    historicalNote:
+      "The Wenlock River was explored during the Cape York expeditions of the 1860s. The river system flows through country of significant Aboriginal cultural importance — much of the Wenlock catchment falls within Cape York Aboriginal land. Queensland Parks and Wildlife manage the river corridor as a conservation zone within the Cape York Wilderness Area.",
+    proTip:
+      "Combine a Wenlock River trip with an Archer River session — both systems are accessible by charter from Weipa on a 2-3 day live-aboard run. The Archer/Wenlock combination covers both the Gulf river barra experience and the Cape York freshwater fishing unique to this region. Book a Weipa-based guide for local knowledge on timing the tides at each river mouth.",
+    lat: -12.693,
+    lng: 141.942,
+  },
 ];
