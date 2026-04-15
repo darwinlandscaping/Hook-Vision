@@ -16,10 +16,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: W, height: H } = Dimensions.get("window");
 
-const BUFFALO  = require("@/assets/images/splash-buffalo.png");
-const BARRA    = require("@/assets/images/splash-barra.png");
-const HV_LOGO  = require("@/assets/images/hv-logo2-nobg.png");
-const NT_FLAG  = require("@/assets/images/nt-flag-real.png");
+const KIMBERLEY = require("@/assets/images/splash-kimberley.png");
+const BARRA     = require("@/assets/images/splash-barra.png");
+const HV_LOGO   = require("@/assets/images/hv-logo2-nobg.png");
+const WA_FLAG   = require("@/assets/images/wa-flag.png");
 
 const BG   = "#0a1628";
 const TEAL = "#00d4aa";
@@ -153,9 +153,9 @@ export default function WelcomeScreen() {
       <Image source={BARRA} style={styles.barraTopImg} resizeMode="cover" />
       <LinearGradient colors={["transparent", BG]} style={styles.barraTopFade} pointerEvents="none" />
 
-      {/* ── Buffalo — bottom half ── */}
+      {/* ── Kimberley — bottom half ── */}
       <Animated.View style={[styles.buffContainer, { opacity: barraOpacity, transform: [{ translateY: barraY }] }]}>
-        <Image source={BUFFALO} style={styles.buffImg} resizeMode="cover" />
+        <Image source={KIMBERLEY} style={styles.buffImg} resizeMode="cover" />
         <LinearGradient colors={[BG, "transparent", "transparent"]} locations={[0, 0.35, 1]} style={styles.buffFade} pointerEvents="none" />
       </Animated.View>
 
@@ -172,7 +172,7 @@ export default function WelcomeScreen() {
 
       {/* ── WA Flag ── */}
       <Animated.Image
-        source={NT_FLAG}
+        source={WA_FLAG}
         style={[
           styles.ntFlag,
           {
@@ -209,7 +209,7 @@ export default function WelcomeScreen() {
       <Animated.View style={[styles.btnWrap, { bottom: insets.bottom > 0 ? insets.bottom + 24 : 40, opacity: btnOpacity, transform: [{ scale: btnScale }] }]}>
         <Pressable style={({ pressed }) => [styles.enterBtn, pressed && styles.enterBtnPressed]} onPress={enter}>
           <LinearGradient colors={[TEAL, "#00a8d4"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.enterGradient}>
-            <Text style={styles.enterText}>ENTER THE TERRITORY</Text>
+            <Text style={styles.enterText}>ENTER THE KIMBERLEY</Text>
             <Text style={styles.enterArrow}>→</Text>
           </LinearGradient>
         </Pressable>

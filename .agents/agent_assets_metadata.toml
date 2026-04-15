@@ -300,6 +300,18 @@ uri = "file://artifacts/hookvision-nq/assets/images/qld-flag.png"
 type = "image"
 title = "queensland-flag"
 
+[[generated]]
+id = "I8tkNUX3VhTUBrw2V_1xi"
+uri = "file://artifacts/hookvision/assets/images/splash-kimberley.png"
+type = "image"
+title = "Kimberley gorge splash"
+
+[[generated]]
+id = "19CoCRAeTuybtG2KBsY6r"
+uri = "file://artifacts/hookvision/assets/images/wa-flag.png"
+type = "image"
+title = "WA flag"
+
 [[outputs]]
 id = "56ji2_AK1cz0SSgKggKpF"
 uri = "file://hookvision-qr.png"
