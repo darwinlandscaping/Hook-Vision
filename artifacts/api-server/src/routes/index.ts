@@ -21,6 +21,7 @@ import sonarvalidateRouter from "./sonarvalidate";
 import insta360surfaceRouter from "./insta360surface";
 import insta360crocRouter from "./insta360croc";
 import polarFilterRouter from "./polarfilter";
+import hudRouter from "./hud";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use(sonarvalidateRouter);
 router.use(insta360surfaceRouter);
 router.use(insta360crocRouter);
 router.use(polarFilterRouter);
+router.use(hudRouter);
 
 export default router;

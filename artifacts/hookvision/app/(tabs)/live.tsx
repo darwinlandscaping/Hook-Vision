@@ -37,6 +37,7 @@ import { LiveScanStore } from "@/stores/LiveScanStore";
 import { useInsta360 } from "@/hooks/useInsta360";
 import { useInsta360Pipelines } from "@/hooks/useInsta360Pipelines";
 import { useCamera2, DEFAULT_CAM2_IP, DEFAULT_CAM2_PATH } from "@/hooks/useCamera2";
+import { HUD_PAGE_URL } from "@/hooks/useHudStream";
 import { Insta360PipelineCard } from "@/components/Insta360PipelineCard";
 import { polarFilter } from "@/utils/polarFilter";
 
@@ -306,6 +307,9 @@ export default function LiveScreen() {
   const [cam2IpEdit, setCam2IpEdit] = useState<string | null>(null);  // null = not editing
   const [cam2PathEdit, setCam2PathEdit] = useState<string | null>(null);
   const cam2Connected = cam2.status === "connected";
+
+  // ── Smart-glass HUD panel ─────────────────────────────────────────────────
+  const [hudPanel, setHudPanel] = useState(false);
 
   const AUTO_INTERVAL = 40;
 
@@ -667,6 +671,7 @@ export default function LiveScreen() {
                 ]}
                 onPress={() => {
                   setCam2Panel(false);
+                  setHudPanel(false);
                   if (!insta360Panel) {
                     setInsta360Panel(true);
                     if (insta360.status === "disconnected") insta360.startSearch();
@@ -720,6 +725,7 @@ export default function LiveScreen() {
                 ]}
                 onPress={() => {
                   setInsta360Panel(false);
+                  setHudPanel(false);
                   if (!cam2Panel) {
                     setCam2Panel(true);
                     if (cam2.status === "disconnected") cam2.startSearch();
@@ -758,6 +764,30 @@ export default function LiveScreen() {
                     : cam2.status === "searching"
                     ? "Searching…"
                     : "Cam 2"}
+                </Text>
+              </TouchableOpacity>
+
+              {/* ── Smart Glass HUD chip ─────────────────────────────────── */}
+              <TouchableOpacity
+                style={[
+                  styles.chip,
+                  hudPanel
+                    ? { backgroundColor: "#ffd70022", borderColor: "#ffd70088" }
+                    : { backgroundColor: "#ffffff11", borderColor: "#ffffff33" },
+                ]}
+                onPress={() => {
+                  setInsta360Panel(false);
+                  setCam2Panel(false);
+                  setHudPanel((v) => !v);
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="glasses"
+                  size={14}
+                  color={hudPanel ? "#ffd700" : "#ffffff88"}
+                />
+                <Text style={[styles.chipText, { color: hudPanel ? "#ffd700" : "#ffffff88" }]}>
+                  HUD
                 </Text>
               </TouchableOpacity>
 
@@ -1134,6 +1164,116 @@ export default function LiveScreen() {
                   </View>
                 </View>
               )}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── Smart Glass HUD panel ─────────────────────────────────────────── */}
+        {hudPanel && !boatMode && (
+          <View
+            style={{
+              position: "absolute",
+              top: (isNative ? insets.top : topPad) + 60,
+              left: 12, right: 12,
+              maxHeight: 500,
+              backgroundColor: "#0a1628ee",
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: "#ffd70044",
+              zIndex: 50,
+              overflow: "hidden",
+            }}
+          >
+            <ScrollView
+              style={{ padding: 16 }}
+              contentContainerStyle={{ gap: 14, paddingBottom: 12 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Header */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <MaterialCommunityIcons name="glasses" size={20} color="#ffd700" />
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, letterSpacing: 0.5 }}>
+                    SMART GLASS HUD
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setHudPanel(false)}>
+                  <Feather name="x" size={18} color="#ffffff88" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Description */}
+              <Text style={{ color: "#ffffffaa", fontSize: 13, lineHeight: 20 }}>
+                Every scan result is pushed to the HUD page in real-time. Open the URL below on your smart glasses browser — results update automatically after each SCAN.
+              </Text>
+
+              {/* HUD URL display */}
+              <View style={{ backgroundColor: "#ffd70012", borderRadius: 10, borderWidth: 1, borderColor: "#ffd70033", padding: 14, gap: 6 }}>
+                <Text style={{ color: "#ffd700", fontSize: 10, fontWeight: "700", letterSpacing: 2 }}>HUD URL</Text>
+                <Text style={{ color: "#fff", fontSize: 12, fontFamily: "Inter_400Regular", letterSpacing: 0.3 }} selectable>
+                  {HUD_PAGE_URL}
+                </Text>
+                <Text style={{ color: "#ffffff55", fontSize: 10 }}>
+                  Point glasses browser at this address · updates live via SSE
+                </Text>
+              </View>
+
+              {/* What the HUD shows */}
+              <View style={{ backgroundColor: "#ffffff0a", borderRadius: 10, padding: 12, gap: 6 }}>
+                <Text style={{ color: "#ffd700", fontSize: 11, fontWeight: "700", letterSpacing: 1 }}>HUD DISPLAYS</Text>
+                <Text style={{ color: "#ffffffbb", fontSize: 12, lineHeight: 18 }}>
+                  🐟 Species identified + confidence bar{"\n"}
+                  📏 Fish count · depth · arch count · water temp{"\n"}
+                  💡 Lure suggestion strip{"\n"}
+                  🐊 Croc alerts · 🐦 bird activity · 🎣 Barra %{"\n"}
+                  🕐 Live clock · source badge (Live / Boat / Cam 2)
+                </Text>
+              </View>
+
+              {/* Audio note */}
+              <View style={{ backgroundColor: "#ffffff0a", borderRadius: 10, padding: 12, gap: 4 }}>
+                <Text style={{ color: "#ffd700", fontSize: 11, fontWeight: "700", letterSpacing: 1 }}>AUDIO / EARPHONES</Text>
+                <Text style={{ color: "#ffffffbb", fontSize: 12, lineHeight: 18 }}>
+                  The AI voice narrator already plays through any connected Bluetooth device — including earphones in your glasses.{"\n\n"}
+                  Connect glasses earphones as a Bluetooth audio device in Android settings. Audio from Barra Brain, Croc Brain, and boat-mode narration routes automatically.
+                </Text>
+              </View>
+
+              {/* Setup buttons */}
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity
+                  onPress={openWifiSettings}
+                  style={{
+                    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+                    gap: 6, backgroundColor: "#00a8ff22", borderRadius: 10,
+                    borderWidth: 1, borderColor: "#00a8ff66", paddingVertical: 10,
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="wifi" size={15} color="#00a8ff" />
+                  <Text style={{ color: "#00a8ff", fontWeight: "600", fontSize: 12 }}>WiFi Settings</Text>
+                </TouchableOpacity>
+                {Platform.OS === "android" && IntentLauncher && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      try {
+                        IntentLauncher.startActivityAsync("android.settings.BLUETOOTH_SETTINGS");
+                      } catch {
+                        Linking.openURL("android.settings.BLUETOOTH_SETTINGS").catch(() => {});
+                      }
+                    }}
+                    style={{
+                      flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+                      gap: 6, backgroundColor: "#ffd70022", borderRadius: 10,
+                      borderWidth: 1, borderColor: "#ffd70066", paddingVertical: 10,
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons name="bluetooth-audio" size={15} color="#ffd700" />
+                    <Text style={{ color: "#ffd700", fontWeight: "600", fontSize: 12 }}>BT Audio</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </ScrollView>
           </View>
         )}

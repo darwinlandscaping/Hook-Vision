@@ -39,6 +39,7 @@ import { useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { getVision, quickScan, visionStatusSync, type MobileSonarScan } from "@/services/vision";
 import { LiveScanStore } from "@/stores/LiveScanStore";
+import { useHudStream } from "@/hooks/useHudStream";
 
 interface FishAnalysis {
   fishCount: number;
@@ -709,6 +710,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { addEntry } = useHistory();
   const { autoSpeak, speak, character, stop: stopSpeaking } = useNarrator();
+  const hud = useHudStream();
 
   useAutoNarrate(() => "Sonar Analyser. Load a photo of your sonar screen, or tap the camera button to scan and get instant AI fish detection.");
 
@@ -1127,6 +1129,21 @@ export default function HomeScreen() {
           suggestion: data.suggestion,
         });
       }
+      // ── Push result to smart-glass HUD (fire-and-forget) ───────────────────
+      hud.push({
+        species:    data.species    ?? "—",
+        fishCount:  data.fishCount  ?? 0,
+        depth:      data.depth      ?? "—",
+        confidence: (data.confidence ?? 0) / 100,
+        suggestion: data.suggestion ?? "",
+        sonarMode:  data.sonarMode  ?? null,
+        waterTemp:  data.waterTemp,
+        bottomType: data.bottomType,
+        lure:       data.lure,
+        crocAlert:  data.crocAlert  ?? false,
+        crocWarning:data.crocWarning ?? null,
+        source:     LiveScanStore.boatActive ? "boat" : "live",
+      });
       // Fire-and-forget: contribute to community data bank (with real location)
       try {
         const reportDomain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -1157,7 +1174,7 @@ export default function HomeScreen() {
       setLoading(false);
       setStreaming(false);
     }
-  }, [imageBase64, imageUri, addEntry, analyzeScale, autoSpeak]);
+  }, [imageBase64, imageUri, addEntry, analyzeScale, autoSpeak, hud.push]);
 
   // Auto-analyse when a demo image is injected from the Demo tab
   useEffect(() => {
