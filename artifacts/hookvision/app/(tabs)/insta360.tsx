@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useInsta360Context } from "@/contexts/Insta360Context";
 
 // ─── Conditional IntentLauncher (Android only) ────────────────────────────────
@@ -42,31 +43,50 @@ const C = {
 };
 
 // ─── Samsung step-by-step guide ────────────────────────────────────────────────
-const SAMSUNG_STEPS = [
+const SAMSUNG_STEPS: {
+  icon: string;
+  title: string;
+  body: string;
+  btnLabel?: string;
+  intent?: string;
+}[] = [
   {
     icon: "wifi",
     title: "Connect to Insta360 WiFi",
-    body: 'Go to phone Settings → Connections → Wi-Fi. Connect to the network named "LIVE-xxxxxx" (shown on the camera screen).',
+    body: 'Open WiFi settings and connect to "LIVE-xxxxxx" (shown on the camera screen). Password is printed on the camera body.',
+    btnLabel: "Open WiFi Settings",
+    intent: "android.settings.WIFI_SETTINGS",
   },
   {
     icon: "check-circle",
-    title: 'Tap "Stay Connected"',
-    body: 'Samsung will show a banner: "Connected to LIVE-xxxxxx, but no internet access. Stay connected?" — tap STAY CONNECTED. Without this, Samsung routes traffic through mobile data instead of the camera WiFi.',
+    title: 'Tap "Stay Connected" — CRITICAL',
+    body: 'Samsung shows a popup: "No internet — stay connected?" → tap STAY CONNECTED every time. Without this, ALL traffic goes through mobile data and the camera is unreachable.',
   },
   {
     icon: "toggle-left",
-    title: "Turn off Wi-Fi+  (Samsung only)",
-    body: "Settings → Connections → Wi-Fi → ⋮ (three dots) → Advanced → Switch to mobile data. Turn this OFF. This stops Samsung silently switching away from the camera WiFi.",
+    title: "Turn off Wi-Fi+ / Switch to Mobile Data",
+    body: "WiFi Settings → ⋮ (three dots) → Advanced → Switch to mobile data — turn OFF. This is Samsung's #1 cause of camera disconnections.",
+    btnLabel: "WiFi Advanced Settings",
+    intent: "android.settings.WIFI_SETTINGS",
   },
   {
     icon: "smartphone",
-    title: "Disable Adaptive connectivity",
-    body: "Settings → Connections → More connection settings → Adaptive connectivity → turn OFF. This prevents network-quality-based switching.",
+    title: "Disable Adaptive Connectivity",
+    body: "Settings → Connections → More connection settings → Adaptive connectivity → OFF. Prevents Samsung auto-switching based on signal quality.",
+    btnLabel: "Network Settings",
+    intent: "android.settings.WIRELESS_SETTINGS",
+  },
+  {
+    icon: "battery",
+    title: "Disable Battery Optimisation for HookVision",
+    body: "Settings → Battery → Background usage limits → Sleeping apps — remove HookVision. Samsung kills WiFi on background apps to save power.",
+    btnLabel: "Battery Settings",
+    intent: "android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS",
   },
   {
     icon: "refresh-cw",
-    title: "Back to HookVision — tap Search",
-    body: "Return to this screen and tap the SEARCH button below. The camera should connect within 3–6 seconds.",
+    title: "Return here and tap SEARCH FOR CAMERA",
+    body: "Camera connects in 3–6 seconds once the above settings are applied. Screen stays on automatically while searching.",
   },
 ];
 
@@ -211,16 +231,41 @@ export default function Insta360Screen() {
     }
   }, [previewBase64, brainLoading, baseUrl, pipelines.croc]);
 
-  // Open WiFi settings
-  const openWifi = useCallback(() => {
-    if (Platform.OS === "android" && IntentLauncher) {
+  // ── Keep screen awake while searching / connected ─────────────────────────
+  // Samsung drops local-network WiFi when screen dims. Keeping awake prevents that.
+  const keepAwakeActive = useRef(false);
+  useEffect(() => {
+    const TAG = "insta360";
+    if (status === "searching" || status === "connected") {
+      activateKeepAwakeAsync(TAG).then(() => { keepAwakeActive.current = true; }).catch(() => {});
+    } else if (keepAwakeActive.current) {
+      try { deactivateKeepAwake(TAG); } catch {}
+      keepAwakeActive.current = false;
+    }
+    return () => {
+      if (keepAwakeActive.current) {
+        try { deactivateKeepAwake(TAG); } catch {}
+        keepAwakeActive.current = false;
+      }
+    };
+  }, [status]);
+
+  // Open any Android settings intent (with iOS App-Prefs fallback)
+  const openSettings = useCallback((intent?: string) => {
+    if (Platform.OS === "android" && IntentLauncher && intent) {
       try {
-        IntentLauncher.startActivityAsync("android.settings.WIFI_SETTINGS");
+        IntentLauncher.startActivityAsync(intent);
         return;
       } catch {}
     }
-    Linking.openURL("App-Prefs:WIFI").catch(() => {});
+    // iOS fallback — deep-link into Settings
+    Linking.openURL("App-Prefs:WIFI").catch(() =>
+      Linking.openURL("app-settings:").catch(() => {})
+    );
   }, []);
+
+  // Convenience — open WiFi settings
+  const openWifi = useCallback(() => openSettings("android.settings.WIFI_SETTINGS"), [openSettings]);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -230,9 +275,17 @@ export default function Insta360Screen() {
           <MaterialCommunityIcons name="camera-wireless" size={22} color={C.teal} />
           <Text style={styles.headerTitle}>INSTA360  <Text style={{ color: C.teal }}>360°</Text></Text>
         </View>
-        <View style={[styles.statusChip, { borderColor: statusColor + "88", backgroundColor: statusColor + "18" }]}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          {(status === "searching" || status === "connected") && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#ffd70018", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, borderWidth: 1, borderColor: "#ffd70044" }}>
+              <Feather name="sun" size={10} color="#ffd700" />
+              <Text style={{ color: "#ffd700", fontSize: 9, fontWeight: "700" }}>SCREEN ON</Text>
+            </View>
+          )}
+          <View style={[styles.statusChip, { borderColor: statusColor + "88", backgroundColor: statusColor + "18" }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+            <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+          </View>
         </View>
       </View>
 
@@ -646,25 +699,40 @@ export default function Insta360Screen() {
 
         {samsungGuide && (
           <View style={[styles.card, { borderColor: C.gold + "44", gap: 16 }]}>
+            {/* Screen-on indicator */}
+            {(status === "searching" || status === "connected") && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.teal + "18", borderRadius: 8, padding: 8 }}>
+                <Feather name="sun" size={12} color={C.teal} />
+                <Text style={{ color: C.teal, fontSize: 11, fontWeight: "700" }}>
+                  Screen stays on automatically while camera is active
+                </Text>
+              </View>
+            )}
+
             {SAMSUNG_STEPS.map((step, i) => (
               <View key={i} style={styles.stepRow}>
                 <View style={styles.stepNumWrap}>
                   <Text style={styles.stepNum}>{i + 1}</Text>
                 </View>
-                <View style={{ flex: 1, gap: 3 }}>
+                <View style={{ flex: 1, gap: 4 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <Feather name={step.icon as any} size={13} color={C.gold} />
                     <Text style={styles.stepTitle}>{step.title}</Text>
                   </View>
                   <Text style={styles.stepBody}>{step.body}</Text>
+                  {step.btnLabel && (
+                    <TouchableOpacity
+                      onPress={() => openSettings(step.intent)}
+                      style={styles.stepBtn}
+                      activeOpacity={0.8}
+                    >
+                      <Feather name="external-link" size={11} color={C.gold} />
+                      <Text style={styles.stepBtnText}>{step.btnLabel}</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             ))}
-
-            <TouchableOpacity onPress={openWifi} style={styles.wifiBtn} activeOpacity={0.8}>
-              <Feather name="wifi" size={15} color={C.bg} />
-              <Text style={styles.wifiBtnText}>Open WiFi Settings</Text>
-            </TouchableOpacity>
           </View>
         )}
 
@@ -814,6 +882,14 @@ const styles = StyleSheet.create({
   stepNum:   { color: C.gold, fontSize: 11, fontWeight: "800" },
   stepTitle: { color: C.white, fontSize: 12, fontWeight: "700" },
   stepBody:  { color: C.dim, fontSize: 12, lineHeight: 18 },
+  stepBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    alignSelf: "flex-start", marginTop: 4,
+    backgroundColor: C.gold + "22", borderRadius: 8,
+    borderWidth: 1, borderColor: C.gold + "66",
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  stepBtnText: { color: C.gold, fontSize: 11, fontWeight: "700" },
 
   wifiBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,

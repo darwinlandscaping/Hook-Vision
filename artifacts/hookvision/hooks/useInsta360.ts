@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import * as FileSystem from "expo-file-system";
 import { polarFilter } from "@/utils/polarFilter";
 
@@ -115,15 +115,16 @@ async function parallelPing(url: string, timeoutMs = PING_TIMEOUT_MS): Promise<s
 }
 
 // ─── Retry wrapper ────────────────────────────────────────────────────────────
-// 3 rounds of parallelPing before giving up on a single poll tick.
-async function pingWithRetry(url: string, retries = 3): Promise<string> {
+// 5 rounds of parallelPing before giving up on a single poll tick.
+// Samsung can drop 2–3 in a row when Smart Network Switch re-evaluates the WiFi.
+async function pingWithRetry(url: string, retries = 5): Promise<string> {
   let lastErr: Error = new Error("unknown");
   for (let i = 0; i < retries; i++) {
     try {
       return await parallelPing(url);
     } catch (e: any) {
       lastErr = e;
-      if (i < retries - 1) await new Promise((r) => setTimeout(r, 600));
+      if (i < retries - 1) await new Promise((r) => setTimeout(r, 500));
     }
   }
   throw lastErr;
@@ -273,10 +274,23 @@ export function useInsta360(): UseInsta360Result {
     }
   }, [status, snapping]);
 
+  // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => () => {
     active.current = false;
     if (pollTimer.current) clearInterval(pollTimer.current);
   }, []);
+
+  // ── AppState watchdog — burst-ping when app returns to foreground ──────────
+  // Samsung may have dropped the WiFi while the screen was off. Re-ping
+  // immediately when the user switches back so reconnection is instant.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active" && active.current) {
+        pingCamera();
+      }
+    });
+    return () => sub.remove();
+  }, [pingCamera]);
 
   return { status, cameraInfo, snapping, connectionHint, startSearch, stopSearch, takeSnapshot };
 }
