@@ -312,6 +312,18 @@ uri = "file://artifacts/hookvision/assets/images/wa-flag.png"
 type = "image"
 title = "WA flag"
 
+[[generated]]
+id = "b-csmKrqSBTRRh5b6trcp"
+uri = "file://artifacts/hookvision/assets/images/splash-kakadu.png"
+type = "image"
+title = "Kakadu splash for NT edition"
+
+[[generated]]
+id = "RAaEHTWacU9KpA7QB4Hl5"
+uri = "file://artifacts/hookvision/assets/images/nt-flag-new.png"
+type = "image"
+title = "NT flag"
+
 [[outputs]]
 id = "56ji2_AK1cz0SSgKggKpF"
 uri = "file://hookvision-qr.png"
