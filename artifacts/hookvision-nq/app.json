@@ -96,7 +96,8 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": true,
+      "baseUrl": "/hookvision-nq"
     }
   }
 }

@@ -3,6 +3,7 @@ const path = require("path");
 
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, "../..");
+const BASE = "/hookvision-nq";
 
 const config = getDefaultConfig(projectRoot);
 
@@ -26,6 +27,68 @@ config.watchFolders = [
   path.resolve(workspaceRoot, "node_modules/.pnpm"),
   path.resolve(workspaceRoot, "lib"),
 ];
+
+// Strip the /hookvision-nq prefix from incoming URLs so Metro handles
+// them at their normal root-relative paths.
+config.server.rewriteRequestUrl = (url) => {
+  if (url.startsWith(BASE + "/")) {
+    return url.slice(BASE.length);
+  }
+  if (url.startsWith(BASE + "?")) {
+    return "/" + url.slice(BASE.length);
+  }
+  return url;
+};
+
+// Intercept Metro's HTML response and prefix every root-relative asset
+// src/href with /hookvision-nq so the Replit proxy routes asset fetches
+// to this bundler (port 25352) instead of the NT bundler (port 25351).
+config.server.enhanceMiddleware = (middleware) => {
+  return (req, res, next) => {
+    const originalWrite = res.write.bind(res);
+    const originalEnd = res.end.bind(res);
+    let isHtml = false;
+    let buf = "";
+
+    const origSetHeader = res.setHeader.bind(res);
+    res.setHeader = (name, value) => {
+      if (name.toLowerCase() === "content-type" && String(value).includes("text/html")) {
+        isHtml = true;
+      }
+      origSetHeader(name, value);
+    };
+
+    res.write = (chunk, ...args) => {
+      if (isHtml) {
+        buf += typeof chunk === "string" ? chunk : chunk.toString("utf8");
+        return true;
+      }
+      return originalWrite(chunk, ...args);
+    };
+
+    res.end = (chunk, ...args) => {
+      if (isHtml) {
+        if (chunk) {
+          buf += typeof chunk === "string" ? chunk : chunk.toString("utf8");
+        }
+        // Rewrite root-relative asset paths → /hookvision-nq/... so the
+        // Replit proxy routes them back to this service (port 25352).
+        buf = buf
+          .replace(/src="\/node_modules\//g, `src="${BASE}/node_modules/`)
+          .replace(/href="\/node_modules\//g, `href="${BASE}/node_modules/`)
+          .replace(/src="\/assets\//g, `src="${BASE}/assets/`)
+          .replace(/href="\/assets\//g, `href="${BASE}/assets/`)
+          .replace(/src="\/_expo\//g, `src="${BASE}/_expo/`)
+          .replace(/href="\/_expo\//g, `href="${BASE}/_expo/`);
+        res.setHeader("Content-Length", Buffer.byteLength(buf, "utf8"));
+        return originalEnd(buf, "utf8");
+      }
+      return originalEnd(chunk, ...args);
+    };
+
+    middleware(req, res, next);
+  };
+};
 
 // Stub out react-native-fs — it is only referenced inside
 // @tensorflow/tfjs-react-native's bundle_resource_io.js, which we never
