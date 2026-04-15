@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Easing, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, Easing, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useVoice } from "@/hooks/useVoice";
 import { useFishImage, getSpeciesLabel } from "@/hooks/useFishImage";
 import { useLureLibrary } from "@/hooks/useLureLibrary";
+import { getDarwinStoreLinks } from "@/lib/lureLibrary";
 import { ArchZoomPanel } from "@/components/ArchZoomPanel";
 
 interface FishAnalysis {
@@ -486,37 +487,59 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
                 colors={colors}
                 delay={200}
               />
-              {/* Lure library product card — instant, always matches the recommendation */}
-              {lureEntry ? (
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() => Linking.openURL(lureEntry.productUrl)}
-                  style={[styles.craigsCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-                >
-                  <View style={[styles.craigsImageWrap, { backgroundColor: colors.card }]}>
-                    <Image
-                      source={{ uri: lureEntry.imageUrl }}
-                      style={styles.craigsImage}
-                      resizeMode="cover"
-                    />
-                  </View>
-                  <View style={styles.craigsInfo}>
-                    <View style={styles.craigsHeader}>
-                      <Text style={[styles.craigsStoreBadge, { color: colors.primary, backgroundColor: `${colors.primary}18` }]}>
-                        CRAIG'S FISHING WAREHOUSE
-                      </Text>
+              {/* Lure library card — image always matches the recommendation */}
+              {lureEntry ? (() => {
+                const storeLinks = getDarwinStoreLinks(lureEntry.name);
+                return (
+                  <View>
+                    {/* Lure image + name */}
+                    <View style={[styles.craigsCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                      <View style={[styles.craigsImageWrap, { backgroundColor: colors.card }]}>
+                        <Image
+                          source={{ uri: lureEntry.imageUrl }}
+                          style={styles.craigsImage}
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <View style={styles.craigsInfo}>
+                        <Text style={[styles.craigsStoreBadge, { color: "#ffd700", backgroundColor: "#ffd70018" }]}>
+                          FEATURED LURE
+                        </Text>
+                        <Text style={[styles.craigsProductName, { color: colors.foreground }]} numberOfLines={2}>
+                          {lureEntry.name}
+                        </Text>
+                        <Text style={[styles.craigsViewBtn, { color: colors.mutedForeground, fontSize: 10 }]}>
+                          {lureEntry.brand}
+                        </Text>
+                      </View>
                     </View>
-                    <Text style={[styles.craigsProductName, { color: colors.foreground }]} numberOfLines={2}>
-                      {lureEntry.name}
+
+                    {/* Darwin stores buy row */}
+                    <Text style={[styles.craigsStoreBadge, { color: colors.primary, backgroundColor: `${colors.primary}14`, marginTop: 8, marginBottom: 4, alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, overflow: "hidden", fontSize: 9, fontWeight: "700" }]}>
+                      BUY IN DARWIN
                     </Text>
-                    <View style={styles.craigsFooter}>
-                      <Text style={[styles.craigsViewBtn, { color: colors.accent }]}>
-                        View Product →
-                      </Text>
-                    </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                      <View style={{ flexDirection: "row", gap: 6, paddingRight: 8 }}>
+                        {storeLinks.map(({ store, url }) => (
+                          <TouchableOpacity
+                            key={store.id}
+                            activeOpacity={0.8}
+                            onPress={() => Linking.openURL(url)}
+                            style={{ backgroundColor: `${store.color}22`, borderColor: `${store.color}55`, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, alignItems: "center", justifyContent: "center", minWidth: 76 }}
+                          >
+                            <Text style={{ color: store.color, fontSize: 10, fontWeight: "700", textAlign: "center" }}>
+                              {store.shortName}
+                            </Text>
+                            <Text style={{ color: store.color, fontSize: 8, opacity: 0.8, textAlign: "center" }}>
+                              Search →
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
                   </View>
-                </TouchableOpacity>
-              ) : (
+                );
+              })() : (
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => Linking.openURL(`https://craigsfishingwarehouse.com.au/?s=${encodeURIComponent(analysis.lure ?? "")}&post_type=product`)}
@@ -524,7 +547,7 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
                 >
                   <MaterialCommunityIcons name="fish" size={15} color={colors.primary} />
                   <Text style={[styles.craigsSearchText, { color: colors.primary }]}>
-                    Search for this lure at Craig's Fishing Warehouse →
+                    Search for this lure in Darwin →
                   </Text>
                 </TouchableOpacity>
               )}
