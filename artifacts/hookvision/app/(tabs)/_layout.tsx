@@ -10,10 +10,11 @@ import { useRouter, usePathname } from "expo-router";
 
 import { useColors } from "@/hooks/useColors";
 import { CrocTabBar } from "@/components/CrocTabBar";
+import { Insta360Provider } from "@/contexts/Insta360Context";
 
 // Ordered list of all tab route names (must match Tabs.Screen order below)
 const TAB_ROUTES = [
-  "live", "home", "buff", "tides", "species",
+  "live", "insta360", "home", "buff", "tides", "species",
   "barra", "zones", "forecast", "catchid", "history", "community",
 ] as const;
 
@@ -27,6 +28,10 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="live">
         <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
         <Label>Live</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="insta360">
+        <Icon sf={{ default: "camera.badge.ellipsis", selected: "camera.badge.ellipsis" }} />
+        <Label>360°</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="home">
         <Icon sf={{ default: "house", selected: "house.fill" }} />
@@ -149,6 +154,18 @@ function ClassicTabLayout() {
               <SymbolView name="camera.viewfinder" tintColor={color} size={22} />
             ) : (
               <Feather name="video" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="insta360"
+        options={{
+          title: "360°",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="camera.badge.ellipsis" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="camera-wireless" size={22} color={color} />
             ),
         }}
       />
@@ -285,8 +302,9 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
-  if (Platform.OS === "ios" && isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
+  const inner =
+    Platform.OS === "ios" && isLiquidGlassAvailable()
+      ? <NativeTabLayout />
+      : <ClassicTabLayout />;
+  return <Insta360Provider>{inner}</Insta360Provider>;
 }

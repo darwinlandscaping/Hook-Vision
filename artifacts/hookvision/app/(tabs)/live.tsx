@@ -34,8 +34,7 @@ import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/context/HistoryContext";
 import { CHARACTERS, useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
 import { LiveScanStore } from "@/stores/LiveScanStore";
-import { useInsta360 } from "@/hooks/useInsta360";
-import { useInsta360Pipelines } from "@/hooks/useInsta360Pipelines";
+import { useInsta360Context } from "@/contexts/Insta360Context";
 import { useCamera2, DEFAULT_CAM2_IP, DEFAULT_CAM2_PATH } from "@/hooks/useCamera2";
 import { HUD_PAGE_URL } from "@/hooks/useHudStream";
 import { Insta360PipelineCard } from "@/components/Insta360PipelineCard";
@@ -293,13 +292,10 @@ export default function LiveScreen() {
   const mountTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
   const cdTimer      = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Insta360 ──────────────────────────────────────────────────────────────
-  const insta360 = useInsta360();
+  // ── Insta360 (shared context — one instance for whole app) ───────────────
+  const { camera: insta360, pipelines } = useInsta360Context();
   const [insta360Panel, setInsta360Panel]       = useState(false);
   const [insta360Snapping, setInsta360Snapping] = useState(false);
-
-  // ── Insta360 Dual Pipelines (bait-birds + croc vision) ────────────────────
-  const pipelines = useInsta360Pipelines(insta360);
 
   // ── Camera 2 — generic WiFi sonar-screen camera ───────────────────────────
   const cam2 = useCamera2();
