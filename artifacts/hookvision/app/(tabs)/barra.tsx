@@ -42,22 +42,22 @@ function getMoonPhase(date: Date): { name: string; day: number; tideType: string
   if (d < 23.99) return { name: "Last Quarter",     day: d, tideType: "neap",   emoji: "🌗" };
   return          { name: "Waning Crescent",        day: d, tideType: "normal", emoji: "🌘" };
 }
-function getNTSeason(m: number): { name: string; waterTemp: string; short: string } {
-  if (m >= 5 && m <= 9)  return { name: "Dry Season",  waterTemp: "24–27°C", short: "Dry" };
+function getWASeason(m: number): { name: string; waterTemp: string; short: string } {
+  if (m >= 5 && m <= 9)  return { name: "Dry Season",  waterTemp: "25–28°C", short: "Dry" };
   if (m === 10 || m === 11) return { name: "Build-Up", waterTemp: "28–31°C", short: "Build-Up" };
-  return { name: "Wet Season", waterTemp: "29–32°C", short: "Wet" };
+  return { name: "Wet Season", waterTemp: "29–33°C", short: "Wet" };
 }
 
-// ─── Million Dollar Fish ───────────────────────────────────────────────────────
-interface MDFSeason { year: string; start: Date; end: Date; prize1M: string; prize100K: string; prizes10K: number; url: string; }
-function getMDFStatus(): { season: MDFSeason; active: boolean; daysUntil: number; daysLeft: number } {
-  const seasons: MDFSeason[] = [
-    { year: "2025/26", start: new Date("2025-10-01"), end: new Date("2026-03-31"),
-      prize1M: "$1,000,000", prize100K: "$100,000", prizes10K: 10,
-      url: "https://www.milliondollarfish.com.au" },
-    { year: "2026/27", start: new Date("2026-10-01"), end: new Date("2027-03-31"),
-      prize1M: "$1,000,000", prize100K: "$100,000", prizes10K: 10,
-      url: "https://www.milliondollarfish.com.au" },
+// ─── Kimberley Barra Classic ───────────────────────────────────────────────────
+interface KBCSeason { year: string; start: Date; end: Date; topPrize: string; url: string; }
+function getKBCStatus(): { season: KBCSeason; active: boolean; daysUntil: number; daysLeft: number } {
+  const seasons: KBCSeason[] = [
+    { year: "2025", start: new Date("2025-07-01"), end: new Date("2025-08-31"),
+      topPrize: "Major prizes + trophies",
+      url: "https://www.fishingwa.com.au" },
+    { year: "2026", start: new Date("2026-07-01"), end: new Date("2026-08-31"),
+      topPrize: "Major prizes + trophies",
+      url: "https://www.fishingwa.com.au" },
   ];
   const now = Date.now();
   const current = seasons.find((s) => now >= s.start.getTime() && now <= s.end.getTime());
@@ -78,22 +78,22 @@ interface HotSpot {
   isSpring: boolean; isGoldHour: boolean;
 }
 const SPOT_POOL = [
-  { name: "Shady Camp Rock Bar",    river: "Mary River",        region: "Mary River",     lure: "Surface walker 100mm", species: "Barra 70–100cm+",     emoji: "🪨", bestMoon: ["spring"], bestSeason: ["Dry","Build-Up"], tidal: true,  baseScore: 88 },
-  { name: "Cahills Crossing",       river: "East Alligator R.", region: "Kakadu",          lure: "Heavy hard-body 100mm",species: "Barra + Jack",         emoji: "🏞️", bestMoon: ["spring"], bestSeason: ["Dry"],            tidal: true,  baseScore: 85 },
-  { name: "Roper Bar",              river: "Roper River",       region: "Gulf Coast",      lure: "Surface walker 80mm",  species: "Barra 60–100cm+",     emoji: "🌊", bestMoon: ["spring"], bestSeason: ["Dry"],            tidal: true,  baseScore: 84 },
-  { name: "King Ash Bay Rock Bar",  river: "McArthur River",    region: "Gulf Coast",      lure: "Metal slice 40g",      species: "Barra + Threadfin",   emoji: "⚓", bestMoon: ["spring"], bestSeason: ["Dry"],            tidal: true,  baseScore: 83 },
-  { name: "South Alligator Mouth", river: "South Alligator R.",region: "Kakadu",          lure: "Popper 80mm",          species: "Barra + Threadfin",   emoji: "🦆", bestMoon: ["any"],    bestSeason: ["Dry","Build-Up"], tidal: true,  baseScore: 80 },
-  { name: "Daly River Mouth",       river: "Daly River",        region: "Daly River",      lure: "Surface walker 80mm",  species: "Barra + Jack",         emoji: "🎣", bestMoon: ["any"],    bestSeason: ["Dry"],            tidal: true,  baseScore: 79 },
-  { name: "Mary River Mouth",       river: "Mary River",        region: "Mary River",      lure: "Metal slice 40g",      species: "Barra + Threadfin",   emoji: "🌊", bestMoon: ["any"],    bestSeason: ["Dry","Build-Up"], tidal: true,  baseScore: 78 },
-  { name: "Woolianna Pool",         river: "Daly River",        region: "Daly River",      lure: "Hard-body minnow 80mm",species: "Barra 60–90cm",       emoji: "🌿", bestMoon: ["any"],    bestSeason: ["Wet","Build-Up"], tidal: false, baseScore: 72 },
-  { name: "Adelaide River Mouth",   river: "Adelaide River",    region: "Adelaide River",  lure: "Rattling hard-body",   species: "Barra + Queenfish",   emoji: "🐊", bestMoon: ["spring"], bestSeason: ["Dry"],            tidal: true,  baseScore: 76 },
-  { name: "Victoria River Mouth",   river: "Victoria River",    region: "Victoria River",  lure: "Surface walker 120mm", species: "Barra + Threadfin",   emoji: "🌄", bestMoon: ["spring"], bestSeason: ["Dry"],            tidal: true,  baseScore: 74 },
-  { name: "Bynoe Harbour Creeks",   river: "Bynoe Harbour",     region: "Darwin Area",     lure: "Deep-diver 80mm",      species: "Barra + Jack",         emoji: "⚓", bestMoon: ["any"],    bestSeason: ["Dry"],            tidal: true,  baseScore: 70 },
-  { name: "Darwin Harbour Channel", river: "Darwin Harbour",    region: "Darwin Area",     lure: "Soft plastic 4\"",     species: "Barra + GT",           emoji: "🌅", bestMoon: ["any"],    bestSeason: ["any"],            tidal: true,  baseScore: 68 },
+  { name: "Ord River Rock Bar",       river: "Ord River",           region: "East Kimberley",    lure: "Surface walker 100mm",  species: "Barra 70–100cm+",    emoji: "🪨", bestMoon: ["spring"], bestSeason: ["Dry","Build-Up"], tidal: true,  baseScore: 88 },
+  { name: "Cambridge Gulf Mouth",     river: "Ord River",           region: "Wyndham",           lure: "Heavy hard-body 100mm", species: "Barra + Threadfin",  emoji: "🌊", bestMoon: ["spring"], bestSeason: ["Dry"],            tidal: true,  baseScore: 85 },
+  { name: "Fitzroy River Mouth",      river: "Fitzroy River",       region: "West Kimberley",    lure: "Surface walker 80mm",   species: "Barra + Jack",       emoji: "🎣", bestMoon: ["spring"], bestSeason: ["Dry"],            tidal: true,  baseScore: 84 },
+  { name: "King Sound Run-Out",       river: "Fitzroy River",       region: "Derby",             lure: "Metal slice 40g",       species: "Barra + Threadfin",  emoji: "⚓", bestMoon: ["spring"], bestSeason: ["Dry"],            tidal: true,  baseScore: 83 },
+  { name: "Drysdale River Mouth",     river: "Drysdale River",      region: "North Kimberley",   lure: "Popper 80mm",           species: "Barra + Jack",       emoji: "🏞️", bestMoon: ["any"],    bestSeason: ["Dry","Build-Up"], tidal: true,  baseScore: 81 },
+  { name: "Mitchell River Estuary",   river: "Mitchell River",      region: "North Kimberley",   lure: "Surface walker 80mm",   species: "Barra + GT",         emoji: "🦅", bestMoon: ["any"],    bestSeason: ["Dry"],            tidal: true,  baseScore: 79 },
+  { name: "De Grey River Mouth",      river: "De Grey River",       region: "Pilbara",           lure: "Rattling hard-body",    species: "Barra + Threadfin",  emoji: "🐊", bestMoon: ["spring"], bestSeason: ["Dry"],            tidal: true,  baseScore: 76 },
+  { name: "Lake Kununurra Timber",    river: "Ord River",           region: "Kununurra",         lure: "Hard-body minnow 80mm", species: "Barra 60–90cm",      emoji: "🌿", bestMoon: ["any"],    bestSeason: ["Wet","Build-Up"], tidal: false, baseScore: 73 },
+  { name: "Prince Regent River",      river: "Prince Regent R.",    region: "North Kimberley",   lure: "Surface walker 120mm",  species: "Barra + Jack",       emoji: "🌄", bestMoon: ["spring"], bestSeason: ["Dry"],            tidal: true,  baseScore: 74 },
+  { name: "Roebuck Bay Mangroves",    river: "Dampier Creek",       region: "Broome",            lure: "Deep-diver 80mm",       species: "Barra + Jack",       emoji: "🌅", bestMoon: ["any"],    bestSeason: ["Dry"],            tidal: true,  baseScore: 70 },
+  { name: "Ningaloo Reef Pass",       river: "Ningaloo",            region: "Exmouth",           lure: "Popper 100mm",          species: "Coral Trout + GT",   emoji: "🐠", bestMoon: ["spring"], bestSeason: ["Dry"],            tidal: true,  baseScore: 77 },
+  { name: "Wyndham Harbour Channel",  river: "Cambridge Gulf",      region: "Wyndham",           lure: "Soft plastic 4\"",      species: "Barra + GT",         emoji: "⛵", bestMoon: ["any"],    bestSeason: ["any"],            tidal: true,  baseScore: 68 },
 ];
 
-function calcHotSpots(moon: ReturnType<typeof getMoonPhase>, season: ReturnType<typeof getNTSeason>, darwinHour: number): HotSpot[] {
-  const isGoldHour = (darwinHour >= 5 && darwinHour <= 8) || (darwinHour >= 16 && darwinHour <= 20);
+function calcHotSpots(moon: ReturnType<typeof getMoonPhase>, season: ReturnType<typeof getWASeason>, waHour: number): HotSpot[] {
+  const isGoldHour = (waHour >= 5 && waHour <= 8) || (waHour >= 16 && waHour <= 20);
   const isSpringTide = moon.tideType === "spring";
 
   return SPOT_POOL
@@ -118,58 +118,58 @@ function calcHotSpots(moon: ReturnType<typeof getMoonPhase>, season: ReturnType<
     .slice(0, 6);
 }
 
-// ─── Barra Nationals ──────────────────────────────────────────────────────────
+// ─── WA Fishing Competitions ───────────────────────────────────────────────────
 const BARRA_COMPS = [
   {
-    name: "Million Dollar Fish",
-    host: "Tourism NT",
-    emoji: "💰",
-    color: "#ffd700",
-    description: "Tagged barra in NT waterways. Catch a tagged fish and win $1M, $100K or $10K prizes.",
-    dates: "Oct 1 – Mar 31 annually",
-    website: "https://www.milliondollarfish.com.au",
-    highlight: "Jackpot fish worth $1,000,000",
-  },
-  {
-    name: "NT Barra Fishing Nationals",
-    host: "NT Fishing Federation",
+    name: "Kimberley Barra Classic",
+    host: "Kununurra Fishing Club",
     emoji: "🏆",
-    color: "#ff2200",
-    description: "NT's premier barramundi competition. Categories include Open, Women's, Junior and Kayak divisions.",
-    dates: "Usually July–August (Dry Season)",
-    website: "https://www.ntfishing.com.au",
-    highlight: "Multiple divisions & major prizes",
+    color: "#ffd700",
+    description: "Premier Kimberley barramundi competition. Fished across the Ord River system. Categories include Open, Women's, Junior and Kayak divisions.",
+    dates: "July–August (Dry Season peak)",
+    website: "https://www.fishingwa.com.au",
+    highlight: "Kimberley's biggest barra comp",
   },
   {
-    name: "Darwin Harbour Barra Bash",
-    host: "Darwin Waterfront",
+    name: "Broome Fishing Classic",
+    host: "Broome Sportfishing Club",
+    emoji: "🎣",
+    color: "#ff2200",
+    description: "Broome's annual offshore and estuary fishing classic. Multiple species categories including Spanish mackerel, coral trout, trevally, and barra.",
+    dates: "June–July (Dry Season)",
+    website: "https://www.broomefishingclub.com.au",
+    highlight: "Offshore & inshore categories",
+  },
+  {
+    name: "Wyndham Barra Open",
+    host: "Wyndham Fishing Club",
     emoji: "🌅",
     color: "#00a8ff",
-    description: "Annual Darwin CBD competition targeting barra in the harbour. Great for families.",
-    dates: "June each year",
-    website: "https://www.darwin.nt.gov.au",
-    highlight: "Catch & release categories",
+    description: "Annual Wyndham barra competition targeting the Cambridge Gulf and Ord River system. Great for families and visiting anglers.",
+    dates: "August (Dry Season)",
+    website: "https://www.fishingwa.com.au",
+    highlight: "Catch & release categories available",
   },
   {
-    name: "Borroloola Barra Classic",
-    host: "King Ash Bay Fishing Club",
-    emoji: "🌊",
+    name: "Ningaloo Reef Classic",
+    host: "Exmouth Game Fishing Club",
+    emoji: "🐠",
     color: "#00d4aa",
-    description: "Remote Gulf classic from the iconic King Ash Bay ramp. Threadfin salmon also targeted.",
-    dates: "August (Dry Season)",
-    website: "https://www.kingashbayfishingclub.com.au",
-    highlight: "Most remote NT comp — 1000km from Darwin",
+    description: "Exmouth's premier reef and game fishing tournament. Coral trout, Spanish mackerel, GT, and billfish divisions. One of WA's most prestigious fishing events.",
+    dates: "May–June (Dry Season)",
+    website: "https://www.exmouthgfc.com.au",
+    highlight: "WA's top offshore game fishing event",
   },
 ];
 
 // ─── Barra facts ───────────────────────────────────────────────────────────────
 const BARRA_FACTS = [
   { emoji: "🔄", fact: "Barramundi are protandrous hermaphrodites — they're born male and become female after about 5 years." },
-  { emoji: "📏", fact: "Large female barra are the big egg producers. A 90cm fish produces far more eggs than two 65cm fish combined." },
-  { emoji: "🌧️", fact: "In the NT, barramundi spawn during the Wet Season (Nov–Mar) in tidal estuaries." },
-  { emoji: "⚡", fact: "Barra can accelerate from 0 to full speed in milliseconds — their strike is one of the fastest in Australian freshwater fishing." },
-  { emoji: "👁️", fact: "Barramundi have exceptional low-light vision, which is why dawn/dusk fishing is so productive." },
-  { emoji: "🌊", fact: "NT barramundi can move 300km+ during their lifetime between freshwater and saltwater." },
+  { emoji: "📏", fact: "Large female barra are the big egg producers. A 90cm fish produces far more eggs than two 65cm fish combined — release the big ones." },
+  { emoji: "🌧️", fact: "In the Kimberley, barramundi spawn during the Wet Season (Nov–Mar) in tidal estuaries — the annual monsoon triggers spawning runs." },
+  { emoji: "⚡", fact: "Barra can accelerate from 0 to full speed in milliseconds — their strike is one of the fastest in Australian fishing." },
+  { emoji: "👁️", fact: "Barramundi have exceptional low-light vision, which is why dawn/dusk sessions on the Kimberley rivers are so productive." },
+  { emoji: "🌊", fact: "Kimberley barramundi can move 300km+ during their lifetime between freshwater (Ord, Fitzroy) and saltwater (Cambridge Gulf, King Sound)." },
   { emoji: "🦈", fact: "A big barra will eat anything that fits in its mouth, including small birds, lizards, and even other barra." },
 ];
 
@@ -303,9 +303,9 @@ function TacticBox({ icon, label, value, colors, full }: { icon: string; label: 
   );
 }
 
-// ─── Million Dollar Fish Card ──────────────────────────────────────────────────
+// ─── Kimberley Barra Classic Card ─────────────────────────────────────────────
 function MDFCard({ colors }: { colors: ReturnType<typeof useColors> }) {
-  const { season, active, daysUntil, daysLeft } = useMemo(getMDFStatus, []);
+  const { season, active, daysUntil, daysLeft } = useMemo(getKBCStatus, []);
   const scale  = useSharedValue(1);
   const rotate = useSharedValue(0);
   const wobble = useCallback(() => {
@@ -314,13 +314,13 @@ function MDFCard({ colors }: { colors: ReturnType<typeof useColors> }) {
   }, []);
   const mdfAnim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }, { rotate: `${rotate.value}deg` }] }));
   return (
-    <Animated.View style={[styles.mdfCard, { borderColor: "#ffd700" }, mdfAnim]} onTouchStart={wobble}>
-      <View style={styles.mdfGradient}>
+    <Animated.View style={[styles.mdfCard, { borderColor: "#00d4aa" }, mdfAnim]} onTouchStart={wobble}>
+      <View style={[styles.mdfGradient, { backgroundColor: "#001a12" }]}>
         <View style={styles.mdfHeader}>
-          <Text style={styles.mdfEmoji}>💰</Text>
+          <Text style={styles.mdfEmoji}>🏆</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.mdfTitle}>MILLION DOLLAR FISH</Text>
-            <Text style={styles.mdfHost}>Tourism NT · Season {season.year}</Text>
+            <Text style={[styles.mdfTitle, { color: "#00d4aa" }]}>KIMBERLEY BARRA CLASSIC</Text>
+            <Text style={styles.mdfHost}>Kununurra Fishing Club · {season.year}</Text>
           </View>
           <View style={[styles.mdfStatusBadge, { backgroundColor: active ? "#00d4aa22" : "#ff220022", borderColor: active ? "#00d4aa" : "#ff2200" }]}>
             <Text style={[styles.mdfStatusText, { color: active ? "#00d4aa" : "#ff2200" }]}>
@@ -331,42 +331,42 @@ function MDFCard({ colors }: { colors: ReturnType<typeof useColors> }) {
 
         {active ? (
           <View style={styles.mdfCountdown}>
-            <Text style={styles.mdfCountdownLabel}>SEASON ENDS IN</Text>
-            <Text style={styles.mdfCountdownNum}>{daysLeft} DAYS</Text>
+            <Text style={styles.mdfCountdownLabel}>CLASSIC ENDS IN</Text>
+            <Text style={[styles.mdfCountdownNum, { color: "#00d4aa" }]}>{daysLeft} DAYS</Text>
           </View>
         ) : (
           <View style={styles.mdfCountdown}>
-            <Text style={styles.mdfCountdownLabel}>NEXT SEASON STARTS IN</Text>
-            <Text style={styles.mdfCountdownNum}>{daysUntil} DAYS</Text>
-            <Text style={styles.mdfCountdownSub}>Oct 1, {season.start.getFullYear()}</Text>
+            <Text style={styles.mdfCountdownLabel}>NEXT CLASSIC STARTS IN</Text>
+            <Text style={[styles.mdfCountdownNum, { color: "#00d4aa" }]}>{daysUntil} DAYS</Text>
+            <Text style={styles.mdfCountdownSub}>July 1, {season.start.getFullYear()}</Text>
           </View>
         )}
 
         <View style={styles.mdfPrizes}>
-          <View style={[styles.mdfPrize, { borderColor: "#ffd70066" }]}>
-            <Text style={styles.mdfPrizeAmt}>$1,000,000</Text>
-            <Text style={styles.mdfPrizeLabel}>JACKPOT FISH</Text>
+          <View style={[styles.mdfPrize, { borderColor: "#00d4aa66" }]}>
+            <Text style={[styles.mdfPrizeAmt, { color: "#00d4aa" }]}>OPEN</Text>
+            <Text style={styles.mdfPrizeLabel}>ALL ANGLERS</Text>
           </View>
-          <View style={[styles.mdfPrize, { borderColor: "#ffd70044" }]}>
-            <Text style={styles.mdfPrizeAmt}>$100,000</Text>
-            <Text style={styles.mdfPrizeLabel}>MAJOR FISH</Text>
+          <View style={[styles.mdfPrize, { borderColor: "#00d4aa44" }]}>
+            <Text style={[styles.mdfPrizeAmt, { color: "#00d4aa" }]}>WOMEN'S</Text>
+            <Text style={styles.mdfPrizeLabel}>DIVISION</Text>
           </View>
-          <View style={[styles.mdfPrize, { borderColor: "#ffd70033" }]}>
-            <Text style={styles.mdfPrizeAmt}>$10,000</Text>
-            <Text style={styles.mdfPrizeLabel}>MINOR FISH ×10</Text>
+          <View style={[styles.mdfPrize, { borderColor: "#00d4aa33" }]}>
+            <Text style={[styles.mdfPrizeAmt, { color: "#00d4aa" }]}>JUNIOR</Text>
+            <Text style={styles.mdfPrizeLabel}>DIVISION</Text>
           </View>
         </View>
 
         <Text style={styles.mdfHow}>
-          Tagged barra are released across NT waterways. Register online, catch a tagged fish, win. Any legal barra caught in NT Oct–Mar could be worth $1 million.
+          Kimberley's premier barramundi competition fished across the Ord River system and Cambridge Gulf. Multiple divisions including Open, Women's, Junior, and Kayak. Dry Season July–August.
         </Text>
 
         <TouchableOpacity
-          style={styles.mdfBtn}
+          style={[styles.mdfBtn, { backgroundColor: "#00d4aa" }]}
           onPress={() => Linking.openURL(season.url)}
           activeOpacity={0.8}
         >
-          <Text style={styles.mdfBtnText}>Register & Learn More →</Text>
+          <Text style={styles.mdfBtnText}>Learn More & Enter →</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -426,12 +426,12 @@ export default function BarraScreen() {
   const now     = new Date();
   const month   = now.getMonth() + 1;
   const moon    = getMoonPhase(now);
-  const season  = getNTSeason(month);
-  const darwinHour = parseInt(now.toLocaleString("en-AU", { hour: "numeric", hour12: false, timeZone: "Australia/Darwin" }), 10);
-  const isGoldHour = (darwinHour >= 5 && darwinHour <= 8) || (darwinHour >= 16 && darwinHour <= 20);
-  const hotSpots = useMemo(() => calcHotSpots(moon, season, darwinHour), [moon.name, season.short, darwinHour]);
+  const season  = getWASeason(month);
+  const waHour = parseInt(now.toLocaleString("en-AU", { hour: "numeric", hour12: false, timeZone: "Australia/Perth" }), 10);
+  const isGoldHour = (waHour >= 5 && waHour <= 8) || (waHour >= 16 && waHour <= 20);
+  const hotSpots = useMemo(() => calcHotSpots(moon, season, waHour), [moon.name, season.short, waHour]);
 
-  const localTime = now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Darwin" });
+  const localTime = now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Perth" });
 
   const [nextTide, setNextTide] = useState<(TideEntry & { minutesUntil: number }) | null>(null);
   const [result,   setResult]   = useState<BarraResult | null>(null);
@@ -440,13 +440,13 @@ export default function BarraScreen() {
 
   useAutoNarrate(() => {
     const top = hotSpots[0];
-    return `Savage Barra Nation. Your complete NT barramundi hub. Top hot spot right now: ${top.name} on the ${top.river}. ${moon.emoji} ${moon.name}, ${season.name}. ${isGoldHour ? "Golden hour — get out there now!" : "Fish are feeding. Check the hot spots."}`;
+    return `Kimberley Barra Nation. Your complete WA barramundi hub. Top hot spot right now: ${top.name} on the ${top.river}. ${moon.emoji} ${moon.name}, ${season.name}. ${isGoldHour ? "Golden hour — get out there now!" : "Fish are feeding. Check the hot spots."}`;
   });
 
   useEffect(() => {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
-    fetch(`${baseUrl}/api/tides?port=darwin&days=2`)
+    fetch(`${baseUrl}/api/tides?port=broome&days=2`)
       .then((r) => r.json())
       .then((d) => {
         const all: TideEntry[] = [];
@@ -484,19 +484,19 @@ export default function BarraScreen() {
       contentContainerStyle={[styles.content, { paddingTop: topPad + 16, paddingBottom: Platform.OS === "web" ? 70 : insets.bottom + 24 }]}
       showsVerticalScrollIndicator={false}
     >
-      <HVHeader subtitle="Savage Barra Nation — NT's Barramundi Hub" />
+      <HVHeader subtitle="Kimberley Barra Nation — WA Edition" />
 
       {/* Page title */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.titleRed}>SAVAGE</Text>
+            <Text style={styles.titleRed}>KIMBERLEY</Text>
             <Text style={styles.titleGold}>BARRA NATION</Text>
           </View>
           <NarratorSettingsTrigger />
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          NT's complete barramundi hub · AI predictions · live hot spots · comps · records
+          WA's complete barramundi hub · AI predictions · live hot spots · comps · records
         </Text>
       </View>
 
@@ -523,7 +523,7 @@ export default function BarraScreen() {
       <MDFCard colors={colors} />
 
       {/* ── AI TROPHY PREDICTOR ── */}
-      <SectionTitle emoji="🎯" label="AI TROPHY PREDICTOR" sub="70cm+ fish · powered by 40yr NT data" color="#ff2200" />
+      <SectionTitle emoji="🎯" label="AI TROPHY PREDICTOR" sub="70cm+ fish · powered by 40yr Kimberley river data" color="#ff2200" />
       <BigRedButton onPress={predict} loading={loading} />
 
       {error && (
@@ -540,7 +540,7 @@ export default function BarraScreen() {
             { e: "🎯", t: "Top 3 spots for 70cm+ barra right now" },
             { e: "📏", t: "Exact target depth per river based on tide & season" },
             { e: "🎣", t: "Lure, rig and retrieve technique" },
-            { e: "📖", t: "Powered by 40 years of NT river netting records" },
+            { e: "📖", t: "Powered by 40 years of Kimberley river netting records" },
           ].map(({ e, t }) => (
             <View key={t} style={styles.hintRow}>
               <Text style={styles.hintEmoji}>{e}</Text>
@@ -586,7 +586,7 @@ export default function BarraScreen() {
       <HotSpotsSection hotSpots={hotSpots} colors={colors} />
 
       {/* ── COMPETITIONS ── */}
-      <SectionTitle emoji="🏆" label="NT BARRA COMPS" sub="Tournaments, cash prizes & glory" color="#ffd700" />
+      <SectionTitle emoji="🏆" label="WA FISHING COMPS" sub="Kimberley & WA tournaments, prizes & glory" color="#ffd700" />
       {BARRA_COMPS.map((comp, i) => (
         <LilyPadCard
           key={i}
@@ -627,7 +627,7 @@ export default function BarraScreen() {
         ))}
       </LilyPadCard>
 
-      <NarratorButton pageType="barra nation" content={`Savage Barra Nation — NT barramundi hub. ${season.name}, ${moon.name}. Top hot spot right now: ${hotSpots[0].name} on the ${hotSpots[0].river}. Million Dollar Fish: ${getMDFStatus().active ? "ACTIVE — season ends in " + getMDFStatus().daysLeft + " days" : "off season — next season in " + getMDFStatus().daysUntil + " days"}. Upcoming comps: NT Barra Nationals in July-August. Fun fact: ${BARRA_FACTS[0].fact}`} />
+      <NarratorButton pageType="barra nation" content={`Kimberley Barra Nation — WA barramundi hub. ${season.name}, ${moon.name}. Top hot spot right now: ${hotSpots[0].name} on the ${hotSpots[0].river}. Kimberley Barra Classic: ${getKBCStatus().active ? "ACTIVE — classic ends in " + getKBCStatus().daysLeft + " days" : "off season — next classic in " + getKBCStatus().daysUntil + " days"}. Upcoming comps: Kimberley Barra Classic in July-August, Broome Fishing Classic June-July. Fun fact: ${BARRA_FACTS[0].fact}`} />
     </ScrollView>
   );
 }

@@ -47,17 +47,17 @@ export interface LanguageInfo {
 }
 
 export const CHARACTERS: CharacterInfo[] = [
-  { id: "AUSSIE",       name: "Blue the Guide",      emoji: "🎣", tagline: "Sun-leathered NT barra legend",        color: "#00d4aa" },
+  { id: "AUSSIE",       name: "Blue the Guide",      emoji: "🎣", tagline: "Sun-leathered WA barra legend",        color: "#00d4aa" },
   { id: "BENAUD",       name: "Richie Benaud",        emoji: "🏏", tagline: "Cricket's voice, fishing's poet",      color: "#ffd700" },
   { id: "CHOPPER",      name: "Chopper Read",          emoji: "🪖", tagline: "Melbourne's most dangerous narrator", color: "#ff4500" },
   { id: "ATTENBOROUGH", name: "David Attenborough",   emoji: "🌿", tagline: "BBC natural history legend",           color: "#4a9eff" },
   { id: "WIFE",         name: "The Nagging Wife",      emoji: "👩", tagline: "Knows the tides. Not impressed.",     color: "#ff69b4" },
   { id: "ARNIE",        name: "Arnold S.",             emoji: "💪", tagline: "He'll be back — with a big barra",   color: "#e53935" },
-  { id: "BURGUNDY",     name: "Ron Burgundy",          emoji: "📺", tagline: "Kind of a big deal on NT waters",    color: "#b8860b" },
+  { id: "BURGUNDY",     name: "Ron Burgundy",          emoji: "📺", tagline: "Kind of a big deal on WA waters",    color: "#b8860b" },
   { id: "IRWIN",        name: "Steve Irwin",           emoji: "🐊", tagline: "Crikey! Isn't she a beauty!",        color: "#8bc34a" },
   { id: "GRYLLS",       name: "Bear Grylls",           emoji: "🏕️", tagline: "Every cast is a survival mission",  color: "#795548" },
   { id: "RAMSAY",       name: "Gordon Ramsay",         emoji: "👨‍🍳", tagline: "This fish is RAW. Donkey!",       color: "#f4511e" },
-  { id: "MORGAN",       name: "Morgan Freeman",        emoji: "🎬", tagline: "The voice of the NT cosmos",         color: "#7986cb" },
+  { id: "MORGAN",       name: "Morgan Freeman",        emoji: "🎬", tagline: "The voice of the Kimberley cosmos",   color: "#7986cb" },
   { id: "DUNDEE",       name: "Crocodile Dundee",      emoji: "🪃", tagline: "That's not a rod. THAT's a rod.",    color: "#ff8f00" },
   { id: "YODA",         name: "Master Yoda",           emoji: "✨", tagline: "Strong with the Force, this barra is", color: "#69f0ae" },
   { id: "CONNERY",      name: "Sean Connery",          emoji: "🍸", tagline: "The name is Barra. Barramundi.",     color: "#90caf9" },

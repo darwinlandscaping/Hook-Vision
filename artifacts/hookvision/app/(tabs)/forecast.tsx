@@ -57,8 +57,8 @@ function getMoonPhase(date: Date): {
   return { name: "Waning Crescent", emoji: "🌘", day: cycleDay, fishingImpact: "New moon approaching — fish sensing change", tideType: "normal" };
 }
 
-// ─── NT Season ────────────────────────────────────────────────────────────────
-function getNTSeason(month: number): {
+// ─── WA Season ────────────────────────────────────────────────────────────────
+function getWASeason(month: number): {
   name: string;
   emoji: string;
   waterTemp: string;
@@ -305,18 +305,18 @@ export default function ForecastScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 0 : insets.top;
-  useAutoNarrate(() => "Here Fishy Fishy. AI bite forecast based on moon phase, NT season, tide stage and water temperature.");
+  useAutoNarrate(() => "Here Fishy Fishy. AI bite forecast based on moon phase, WA season, tide stage and water temperature.");
 
   const now = new Date();
   const month = now.getMonth() + 1;
   const moon = getMoonPhase(now);
-  const season = getNTSeason(month);
+  const season = getWASeason(month);
 
   const localTime = now.toLocaleTimeString("en-AU", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-    timeZone: "Australia/Darwin",
+    timeZone: "Australia/Perth",
   });
 
   const [tides, setTides] = useState<TideEntry[]>([]);
@@ -330,7 +330,7 @@ export default function ForecastScreen() {
   useEffect(() => {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
-    fetch(`${baseUrl}/api/tides?port=darwin&days=2`)
+    fetch(`${baseUrl}/api/tides?port=broome&days=2`)
       .then((r) => r.json())
       .then((d) => {
         const allTides: TideEntry[] = [];
@@ -422,7 +422,7 @@ export default function ForecastScreen() {
           <NarratorSettingsTrigger />
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Conditions-based NT spot guide
+          Conditions-based WA/Kimberley spot guide
         </Text>
       </View>
 
@@ -480,7 +480,7 @@ export default function ForecastScreen() {
         <View style={[styles.hintBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.hintTitle, { color: colors.mutedForeground }]}>WHAT YOU'LL GET</Text>
           {[
-            { e: "📍", t: "Top 3 fishing spots in NT right now based on conditions" },
+            { e: "📍", t: "Top 3 WA/Kimberley fishing spots right now based on conditions" },
             { e: "🌊", t: "Species targeting advice matched to current tide stage" },
             { e: "🎣", t: "Exactly where to fish, what lure & when to be there" },
             { e: "🌙", t: "Moon phase, season & water temp all factored in" },

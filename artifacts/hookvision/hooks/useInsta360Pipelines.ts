@@ -16,7 +16,7 @@ export interface SurfaceResult {
   activity: boolean;
   zones: ZoneMap;
   types: string[];
-  birdSpecies: string[];    // identified NT bird species (e.g. "Crested Tern", "Frigatebird")
+  birdSpecies: string[];    // identified WA/Kimberley bird species (e.g. "Crested Tern", "Frigatebird")
   urgency: "none" | "low" | "high";
   confidence: number;
   description: string;

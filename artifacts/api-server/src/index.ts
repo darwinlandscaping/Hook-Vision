@@ -40,7 +40,7 @@ app.listen(port, (err) => {
     );
 
   // Kick off the daily data refresh immediately on startup,
-  // then it auto-schedules itself at midnight Darwin time (ACST UTC+9:30).
+  // then it auto-schedules itself at midnight WA time (AWST UTC+8:00).
   refreshDailyConditions().catch((err) =>
     logger.error({ err }, "Initial daily conditions refresh failed")
   );
@@ -62,7 +62,7 @@ app.listen(port, (err) => {
   );
 
   // Initialise the bird reference library:
-  // fetches up to 500 research-grade iNaturalist photos across 10 NT water bird
+  // fetches up to 500 research-grade iNaturalist photos across 10 WA/Kimberley water bird
   // species (frigatebirds, terns, boobies, pelicans, osprey, brahminy kite, etc.)
   // → stores in DB → classifies poses (diving/aerial/perched/water) → caches
   // top 30 thumbnails. Injected into Insta360 surface-detect pipeline (Pipeline 1)

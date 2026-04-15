@@ -1,23 +1,23 @@
 import { useEffect, useState } from "react";
 
-const DARWIN_LAT = -12.4634;
-const DARWIN_LON = 130.8456;
-const DARWIN_TZ_OFFSET = 9.5; // UTC+9:30, no daylight saving in NT
+const DARWIN_LAT = -17.9633; // Broome, WA
+const DARWIN_LON = 122.2130; // Broome, WA
+const DARWIN_TZ_OFFSET = 8.0; // UTC+8:00 AWST — no daylight saving in WA
 
-/** Convert UTC Date to Darwin local time */
+/** Convert UTC Date to Broome/WA local time (AWST) */
 function toDarwin(utc: Date): Date {
   return new Date(utc.getTime() + DARWIN_TZ_OFFSET * 3_600_000);
 }
 
-/** Darwin local decimal hour (e.g. 6.75 = 6:45 AM) from a UTC date */
+/** WA local decimal hour (e.g. 6.75 = 6:45 AM) from a UTC date */
 function darwinHour(utc: Date): number {
   const d = toDarwin(utc);
   return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
 }
 
 /**
- * Compute sunrise and sunset for Darwin NT using the NOAA simplified algorithm.
- * Returns local Darwin decimal hours (e.g. { rise: 6.72, set: 18.71 }).
+ * Compute sunrise and sunset for Broome WA using the NOAA simplified algorithm.
+ * Returns local WA decimal hours (e.g. { rise: 6.72, set: 18.71 }).
  */
 function calcSunTimes(utcDate: Date): { rise: number; set: number } {
   const toRad = Math.PI / 180;

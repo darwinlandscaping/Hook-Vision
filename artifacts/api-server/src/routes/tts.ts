@@ -21,7 +21,7 @@ interface VoiceConfig {
 
 const CHARACTER_VOICE: Record<string, VoiceConfig> = {
   // ── True Australians — all use the one confirmed AU male / AU female ───────
-  AUSSIE:       { voice: "en-AU-WilliamMultilingualNeural", ratePct: -8,  pitchHz: -5  }, // laconic NT barra legend
+  AUSSIE:       { voice: "en-AU-WilliamMultilingualNeural", ratePct: -8,  pitchHz: -5  }, // laconic WA/Kimberley barra legend
   BENAUD:       { voice: "en-AU-WilliamMultilingualNeural", ratePct: -20, pitchHz: -10 }, // measured cricket poet
   CHOPPER:      { voice: "en-AU-WilliamMultilingualNeural", ratePct: -5,  pitchHz: -18 }, // gravelly Melbourne
   IRWIN:        { voice: "en-AU-WilliamMultilingualNeural", ratePct: +20, pitchHz: +8  }, // enthusiastic Crikey!

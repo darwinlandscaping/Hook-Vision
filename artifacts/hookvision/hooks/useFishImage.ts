@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 /**
- * Curated, high-quality iNaturalist photo URLs for NT fishing species.
+ * Curated, high-quality iNaturalist photo URLs for WA/Kimberley fishing species.
  * Using direct CDN URLs avoids API latency and ensures correct, Australian-specific photos.
  * Photos sourced from iNaturalist open-data — licenced under CC-BY.
  */

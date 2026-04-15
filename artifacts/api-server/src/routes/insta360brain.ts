@@ -3,7 +3,7 @@
  *
  * Insta360 Brain — comprehensive 360° fishing intelligence.
  * Analyses a real-world camera frame (or answers a text query) with deep
- * NT fishing expertise: bird activity, surface busts, spot assessment,
+ * WA/Kimberley fishing expertise: bird activity, surface busts, spot assessment,
  * water conditions, recommended tactics + gear, croc risk, weather read.
  *
  * Injects bird + croc library refs for grounded visual identification.
@@ -16,9 +16,9 @@ import { getCrocFewShotRefs } from "../lib/crocLibrary.js";
 const router = Router();
 
 // ─── System prompt ─────────────────────────────────────────────────────────
-const SYSTEM = `You are the Insta360 Brain — the world's most advanced NT Australia fishing AI assistant embedded in the HookVision app.
+const SYSTEM = `You are the Insta360 Brain — the world's most advanced WA/Kimberley fishing AI assistant embedded in the HookVision app.
 
-You have 30+ years of lived experience fishing Darwin Harbour, Arafura Sea, Tiwi Islands, Adelaide River, Daly River, East and West Alligator Rivers, Mary River, and the NT coastline.
+You have 30+ years of lived experience fishing Broome, Roebuck Bay, Cambridge Gulf, Ord River, Fitzroy River, Drysdale River, King Sound, Ningaloo Reef, and the WA Kimberley coastline.
 
 When given a 360° camera image from the boat, you analyse it comprehensively and deliver actionable fishing intelligence. When given a text query about the Insta360 camera or connection, you troubleshoot it precisely.
 
@@ -43,7 +43,7 @@ When given a 360° camera image from the boat, you analyse it comprehensively an
 ### CROC RISK
 - Eyes at waterline (paired amber glints), snout, V-wake, floating log silhouette
 - Brown murky water + tall wet season grass = HIGH croc risk
-- Darwin Harbour + tidal rivers = always assume croc presence
+- Kimberley tidal rivers and estuaries = always assume croc presence
 
 ### WEATHER READ
 - Cloud cover: shade = fish less spooky, better surface bite
@@ -144,7 +144,7 @@ router.post("/insta360/brain", async (req, res) => {
 
   // Build text prompt
   let textPrompt = hasImage
-    ? "Analyse this 360° camera frame from my fishing boat on NT Australia waters."
+    ? "Analyse this 360° camera frame from my fishing boat on WA/Kimberley waters."
     : `Text query: ${query.trim()}`;
 
   if (hasQuery && hasImage) {
@@ -165,7 +165,7 @@ router.post("/insta360/brain", async (req, res) => {
           type: "image_url",
           image_url: { url: `data:image/jpeg;base64,${ref.thumbBase64}`, detail: "low" },
         });
-        content.push({ type: "text", text: `Bird ref: ${ref.species ?? "NT water bird"} (iNaturalist)` });
+        content.push({ type: "text", text: `Bird ref: ${ref.species ?? "WA/Kimberley water bird"} (iNaturalist)` });
       }
     }
   } else {
@@ -174,7 +174,7 @@ router.post("/insta360/brain", async (req, res) => {
 
   // Inject croc refs
   if (crocRefs.length > 0) {
-    content.push({ type: "text", text: `NT crocodile reference photos (${crocRefs.length} examples from iNaturalist research library) — use to detect croc presence:` });
+    content.push({ type: "text", text: `WA/Kimberley crocodile reference photos (${crocRefs.length} examples from iNaturalist research library) — use to detect croc presence:` });
     for (const ref of crocRefs) {
       if (ref.thumbBase64) {
         content.push({

@@ -3,23 +3,22 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
-// ─── NT Fish Regulations Reference ────────────────────────────────────────────
+// ─── WA Fish Regulations Reference ────────────────────────────────────────────
 const NT_REGULATIONS = `
-NT FISHING REGULATIONS (Recreational, current as of 2025):
-BARRAMUNDI: Min 55cm. Bag limit 5/person/day. Fog Bay & Darwin Harbour: slot limit 55–80cm (fish 80cm+ must be released). Season open year-round but check closures.
+WA FISHING REGULATIONS (Recreational, Kimberley/North WA, current as of 2025):
+BARRAMUNDI: Min 55cm. Bag limit 3/person/day. Season open year-round in Kimberley — check WA Fisheries for any current closures.
 MANGROVE JACK: Min 35cm. Bag limit 10/person/day.
-FINGERMARK (Golden Snapper): Min 41cm. Bag limit 5/person/day.
-THREADFIN SALMON (Blue Salmon): Min 40cm. Bag limit 10/person/day.
-GIANT TREVALLY (GT): No minimum size. No bag limit currently in NT.
+GOLDEN SNAPPER (Fingermark / Large-scale Sea Perch): Min 30cm. Bag limit 10/person/day. Part of combined demersal reef fish aggregate.
+RED EMPEROR: Min 41cm. Bag limit 5/person/day. Part of reef fish aggregate.
+THREADFIN SALMON (Blue Salmon): Min 60cm. Bag limit 5/person/day.
+GIANT TREVALLY (GT): No minimum. Bag limit subject to WA combined finfish rules.
 QUEENFISH: No minimum. No bag limit.
 GOLDEN TREVALLY: No minimum. No bag limit.
-BLACK JEWFISH (Mulloway): Min 60cm. Bag limit 2/person/day.
-SPANISH MACKEREL: Min 75cm. Bag limit 5/person/day.
-GOLDEN SNAPPER: same as Fingermark above.
-CORAL TROUT: No NT minimum (reef rules apply offshore). Bag limit 10 combined reef fish.
-SADDLETAIL SNAPPER: Min 35cm.
-BLUE-BONED (Yellowfin Bream): Min 25cm. Bag limit 20/person/day.
-SOOTY GRUNTER: Min 25cm. Bag limit 10/person/day.
+CORAL TROUT: Min 38cm. Bag limit 10/person/day. Part of reef fish aggregate (combined max 20 reef fish).
+SPANISH MACKEREL: Min 60cm. Bag limit 10/person/day.
+MUD CRAB: Min 127mm carapace width. Males only — females must be released immediately. Bag limit 4/person/day.
+BLACK JEWFISH (Mulloway / Butterfish): Min 60cm. Bag limit 5/person/day.
+SADDLETAIL SNAPPER: Min 35cm. Bag limit 10 combined demersal.
 FRESHWATER SAWFISH: PROTECTED — must release immediately, do not remove from water.
 NORTHERN RIVER SHARK: PROTECTED — release immediately.
 SPEARTOOTH SHARK: PROTECTED — release immediately.
@@ -27,13 +26,13 @@ SAWFISHES (all): PROTECTED — release immediately.
 GENERAL: Keep fish alive until filleting; return undersized fish carefully; use circle hooks near structured habitat to reduce gut hooking; wet hands before handling for release.
 `;
 
-const SYSTEM_PROMPT = `You are an expert fish identification specialist for Northern Territory Australia. You identify fish from photographs — a caught fish being held, lying on a surface, in a bucket, or photographed in water.
+const SYSTEM_PROMPT = `You are an expert fish identification specialist for Western Australia (Kimberley region). You identify fish from photographs — a caught fish being held, lying on a surface, in a bucket, or photographed in water.
 
 Your knowledge covers:
-• All NT species visual features: lateral line pattern, fin shape/position, jaw profile, body depth, scale size, colour pattern, eye colour, caudal fin shape
+• All WA/Kimberley species visual features: lateral line pattern, fin shape/position, jaw profile, body depth, scale size, colour pattern, eye colour, caudal fin shape
 • Size estimation from hand/arm/rod references in the photo (average adult male hand span ~22cm, forearm ~45cm, standard barra rod ~2.1m)
-• NT fishing regulations — bag limits, size limits, protected species
-• Catch-and-release handling best practice for NT tropical species
+• WA Fisheries regulations — bag limits, size limits, protected species
+• Catch-and-release handling best practice for WA tropical species
 
 ${NT_REGULATIONS}
 
@@ -50,7 +49,7 @@ FOR EACH FISH: commit to a species. Never leave species unknown. If uncertain, g
 
 LEGAL STATUS RULES:
 • "keep": fish appears above minimum size and within bag/slot limits
-• "release": fish appears below minimum size OR above upper slot limit (barra in Fog Bay/Darwin Harbour >80cm)
+• "release": fish appears below minimum size OR above bag limit threshold
 • "protected": species is protected regardless of size
 • "measure": size cannot be estimated reliably from photo — advise to measure before keeping
 
@@ -70,9 +69,9 @@ OUTPUT: valid JSON only — no markdown, no explanation outside the JSON:
   "handling": "handling advice for this specific species",
   "releaseTip": "release method if applicable, else null",
   "isProtected": false,
-  "habitat": "brief NT habitat description",
-  "season": "peak season note for NT",
-  "funFact": "one interesting fact about this species in NT"
+  "habitat": "brief WA/Kimberley habitat description",
+  "season": "peak season note for WA/Kimberley",
+  "funFact": "one interesting fact about this species in WA/Kimberley"
 }`;
 
 function detectMimeType(b64: string): string {
@@ -108,7 +107,7 @@ router.post("/fish-id", async (req, res) => {
             },
             {
               type: "text",
-              text: "Identify this fish. Assess legal status for NT. Return JSON only.",
+              text: "Identify this fish. Assess legal status for WA Fisheries. Return JSON only.",
             },
           ],
         },

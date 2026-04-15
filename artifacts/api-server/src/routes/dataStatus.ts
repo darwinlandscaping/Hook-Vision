@@ -11,11 +11,11 @@ const router = Router();
 /**
  * GET /api/daily-conditions
  *
- * Returns live NT fishing conditions. Every request:
- *   - Moon phase: recomputed from current Darwin time (free math, no API)
+ * Returns live WA/Kimberley fishing conditions. Every request:
+ *   - Moon phase: recomputed from current WA time (free math, no API)
  *   - Weather: served from a 20-minute BOM cache (fresh within 20min always)
  *   - Barra activity: recomputed from fresh moon + weather
- *   - AI briefing, sonar tip, season: served from the daily cache (refreshes midnight Darwin)
+ *   - AI briefing, sonar tip, season: served from the daily cache (refreshes midnight AWST)
  *   - lastRefreshed: set to NOW so the client shows the correct fetch time
  */
 router.get("/daily-conditions", async (req, res) => {
@@ -25,7 +25,7 @@ router.get("/daily-conditions", async (req, res) => {
     return;
   }
 
-  // Recompute moon from current Darwin time — pure math, instant
+  // Recompute moon from current WA time — pure math, instant
   const moon = computeMoonNow();
 
   // Fetch fresh BOM weather (cached max 20min)

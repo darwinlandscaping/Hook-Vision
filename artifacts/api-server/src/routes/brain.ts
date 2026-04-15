@@ -241,7 +241,7 @@ CV Pipeline Results (TF.js + OpenCV, ${scanResults.length} frames):
 • Average arch blobs per frame: ${cvSummary.avgBlobsPerFrame}
     `.trim();
 
-    const prompt = `You are the HookVision Community Brain — an AI that learns from fishing video content to help NT Australia anglers find fish.
+    const prompt = `You are the HookVision Community Brain — an AI that learns from fishing video content to help WA/Kimberley anglers find fish.
 
 ${cvContext}
 
@@ -250,7 +250,7 @@ Based on these computer vision measurements of the fishing video frames, synthes
   "brainInsight": "2-3 plain English sentences summarising what this video teaches the brain about fishing conditions, species patterns or sonar signatures",
   "detectedSpecies": ["species likely visible based on echo signatures"],
   "depthRanges": ["estimated depth ranges based on arch positions and brightness"],
-  "aiTips": ["3-4 actionable fishing tips derived from the CV data for NT anglers"]
+  "aiTips": ["3-4 actionable fishing tips derived from the CV data for WA/Kimberley anglers"]
 }
 
 Rules:

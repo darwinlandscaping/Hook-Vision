@@ -90,7 +90,7 @@ const PRODUCTS: Product[] = [
 
   { id:"r1", name:"Daiwa Tatula 7'4\" MH",  desc:"Barra casting specialist with fast action. Handles lures up to 60g. Built for long casts to distant structure.",     price:"$249.00", category:"RODS", hot:true, color:C.red  },
   { id:"r2", name:"Shimano Expride 7'6\"",  desc:"Precision jerkbait and heavy lure rod. Micro-pitch guides, high-modulus graphite, Japanese quality throughout.",       price:"$319.00", category:"RODS",            color:C.gold },
-  { id:"r3", name:"Berkley Sick Stick 7'",  desc:"Medium-heavy NT all-rounder. Handles surface lures through to heavy jigs. Great entry-level barra stick.",               price:"$179.95", category:"RODS",            color:C.pink },
+  { id:"r3", name:"Berkley Sick Stick 7'",  desc:"Medium-heavy WA all-rounder. Handles surface lures through to heavy jigs. Great entry-level barra stick.",               price:"$179.95", category:"RODS",            color:C.pink },
   { id:"r4", name:"Nomad Tidal 7'2\" H",    desc:"Brutal power for big structure barra. Extra-fast action tip loads quickly for casting accuracy around pylons.",      price:"$299.00", category:"RODS", hot:true, color:C.red  },
 
   { id:"re1", name:"Shimano Curado 200 DC", desc:"Digital cast control eliminates backlash. 4 DC settings dial in perfectly for every lure weight and wind condition.",      price:"$399.00", category:"REELS", hot:true, color:C.gold },
@@ -98,26 +98,26 @@ const PRODUCTS: Product[] = [
   { id:"re3", name:"Abu Garcia Revo Beast", desc:"Maximum 25lb drag for big fish in heavy cover. Carbon Matrix drag system handles the biggest barra in the tightest snags.",      price:"$299.00", category:"REELS",            color:C.pink },
   { id:"re4", name:"Shimano SLX DC 150",    desc:"Budget digital cast control, no compromise on performance. Recommended for anglers stepping up to baitcasters.",     price:"$229.00", category:"REELS", hot:true, color:C.gold },
 
-  { id:"ln1", name:"Sunline PE Braid 50lb", desc:"Zero stretch, high-vis green. 8-carrier Japanese braid. The go-to mainline for Darwin Harbour and tidal systems.",  price:"$64.95", category:"LINE", hot:true, color:C.red  },
+  { id:"ln1", name:"Sunline PE Braid 50lb", desc:"Zero stretch, high-vis green. 8-carrier Japanese braid. The go-to mainline for Broome and Kimberley tidal systems.",  price:"$64.95", category:"LINE", hot:true, color:C.red  },
   { id:"ln2", name:"Seaguar Fluoro 60lb",   desc:"Tough invisible fluorocarbon leader for structure fishing. Near-zero stretch and abrasion resistance for rocky country.",      price:"$49.95", category:"LINE",            color:C.gold },
   { id:"ln3", name:"PowerPro Super 8 40lb", desc:"8-carrier ultra-smooth braid for casting distance. Enhanced body coating for minimal guides wear.",      price:"$54.95", category:"LINE",            color:C.pink },
-  { id:"ln4", name:"Unitika Gyogun 80lb",   desc:"Heavy mono leader for XL barra season. Used by NT guides for snag country where lighter gear gets cut off.",          price:"$39.95", category:"LINE", hot:true,  color:C.red  },
+  { id:"ln4", name:"Unitika Gyogun 80lb",   desc:"Heavy mono leader for XL barra season. Used by Kimberley guides for snag country where lighter gear gets cut off.",          price:"$39.95", category:"LINE", hot:true,  color:C.red  },
 
   { id:"b1", name:"Barra Hunter Boof",      desc:"UV-block cooling neck gaiter in croc red. UPF50+ fabric. Keeps the sun and flies off your face all day long.",    price:"$39.95", category:"BUFFS", hot:true, color:C.red  },
-  { id:"b2", name:"Territory Tough Boof",   desc:"Crimson and gold — 100% UV50+ shield. Represents the Territory with every cast. One size fits all.",        price:"$39.95", category:"BUFFS",           color:C.gold },
-  { id:"b3", name:"Sunrise Session Boof",   desc:"Pink and gold NT sunrise print. Unisex design, quick-dry fabric. Perfect for dawn sessions on the water.",      price:"$39.95", category:"BUFFS",           color:C.pink },
-  { id:"b4", name:"Stealth Barra Boof",     desc:"Tactical black-on-black NT design. Stealth mode for sneaky barra hunters. No-logo low-profile fishing style.",          price:"$39.95", category:"BUFFS", hot:true, color:C.red  },
+  { id:"b2", name:"Kimberley Tough Boof",   desc:"Crimson and gold — 100% UV50+ shield. Represents the Kimberley with every cast. One size fits all.",        price:"$39.95", category:"BUFFS",           color:C.gold },
+  { id:"b3", name:"Sunrise Session Boof",   desc:"Pink and gold WA sunrise print. Unisex design, quick-dry fabric. Perfect for dawn sessions on the water.",      price:"$39.95", category:"BUFFS",           color:C.pink },
+  { id:"b4", name:"Stealth Barra Boof",     desc:"Tactical black-on-black WA design. Stealth mode for sneaky barra hunters. No-logo low-profile fishing style.",          price:"$39.95", category:"BUFFS", hot:true, color:C.red  },
   { id:"b5", name:"Barramundi Nation Boof", desc:"Full-sublimation trophy barra art. Gallery-quality barramundi illustration wrapped around UPF50+ cooling fabric.",          price:"$44.95", category:"BUFFS",           color:C.gold },
 
   { id:"h1", name:"Savage Barra Nation Cap", desc:"Gold embroidered barramundi on a structured black snapback. The hat that says you mean business on the water.",         price:"$49.95", category:"HATS", hot:true, color:C.gold },
-  { id:"h2", name:"Wide-Brim NT Hat",        desc:"360-degree sun protection for all-day sessions. Breathable UPF50+ fabric. Works the flats, the boat, and the bank.", price:"$59.95", category:"HATS",            color:C.red  },
-  { id:"h3", name:"Buff Trucker Cap",        desc:"Mesh-back trucker cap with hot pink barramundi print. Light, breathable, and unmistakably NT fishing culture.",          price:"$44.95", category:"HATS",            color:C.pink },
+  { id:"h2", name:"Wide-Brim WA Hat",        desc:"360-degree sun protection for all-day sessions. Breathable UPF50+ fabric. Works the flats, the boat, and the bank.", price:"$59.95", category:"HATS",            color:C.red  },
+  { id:"h3", name:"Buff Trucker Cap",        desc:"Mesh-back trucker cap with hot pink barramundi print. Light, breathable, and unmistakably WA/Kimberley fishing culture.",          price:"$44.95", category:"HATS",            color:C.pink },
   { id:"h4", name:"Hookvision Low-Crown",    desc:"Structured low-crown in crimson and gold. The official cap of the HookVision faithful. Limited seasonal run.",     price:"$54.95", category:"HATS", hot:true,  color:C.gold },
 
   { id:"op1", name:"Moment CPL Mobile Lens",    desc:"Circular polarising clip-on for any phone. Cuts glare off sonar screens and water surface. Rotate the ring to dial out reflections instantly — sonar colours pop like never before.", price:"$89.95", category:"OPTICS", hot:true,  color:C.gold },
   { id:"op2", name:"Sandmarc Polariser 58mm",   desc:"Premium universal CPL clip lens. Aircraft-grade aluminium housing, multi-coated HD glass. Eliminates reflected glare from fish finder screens so the AI scan reads clean every time.", price:"$69.95", category:"OPTICS",           color:C.pink },
   { id:"op3", name:"Xenvo Pro Lens Kit CPL",    desc:"Dual lens set: CPL polariser + wide angle. Captures the full sonar display in one shot without stepping back. Includes hard-shell carry case and clip mount.",                        price:"$79.95", category:"OPTICS", hot:true,  color:C.red  },
-  { id:"op4", name:"Phone Screen Shade Hood",   desc:"Collapsible foam sunshade that clips around your phone. Blocks direct NT sun from washing out sonar screens on the boat. Folds flat in seconds, fits phones up to 7 inches.",          price:"$34.95", category:"OPTICS",           color:C.gold },
+  { id:"op4", name:"Phone Screen Shade Hood",   desc:"Collapsible foam sunshade that clips around your phone. Blocks direct WA/Kimberley sun from washing out sonar screens on the boat. Folds flat in seconds, fits phones up to 7 inches.",          price:"$34.95", category:"OPTICS",           color:C.gold },
   { id:"op5", name:"Neewer CPL Clip 18mm",      desc:"Budget-friendly circular polariser for tablets and large-screen phones. Rotatable glass element, rubber no-scratch clamp. Get cleaner sonar grabs without spending big.",              price:"$29.95", category:"OPTICS",           color:C.pink },
   { id:"op6", name:"Matte Anti-Glare Film",     desc:"Cut-to-size matte screen film for your capture device. Kills mirror reflections and fingerprint smear without losing screen brightness. The easiest glare fix money can buy.",         price:"$19.95", category:"OPTICS",           color:C.red  },
 ];
@@ -324,7 +324,7 @@ export default function BuffScreen() {
               <Text style={styles.headerBadgeText}>ACCESSORIES</Text>
             </View>
           </View>
-          <Text style={styles.headerTag}>🔥 BUILT FOR NT · MADE TO DOMINATE 🔥</Text>
+          <Text style={styles.headerTag}>🔥 BUILT FOR WA · MADE TO DOMINATE 🔥</Text>
         </View>
         <View style={styles.headerStripeBottom} />
       </View>
@@ -388,7 +388,7 @@ export default function BuffScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>🔥 HOOKVISION BOOF GEAR 🔥</Text>
-          <Text style={styles.footerSub}>NT's most dangerous tackle store</Text>
+          <Text style={styles.footerSub}>WA's most dangerous tackle store</Text>
         </View>
       </ScrollView>
     </View>

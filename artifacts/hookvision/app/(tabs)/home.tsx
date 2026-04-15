@@ -25,7 +25,7 @@ const HV_LOGO = require("@/assets/images/hv-logo2-nobg.png");
 
 interface DailyConditions {
   date: string;
-  darwinLocalTime: string;
+  waLocalTime: string;
   season: {
     name: string;
     emoji: string;
@@ -60,7 +60,7 @@ interface DailyConditions {
 const TILES = [
   { label: "AI\nScan",        emoji: "📡", route: "/(tabs)/index",        border: "#00d4aa55" },
   { label: "Trophy\nBarra",   emoji: "🎯", route: "/(tabs)/barra",        border: "#ff220055" },
-  { label: "NT\nTides",       emoji: "🌊", route: "/(tabs)/tides",        border: "#00a8ff55" },
+  { label: "WA\nTides",       emoji: "🌊", route: "/(tabs)/tides",        border: "#00a8ff55" },
   { label: "Species\nGuide",  emoji: "🐟", route: "/(tabs)/species",      border: "#4caf5055" },
   { label: "Fishy\nForecast", emoji: "🎣", route: "/(tabs)/forecast",     border: "#ffd70055" },
   { label: "Strike\nZones",   emoji: "🗺️",  route: "/(tabs)/zones",        border: "#ff980055" },
@@ -70,16 +70,16 @@ const TILES = [
   { label: "Demo\nScans",     emoji: "🖼️", route: "/(tabs)/demo",         border: "#7986cb55" },
 ];
 
-// ─── Darwin local time helper ─────────────────────────────────────────────────
+// ─── WA local time helper ──────────────────────────────────────────────────────
 
 function getDarwinTime() {
   const now = new Date();
   const hour = parseInt(
-    now.toLocaleString("en-AU", { hour: "numeric", hour12: false, timeZone: "Australia/Darwin" }),
+    now.toLocaleString("en-AU", { hour: "numeric", hour12: false, timeZone: "Australia/Perth" }),
     10
   );
   const timeStr = now.toLocaleTimeString("en-AU", {
-    hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Darwin",
+    hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Perth",
   });
   const isGolden = (hour >= 5 && hour <= 8) || (hour >= 16 && hour <= 20);
   return { timeStr, isGolden };
@@ -109,7 +109,7 @@ export default function HomeScreen() {
   const insets  = useSafeAreaInsets();
   const topPad  = Platform.OS === "web" ? 0 : insets.top;
 
-  // Darwin clock ticks every minute so golden hour updates live
+  // WA clock ticks every minute so golden hour updates live
   const [darwin, setDarwin] = useState(getDarwinTime);
   useEffect(() => {
     const id = setInterval(() => setDarwin(getDarwinTime()), 60_000);
@@ -150,8 +150,8 @@ export default function HomeScreen() {
   }, [fetchConditions]);
 
   const narrate = conds
-    ? `Welcome to HookVision. Today's NT conditions: ${conds.season.emoji} ${conds.season.name}. Moon: ${conds.moon.emoji} ${conds.moon.name}. ${conds.barraActivity.replace(/[^a-zA-Z0-9 .—!%\/]/g, "").trim()}. ${darwin.isGolden ? "Golden hour is active — prime feeding time right now!" : ""} Today's briefing: ${conds.aiBriefing}`
-    : `Welcome to HookVision. Loading today's NT fishing conditions.`;
+    ? `Welcome to HookVision Kimberley Edition. Today's WA conditions: ${conds.season.emoji} ${conds.season.name}. Moon: ${conds.moon.emoji} ${conds.moon.name}. ${conds.barraActivity.replace(/[^a-zA-Z0-9 .—!%\/]/g, "").trim()}. ${darwin.isGolden ? "Golden hour is active — prime feeding time right now!" : ""} Today's briefing: ${conds.aiBriefing}`
+    : `Welcome to HookVision Kimberley Edition. Loading today's WA fishing conditions.`;
 
   useAutoNarrate(() => narrate);
 
@@ -183,7 +183,7 @@ export default function HomeScreen() {
           <View style={S.liveRow}>
             <LiveDot />
             <Text style={[S.tagline, { color: colors.mutedForeground }]}>
-              {loading ? "Fetching live NT data…" : fetchErr ? "NT's #1 fishing intelligence app" : `Live data · Updated ${lastRefreshedLabel}`}
+              {loading ? "Fetching live WA data…" : fetchErr ? "Kimberley's #1 fishing intelligence app" : `Live data · Updated ${lastRefreshedLabel}`}
             </Text>
           </View>
         </View>
@@ -337,7 +337,7 @@ export default function HomeScreen() {
               <WeatherCell emoji="📈" label="Baro Trend"   value={conds.weather.pressureTrend === "falling" ? "Falling 🐟" : conds.weather.pressureTrend === "rising" ? "Rising" : "Steady"} accent={conds.weather.pressureTrend === "falling" ? "#00d4aa" : "#888"} />
             </View>
             <Text style={[S.weatherSource, { color: colors.mutedForeground }]}>
-              Source: BOM Darwin Airport · {conds.darwinLocalTime}
+              Source: BOM Broome Airport · {conds.waLocalTime}
             </Text>
           </LilyPadCard>
         </>

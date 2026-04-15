@@ -1,7 +1,7 @@
 export type FishCategory = "estuary" | "reef" | "pelagic" | "freshwater" | "shellfish";
 export type EatingRating = 1 | 2 | 3 | 4 | 5;
 
-export interface NTSpecies {
+export interface WASpecies {
   id: string;
   name: string;
   otherNames: string[];
@@ -20,22 +20,22 @@ export interface NTSpecies {
   icon: string;
 }
 
-export const NT_SPECIES: NTSpecies[] = [
+export const WA_SPECIES: WASpecies[] = [
   {
     id: "barramundi",
     name: "Barramundi",
     otherNames: ["Barra", "Asian Sea Bass"],
     scientificName: "Lates calcarifer",
     category: "estuary",
-    bagLimit: 5,
+    bagLimit: 3,
     minSizeCm: 55,
-    maxSizeCm: 120,
-    slotLimit: true,
-    season: "Open year-round (some estuaries close Nov–Jan)",
+    maxSizeCm: null,
+    slotLimit: false,
+    season: "Open year-round in Kimberley waters",
     seasonOpen: true,
     bestMonths: [4, 5, 6, 7, 8, 9, 10],
     description:
-      "The iconic Top End species. Found in estuaries, rivers, and coastal waters. Slot limit applies — fish over 120cm must be released as these are breeding females.",
+      "The iconic Kimberley species. Found in estuaries, tidal rivers, and coastal waters throughout North WA. WA Fisheries bag limit is 3 per person per day with a minimum size of 55cm. No slot limit applies — but releasing large females is strongly encouraged.",
     eatingRating: 5,
     catchAndRelease: false,
     icon: "fish",
@@ -54,7 +54,7 @@ export const NT_SPECIES: NTSpecies[] = [
     seasonOpen: true,
     bestMonths: [11, 12, 1, 2, 3, 4],
     description:
-      "Aggressive ambush predator found around mangrove roots, rocks, and structure. Highly prized sport fish and excellent eating.",
+      "Aggressive ambush predator found around mangrove roots, rock bars, and structure in Kimberley rivers. Common in the Ord, Fitzroy, and coastal Broome creeks. Highly prized sport fish and excellent eating.",
     eatingRating: 4,
     catchAndRelease: false,
     icon: "fish",
@@ -65,15 +65,15 @@ export const NT_SPECIES: NTSpecies[] = [
     otherNames: ["Green Crab", "Mangrove Crab"],
     scientificName: "Scylla serrata",
     category: "shellfish",
-    bagLimit: 10,
-    minSizeCm: 13,
+    bagLimit: 4,
+    minSizeCm: 12.7,
     maxSizeCm: null,
     slotLimit: false,
-    season: "Open year-round (females with eggs — zero bag limit)",
+    season: "Open year-round (female crabs — zero bag limit)",
     seasonOpen: true,
     bestMonths: [4, 5, 6, 7, 8, 9, 10],
     description:
-      "One of the NT's most sought-after seafood species. Minimum carapace width 13cm. Females with eggs (sponge crabs) must be released immediately.",
+      "One of WA's most sought-after seafood species. Minimum carapace width 127mm (12.7cm). Only males may be retained — females (identified by a broad, rounded apron) must be released immediately. WA bag limit 4 per person per day.",
     eatingRating: 5,
     catchAndRelease: false,
     icon: "crab",
@@ -92,7 +92,7 @@ export const NT_SPECIES: NTSpecies[] = [
     seasonOpen: true,
     bestMonths: [5, 6, 7, 8, 9, 10],
     description:
-      "Premium reef fish found around coral bommies and rocky structure. Responds well to lures and live bait. Part of the general reef fish aggregate.",
+      "Premium reef fish found around coral bommies at Ningaloo, Rowley Shoals, Montebello Islands, and Dampier Archipelago. Part of the WA reef fish aggregate — combined bag of 20 reef fish applies, with max 10 coral trout. Minimum 38cm.",
     eatingRating: 5,
     catchAndRelease: false,
     icon: "fish",
@@ -104,14 +104,14 @@ export const NT_SPECIES: NTSpecies[] = [
     scientificName: "Lutjanus sebae",
     category: "reef",
     bagLimit: 5,
-    minSizeCm: 38,
+    minSizeCm: 41,
     maxSizeCm: null,
     slotLimit: false,
     season: "Open year-round",
     seasonOpen: true,
     bestMonths: [5, 6, 7, 8, 9],
     description:
-      "A deep-reef favourite. Juveniles have dramatic red and white stripes that fade with age. Excellent table fish — one of the most prized species in the NT.",
+      "A deep-reef favourite at Exmouth, Montebello Islands, and the Kimberley coast. WA minimum size 41cm. Part of the reef fish aggregate — one of the best table fish on the WA coast. Juveniles have dramatic red and white banded patterns.",
     eatingRating: 5,
     catchAndRelease: false,
     icon: "fish",
@@ -130,7 +130,7 @@ export const NT_SPECIES: NTSpecies[] = [
     seasonOpen: true,
     bestMonths: [4, 5, 6, 7, 8, 9, 10],
     description:
-      "Fast, powerful pelagic fish. Responds to trolled lures, live bait, and slugs. Can reach speeds of 50km/h. Peak season is the dry season Apr–Oct.",
+      "Fast, powerful pelagic fish abundant along the Pilbara and Kimberley coasts. Responds to trolled lures, live bait, and slugs. WA bag limit 10 per person per day, minimum 60cm. Peak season is the dry season Apr–Oct.",
     eatingRating: 5,
     catchAndRelease: false,
     icon: "fish",
@@ -142,14 +142,14 @@ export const NT_SPECIES: NTSpecies[] = [
     scientificName: "Caranx ignobilis",
     category: "pelagic",
     bagLimit: 5,
-    minSizeCm: 60,
+    minSizeCm: null,
     maxSizeCm: null,
     slotLimit: false,
     season: "Open year-round",
     seasonOpen: true,
     bestMonths: [10, 11, 12, 1, 2, 3],
     description:
-      "The apex predator of tropical flats. Pound-for-pound one of the hardest fighting fish. Often caught on surface lures around headlands and flats.",
+      "The apex predator of the Kimberley flats. Pound-for-pound one of the hardest fighting fish. Often caught on surface lures around headlands and tidal flats near Broome, Wyndham, and the Dampier Archipelago.",
     eatingRating: 2,
     catchAndRelease: true,
     icon: "fish",
@@ -168,7 +168,7 @@ export const NT_SPECIES: NTSpecies[] = [
     seasonOpen: true,
     bestMonths: [9, 10, 11, 12, 1, 2],
     description:
-      "An acrobatic surface-feeding predator. Brilliant on surface lures and poppers. Often found in large schools. Best catch-and-release candidate for sport fishing.",
+      "An acrobatic surface-feeding predator abundant throughout Kimberley and Pilbara coastal waters. Brilliant on surface lures and poppers. Often found in large schools off Broome, Derby, and King Sound. Best catch-and-release candidate.",
     eatingRating: 2,
     catchAndRelease: true,
     icon: "fish",
@@ -180,14 +180,14 @@ export const NT_SPECIES: NTSpecies[] = [
     scientificName: "Protonibea diacanthus",
     category: "estuary",
     bagLimit: 5,
-    minSizeCm: null,
+    minSizeCm: 60,
     maxSizeCm: null,
     slotLimit: false,
     season: "Open year-round",
     seasonOpen: true,
     bestMonths: [4, 5, 6, 7, 8, 9],
     description:
-      "A prehistoric-looking deep-bodied fish found in estuaries and coastal waters. Makes a distinctive drumming sound. Excellent table fish with firm white flesh.",
+      "A prehistoric-looking deep-bodied fish found in estuaries and coastal waters of the Kimberley. Makes a distinctive drumming sound. Excellent table fish with firm white flesh. WA minimum size 60cm, bag limit 5.",
     eatingRating: 4,
     catchAndRelease: false,
     icon: "fish",
@@ -198,15 +198,15 @@ export const NT_SPECIES: NTSpecies[] = [
     otherNames: ["King Salmon", "Blue Salmon"],
     scientificName: "Polydactylus sheridani",
     category: "estuary",
-    bagLimit: 10,
-    minSizeCm: null,
+    bagLimit: 5,
+    minSizeCm: 60,
     maxSizeCm: null,
     slotLimit: false,
     season: "Open year-round",
     seasonOpen: true,
     bestMonths: [10, 11, 12, 1, 2, 3],
     description:
-      "Identified by its distinctive threadlike pectoral fin rays. Commonly found in turbid tidal creeks and river mouths. Great sport and table fish.",
+      "Identified by its distinctive threadlike pectoral fin rays. Common in turbid tidal creeks and river mouths throughout the Kimberley — Ord River, Fitzroy River mouth, King Sound. WA minimum size 60cm in the Northwest, bag limit 5.",
     eatingRating: 4,
     catchAndRelease: false,
     icon: "fish",
@@ -218,14 +218,14 @@ export const NT_SPECIES: NTSpecies[] = [
     scientificName: "Lutjanus johnii",
     category: "reef",
     bagLimit: 10,
-    minSizeCm: 38,
+    minSizeCm: 30,
     maxSizeCm: null,
     slotLimit: false,
     season: "Open year-round",
     seasonOpen: true,
     bestMonths: [4, 5, 6, 7, 8],
     description:
-      "Identified by its golden/bronze colouring and large scales. Found around reef, rock walls, and structure. Excellent table fish — one of the best in the NT.",
+      "Identified by its golden/bronze colouring and large scales. Found around reef, rock walls, and structure throughout the Kimberley coast. One of the best table fish in WA — prized by Broome and Wyndham anglers.",
     eatingRating: 5,
     catchAndRelease: false,
     icon: "fish",
@@ -244,7 +244,7 @@ export const NT_SPECIES: NTSpecies[] = [
     seasonOpen: true,
     bestMonths: [10, 11, 12, 1, 2],
     description:
-      "The ocean's fastest fish, capable of bursts over 110km/h. Catch-and-release strongly recommended. Best chased offshore Oct–Feb on the Arafura Sea.",
+      "The ocean's fastest fish, capable of bursts over 110km/h. Catch-and-release strongly recommended. Best chased offshore Oct–Feb from Exmouth, Coral Bay, and the Kimberley coast on the Indian Ocean.",
     eatingRating: 1,
     catchAndRelease: true,
     icon: "fish",
@@ -263,7 +263,7 @@ export const NT_SPECIES: NTSpecies[] = [
     seasonOpen: true,
     bestMonths: [11, 12, 1, 2],
     description:
-      "The largest billfish in Australian waters, reaching over 500kg. Catch-and-release only recommended. Found offshore in the Arafura Sea and Timor Sea.",
+      "The largest billfish in Australian waters, reaching over 500kg. Catch-and-release only recommended. Found offshore from Exmouth, Broome, and the Kimberley coast. WA waters support excellent blue-water marlin fishing.",
     eatingRating: 1,
     catchAndRelease: true,
     icon: "fish",
@@ -282,7 +282,7 @@ export const NT_SPECIES: NTSpecies[] = [
     seasonOpen: true,
     bestMonths: [5, 6, 7, 8, 9],
     description:
-      "A deep-bodied reef snapper identified by two white spots on the back. Aggressive around coral bommies and outer reef structures. Note: large Red Bass can carry ciguatera toxin — caution advised eating fish over 4kg.",
+      "A deep-bodied reef snapper identified by two white spots on the back. Aggressive around coral bommies at Ningaloo, Rowley Shoals, and Montebello Islands. Note: large Red Bass can carry ciguatera toxin — caution advised with fish over 4kg.",
     eatingRating: 3,
     catchAndRelease: false,
     icon: "fish",

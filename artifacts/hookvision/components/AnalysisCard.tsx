@@ -293,7 +293,7 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
           <Text style={styles.crocWarningLabel}>⚠️  SONAR READING</Text>
           <Text style={styles.crocWarningText}>{analysis.crocWarning}</Text>
           <Text style={styles.crocSafetyText}>
-            🚨 NT Croc Safety: Stay 5m from the water's edge. Never clean fish or wash hands at the water. Saltwater crocs can be submerged and undetected. Relocate immediately.
+            🚨 WA/Kimberley Croc Safety: Stay 5m from the water's edge. Never clean fish or wash hands at the water. Saltwater crocs can be submerged and undetected. Relocate immediately.
           </Text>
         </View>
       )}

@@ -84,7 +84,7 @@ OUTPUT — ONLY this JSON, no markdown, no extra text:
   "featuresDetected": ["feature name", ...],
   "featuresMissing": ["feature name", ...],
   "keyEvidence": "one sentence: strongest visual proof for your verdict",
-  "slotWarning": null | "SLOT LIMIT — Fog Bay/Darwin Harbour: must release fish over 80cm",
+  "slotWarning": null | "CHECK WA FISHERIES: confirm bag limit and size before keeping",
   "sizeHint": "~55cm" | null,
   "refMatchScore": 0-100
 }`;
@@ -245,7 +245,7 @@ router.post("/barra-confirm", async (req, res) => {
 
     await addCommunityReference({
       base64Thumb:  thumb,
-      location:     location ?? "NT, Australia",
+      location:     location ?? "WA, Australia",
       viewingAngle: viewingAngle ?? undefined,
     });
 

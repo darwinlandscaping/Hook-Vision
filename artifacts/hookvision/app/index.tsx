@@ -170,7 +170,7 @@ export default function WelcomeScreen() {
       {/* ── Particles — CSS keyframe driven, works in all iframe contexts ── */}
       <WebParticles />
 
-      {/* ── NT Flag ── */}
+      {/* ── WA Flag ── */}
       <Animated.Image
         source={NT_FLAG}
         style={[
@@ -202,7 +202,7 @@ export default function WelcomeScreen() {
           style={{ width: logoW, height: logoH }}
           resizeMode="contain"
         />
-        <Text style={styles.tagline}>NT'S AI FISHING GUIDE</Text>
+        <Text style={styles.tagline}>WA'S AI FISHING GUIDE</Text>
       </Animated.View>
 
       {/* ── Enter button ── */}

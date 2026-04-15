@@ -19,11 +19,11 @@ import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { NarratorButton } from "@/components/NarratorButton";
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 import {
-  NT_TIDE_REGIONS,
+  WA_TIDE_REGIONS,
   TYPE_LABELS,
   TYPE_COLORS,
-  getNTWaterTemp,
-  getNTSeason,
+  getWAWaterTemp,
+  getWASeason,
   type TideLocation,
   type TideRegion,
 } from "@/data/ntTideLocations";
@@ -109,7 +109,7 @@ function buildRegionNarratorText(region: TideRegion): string {
 }
 
 function buildTideNarratorText(loc: TideLocation, data: TideResponse): string {
-  const season = getNTSeason();
+  const season = getWASeason();
   let text = `${loc.name} conditions. ${season.name} — ${season.fishing}. `;
   text += `Target species: ${loc.species.slice(0, 3).join(", ")}. Best lure: ${loc.lure}. Best time: ${loc.bestTide}. `;
   text += `Fishing tip: ${loc.tip} `;
@@ -120,7 +120,8 @@ function buildTideNarratorText(loc: TideLocation, data: TideResponse): string {
     }
   }
   if (data.isSecondary) {
-    text += `Times corrected from ${data.refPort === "darwin" ? "Darwin" : data.refPort === "gove" ? "Gove" : "Groote Eylandt"} BOM. Verify before use.`;
+    const portLabel = data.refPort === "broome" ? "Broome" : data.refPort === "derby" ? "Derby" : data.refPort === "exmouth" ? "Exmouth" : data.refPort === "wyndham" ? "Wyndham" : data.refPort === "dampier" ? "Dampier" : data.refPort === "carnarvon" ? "Carnarvon" : "Port Hedland";
+    text += `Times corrected from ${portLabel} BOM. Verify before use.`;
   }
   return text.trim();
 }
@@ -146,8 +147,8 @@ function ConditionsStrip({
   colors: ReturnType<typeof useColors>;
 }) {
   const moon = getMoonPhase();
-  const season = getNTSeason();
-  const waterTemp = getNTWaterTemp(regionId);
+  const season = getWASeason();
+  const waterTemp = getWAWaterTemp(regionId);
   const tideStage = tideData ? getTideStage(tideData) : null;
 
   const pills = [
@@ -428,7 +429,7 @@ function TideDetailView({ loc, region, onBack, colors, topPad, bottomPad }: {
         <>
           <View style={styles.tidesHeaderRow}>
             <SectionHeader icon="🌊" label="TIDE PREDICTIONS" color={colors.primary} />
-            <Text style={[styles.tidesSubtitle, { color: colors.mutedForeground }]}>Darwin time (UTC+9:30)</Text>
+            <Text style={[styles.tidesSubtitle, { color: colors.mutedForeground }]}>Broome time (UTC+8:00)</Text>
           </View>
 
           {data.data.length > 0 && <NextTideCard data={data.data} colors={colors} />}
@@ -457,7 +458,7 @@ function TideDetailView({ loc, region, onBack, colors, topPad, bottomPad }: {
             <Feather name="info" size={12} color={colors.mutedForeground} />
             <Text style={[styles.disclaimerText, { color: colors.mutedForeground }]}>
               {data.isSecondary
-                ? `Corrected from ${data.refPort === "darwin" ? "Darwin" : data.refPort === "gove" ? "Gove" : "Groote Eylandt"} BOM using standard secondary port corrections. Verify before use.`
+                ? `Corrected from ${data.refPort === "broome" ? "Broome" : data.refPort === "derby" ? "Derby" : data.refPort === "exmouth" ? "Exmouth" : data.refPort === "wyndham" ? "Wyndham" : data.refPort === "dampier" ? "Dampier" : data.refPort === "carnarvon" ? "Carnarvon" : "Port Hedland"} BOM using standard secondary port corrections. Verify before use.`
                 : "Sourced from Bureau of Meteorology. Always check current conditions before heading out."}
             </Text>
           </View>
@@ -471,14 +472,14 @@ function TideDetailView({ loc, region, onBack, colors, topPad, bottomPad }: {
 export default function TidesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const [selectedRegionId, setSelectedRegionId] = useState("darwin");
+  const [selectedRegionId, setSelectedRegionId] = useState("broome");
   const [selectedLoc, setSelectedLoc] = useState<TideLocation | null>(null);
 
-  useAutoNarrate(() => "NT Tides. 50 fishing locations across all NT rivers, boat ramps, river mouths and rock bars. Select a region to get water temp, hot spots, target species, best lures, access info and tide predictions.");
+  useAutoNarrate(() => "WA Tides. Fishing locations across Kimberley, Pilbara, and Exmouth rivers, boat ramps, river mouths and rock bars. Select a region to get water temp, hot spots, target species, best lures, access info and tide predictions.");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   const bottomPad = Platform.OS === "web" ? 70 : insets.bottom + 24;
-  const selectedRegion = NT_TIDE_REGIONS.find((r) => r.id === selectedRegionId) ?? NT_TIDE_REGIONS[0];
+  const selectedRegion = WA_TIDE_REGIONS.find((r) => r.id === selectedRegionId) ?? WA_TIDE_REGIONS[0];
 
   if (selectedLoc) {
     return (
@@ -497,12 +498,12 @@ export default function TidesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={{ paddingTop: topPad + 12, paddingHorizontal: 14, gap: 10, paddingBottom: 8 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <HVHeader subtitle="NT Tide Predictions" />
+          <HVHeader subtitle="WA Tide Predictions" />
           <NarratorSettingsTrigger />
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.regionTabRow}>
-          {NT_TIDE_REGIONS.map((r) => {
+          {WA_TIDE_REGIONS.map((r) => {
             const active = r.id === selectedRegionId;
             return (
               <TouchableOpacity
@@ -536,7 +537,7 @@ export default function TidesScreen() {
         <View style={[styles.disclaimer, { backgroundColor: colors.secondary, marginTop: 4 }]}>
           <Feather name="info" size={12} color={colors.mutedForeground} />
           <Text style={[styles.disclaimerText, { color: colors.mutedForeground }]}>
-            ★ marks iconic NT fishing locations. Tide times are in Darwin time (UTC+9:30). Secondary locations use BOM secondary port correction tables.
+            ★ marks iconic Kimberley and WA fishing locations. Tide times are in AWST (UTC+8:00). Secondary locations use BOM secondary port correction tables.
           </Text>
         </View>
       </ScrollView>

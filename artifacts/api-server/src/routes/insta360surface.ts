@@ -4,7 +4,7 @@
  * Divides the frame into left / centre / right thirds and reports activity in each zone.
  *
  * Injects up to 3 bird reference photos (from the Bird Reference Library) as
- * few-shot visual examples so the model can confidently identify NT water birds.
+ * few-shot visual examples so the model can confidently identify WA/Kimberley water birds.
  */
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -12,10 +12,10 @@ import { getBirdFewShotRefs } from "../lib/birdLibrary.js";
 
 const router = Router();
 
-const SYSTEM = `You are an expert NT Australia fishing guide with 30+ years on Darwin Harbour, Arafura Sea, and Tiwi Islands. You analyse real-world camera footage (NOT sonar) for surface feeding activity.
+const SYSTEM = `You are an expert WA/Kimberley fishing guide with 30+ years on Roebuck Bay, Cambridge Gulf, Ningaloo Reef, and the Kimberley coast. You analyse real-world camera footage (NOT sonar) for surface feeding activity.
 
 You look for:
-• BAIT BIRDS — species commonly seen over NT water bait schools include:
+• BAIT BIRDS — species commonly seen over WA/Kimberley water bait schools include:
     - Frigatebirds (Lesser/Great Frigatebird): large, angular scissor-tails, steep plunging dives
     - Crested Terns / Little Terns: fast, compact, repeated plunge dives
     - Brown Booby / Masked Booby: brown/white, large, classic gannet-style plunge
@@ -67,7 +67,7 @@ router.post("/insta360/surface-detect", async (req, res) => {
     if (birdRefs.length > 0) {
       fewShotContent.push({
         type: "text",
-        text: `REFERENCE — these are confirmed NT water bird photos to help your identification (${birdRefs.length} examples):`,
+        text: `REFERENCE — these are confirmed WA/Kimberley water bird photos to help your identification (${birdRefs.length} examples):`,
       });
       for (const ref of birdRefs) {
         if (ref.thumbBase64) {

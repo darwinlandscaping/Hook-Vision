@@ -190,7 +190,7 @@ function RiverCard({ river, colors }: { river: RiverSystem; colors: ReturnType<t
             <Text style={[styles.seasonPillText, { color: colors.primary }]}>{river.bestSeason}</Text>
           </View>
           <Text style={[styles.riverRegion, { color: colors.mutedForeground }]} numberOfLines={1} ellipsizeMode="tail">
-            {river.region} · {river.distanceFromDarwin}
+            {river.region} · {river.distanceNote}
           </Text>
         </View>
         <Feather
@@ -329,7 +329,7 @@ export default function ZonesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 0 : insets.top;
-  useAutoNarrate(() => "Depth Strike Zones. Find the optimal fishing depth for barramundi, threadfin, mangrove jack and more based on current NT conditions.");
+  useAutoNarrate(() => "Depth Strike Zones. Find the optimal fishing depth for barramundi, threadfin, mangrove jack and more across Kimberley and Pilbara WA river systems.");
 
   const [selectedId, setSelectedId] = useState<string>("all");
 
@@ -378,7 +378,7 @@ export default function ZonesScreen() {
       <View style={[styles.sourceNote, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <MaterialCommunityIcons name="information-outline" size={13} color={colors.mutedForeground} />
         <Text style={[styles.sourceNoteText, { color: colors.mutedForeground }]}>
-          Depth zones compiled from NT Fisheries technical reports (1982–2000), FishNT magazine archives (1985–2005), NT Angling Club records, CSIRO fish surveys, and published Northern Territory fishing guides. Commercial netting data from NT Fisheries licensing records and annual reports.
+          Depth zones compiled from WA Fisheries technical reports (1985–2005), Kimberley fishing guides, WA Angling Club records, CSIRO fish surveys, and published Western Australia fishing guides. Commercial netting data from WA Fisheries licensing records and annual reports.
         </Text>
       </View>
     </ScrollView>

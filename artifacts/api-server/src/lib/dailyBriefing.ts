@@ -1,8 +1,8 @@
 /**
  * Daily Briefing Engine
  *
- * Runs once on startup, then refreshes daily at midnight Darwin time (ACST = UTC+9:30).
- * Computes moon phase, NT season, BOM Darwin weather, sonar tip of the day,
+ * Runs once on startup, then refreshes daily at midnight WA time (AWST = UTC+8:00).
+ * Computes moon phase, WA season, BOM Broome weather, sonar tip of the day,
  * and generates an AI fishing briefing that gets injected into every sonar analysis.
  */
 
@@ -11,7 +11,7 @@ import { logger } from "./logger";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface DarwinWeather {
+export interface WAWeather {
   tempC: number;
   apparentTempC: number;
   humidity: number;
@@ -30,7 +30,7 @@ export interface MoonData {
   fishingRating: string;
 }
 
-export interface NTSeasonData {
+export interface WASeasonData {
   name: string;
   emoji: string;
   fishingContext: string;
@@ -40,10 +40,10 @@ export interface NTSeasonData {
 
 export interface DailyConditions {
   date: string;
-  darwinLocalTime: string;
-  season: NTSeasonData;
+  waLocalTime: string;
+  season: WASeasonData;
   moon: MoonData;
-  weather: DarwinWeather | null;
+  weather: WAWeather | null;
   barraActivity: string;
   sonarTip: string;
   aiBriefing: string;
@@ -60,23 +60,23 @@ let _refreshCount = 0;
 
 // Short-TTL weather cache: BOM updates every ~30min, we refresh every 20min
 const WEATHER_TTL_MS = 20 * 60 * 1000;
-let _weatherCache: { data: DarwinWeather | null; fetchedAt: number } | null = null;
+let _weatherCache: { data: WAWeather | null; fetchedAt: number } | null = null;
 
 /** Returns fresh BOM weather — fetches at most once per 20 minutes. */
-export async function getLiveWeather(): Promise<DarwinWeather | null> {
+export async function getLiveWeather(): Promise<WAWeather | null> {
   const now = Date.now();
   if (_weatherCache && now - _weatherCache.fetchedAt < WEATHER_TTL_MS) {
     return _weatherCache.data;
   }
-  const data = await fetchDarwinWeather();
+  const data = await fetchWAWeather();
   _weatherCache = { data, fetchedAt: now };
   return data;
 }
 
-/** Compute moon phase for right now (Darwin time). Free — pure math. */
+/** Compute moon phase for right now (WA/Perth time). Free — pure math. */
 export function computeMoonNow(): MoonData {
-  const darwinOffsetMs = 9.5 * 60 * 60 * 1000;
-  return computeMoon(new Date(Date.now() + darwinOffsetMs));
+  const waOffsetMs = 8 * 60 * 60 * 1000;
+  return computeMoon(new Date(Date.now() + waOffsetMs));
 }
 
 export function getDailyConditions(): DailyConditions | null {
@@ -88,10 +88,10 @@ export function getConditionsContext(): string {
   if (!_cache) return "";
   const w = _cache.weather;
   const lines = [
-    `=== TODAY'S NT CONDITIONS (${_cache.date}) ===`,
+    `=== TODAY'S WA/KIMBERLEY CONDITIONS (${_cache.date}) ===`,
     `Season: ${_cache.season.emoji} ${_cache.season.name} — ${_cache.season.fishingContext}`,
     `Moon: ${_cache.moon.emoji} ${_cache.moon.name} (${_cache.moon.illuminationPct}% illuminated) — ${_cache.moon.fishingRating}`,
-    w ? `Darwin Weather: ${w.tempC}°C, ${w.conditions}, Wind ${w.windDir} ${w.windSpeedKmh}km/h, Pressure ${w.pressureHpa}hPa (${w.pressureTrend})` : "",
+    w ? `Broome Weather: ${w.tempC}°C, ${w.conditions}, Wind ${w.windDir} ${w.windSpeedKmh}km/h, Pressure ${w.pressureHpa}hPa (${w.pressureTrend})` : "",
     `Water temp estimate: ${_cache.season.waterTempRange}`,
     `Barra activity level: ${_cache.barraActivity}`,
     `Sonar tip today: ${_cache.sonarTip}`,
@@ -143,9 +143,9 @@ function computeMoon(date: Date): MoonData {
   return { phase, name, emoji, illuminationPct, fishingRating };
 }
 
-// ─── NT Season ────────────────────────────────────────────────────────────────
+// ─── WA/Kimberley Season ──────────────────────────────────────────────────────
 
-function computeNTSeason(date: Date): NTSeasonData {
+function computeWASeason(date: Date): WASeasonData {
   const month = date.getMonth() + 1;
   if (month >= 10 && month <= 12) {
     return {
@@ -183,13 +183,13 @@ function computeNTSeason(date: Date): NTSeasonData {
   };
 }
 
-// ─── BOM Darwin weather ───────────────────────────────────────────────────────
+// ─── BOM Broome weather ───────────────────────────────────────────────────────
 
-async function fetchDarwinWeather(): Promise<DarwinWeather | null> {
+async function fetchWAWeather(): Promise<WAWeather | null> {
   try {
-    // BOM Darwin Airport (station 94120)
+    // BOM Broome Airport (WA station 003003)
     const res = await fetch(
-      "http://www.bom.gov.au/fwo/IDD60801/IDD60801.94120.json",
+      "http://www.bom.gov.au/fwo/IDW60801/IDW60801.003003.json",
       { signal: AbortSignal.timeout(8000) }
     );
     if (!res.ok) return null;
@@ -198,9 +198,9 @@ async function fetchDarwinWeather(): Promise<DarwinWeather | null> {
     if (!obs) return null;
 
     return {
-      tempC:         obs.air_temp          ?? 29,
-      apparentTempC: obs.apparent_t        ?? obs.air_temp ?? 29,
-      humidity:      obs.rel_hum           ?? 60,
+      tempC:         obs.air_temp          ?? 31,
+      apparentTempC: obs.apparent_t        ?? obs.air_temp ?? 31,
+      humidity:      obs.rel_hum           ?? 55,
       windDir:       obs.wind_dir          ?? "N/A",
       windSpeedKmh:  obs.wind_spd_kmh      ?? 0,
       pressureHpa:   obs.press             ?? 1010,
@@ -208,14 +208,14 @@ async function fetchDarwinWeather(): Promise<DarwinWeather | null> {
       conditions:    obs.weather           ?? "Fair",
     };
   } catch (err) {
-    logger.warn({ err }, "BOM Darwin weather fetch failed — using defaults");
+    logger.warn({ err }, "BOM Broome weather fetch failed — using defaults");
     return null;
   }
 }
 
 // ─── Barra activity rating ────────────────────────────────────────────────────
 
-function computeBarraActivity(moon: MoonData, season: NTSeasonData, weather: DarwinWeather | null): string {
+function computeBarraActivity(moon: MoonData, season: WASeasonData, weather: WAWeather | null): string {
   let score = 50;
 
   // Moon influence
@@ -252,23 +252,23 @@ function computeBarraActivity(moon: MoonData, season: NTSeasonData, weather: Dar
 const SONAR_TIPS = [
   "Arch THICKNESS = fish SIZE. Ignore the arch length completely. A fat short arch = big barra. A long thin arch = small fish.",
   "If the arch touches or merges with the bottom echo = fish is lethargic. A small gap between arch and bottom = fish is feeding. THAT gap is gold.",
-  "Double echo on the bottom (second line at exactly double the depth) = you're over bedrock. This is the hardest, most fish-holding substrate in NT.",
+  "Double echo on the bottom (second line at exactly double the depth) = you're over bedrock. This is the hardest, most fish-holding substrate in Kimberley river systems.",
   "Barra arches sit ON hard structure. Threadfin arches float MID-COLUMN over soft bottom. This one difference tells you which species you're seeing.",
   "A bait cloud that BALLS UP into a sphere = predators are attacking from below. Large arches at the edge = those are your fish. Cast to the edge of the ball NOW.",
-  "In turbid NT estuaries, the swim bladder return cuts through sediment haze. Look for the BRIGHTEST marks in the fuzzy water column — that's barra.",
+  "In turbid Kimberley estuaries, the swim bladder return cuts through sediment haze. Look for the BRIGHTEST marks in the fuzzy water column — that's barra.",
   "Running tide: arches lift off the bottom = fish active and feeding. Slack tide: arches merge with structure = fish resting. Your sonar is a tide gauge too.",
   "DownScan timber ID: a fallen log shows as a long horizontal bright streak with a clear shadow below. Barra arch sits ON TOP of that streak.",
-  "NT croc check every scan: solid FILLED elongated blob in the top 3m, much brighter than any fish, no hollow arch centre = crocodile. DO NOT enter the water.",
+  "Kimberley croc check every scan: solid FILLED elongated blob in the top 3m, much brighter than any fish, no hollow arch centre = crocodile. DO NOT enter the water.",
   "On rock bars, the barra sits at the UPSTREAM edge of the bar facing into the current. Cast past the bar and retrieve toward them.",
   "High frequency (200kHz+) = sharper, more accurate arches for shallow water under 20m. CHIRP gives the cleanest individual arch separation.",
   "A straight horizontal line instead of an arch = fish was stationary under you for an extended time. Means it's not moving — probably resting or spooked.",
   "Standing flooded timber on sonar looks like a 'city skyline' of vertical columns from the bottom. Barra arches appear at the TOP and BASE of each column.",
   "Mangrove jack arches are EMBEDDED in the structure echo — a bright bump ON or inside the hard-structure return. Never floating free in the water.",
   "Fingermark school as a GROUP 0.5–3m above rocky reef. Multiple clean arches above bumpy bottom = goldies. Singles tight to structure = rock cod.",
-  "The Elizabeth River's rock bar at the mouth is best on the run-out tide. Barra stack at the downstream lip — sonar shows multiple arches at 3–6m at the drop.",
-  "Daly River is clean clear water — sonar arches are crisper here than Darwin Harbour. Fat bright U arches over limestone rock = trophy barra.",
+  "The Ord River rock bar below Kununurra is best on the run-out tide. Barra stack at the downstream lip — sonar shows multiple arches at 3–6m at the drop.",
+  "Fitzroy River is clear water lower reaches — sonar arches are crisper here than Cambridge Gulf. Fat bright U arches over limestone rock = trophy barra.",
   "Side imaging: fish appear as bright marks with a shadow TRAILING AWAY from the boat. Distance from centre line = how far the fish is from you.",
-  "Mary River flooded timber (wet season): standing timber shows as columns. Barra arch at the base and crown of each submerged tree. Fish are THERE.",
+  "Ord River flooded timber (wet season): standing timber shows as columns. Barra arch at the base and crown of each submerged tree. Fish are THERE.",
   "Jewfish sonar: massive single bright arch in turbid harbour water at 5–15m mid-column. Biggest arch on screen in murky conditions. Easy to spot.",
 ];
 
@@ -281,22 +281,22 @@ function getTodaysSonarTip(date: Date): string {
 
 async function generateAIBriefing(
   date: string,
-  season: NTSeasonData,
+  season: WASeasonData,
   moon: MoonData,
-  weather: DarwinWeather | null,
+  weather: WAWeather | null,
   barraActivity: string,
 ): Promise<string> {
   try {
-    const prompt = `You are an expert NT barramundi fishing guide. Generate a concise, punchy daily fishing briefing for NT anglers for ${date}.
+    const prompt = `You are an expert WA/Kimberley barramundi fishing guide. Generate a concise, punchy daily fishing briefing for Kimberley anglers for ${date}.
 
 Current conditions:
 - Season: ${season.name} — ${season.fishingContext}
 - Moon: ${moon.name} (${moon.illuminationPct}% illuminated) — ${moon.fishingRating}
 - Barra activity: ${barraActivity}
-${weather ? `- Darwin weather: ${weather.tempC}°C, ${weather.conditions}, wind ${weather.windDir} ${weather.windSpeedKmh}km/h, pressure ${weather.pressureHpa}hPa ${weather.pressureTrend}` : "- Darwin weather: unavailable"}
+${weather ? `- Broome weather: ${weather.tempC}°C, ${weather.conditions}, wind ${weather.windDir} ${weather.windSpeedKmh}km/h, pressure ${weather.pressureHpa}hPa ${weather.pressureTrend}` : "- Broome weather: unavailable"}
 - Water temp estimate: ${season.waterTempRange}
 
-Write 2–3 punchy sentences covering: what conditions are doing to fish behaviour, where to focus (structure, depth, tide phase), and one specific lure/technique recommendation. Use NT fishing slang. Sound like a knowledgeable local guide, not a textbook. Max 60 words.`;
+Write 2–3 punchy sentences covering: what conditions are doing to fish behaviour, where to focus (structure, depth, tide phase), and one specific lure/technique recommendation. Use WA/Kimberley fishing slang. Sound like a knowledgeable local guide, not a textbook. Max 60 words.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -316,35 +316,35 @@ Write 2–3 punchy sentences covering: what conditions are doing to fish behavio
 export async function refreshDailyConditions(): Promise<void> {
   const now = new Date();
 
-  // Darwin is UTC+9:30 (no DST)
-  const darwinOffsetMs = 9.5 * 60 * 60 * 1000;
-  const darwinNow = new Date(now.getTime() + darwinOffsetMs);
-  const dateStr = darwinNow.toISOString().slice(0, 10);
-  const timeStr = darwinNow.toISOString().slice(11, 16) + " ACST";
+  // WA is UTC+8 (no DST)
+  const waOffsetMs = 8 * 60 * 60 * 1000;
+  const waNow = new Date(now.getTime() + waOffsetMs);
+  const dateStr = waNow.toISOString().slice(0, 10);
+  const timeStr = waNow.toISOString().slice(11, 16) + " AWST";
 
   logger.info({ date: dateStr }, "Daily conditions refresh starting…");
 
   const [moon, season, weather] = await Promise.all([
-    Promise.resolve(computeMoon(darwinNow)),
-    Promise.resolve(computeNTSeason(darwinNow)),
-    fetchDarwinWeather(),
+    Promise.resolve(computeMoon(waNow)),
+    Promise.resolve(computeWASeason(waNow)),
+    fetchWAWeather(),
   ]);
 
   const barraActivity  = computeBarraActivity(moon, season, weather);
-  const sonarTip       = getTodaysSonarTip(darwinNow);
+  const sonarTip       = getTodaysSonarTip(waNow);
   const aiBriefing     = await generateAIBriefing(dateStr, season, moon, weather, barraActivity);
 
-  // Schedule next refresh at next Darwin midnight
-  const tomorrowMidnightDarwin = new Date(darwinNow);
-  tomorrowMidnightDarwin.setHours(24, 0, 1, 0); // next midnight +1s
-  const msUntilMidnight = tomorrowMidnightDarwin.getTime() - darwinNow.getTime();
+  // Schedule next refresh at next WA midnight
+  const tomorrowMidnightWA = new Date(waNow);
+  tomorrowMidnightWA.setHours(24, 0, 1, 0); // next midnight +1s
+  const msUntilMidnight = tomorrowMidnightWA.getTime() - waNow.getTime();
   const nextRefreshISO = new Date(now.getTime() + msUntilMidnight).toISOString();
 
   _refreshCount++;
 
   _cache = {
     date: dateStr,
-    darwinLocalTime: timeStr,
+    waLocalTime: timeStr,
     season,
     moon,
     weather,

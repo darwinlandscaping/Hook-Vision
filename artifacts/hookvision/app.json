@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "hookvision",
-    "description": "NT Australia's AI-powered barramundi fishing guide. Sonar analysis, tide predictions, species identification, live camera overlay, and Barra Brain community learning.",
+    "description": "WA/Kimberley's AI-powered barramundi fishing guide. Sonar analysis, tide predictions, species identification, live camera overlay, and Barra Brain community learning.",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -28,7 +28,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "HookVision uses the camera for live AI sonar overlay and barra recognition.",
         "NSPhotoLibraryUsageDescription": "HookVision needs access to your photos to analyse sonar screenshots.",
-        "NSLocationWhenInUseUsageDescription": "HookVision uses your location to identify your NT fishing spot and show nearby hotspot data.",
+        "NSLocationWhenInUseUsageDescription": "HookVision uses your location to identify your WA/Kimberley fishing spot and show nearby hotspot data.",
         "NSMicrophoneUsageDescription": "HookVision uses the microphone for AI voice narration recording."
       }
     },
@@ -81,8 +81,8 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "HookVision uses your location to identify your NT fishing spot and show accurate hotspot data.",
-          "locationWhenInUsePermission": "HookVision uses your location to identify your NT fishing spot and show accurate hotspot data.",
+          "locationAlwaysAndWhenInUsePermission": "HookVision uses your location to identify your WA/Kimberley fishing spot and show accurate hotspot data.",
+          "locationWhenInUsePermission": "HookVision uses your location to identify your WA/Kimberley fishing spot and show accurate hotspot data.",
           "isAndroidForegroundServiceEnabled": false
         }
       ],

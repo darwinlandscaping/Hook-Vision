@@ -1,15 +1,15 @@
 /**
  * Bird Reference Library (Pipeline 1 — Surface Detect)
  * ────────────────────────────────────────────────────────────────────────────
- * Syncs research-grade photos of NT-water fishing indicator birds from
+ * Syncs research-grade photos of WA/Kimberley fishing indicator birds from
  * iNaturalist and stores them in the bird_references DB table.
  *
  * At runtime, up to 3 bird reference photos are injected as few-shot images
  * into every /api/insta360/surface-detect call so the vision model can
  * recognise each species in real-world Insta360 camera frames.
  *
- * Target species (NT waters — Darwin Harbour, Arafura Sea, Tiwi Islands,
- * Kakadu, Adelaide River, Daly River system):
+ * Target species (WA/Kimberley waters — Roebuck Bay, King Sound, Cambridge Gulf,
+ * Ord River, Fitzroy River, Exmouth Gulf):
  *
  *   Frigatebird     — Fregata ariel / Fregata minor
  *   Crested Tern    — Thalasseus bergii
@@ -113,7 +113,7 @@ async function fetchInat(taxonId: number, page: number): Promise<InatObservation
   });
   const url = `https://api.inaturalist.org/v1/observations?${params}`;
   const resp = await fetch(url, {
-    headers: { "User-Agent": "HookVision/1.0 (NT Australia fishing app)" },
+    headers: { "User-Agent": "HookVision/1.0 (WA Australia fishing app)" },
     signal:  AbortSignal.timeout(15_000),
   });
   if (!resp.ok) throw new Error(`iNat ${resp.status}`);
@@ -150,7 +150,7 @@ async function upsertObservations(
           photoUrl:      largeUrl(photo.url),
           thumbUrl:      thumbUrl(photo.url),
           observationId: obsId,
-          location:      o.place_guess ?? "Northern Territory, Australia",
+          location:      o.place_guess ?? "Kimberley, Western Australia",
           qualityGrade:  o.quality_grade,
           description:   o.description ? o.description.slice(0, 500) : null,
           votes:         o.faves_count,
@@ -182,7 +182,7 @@ async function rebuildCache(): Promise<void> {
   cache = rows.map(r => ({
     photoUrl:    r.photoUrl,
     species:     r.species ?? "Unknown bird",
-    location:    r.location ?? "NT, Australia",
+    location:    r.location ?? "WA, Australia",
     votes:       r.votes ?? 0,
     thumbBase64: r.thumbBase64 ?? undefined,
     poseType:    (r.poseType as BirdCachedRef["poseType"]) ?? undefined,
@@ -313,10 +313,10 @@ async function classifyPoses(): Promise<void> {
 
 /**
  * Initialise on server startup.
- * Fetches up to 500 research-grade bird photos across 10 NT target species.
+ * Fetches up to 500 research-grade bird photos across 10 WA/Kimberley target species.
  */
 export async function initBirdLibrary(): Promise<void> {
-  logger.info("Bird reference library: starting iNaturalist sync (target: 500 photos across 10 NT species)…");
+  logger.info("Bird reference library: starting iNaturalist sync (target: 500 photos across 10 WA/Kimberley species)…");
   let totalAdded = 0;
 
   for (const species of NT_BIRD_SPECIES) {

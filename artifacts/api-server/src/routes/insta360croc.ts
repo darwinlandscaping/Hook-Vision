@@ -6,7 +6,7 @@
  *
  * Injects up to 3 croc reference photos (from the Croc Reference Library) as
  * few-shot visual examples drawn from 1,000 iNaturalist research observations.
- * Also injects freshwater croc (Crocodylus johnstoni) awareness for NT rivers.
+ * Also injects freshwater croc (Crocodylus johnstoni) awareness for WA/Kimberley rivers.
  */
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -14,12 +14,12 @@ import { getCrocFewShotRefs } from "../lib/crocLibrary.js";
 
 const router = Router();
 
-const SYSTEM = `You are an NT Australia crocodile safety expert and wildlife ranger with field experience across Darwin Harbour, Adelaide River, Daly River, Kakadu, and the Tiwi Islands. You analyse real-world camera footage (NOT sonar) for saltwater AND freshwater crocodile presence.
+const SYSTEM = `You are a WA/Kimberley crocodile safety expert and wildlife ranger with field experience across Broome, Roebuck Bay, Cambridge Gulf, Ord River, Fitzroy River, Drysdale River, and King Sound. You analyse real-world camera footage (NOT sonar) for saltwater AND freshwater crocodile presence.
 
 SPECIES TO IDENTIFY:
 • Saltwater Crocodile (Crocodylus porosus) — "salty":
   - Can exceed 6m. Dark olive/grey, heavily armoured back
-  - Found in all NT coastal waters, estuaries, rivers, and up to 100km inland
+  - Found in all WA Kimberley coastal waters, estuaries, rivers, and up to 100km inland
   - Often completely submerged — only eyes + nostrils visible (like 2 small bumps at waterline)
   - Eyes: amber/yellow, highly reflective at waterline, paired tiny glints
   - Snout: narrow, elongated jaw tip — pointed
@@ -30,14 +30,14 @@ SPECIES TO IDENTIFY:
 • Freshwater Crocodile (Crocodylus johnstoni) — "freshie":
   - Smaller (max ~3m). Slender build, lighter brown/olive colouration
   - Long narrow snout (longer than salty)
-  - Found in NT rivers, billabongs, freshwater creeks
+  - Found in WA/Kimberley rivers, billabongs, freshwater creeks
   - Less dangerous but still capable of biting
   - Danger: MODERATE
 
-IMPORTANT NT ENVIRONMENTAL CONTEXT:
+IMPORTANT WA/KIMBERLEY ENVIRONMENTAL CONTEXT:
 • WET SEASON (Nov–Apr): Water is brown/murky with tannins and runoff sediment — crocs almost invisible
 • DRY SEASON (May–Oct): Water clearer but crocs more concentrated as water levels drop
-• Saltwater crocs are abundant in Darwin Harbour, Adelaide River, Ord, Daly, East Alligator, Mary River
+• Saltwater crocs are abundant in Roebuck Bay, Cambridge Gulf, Ord River, Fitzroy River, Drysdale River, King Sound
 • They can appear completely as logs — motionless for hours, incredibly well camouflaged
 • Watch for: V-wakes with no boat/fish cause, subtle movement in still water, paired eye-glints
 • Do NOT confuse: floating logs (no paired eyes, irregular cross-section), submerged rocks, debris
@@ -128,7 +128,7 @@ router.post("/insta360/croc-vision", async (req, res) => {
                   : "Analyse this Insta360 camera frame for crocodile presence at or near the waterline.",
                 sonarCrocAlert
                   ? `⚠️ SONAR ALERT: The boat's sonar has ALREADY detected a possible crocodile signature underwater near this location (${sonarCrocWarning ?? "croc-shaped sonar return"}). Treat any suspicious shapes with ELEVATED suspicion.`
-                  : "No sonar croc alert active — apply standard NT safety caution.",
+                  : "No sonar croc alert active — apply standard WA/Kimberley croc safety caution.",
                 "Identify which zones (left/centre/right) show any croc body parts. Include species estimate (salty vs freshie). Respond with JSON only.",
               ].join("\n"),
             },

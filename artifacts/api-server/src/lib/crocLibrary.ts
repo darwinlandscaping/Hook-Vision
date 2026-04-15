@@ -82,7 +82,7 @@ async function fetchInat(
   });
   const url = `https://api.inaturalist.org/v1/observations?${params}`;
   const resp = await fetch(url, {
-    headers: { "User-Agent": "HookVision/1.0 (NT Australia fishing safety app)" },
+    headers: { "User-Agent": "HookVision/1.0 (WA Australia fishing safety app)" },
     signal: AbortSignal.timeout(15_000),
   });
   if (!resp.ok) throw new Error(`iNat API ${resp.status}`);
@@ -117,7 +117,7 @@ async function upsertObservations(obs: InatObservation[]): Promise<number> {
           photoUrl:      large,
           thumbUrl:      thumb,
           observationId: obsId,
-          location:      o.place_guess ?? "Northern Territory, Australia",
+          location:      o.place_guess ?? "Kimberley, Western Australia",
           qualityGrade:  o.quality_grade,
           description:   o.description ? o.description.slice(0, 500) : null,
           votes:         o.faves_count,
@@ -276,7 +276,7 @@ async function classifyAngles(): Promise<void> {
 /**
  * Initialise on server startup.
  * Fetches up to 10 pages × 100 = 1,000 research-grade Crocodylus porosus photos.
- * Also fetches page 1 of Crocodylus johnstoni (freshwater croc) for NT river coverage.
+ * Also fetches page 1 of Crocodylus johnstoni (freshwater croc) for WA/Kimberley river coverage.
  */
 export async function initCrocLibrary(): Promise<void> {
   logger.info("Croc reference library: starting iNaturalist sync (target: 1,000 photos)…");
@@ -293,7 +293,7 @@ export async function initCrocLibrary(): Promise<void> {
         logger.warn({ page, err: String(pageErr) }, "Croc iNat page fetch failed, skipping");
       }
     }
-    // Freshwater croc (Crocodylus johnstoni) — NT rivers + estuaries
+    // Freshwater croc (Crocodylus johnstoni) — WA/Kimberley rivers + estuaries
     for (let page = 1; page <= 2; page++) {
       try {
         const obs = await fetchInat(page, 100, "Crocodylus johnstoni");

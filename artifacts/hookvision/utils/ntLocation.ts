@@ -1,36 +1,44 @@
 import * as Location from "expo-location";
 
 /**
- * Known NT fishing spots with their GPS coordinates.
+ * Known WA/Kimberley fishing spots with their GPS coordinates.
  * Used to map a user's GPS to a meaningful fishing location name.
  */
 export const NT_SPOTS: { name: string; lat: number; lng: number }[] = [
-  { name: "Darwin Harbour",        lat: -12.4634, lng: 130.8456 },
-  { name: "East Arm",              lat: -12.484,  lng: 130.879  },
-  { name: "Channel Island",        lat: -12.596,  lng: 130.904  },
-  { name: "Fog Bay",               lat: -12.397,  lng: 130.400  },
-  { name: "Bynoe Harbour",         lat: -12.670,  lng: 130.598  },
-  { name: "Adelaide River Mouth",  lat: -12.152,  lng: 131.370  },
-  { name: "Adelaide River",        lat: -12.650,  lng: 131.101  },
-  { name: "Mary River",            lat: -12.868,  lng: 131.646  },
-  { name: "Shady Camp",            lat: -12.734,  lng: 131.970  },
-  { name: "Corroboree Billabong",  lat: -12.887,  lng: 131.988  },
-  { name: "Kakadu",                lat: -12.585,  lng: 132.537  },
-  { name: "South Alligator River", lat: -12.565,  lng: 132.439  },
-  { name: "East Alligator River",  lat: -12.438,  lng: 132.982  },
-  { name: "Daly River",            lat: -13.763,  lng: 130.686  },
-  { name: "Edith River",           lat: -14.178,  lng: 132.082  },
-  { name: "Katherine River",       lat: -14.468,  lng: 132.265  },
-  { name: "Roper River",           lat: -14.724,  lng: 134.553  },
-  { name: "McArthur River",        lat: -15.904,  lng: 136.066  },
-  { name: "Borroloola",            lat: -16.077,  lng: 136.300  },
-  { name: "Van Diemen Gulf",       lat: -11.800,  lng: 130.800  },
-  { name: "Cobourg Peninsula",     lat: -11.400,  lng: 132.180  },
-  { name: "Goulburn Island",       lat: -11.570,  lng: 133.390  },
-  { name: "Nhulunbuy",             lat: -12.183,  lng: 136.778  },
-  { name: "Cox Peninsula",         lat: -12.516,  lng: 130.562  },
-  { name: "Dundee Beach",          lat: -12.520,  lng: 130.348  },
-  { name: "Darwin CBD Waterfront", lat: -12.462,  lng: 130.844  },
+  { name: "Broome Town Beach",       lat: -18.0093, lng: 122.2051 },
+  { name: "Roebuck Bay",             lat: -18.1200, lng: 122.3000 },
+  { name: "Cable Beach",             lat: -17.9543, lng: 122.1847 },
+  { name: "Gantheaume Point",        lat: -18.0483, lng: 122.1833 },
+  { name: "Derby",                   lat: -17.3103, lng: 123.6278 },
+  { name: "King Sound",              lat: -16.5000, lng: 123.5000 },
+  { name: "Fitzroy River Mouth",     lat: -17.7230, lng: 123.7070 },
+  { name: "Fitzroy Crossing",        lat: -18.1785, lng: 125.5881 },
+  { name: "Willare Ramp",            lat: -17.8500, lng: 123.6500 },
+  { name: "Kununurra",               lat: -15.7742, lng: 128.7300 },
+  { name: "Lake Kununurra",          lat: -15.7100, lng: 128.7400 },
+  { name: "Wyndham",                 lat: -15.4651, lng: 128.1069 },
+  { name: "Cambridge Gulf",          lat: -15.2000, lng: 128.4000 },
+  { name: "Ord River Mouth",         lat: -15.0990, lng: 128.2340 },
+  { name: "Drysdale River",          lat: -14.7490, lng: 126.9550 },
+  { name: "Mitchell River",          lat: -14.8000, lng: 125.7500 },
+  { name: "Prince Regent River",     lat: -15.8500, lng: 125.0500 },
+  { name: "King George Falls",       lat: -14.8830, lng: 127.6580 },
+  { name: "Berkeley Sound",          lat: -14.2500, lng: 127.1500 },
+  { name: "Port Hedland",            lat: -20.3121, lng: 118.6061 },
+  { name: "De Grey River",           lat: -20.1890, lng: 119.1690 },
+  { name: "Pardoo Station",          lat: -20.1100, lng: 119.5600 },
+  { name: "Montebello Islands",      lat: -20.4870, lng: 115.5320 },
+  { name: "Dampier",                 lat: -20.6530, lng: 116.7130 },
+  { name: "Karratha",                lat: -20.7377, lng: 116.8463 },
+  { name: "Roebourne",               lat: -20.7760, lng: 117.1530 },
+  { name: "Burrup Peninsula",        lat: -20.5893, lng: 116.7268 },
+  { name: "Fortescue River",         lat: -21.6500, lng: 115.7500 },
+  { name: "Exmouth",                 lat: -21.9348, lng: 114.1250 },
+  { name: "Ningaloo Reef",           lat: -22.5000, lng: 113.7000 },
+  { name: "Coral Bay",               lat: -23.1383, lng: 113.7741 },
+  { name: "Carnarvon",               lat: -24.8675, lng: 113.6576 },
+  { name: "Gascoyne River",          lat: -24.8400, lng: 113.5800 },
+  { name: "Shark Bay",               lat: -25.5000, lng: 113.5000 },
 ];
 
 const MATCH_RADIUS_KM = 30;
@@ -52,7 +60,7 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
  * fishing location name. Returns null if permission denied or timeout.
  *
  * Priority:
- *  1. Nearest known NT fishing spot within 30 km
+ *  1. Nearest known WA/Kimberley fishing spot within 30 km
  *  2. Reverse-geocoded suburb/city + state
  *  3. null (caller should handle gracefully — just omit from report)
  */
@@ -69,7 +77,7 @@ export async function getNTLocationName(timeoutMs = 8000): Promise<string | null
 
     const { latitude: lat, longitude: lng } = pos.coords;
 
-    // 1. Try to match a known NT fishing spot
+    // 1. Try to match a known WA fishing spot
     let closest: (typeof NT_SPOTS)[0] | null = null;
     let closestDist = Infinity;
     for (const spot of NT_SPOTS) {

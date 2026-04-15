@@ -19,16 +19,15 @@ interface CacheEntry {
   fetchedAt: number;
 }
 
-// ─── Primary BOM ports ─────────────────────────────────────────────────────────
+// ─── Primary BOM ports (WA) ────────────────────────────────────────────────────
 const BOM_PORTS: Record<string, { code: string; name: string }> = {
-  darwin: { code: "NT_TP001", name: "Darwin" },
-  gove:   { code: "NT_TP002", name: "Gove (Nhulunbuy)" },
-  groote: { code: "NT_TP003", name: "Groote Eylandt (Alyangula)" },
-  // ── NQ / Gulf Country ───────────────────────────────────────────────────────
-  karumba:  { code: "QLD_TP001", name: "Karumba" },
-  weipa:    { code: "QLD_TP002", name: "Weipa" },
-  cairns:   { code: "QLD_TP003", name: "Cairns" },
-  cooktown: { code: "QLD_TP004", name: "Cooktown" },
+  broome:      { code: "WA_TP001", name: "Broome" },
+  derby:       { code: "WA_TP002", name: "Derby (King Sound)" },
+  "port-hedland": { code: "WA_TP003", name: "Port Hedland" },
+  exmouth:     { code: "WA_TP004", name: "Exmouth (Learmonth)" },
+  carnarvon:   { code: "WA_TP005", name: "Carnarvon" },
+  dampier:     { code: "WA_TP006", name: "Dampier" },
+  wyndham:     { code: "WA_TP007", name: "Wyndham (Cambridge Gulf)" },
 };
 
 // ─── Secondary locations with corrections relative to a primary port ───────────
@@ -36,140 +35,73 @@ const BOM_PORTS: Record<string, { code: string; name: string }> = {
 // hwFactor / lwFactor: multiply reference port height by this factor
 interface LocationCfg {
   name: string;
-  refPort: "darwin" | "gove" | "groote" | "karumba" | "weipa" | "cairns" | "cooktown";
+  refPort: "broome" | "derby" | "port-hedland" | "exmouth" | "carnarvon" | "dampier" | "wyndham";
   offsetMinutes: number;
   hwFactor: number;
   lwFactor: number;
 }
 
-const NT_LOCATIONS: Record<string, LocationCfg> = {
-  // ── Darwin Area (reference: darwin, no correction) ─────────────────────────
-  "darwin-city":        { name: "Darwin City (Stokes Hill Ramp)", refPort: "darwin", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "fannie-bay":         { name: "Fannie Bay Boat Ramp",           refPort: "darwin", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "cullen-bay":         { name: "Cullen Bay Marina",              refPort: "darwin", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "nightcliff":         { name: "Nightcliff Boat Ramp",           refPort: "darwin", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "lee-point":          { name: "Lee Point Beach",                refPort: "darwin", offsetMinutes:  -5, hwFactor: 1.00, lwFactor: 1.00 },
-  "mandorah":           { name: "Mandorah Boat Ramp",             refPort: "darwin", offsetMinutes: -10, hwFactor: 1.02, lwFactor: 1.00 },
-  "cox-peninsula":      { name: "Cox Peninsula Ramp",             refPort: "darwin", offsetMinutes: -15, hwFactor: 1.02, lwFactor: 1.01 },
-  "bynoe-harbour":      { name: "Bynoe Harbour Ramp",             refPort: "darwin", offsetMinutes: +20, hwFactor: 1.01, lwFactor: 1.00 },
-  "gunn-point":         { name: "Gunn Point Beach",               refPort: "darwin", offsetMinutes:  -5, hwFactor: 1.01, lwFactor: 1.00 },
-  "east-arm":           { name: "East Arm Wharf",                 refPort: "darwin", offsetMinutes:  +5, hwFactor: 1.00, lwFactor: 1.00 },
+const WA_LOCATIONS: Record<string, LocationCfg> = {
 
-  // ── Adelaide River ─────────────────────────────────────────────────────────
-  "adelaide-mouth":     { name: "Adelaide River Mouth",           refPort: "darwin", offsetMinutes:  +5, hwFactor: 0.97, lwFactor: 0.95 },
-  "point-stuart":       { name: "Point Stuart Boat Ramp",         refPort: "darwin", offsetMinutes: +20, hwFactor: 0.97, lwFactor: 0.94 },
-  "window-wetlands":    { name: "Window on the Wetlands",         refPort: "darwin", offsetMinutes: +30, hwFactor: 0.95, lwFactor: 0.90 },
-  "annaburroo":         { name: "Annaburroo Ramp (Adelaide R.)",  refPort: "darwin", offsetMinutes: +40, hwFactor: 0.92, lwFactor: 0.86 },
+  // ── Broome Area (reference: broome) ─────────────────────────────────────────
+  "broome-town-beach":  { name: "Broome Town Beach Ramp",         refPort: "broome",       offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "roebuck-bay":        { name: "Roebuck Bay",                     refPort: "broome",       offsetMinutes:  +5, hwFactor: 0.98, lwFactor: 0.97 },
+  "cable-beach-ramp":   { name: "Cable Beach Ramp",               refPort: "broome",       offsetMinutes:  -5, hwFactor: 0.97, lwFactor: 0.96 },
+  "dampier-creek":      { name: "Dampier Creek Mangroves",         refPort: "broome",       offsetMinutes: +15, hwFactor: 0.93, lwFactor: 0.90 },
+  "gantheaume-point":   { name: "Gantheaume Point",               refPort: "broome",       offsetMinutes:  -8, hwFactor: 0.96, lwFactor: 0.95 },
 
-  // ── Mary River ─────────────────────────────────────────────────────────────
-  "mary-mouth":         { name: "Mary River Mouth (Pt Ragged)",   refPort: "darwin", offsetMinutes: +10, hwFactor: 0.97, lwFactor: 0.95 },
-  "shady-camp":         { name: "Shady Camp Rock Bar ★",          refPort: "darwin", offsetMinutes: +15, hwFactor: 0.96, lwFactor: 0.93 },
-  "shady-camp-ramp":    { name: "Shady Camp Boat Ramp",           refPort: "darwin", offsetMinutes: +15, hwFactor: 0.96, lwFactor: 0.93 },
-  "corroboree":         { name: "Corroboree Billabong (Mary R.)", refPort: "darwin", offsetMinutes: +40, hwFactor: 0.90, lwFactor: 0.82 },
-  "marrakai":           { name: "Marrakai Boat Ramp",             refPort: "darwin", offsetMinutes: +45, hwFactor: 0.88, lwFactor: 0.80 },
+  // ── Derby / King Sound (reference: derby) ────────────────────────────────────
+  "derby-jetty":         { name: "Derby Jetty Ramp",              refPort: "derby",        offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "king-sound-mouth":    { name: "King Sound Mouth",              refPort: "derby",        offsetMinutes: -30, hwFactor: 0.92, lwFactor: 0.88 },
+  "fitzroy-mouth":       { name: "Fitzroy River Mouth",           refPort: "derby",        offsetMinutes: +25, hwFactor: 0.88, lwFactor: 0.82 },
+  "fitzroy-crossing-ramp":{ name: "Fitzroy Crossing Ramp",        refPort: "derby",        offsetMinutes: +180, hwFactor: 0.62, lwFactor: 0.52 },
+  "willare-ramp":        { name: "Willare Ramp",                  refPort: "derby",        offsetMinutes: +90, hwFactor: 0.75, lwFactor: 0.68 },
 
-  // ── Daly River ─────────────────────────────────────────────────────────────
-  "daly-mouth":         { name: "Daly River Mouth",               refPort: "darwin", offsetMinutes: +45, hwFactor: 0.93, lwFactor: 0.85 },
-  "snake-creek":        { name: "Snake Creek Ramp (Daly R.)",     refPort: "darwin", offsetMinutes: +65, hwFactor: 0.88, lwFactor: 0.78 },
-  "woolianna":          { name: "Woolianna Boat Ramp (Daly R.)",  refPort: "darwin", offsetMinutes: +90, hwFactor: 0.85, lwFactor: 0.74 },
-  "daly-river-town":    { name: "Daly River Town Ramp",           refPort: "darwin", offsetMinutes:+120, hwFactor: 0.78, lwFactor: 0.65 },
-  "port-keats":         { name: "Wadeye (Port Keats) Ramp",       refPort: "darwin", offsetMinutes:+175, hwFactor: 0.82, lwFactor: 0.70 },
+  // ── Ord River / Wyndham (reference: wyndham) ─────────────────────────────────
+  "ord-mouth":           { name: "Ord River Mouth (Cambridge Gulf)", refPort: "wyndham",   offsetMinutes:  +5, hwFactor: 0.97, lwFactor: 0.95 },
+  "wyndham-ramp":        { name: "Wyndham Boat Ramp",             refPort: "wyndham",      offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "lake-kununurra":      { name: "Lake Kununurra (Ord Stage 1)",  refPort: "wyndham",      offsetMinutes: +480, hwFactor: 0.35, lwFactor: 0.25 },
+  "ord-middle-reaches":  { name: "Ord River Middle Reaches",      refPort: "wyndham",      offsetMinutes: +240, hwFactor: 0.55, lwFactor: 0.45 },
+  "keep-river":          { name: "Keep River Mouth",              refPort: "wyndham",      offsetMinutes: +30, hwFactor: 0.90, lwFactor: 0.85 },
 
-  // ── Kakadu / Alligator Rivers ───────────────────────────────────────────────
-  "south-alligator":    { name: "South Alligator Mouth",          refPort: "darwin", offsetMinutes: +10, hwFactor: 0.96, lwFactor: 0.93 },
-  "field-island":       { name: "Field Island (S. Alligator)",    refPort: "darwin", offsetMinutes:  +5, hwFactor: 0.97, lwFactor: 0.95 },
-  "cahills-crossing":   { name: "Cahills Crossing Rock Bar ★",    refPort: "darwin", offsetMinutes: +35, hwFactor: 0.90, lwFactor: 0.82 },
-  "east-alligator":     { name: "East Alligator River Mouth",     refPort: "darwin", offsetMinutes: +25, hwFactor: 0.93, lwFactor: 0.88 },
-  "west-alligator":     { name: "West Alligator River Mouth",     refPort: "darwin", offsetMinutes:  +5, hwFactor: 0.97, lwFactor: 0.94 },
+  // ── North Kimberley / Drysdale (reference: wyndham) ──────────────────────────
+  "drysdale-mouth":      { name: "Drysdale River Mouth",          refPort: "wyndham",      offsetMinutes: -30, hwFactor: 0.93, lwFactor: 0.88 },
+  "mitchell-river":      { name: "Mitchell River Mouth",          refPort: "wyndham",      offsetMinutes: -45, hwFactor: 0.90, lwFactor: 0.85 },
+  "prince-regent":       { name: "Prince Regent River",           refPort: "derby",        offsetMinutes: +60, hwFactor: 0.87, lwFactor: 0.80 },
+  "berkeley-sound":      { name: "Berkeley Sound (Vansittart Bay)", refPort: "wyndham",    offsetMinutes: -90, hwFactor: 0.85, lwFactor: 0.78 },
+  "king-george-falls":   { name: "King George Falls Area",        refPort: "wyndham",      offsetMinutes: -60, hwFactor: 0.88, lwFactor: 0.82 },
 
-  // ── Port Essington / Cobourg ────────────────────────────────────────────────
-  "port-essington":     { name: "Port Essington",                 refPort: "darwin", offsetMinutes: +30, hwFactor: 0.92, lwFactor: 0.85 },
-  "cobourg":            { name: "Cobourg Peninsula",              refPort: "darwin", offsetMinutes: +25, hwFactor: 0.93, lwFactor: 0.86 },
-  "smith-point":        { name: "Smith Point (Cobourg)",          refPort: "darwin", offsetMinutes: +20, hwFactor: 0.93, lwFactor: 0.87 },
+  // ── Port Hedland / Pilbara (reference: port-hedland) ─────────────────────────
+  "port-hedland-ramp":   { name: "Port Hedland Boat Ramp",        refPort: "port-hedland", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "de-grey-mouth":       { name: "De Grey River Mouth",           refPort: "port-hedland", offsetMinutes: -20, hwFactor: 0.95, lwFactor: 0.92 },
+  "pardoo-station":      { name: "Pardoo Roadhouse Area",         refPort: "port-hedland", offsetMinutes: -35, hwFactor: 0.92, lwFactor: 0.88 },
+  "montebello-islands":  { name: "Montebello Islands",            refPort: "dampier",      offsetMinutes: -25, hwFactor: 0.90, lwFactor: 0.88 },
 
-  // ── Victoria River & West ───────────────────────────────────────────────────
-  "victoria-mouth":     { name: "Victoria River Mouth",           refPort: "darwin", offsetMinutes:+160, hwFactor: 0.85, lwFactor: 0.72 },
-  "big-horse-creek":    { name: "Big Horse Creek Ramp (Vic. R.)", refPort: "darwin", offsetMinutes:+190, hwFactor: 0.80, lwFactor: 0.68 },
-  "baines-river":       { name: "Baines River Mouth",             refPort: "darwin", offsetMinutes:+155, hwFactor: 0.86, lwFactor: 0.73 },
+  // ── Exmouth / Ningaloo (reference: exmouth) ───────────────────────────────────
+  "exmouth-ramp":        { name: "Exmouth Boat Ramp",             refPort: "exmouth",      offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "exmouth-gulf":        { name: "Exmouth Gulf Flats",            refPort: "exmouth",      offsetMinutes: +20, hwFactor: 0.95, lwFactor: 0.92 },
+  "ningaloo-reef":       { name: "Ningaloo Reef (Outside)",       refPort: "exmouth",      offsetMinutes: -15, hwFactor: 0.92, lwFactor: 0.90 },
+  "coral-bay":           { name: "Coral Bay Ramp",                refPort: "carnarvon",    offsetMinutes: -30, hwFactor: 0.88, lwFactor: 0.85 },
+  "turquoise-bay":       { name: "Turquoise Bay Area",            refPort: "exmouth",      offsetMinutes: -10, hwFactor: 0.93, lwFactor: 0.90 },
 
-  // ── Arnhem Land (reference: gove) ──────────────────────────────────────────
-  "nhulunbuy-ramp":     { name: "Nhulunbuy (Gove) Boat Ramp",    refPort: "gove",   offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "melville-bay":       { name: "Melville Bay (Gove)",            refPort: "gove",   offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "caledon-bay":        { name: "Caledon Bay",                    refPort: "gove",   offsetMinutes: +30, hwFactor: 0.95, lwFactor: 0.90 },
-  "trial-bay":          { name: "Trial Bay (Arnhem Land)",        refPort: "gove",   offsetMinutes: +20, hwFactor: 0.97, lwFactor: 0.94 },
-  "buckingham-bay":     { name: "Buckingham Bay",                 refPort: "gove",   offsetMinutes: +45, hwFactor: 0.92, lwFactor: 0.88 },
-  "elcho-island":       { name: "Elcho Island (Galiwinku)",       refPort: "gove",   offsetMinutes: -30, hwFactor: 0.82, lwFactor: 0.75 },
-  "milingimbi":         { name: "Milingimbi",                     refPort: "gove",   offsetMinutes: -45, hwFactor: 0.80, lwFactor: 0.72 },
-  "maningrida":         { name: "Maningrida (Liverpool River)",   refPort: "darwin", offsetMinutes: -20, hwFactor: 0.75, lwFactor: 0.68 },
+  // ── Dampier / Karratha (reference: dampier) ───────────────────────────────────
+  "dampier-ramp":        { name: "Dampier Boat Ramp",             refPort: "dampier",      offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "burrup-peninsula":    { name: "Burrup Peninsula",              refPort: "dampier",      offsetMinutes: +10, hwFactor: 0.97, lwFactor: 0.95 },
+  "legendre-island":     { name: "Legendre Island",               refPort: "dampier",      offsetMinutes: -20, hwFactor: 0.92, lwFactor: 0.90 },
+  "mermaid-sound":       { name: "Mermaid Sound",                 refPort: "dampier",      offsetMinutes: +15, hwFactor: 0.96, lwFactor: 0.94 },
+  "roebourne-ramp":      { name: "Roebourne / Point Samson Ramp", refPort: "dampier",      offsetMinutes: -30, hwFactor: 0.90, lwFactor: 0.88 },
 
-  // ── Groote Eylandt (reference: groote) ────────────────────────────────────
-  "alyangula":          { name: "Alyangula Boat Ramp",            refPort: "groote", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "emerald-river":      { name: "Emerald River Mouth",            refPort: "groote", offsetMinutes: +20, hwFactor: 0.90, lwFactor: 0.85 },
-  "umbakumba":          { name: "Umbakumba Ramp (Groote E.)",     refPort: "groote", offsetMinutes: +45, hwFactor: 0.88, lwFactor: 0.82 },
-  "bartalumba-bay":     { name: "Bartalumba Bay",                 refPort: "groote", offsetMinutes: +15, hwFactor: 0.92, lwFactor: 0.88 },
-  "winchelsea":         { name: "Winchelsea Island (Groote E.)",  refPort: "groote", offsetMinutes: +30, hwFactor: 0.90, lwFactor: 0.85 },
-
-  // ── Gulf Coast (reference: groote) ────────────────────────────────────────
-  "king-ash-bay":       { name: "King Ash Bay Ramp (Borroloola)", refPort: "groote", offsetMinutes:+120, hwFactor: 0.90, lwFactor: 0.85 },
-  "mcarthur-mouth":     { name: "McArthur River Mouth",           refPort: "groote", offsetMinutes: +60, hwFactor: 0.93, lwFactor: 0.90 },
-  "roper-mouth":        { name: "Roper River Mouth",              refPort: "groote", offsetMinutes:+120, hwFactor: 0.80, lwFactor: 0.72 },
-  "roper-bar":          { name: "Roper Bar Rock Bar ★",           refPort: "groote", offsetMinutes:+240, hwFactor: 0.70, lwFactor: 0.60 },
-  "nathan-river":       { name: "Nathan River Mouth",             refPort: "groote", offsetMinutes: +90, hwFactor: 0.88, lwFactor: 0.80 },
-  "robinson-river":     { name: "Robinson River Mouth",           refPort: "groote", offsetMinutes:+100, hwFactor: 0.86, lwFactor: 0.78 },
+  // ── Gascoyne / Carnarvon (reference: carnarvon) ────────────────────────────────
+  "carnarvon-ramp":      { name: "Carnarvon Boat Ramp",           refPort: "carnarvon",    offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
+  "gascoyne-mouth":      { name: "Gascoyne River Mouth",          refPort: "carnarvon",    offsetMinutes: +10, hwFactor: 0.97, lwFactor: 0.94 },
+  "shark-bay":           { name: "Monkey Mia / Shark Bay",        refPort: "carnarvon",    offsetMinutes: -45, hwFactor: 0.82, lwFactor: 0.78 },
 };
-
-// ─── NQ / Gulf Country secondary locations ──────────────────────────────────────
-// All relative to primary BOM ports above
-const NQ_LOCATIONS: Record<string, LocationCfg> = {
-  // ── Gulf of Carpentaria (reference: karumba) ───────────────────────────────
-  "karumba-point":      { name: "Karumba Point Boat Ramp",       refPort: "karumba", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "norman-river-mouth": { name: "Norman River Mouth Bar ★",       refPort: "karumba", offsetMinutes:  +5, hwFactor: 0.98, lwFactor: 0.96 },
-  "normanton":          { name: "Normanton Wharf (Norman R.)",    refPort: "karumba", offsetMinutes: +45, hwFactor: 0.85, lwFactor: 0.75 },
-  "flinders-mouth":     { name: "Flinders River Mouth",           refPort: "karumba", offsetMinutes: +15, hwFactor: 0.96, lwFactor: 0.93 },
-  "gilbert-mouth":      { name: "Gilbert River Mouth",            refPort: "karumba", offsetMinutes: +25, hwFactor: 0.93, lwFactor: 0.88 },
-  "mitchell-mouth":     { name: "Mitchell River Mouth ★",         refPort: "karumba", offsetMinutes: -45, hwFactor: 1.05, lwFactor: 1.02 },
-  "albert-river":       { name: "Albert River (Burketown)",       refPort: "karumba", offsetMinutes: -90, hwFactor: 0.95, lwFactor: 0.88 },
-  "burketown":          { name: "Burketown Ramp",                 refPort: "karumba", offsetMinutes: -85, hwFactor: 0.94, lwFactor: 0.87 },
-  "karumba-bay":        { name: "Karumba Bay Open Water",         refPort: "karumba", offsetMinutes:  -5, hwFactor: 1.01, lwFactor: 1.00 },
-  "pormpuraaw":         { name: "Pormpuraaw Ramp",                refPort: "karumba", offsetMinutes: -30, hwFactor: 1.03, lwFactor: 1.01 },
-  "edward-river":       { name: "Edward River (Pormpuraaw)",      refPort: "karumba", offsetMinutes: -35, hwFactor: 1.02, lwFactor: 1.00 },
-
-  // ── Western Cape York (reference: weipa) ──────────────────────────────────
-  "weipa-causeway":     { name: "Weipa Causeway GT Spot ★",       refPort: "weipa",   offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "embley-river":       { name: "Embley River Upper (Weipa)",     refPort: "weipa",   offsetMinutes: +30, hwFactor: 0.90, lwFactor: 0.82 },
-  "evans-landing":      { name: "Evans Landing",                   refPort: "weipa",   offsetMinutes: +10, hwFactor: 0.97, lwFactor: 0.94 },
-  "ducie-river":        { name: "Ducie River Mouth",               refPort: "weipa",   offsetMinutes: +15, hwFactor: 0.96, lwFactor: 0.92 },
-  "archer-river":       { name: "Archer River Mouth",              refPort: "weipa",   offsetMinutes: +60, hwFactor: 0.88, lwFactor: 0.80 },
-  "wenlock-river":      { name: "Wenlock River Mouth",             refPort: "weipa",   offsetMinutes: -30, hwFactor: 1.04, lwFactor: 1.00 },
-
-  // ── Far North QLD (reference: cairns) ─────────────────────────────────────
-  "trinity-bay":        { name: "Trinity Bay Boat Ramp",           refPort: "cairns",  offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "barron-delta":       { name: "Barron River Delta (Cairns)",     refPort: "cairns",  offsetMinutes: +10, hwFactor: 0.97, lwFactor: 0.94 },
-  "port-douglas":       { name: "Port Douglas Marina",             refPort: "cairns",  offsetMinutes: -20, hwFactor: 1.02, lwFactor: 1.00 },
-  "marlin-marina":      { name: "Cairns Marlin Marina",            refPort: "cairns",  offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "agincourt-reef":     { name: "Agincourt Reef (outer GBR)",      refPort: "cairns",  offsetMinutes: -35, hwFactor: 0.85, lwFactor: 0.80 },
-
-  // ── Cooktown / FNQ Coast (reference: cooktown) ────────────────────────────
-  "endeavour-river":    { name: "Endeavour River (Cooktown) ★",   refPort: "cooktown", offsetMinutes:  +5, hwFactor: 0.98, lwFactor: 0.96 },
-  "cooktown-marina":    { name: "Cooktown Marina Ramp",            refPort: "cooktown", offsetMinutes:   0, hwFactor: 1.00, lwFactor: 1.00 },
-  "princess-charlotte": { name: "Princess Charlotte Bay",          refPort: "cooktown", offsetMinutes: -45, hwFactor: 1.05, lwFactor: 1.03 },
-  "laura-river":        { name: "Laura River Mouth",               refPort: "cooktown", offsetMinutes: -30, hwFactor: 1.02, lwFactor: 0.98 },
-};
-
-// Merge NQ locations into NT_LOCATIONS for uniform lookup
-Object.assign(NT_LOCATIONS, NQ_LOCATIONS);
-
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-// UTC offset hours by refPort (Darwin = 9.5, Brisbane = 10, Groote/Gove = 9.5)
-const PORT_UTC_OFFSET: Record<string, number> = {
-  darwin: 9.5, gove: 9.5, groote: 9.5,
-  karumba: 10, weipa: 10, cairns: 10, cooktown: 10,
-};
 
-// Format a UTC timestamp as local time for the given UTC offset
-function formatLocalTime(timestamp: number, utcOffsetHours: number = 9.5): string {
-  const offsetMs = utcOffsetHours * 60 * 60 * 1000;
+// Format a UTC timestamp as WA local time (AWST UTC+8:00)
+function formatWATime(timestamp: number): string {
+  const offsetMs = 8 * 60 * 60 * 1000; // AWST UTC+8
   const local = new Date(timestamp + offsetMs);
   let h = local.getUTCHours();
   const min = local.getUTCMinutes();
@@ -178,14 +110,9 @@ function formatLocalTime(timestamp: number, utcOffsetHours: number = 9.5): strin
   return `${h}:${min.toString().padStart(2, "0")} ${ampm}`;
 }
 
-// Legacy alias kept for any remaining references
-function formatDarwinTime(timestamp: number): string {
-  return formatLocalTime(timestamp, 9.5);
-}
-
-// Get local date string "YYYY-MM-DD" for a UTC timestamp
-function getLocalDate(timestamp: number, utcOffsetHours: number = 9.5): string {
-  const offsetMs = utcOffsetHours * 60 * 60 * 1000;
+// Get the WA local date string "YYYY-MM-DD" for a UTC timestamp
+function getWADate(timestamp: number): string {
+  const offsetMs = 8 * 60 * 60 * 1000;
   const local = new Date(timestamp + offsetMs);
   const y = local.getUTCFullYear();
   const m = String(local.getUTCMonth() + 1).padStart(2, "0");
@@ -193,26 +120,19 @@ function getLocalDate(timestamp: number, utcOffsetHours: number = 9.5): string {
   return `${y}-${m}-${d}`;
 }
 
-// Legacy alias
-function getDarwinDate(timestamp: number): string {
-  return getLocalDate(timestamp, 9.5);
-}
-
-// Apply secondary port corrections — timezone-aware
+// Apply secondary port corrections
 function applyCorrection(
   tides: TideDay[],
   offsetMinutes: number,
   hwFactor: number,
   lwFactor: number,
-  utcOffsetHours: number = 9.5
 ): TideDay[] {
   const offsetMs = offsetMinutes * 60 * 1000;
 
-  // Flatten, shift time, scale height
   const all: TideEntry[] = tides.flatMap((d) =>
     d.tides.map((t) => ({
       timestamp: t.timestamp + offsetMs,
-      time: formatLocalTime(t.timestamp + offsetMs, utcOffsetHours),
+      time: formatWATime(t.timestamp + offsetMs),
       type: t.type,
       height: parseFloat(
         (t.height * (t.type === "HW" ? hwFactor : lwFactor)).toFixed(2)
@@ -220,10 +140,9 @@ function applyCorrection(
     }))
   );
 
-  // Regroup by local date
   const grouped = new Map<string, TideDay>();
   for (const t of all) {
-    const date = getLocalDate(t.timestamp, utcOffsetHours);
+    const date = getWADate(t.timestamp);
     if (!grouped.has(date)) grouped.set(date, { date, tides: [] });
     grouped.get(date)!.tides.push(t);
   }
@@ -233,7 +152,7 @@ function applyCorrection(
   );
 }
 
-// ─── BOM HTML parser (unchanged) ──────────────────────────────────────────────
+// ─── BOM HTML parser ───────────────────────────────────────────────────────────
 function parseBomHtml(html: string): TideDay[] {
   const result: Map<string, TideDay> = new Map();
 
@@ -287,22 +206,17 @@ async function fetchBomTides(portCode: string, days: number): Promise<TideDay[]>
     return cache[cacheKey].data;
   }
 
-  // Determine region and timezone from port code prefix
-  const isQLD = portCode.startsWith("QLD_");
-  const region = isQLD ? "QLD" : "NT";
-  const tz = isQLD ? "Australia/Brisbane" : "Australia/Darwin";
-
-  const localDate = new Date().toLocaleDateString("en-CA", {
-    timeZone: tz,
+  const waDate = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Australia/Perth",
     year: "numeric", month: "2-digit", day: "2-digit",
   });
 
   const url = new URL("https://www.bom.gov.au/australia/tides/print.php");
   url.searchParams.set("aac", portCode);
   url.searchParams.set("type", "tide");
-  url.searchParams.set("date", localDate);
-  url.searchParams.set("region", region);
-  url.searchParams.set("tz", tz);
+  url.searchParams.set("date", waDate);
+  url.searchParams.set("region", "WA");
+  url.searchParams.set("tz", "Australia/Perth");
   url.searchParams.set("days", String(days));
 
   const res = await fetch(url.toString(), {
@@ -328,33 +242,29 @@ async function fetchBomTides(portCode: string, days: number): Promise<TideDay[]>
 
 // ─── Routes ────────────────────────────────────────────────────────────────────
 
-// GET /api/tides?port=darwin&days=3   (legacy — primary BOM ports)
-// GET /api/tides?location=shady-camp&days=3  (new — secondary with corrections)
+// GET /api/tides?port=broome&days=3   (primary BOM ports)
+// GET /api/tides?location=fitzroy-mouth&days=3  (secondary with corrections)
 router.get("/tides", async (req, res) => {
   const days = Math.min(parseInt((req.query["days"] as string) || "3", 10), 5);
   const locationId = req.query["location"] as string | undefined;
-  const portKey = ((req.query["port"] as string) || "darwin").toLowerCase();
+  const portKey = ((req.query["port"] as string) || "broome").toLowerCase();
 
   try {
-    // ── Secondary location (with correction) ──────────────────────────────────
     if (locationId) {
-      const loc = NT_LOCATIONS[locationId];
+      const loc = WA_LOCATIONS[locationId];
       if (!loc) {
         res.status(400).json({ error: `Unknown location: ${locationId}` });
         return;
       }
       const port = BOM_PORTS[loc.refPort];
-      const utcOffset = PORT_UTC_OFFSET[loc.refPort] ?? 9.5;
-      const rawTides = await fetchBomTides(port.code, days + 1); // fetch extra day to cover offset
-      const corrected = applyCorrection(rawTides, loc.offsetMinutes, loc.hwFactor, loc.lwFactor, utcOffset);
-      // Return only the requested number of days starting from today (local)
-      const today = getLocalDate(Date.now(), utcOffset);
-      const filtered = corrected.filter((d) => d.date >= today).slice(0, days);
+      const rawTides = await fetchBomTides(port.code, days + 1);
+      const corrected = applyCorrection(rawTides, loc.offsetMinutes, loc.hwFactor, loc.lwFactor);
+      const todayWA = getWADate(Date.now());
+      const filtered = corrected.filter((d) => d.date >= todayWA).slice(0, days);
       res.json({ port: loc.name, portKey: locationId, data: filtered, isSecondary: true, refPort: loc.refPort });
       return;
     }
 
-    // ── Primary BOM port ──────────────────────────────────────────────────────
     const port = BOM_PORTS[portKey];
     if (!port) {
       res.status(400).json({ error: `Unknown port. Use ?location=ID or ?port=${Object.keys(BOM_PORTS).join("|")}` });
@@ -371,10 +281,10 @@ router.get("/tides", async (req, res) => {
   }
 });
 
-// GET /api/tides/locations  — returns all NT locations grouped by region
+// GET /api/tides/locations  — returns all WA locations
 router.get("/tides/locations", (_req, res) => {
   res.json(
-    Object.entries(NT_LOCATIONS).map(([id, loc]) => ({
+    Object.entries(WA_LOCATIONS).map(([id, loc]) => ({
       id,
       name: loc.name,
       refPort: loc.refPort,

@@ -80,7 +80,7 @@ async function fetchInat(page = 1, perPage = 200): Promise<InatObservation[]> {
   });
   const url = `https://api.inaturalist.org/v1/observations?${params}`;
   const resp = await fetch(url, {
-    headers: { "User-Agent": "HookVision/1.0 (fishing app; NT Australia)" },
+    headers: { "User-Agent": "HookVision/1.0 (fishing app; WA Australia)" },
     signal: AbortSignal.timeout(15_000),
   });
   if (!resp.ok) throw new Error(`iNat API ${resp.status}`);
@@ -357,7 +357,7 @@ export async function refreshBarraLibrary(): Promise<void> {
 export async function addCommunityReference({
   base64Thumb,
   photoUrl = "community",
-  location = "NT, Australia",
+  location = "WA, Australia",
   viewingAngle,
 }: {
   base64Thumb: string;

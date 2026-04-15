@@ -136,8 +136,8 @@ router.get("/community/insights", async (req, res) => {
       time:      r.submittedAt,
     }));
 
-    const prompt = `You are the HookVision community intelligence engine for NT Australia fishing.
-Analyze these ${reports.length} anonymous sonar scan reports from HookVision users across the NT.
+    const prompt = `You are the HookVision community intelligence engine for Kimberley and WA Australia fishing.
+Analyze these ${reports.length} anonymous sonar scan reports from HookVision users across the Kimberley and WA coast.
 
 RAW DATA:
 ${JSON.stringify(dataBlob, null, 2)}
@@ -148,13 +148,13 @@ Produce a JSON object with these exact fields:
 - hotTimes: array of up to 4 objects { period: string, activity: "high"|"medium"|"low", notes: string }
 - hotLocations: array of up to 5 strings (location names from reports)
 - tips: array of 4-6 actionable fishing tips derived from patterns in the data
-- summary: a 2-3 sentence plain-English summary of current NT fishing conditions
+- summary: a 2-3 sentence plain-English summary of current WA/Kimberley fishing conditions
 
 Rules:
 - Base everything strictly on the data provided
 - For hotTimes, group by morning/midday/afternoon/evening/night from timestamps
 - For trend, compare first half vs second half of the dataset (newest = end)
-- Keep tips specific and NT-relevant (barramundi, bream, trevally, threadfin etc)
+- Keep tips specific and WA-relevant (barramundi, coral trout, threadfin, queenfish, GT etc)
 - Respond ONLY with valid JSON, no markdown
 
 JSON:`;
@@ -291,7 +291,7 @@ router.get("/community/compare", async (req, res) => {
         {
           role: "system",
           content:
-            "You are an expert fishfinder sonar analyst for Northern Territory Australian tropical waters. " +
+            "You are an expert fishfinder sonar analyst for Western Australia and Kimberley tropical waters. " +
             "Explain in 2-3 short sentences how the sonar signatures of two fish species differ, " +
             "so an angler understands why AI detection can vary between them. Keep it practical and plain.",
         },

@@ -18,7 +18,7 @@ import { getFewShotRefs } from "../lib/barraLibrary.js";
 
 const router = Router();
 
-const SONAR_BARRA_SYSTEM = `You are an expert sonar fish arch detector specialising in barramundi (Lates calcarifer) in Northern Territory Australia.
+const SONAR_BARRA_SYSTEM = `You are an expert sonar fish arch detector specialising in barramundi (Lates calcarifer) in Western Australia (Kimberley region).
 
 CROSS-MODAL REFERENCE SYSTEM — you will receive images in this order:
   1. BARRAMUNDI BODY ANATOMY PHOTO(S) — real specimens from iNaturalist research-grade records.

@@ -15,7 +15,7 @@ import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { useFishImage } from "@/hooks/useFishImage";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
-import { NT_SPECIES, CATEGORIES, type NTSpecies, type FishCategory } from "@/data/ntSpecies";
+import { WA_SPECIES, CATEGORIES, type WASpecies, type FishCategory } from "@/data/ntSpecies";
 
 function EatingStars({ rating, colors }: { rating: number; colors: ReturnType<typeof useColors> }) {
   return (
@@ -32,7 +32,7 @@ function EatingStars({ rating, colors }: { rating: number; colors: ReturnType<ty
   );
 }
 
-function SpeciesCard({ species, colors }: { species: NTSpecies; colors: ReturnType<typeof useColors> }) {
+function SpeciesCard({ species, colors }: { species: WASpecies; colors: ReturnType<typeof useColors> }) {
   const [expanded, setExpanded] = useState(false);
   const fishImageUrl = useFishImage(species.name);
 
@@ -193,13 +193,13 @@ export default function SpeciesScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<FishCategory | "all">("all");
-  useAutoNarrate(() => "NT Species Guide. Browse bag limits, minimum sizes, and fishing seasons for over 30 species found in NT waters.");
+  useAutoNarrate(() => "WA Species Guide. Browse bag limits, minimum sizes, and fishing seasons for species found in Kimberley and WA waters.");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return NT_SPECIES.filter((s) => {
+    return WA_SPECIES.filter((s) => {
       const matchCategory = selectedCategory === "all" || s.category === selectedCategory;
       const matchSearch =
         !q ||
@@ -212,7 +212,7 @@ export default function SpeciesScreen() {
   }, [search, selectedCategory]);
 
   return (
-    <FlatList<NTSpecies>
+    <FlatList<WASpecies>
       data={filtered}
       keyExtractor={(item) => item.id}
       renderItem={({ item }) => <SpeciesCard species={item} colors={colors} />}
@@ -229,11 +229,11 @@ export default function SpeciesScreen() {
       scrollEnabled={filtered.length > 0}
       ListHeaderComponent={
         <View style={styles.headerBlock}>
-          <HVHeader subtitle="NT Species Guide" />
+          <HVHeader subtitle="WA Species Guide" />
           <View style={styles.titleRow}>
-            <Text style={[styles.title, { color: colors.primary }]}>🐟 NT Species</Text>
+            <Text style={[styles.title, { color: colors.primary }]}>🐟 WA Species</Text>
             <Text style={[styles.count, { color: colors.mutedForeground }]}>
-              {filtered.length} of {NT_SPECIES.length}
+              {filtered.length} of {WA_SPECIES.length}
             </Text>
           </View>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>

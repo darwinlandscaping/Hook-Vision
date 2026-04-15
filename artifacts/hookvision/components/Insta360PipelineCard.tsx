@@ -305,7 +305,7 @@ export function Insta360PipelineCard({
 
       {/* Legend */}
       <Text style={styles.legend}>
-        Zones: L · CTR · R  ·  P1: 500 NT bird refs  ·  P2: 1,000 croc refs  ·  Sonar merged
+        Zones: L · CTR · R  ·  P1: 500 WA bird refs  ·  P2: 1,000 croc refs  ·  Sonar merged
       </Text>
     </View>
   );
