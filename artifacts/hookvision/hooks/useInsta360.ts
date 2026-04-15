@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as FileSystem from "expo-file-system";
+import { polarFilter } from "@/utils/polarFilter";
 
 // ─── Insta360 / OSC API constants ─────────────────────────────────────────────
 const BASE_URL   = "http://192.168.42.1";
@@ -153,9 +154,12 @@ export function useInsta360(): UseInsta360Result {
       if (dl.status !== 200) throw new Error("Failed to download image from camera");
 
       // 4. Read as base64
-      const b64 = await FileSystem.readAsStringAsync(localUri, {
+      const raw = await FileSystem.readAsStringAsync(localUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
+
+      // 5. Apply polarised-lens filter (glare reduction) — fails open
+      const b64 = await polarFilter(raw);
 
       return { base64: b64, uri: localUri };
     } catch (err) {

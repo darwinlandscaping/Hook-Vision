@@ -35,6 +35,7 @@ import { LiveScanStore } from "@/stores/LiveScanStore";
 import { useInsta360 } from "@/hooks/useInsta360";
 import { useInsta360Pipelines } from "@/hooks/useInsta360Pipelines";
 import { Insta360PipelineCard } from "@/components/Insta360PipelineCard";
+import { polarFilter } from "@/utils/polarFilter";
 
 // ─── Conditional IntentLauncher (Android only) ────────────────────────────────
 let IntentLauncher: any = null;
@@ -280,6 +281,8 @@ export default function LiveScreen() {
   const [boatMode, setBoatMode]         = useState(false);
   const [countdown, setCountdown]       = useState(0);
   const [scanCount, setScanCount]       = useState(0);
+  const [polarOn, setPolarOn]           = useState(true);   // polarised-lens filter
+  const [polarising, setPolarising]     = useState(false);  // filter in progress
 
   const nativeCamRef = useRef<any>(null);
   const webCamRef    = useRef<any>(null);
@@ -391,6 +394,13 @@ export default function LiveScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
+      // Polarised-lens filter (glare reduction)
+      if (polarOn) {
+        setPolarising(true);
+        base64 = await polarFilter(base64);
+        setPolarising(false);
+      }
+
       // Push image to Scan tab — analysis + streaming results all happen there
       LiveScanStore.push(base64, uri, boatMode ? "boat" : "live");
       router.navigate("/");   // go to Scan tab (no-op if already there)
@@ -402,9 +412,10 @@ export default function LiveScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } finally {
+      setPolarising(false);
       setScanning(false);
     }
-  }, [scanning, boatMode]);
+  }, [scanning, boatMode, polarOn]);
 
   // ── Pick from gallery & analyse ──────────────────────────────────────────
   const pickFromGallery = useCallback(async () => {
@@ -447,8 +458,16 @@ export default function LiveScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
+      // Polarised-lens filter (glare reduction)
+      let filtered = jpeg.base64;
+      if (polarOn) {
+        setPolarising(true);
+        filtered = await polarFilter(jpeg.base64);
+        setPolarising(false);
+      }
+
       // Send to Scan tab for full streaming analysis
-      LiveScanStore.push(jpeg.base64, asset.uri, "live");
+      LiveScanStore.push(filtered, asset.uri, "live");
       router.navigate("/");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gallery analysis failed.";
@@ -457,10 +476,11 @@ export default function LiveScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } finally {
+      setPolarising(false);
       setScanning(false);
       setGalleryPicking(false);
     }
-  }, [galleryPicking, scanning]);
+  }, [galleryPicking, scanning, polarOn]);
 
   // ── Open native camera app → send to Scan tab ────────────────────────────
   const openCamera = useCallback(async () => {
@@ -494,7 +514,16 @@ export default function LiveScreen() {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      LiveScanStore.push(jpeg.base64, asset.uri, "live");
+
+      // Polarised-lens filter (glare reduction)
+      let filtered = jpeg.base64;
+      if (polarOn) {
+        setPolarising(true);
+        filtered = await polarFilter(jpeg.base64);
+        setPolarising(false);
+      }
+
+      LiveScanStore.push(filtered, asset.uri, "live");
       router.navigate("/");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Camera failed.";
@@ -503,10 +532,11 @@ export default function LiveScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } finally {
+      setPolarising(false);
       setScanning(false);
       setGalleryPicking(false);
     }
-  }, [galleryPicking, scanning]);
+  }, [galleryPicking, scanning, polarOn]);
 
   // ── Boat mode auto-scan loop ──────────────────────────────────────────────
   const stopBoatLoop = useCallback(() => {
@@ -550,15 +580,31 @@ export default function LiveScreen() {
         {/* Top bar */}
         <View style={[styles.topBar, { paddingTop: (isNative ? insets.top : topPad) + 8 }]}>
           {!boatMode && (
-            <TouchableOpacity
-              style={[styles.chip, { backgroundColor: autoSpeak ? `${colors.primary}44` : "#00000077", borderColor: autoSpeak ? colors.primary : "#ffffff44" }]}
-              onPress={() => { setAutoSpeak((v) => !v); if (autoSpeak) stopSpeaking(); }}
-            >
-              <Feather name={autoSpeak ? "volume-2" : "volume-x"} size={13} color={autoSpeak ? colors.primary : "#ffffffaa"} />
-              <Text style={[styles.chipText, { color: autoSpeak ? colors.primary : "#ffffffaa" }]}>
-                {autoSpeak ? `${charInfo.emoji} Voice` : "Voice OFF"}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <TouchableOpacity
+                style={[styles.chip, { backgroundColor: autoSpeak ? `${colors.primary}44` : "#00000077", borderColor: autoSpeak ? colors.primary : "#ffffff44" }]}
+                onPress={() => { setAutoSpeak((v) => !v); if (autoSpeak) stopSpeaking(); }}
+              >
+                <Feather name={autoSpeak ? "volume-2" : "volume-x"} size={13} color={autoSpeak ? colors.primary : "#ffffffaa"} />
+                <Text style={[styles.chipText, { color: autoSpeak ? colors.primary : "#ffffffaa" }]}>
+                  {autoSpeak ? `${charInfo.emoji} Voice` : "Voice OFF"}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Polarised lens toggle */}
+              <TouchableOpacity
+                style={[styles.chip, polarOn
+                  ? { backgroundColor: "#00a8ff22", borderColor: "#00a8ff88" }
+                  : { backgroundColor: "#ffffff11", borderColor: "#ffffff33" }
+                ]}
+                onPress={() => setPolarOn((v) => !v)}
+              >
+                <Text style={{ fontSize: 11 }}>{polarOn ? "🔵" : "⚪"}</Text>
+                <Text style={[styles.chipText, { color: polarOn ? "#00a8ff" : "#ffffff66" }]}>
+                  {polarising ? "Polarising…" : polarOn ? "Polarised" : "No Polar"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {boatMode && (
