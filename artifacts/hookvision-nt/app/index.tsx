@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: W, height: H } = Dimensions.get("window");
 
-const BUFFALO  = require("@/assets/images/splash-coral.png");
+const BUFFALO  = require("@/assets/images/splash-buffalo.png");
 const BARRA    = require("@/assets/images/splash-barra.png");
 const HV_LOGO  = require("@/assets/images/hv-logo2-nobg.png");
 const NT_FLAG  = require("@/assets/images/nt-flag-real.png");
