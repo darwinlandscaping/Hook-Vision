@@ -324,6 +324,12 @@ uri = "file://artifacts/hookvision/assets/images/nt-flag-new.png"
 type = "image"
 title = "NT flag"
 
+[[generated]]
+id = "cUuGIsvljB2ScISbqj3qG"
+uri = "file://artifacts/hookvision-nq/assets/images/splash-coral.png"
+type = "image"
+title = "coral reef gulf country nq"
+
 [[outputs]]
 id = "56ji2_AK1cz0SSgKggKpF"
 uri = "file://hookvision-qr.png"
