@@ -4,6 +4,7 @@ import { refreshDailyConditions } from "./lib/dailyBriefing";
 import { loadDemoReferences } from "./lib/demoReference";
 import { initBarraLibrary, refreshBarraLibrary } from "./lib/barraLibrary";
 import { initSonarBrain } from "./lib/sonarBrain";
+import { initCrocLibrary, refreshCrocLibrary } from "./lib/crocLibrary";
 
 const rawPort = process.env["PORT"];
 
@@ -50,9 +51,22 @@ app.listen(port, (err) => {
     logger.warn({ err }, "Barra library init failed — detection will use text-only prompt")
   );
 
+  // Initialise the croc reference library:
+  // fetches research-grade iNaturalist Crocodylus porosus photos (target: 500)
+  // → stores in DB → caches top 20 as compressed base64 thumbnails.
+  // Injected into every sonar analysis as cross-modal shape references
+  // so the AI can compare sonar blobs against real croc body silhouettes.
+  initCrocLibrary().catch((err) =>
+    logger.warn({ err }, "Croc library init failed — croc detection will use text-only prompt")
+  );
+
   // Daily library refresh — runs 6 hours after boot (offset from daily conditions)
   setTimeout(() => {
     refreshBarraLibrary().catch(() => {});
-    setInterval(() => refreshBarraLibrary().catch(() => {}), 24 * 60 * 60 * 1000);
+    refreshCrocLibrary().catch(() => {});
+    setInterval(() => {
+      refreshBarraLibrary().catch(() => {});
+      refreshCrocLibrary().catch(() => {});
+    }, 24 * 60 * 60 * 1000);
   }, 6 * 60 * 60 * 1000);
 });

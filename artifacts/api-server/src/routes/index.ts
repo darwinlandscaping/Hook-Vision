@@ -16,6 +16,7 @@ import barracheckRouter from "./barracheck";
 import barralibraryRouter from "./barralibrary";
 import sonarbarracheckRouter from "./sonarbarracheck";
 import sonarbrainRouter from "./sonarbrain";
+import crocbrainRouter from "./crocbrain";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(barracheckRouter);
 router.use(barralibraryRouter);
 router.use(sonarbarracheckRouter);
 router.use(sonarbrainRouter);
+router.use(crocbrainRouter);
 
 export default router;

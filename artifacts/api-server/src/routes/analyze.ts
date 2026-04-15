@@ -6,6 +6,7 @@ import { getConditionsContext } from "../lib/dailyBriefing";
 import { analyzeSonarImage, formatCvContext, generateZoomCrops } from "../lib/vision";
 import { getSonarFewShotRefs } from "../lib/sonarBrain.js";
 import { getFewShotRefs as getBarraBodyRefs } from "../lib/barraLibrary.js";
+import { getCrocFewShotRefs } from "../lib/crocLibrary.js";
 
 const router = Router();
 
@@ -684,27 +685,27 @@ router.post("/analyze", async (req, res) => {
 
     // ── Sonar Brain: inject cross-modal few-shot references ───────────────
     // ORDER:
-    //   1. Barramundi BODY PHOTO (from Barra Brain / iNaturalist) — anatomy lesson:
-    //      shows the physostomous swim bladder that creates the thick arch + shadow void.
-    //   2. Confirmed sonar arch demos (Lowrance barra, Humminbird barra w/ shadows).
-    //   3. Negative contrast demo (Garmin threadfin school).
-    // This cross-modal grounding ties body anatomy knowledge to sonar arch physics.
+    //   1. Barramundi BODY PHOTO — anatomy lesson (swim bladder → arch + shadow void)
+    //   2. Saltwater Croc BODY PHOTOS — shape lesson (croc silhouette → sonar blob)
+    //   3. Confirmed sonar arch demos (Lowrance barra, Humminbird barra w/ shadows)
+    //   4. Negative contrast demo (Garmin threadfin school)
+    // Cross-modal grounding ties body anatomy/shape to sonar return physics.
     const sonarRefs    = getSonarFewShotRefs();
-    const barraBodyRef = getBarraBodyRefs(1);   // 1 iNaturalist research-grade barra photo
+    const barraBodyRef = getBarraBodyRefs(1);        // 1 iNat research-grade barra
+    const crocRefs     = getCrocFewShotRefs(2);      // 2 croc body shape refs (top + side)
 
     type ImagePart = { type: 'image_url'; image_url: { url: string; detail: 'high' | 'low' } };
     type TextPart  = { type: 'text'; text: string };
     const content: Array<ImagePart | TextPart> = [];
 
-    const hasBrainRefs = sonarRefs.length > 0 || barraBodyRef.length > 0;
+    const hasBrainRefs = sonarRefs.length > 0 || barraBodyRef.length > 0 || crocRefs.length > 0;
     if (hasBrainRefs) {
       content.push({ type: 'text', text: 'SONAR BRAIN — cross-modal reference package (study all before analysing):' });
 
-      // Step 1: Body anatomy (cross-modal bridge)
+      // Step 1: Barramundi body anatomy (cross-modal bridge for arch detection)
       if (barraBodyRef.length > 0) {
         const bp = barraBodyRef[0];
         content.push({ type: 'text', text: `STEP 1 — BARRAMUNDI BODY ANATOMY (iNaturalist, ${bp.location}):\nThe large PHYSOSTOMOUS SWIM BLADDER (pale gas sac in upper body cavity) is enormously reflective — it creates the THICK BRIGHT ARCH + SHADOW VOID on sonar. Deep laterally-compressed body = wider/taller arch than threadfin.` });
-        // Use pre-compressed base64 thumb when available (avoids OpenAI → iNat URL fetch)
         const barraImgUrl = bp.thumbBase64
           ? `data:image/jpeg;base64,${bp.thumbBase64}`
           : bp.photoUrl;
@@ -712,18 +713,31 @@ router.post("/analyze", async (req, res) => {
         content.push({ type: 'text', text: `↑ Confirmed barramundi — ${bp.location} (${bp.votes} expert votes). Connect this anatomy to the sonar arch signatures below.` });
       }
 
-      // Step 2: Sonar arch positive refs
+      // Step 2: Saltwater croc body shape refs (cross-modal bridge for blob detection)
+      if (crocRefs.length > 0) {
+        content.push({ type: 'text', text: `STEP 2 — SALTWATER CROCODILE BODY SHAPE REFERENCES (${crocRefs.length} confirmed Crocodylus porosus, iNaturalist research-grade):\nOn sonar a croc appears as a LARGE SOLID FILLED BLOB (NOT an arch) near the surface — dense, no hollow centre, much wider than any fish return. Body is elongated with a long flat tail. Compare these out-of-water body shapes against any large near-surface sonar return to check for crocodile presence.` });
+        for (const cr of crocRefs) {
+          const crImgUrl = cr.thumbBase64
+            ? `data:image/jpeg;base64,${cr.thumbBase64}`
+            : cr.photoUrl;
+          const angleNote = cr.viewingAngle === 'top' ? ' [TOP VIEW — matches sonar overhead perspective]'
+            : cr.viewingAngle === 'side' ? ' [SIDE VIEW — matches live scope lateral view]' : '';
+          content.push({ type: 'image_url', image_url: { url: crImgUrl, detail: 'low' } });
+          content.push({ type: 'text', text: `↑ CONFIRMED SALTWATER CROCODILE (Crocodylus porosus) — ${cr.location}${angleNote}. This is the BODY SILHOUETTE SHAPE to match against any large near-surface sonar blob. Note: extreme body width vs fish, long flat tail, no swim bladder arch.` });
+        }
+      }
+
+      // Step 3: Sonar arch positive refs
       const posRefs = sonarRefs.filter(r => r.isPositive);
-      const negRefs = sonarRefs.filter(r => !r.isPositive);
       if (posRefs.length > 0) {
-        content.push({ type: 'text', text: `STEP 2 — CONFIRMED BARRAMUNDI SONAR ARCHES (${posRefs.length} expert demos):` });
+        content.push({ type: 'text', text: `STEP 3 — CONFIRMED BARRAMUNDI SONAR ARCHES (${posRefs.length} expert demos):` });
         for (const ref of posRefs) {
           content.push({ type: 'image_url', image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: 'low' } });
           content.push({ type: 'text', text: `↑ CONFIRMED BARRAMUNDI — ${ref.brand}: ${ref.label.split('\n')[0]}` });
         }
       }
 
-      content.push({ type: 'text', text: `STEP 3 — ANALYSE THE USER'S SONAR IMAGE BELOW (${zoomCrops ? 4 : 1} image${zoomCrops ? 's' : ''} including zoom crops). Apply cross-modal reasoning: body anatomy → sonar physics → verdict.` });
+      content.push({ type: 'text', text: `STEP 4 — ANALYSE THE USER'S SONAR IMAGE BELOW (${zoomCrops ? 4 : 1} image${zoomCrops ? 's' : ''} including zoom crops). Apply cross-modal reasoning: body anatomy → sonar physics → verdict. For croc detection: compare any large near-surface blob against the croc body shapes in Step 2.` });
     }
 
     // ── Build vision message content ──────────────────────────────────────
