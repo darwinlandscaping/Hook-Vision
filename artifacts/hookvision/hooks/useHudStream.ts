@@ -17,7 +17,7 @@ const BASE_URL = Platform.OS === "web"
   ? (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}` : "")
   : `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
-export const HUD_PAGE_URL   = `${BASE_URL}/hud`;
+export const HUD_PAGE_URL   = `${BASE_URL}/api/hud`;
 const        HUD_UPDATE_URL = `${BASE_URL}/api/hud/update`;
 
 export interface HudPayload {

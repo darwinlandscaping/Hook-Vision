@@ -39,8 +39,8 @@ function broadcast(data: HudData) {
   }
 }
 
-// ─── POST /api/hud/update ─────────────────────────────────────────────────────
-router.post("/api/hud/update", (req, res) => {
+// ─── POST /hud/update ────────────────────────────────────────────────────────
+router.post("/hud/update", (req, res) => {
   const body = req.body as Partial<HudData>;
   latest = {
     species:     body.species     ?? "—",
@@ -64,13 +64,13 @@ router.post("/api/hud/update", (req, res) => {
   res.json({ ok: true });
 });
 
-// ─── GET /api/hud/data ────────────────────────────────────────────────────────
-router.get("/api/hud/data", (_req, res) => {
+// ─── GET /hud/data ────────────────────────────────────────────────────────────
+router.get("/hud/data", (_req, res) => {
   res.json(latest ?? { updatedAt: 0 });
 });
 
-// ─── GET /api/hud/events (SSE) ────────────────────────────────────────────────
-router.get("/api/hud/events", (req, res) => {
+// ─── GET /hud/events (SSE) ────────────────────────────────────────────────────
+router.get("/hud/events", (req, res) => {
   res.setHeader("Content-Type",  "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection",    "keep-alive");

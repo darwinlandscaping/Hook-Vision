@@ -13,8 +13,9 @@ import { CrocTabBar } from "@/components/CrocTabBar";
 import { Insta360Provider } from "@/contexts/Insta360Context";
 
 // Ordered list of all tab route names (must match Tabs.Screen order below)
+// insta360 is hidden from tab bar (accessed via Live tab chip) to keep Brain visible
 const TAB_ROUTES = [
-  "live", "insta360", "home", "buff", "tides", "species",
+  "live", "home", "buff", "tides", "species",
   "barra", "zones", "forecast", "catchid", "history", "community",
 ] as const;
 
@@ -28,10 +29,6 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="live">
         <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
         <Label>Live</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="insta360">
-        <Icon sf={{ default: "camera.badge.ellipsis", selected: "camera.badge.ellipsis" }} />
-        <Label>360°</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="home">
         <Icon sf={{ default: "house", selected: "house.fill" }} />
@@ -157,18 +154,10 @@ function ClassicTabLayout() {
             ),
         }}
       />
-      <Tabs.Screen
-        name="insta360"
-        options={{
-          title: "360°",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="camera.badge.ellipsis" tintColor={color} size={22} />
-            ) : (
-              <MaterialCommunityIcons name="camera-wireless" size={22} color={color} />
-            ),
-        }}
-      />
+      {/* 360° screen — navigated to from Live tab chip, not in tab bar */}
+      <Tabs.Screen name="insta360" options={{ href: null }} />
+      {/* Subscription screen — navigated from Home, not in tab bar */}
+      <Tabs.Screen name="subscription" options={{ href: null }} />
       <Tabs.Screen
         name="home"
         options={{

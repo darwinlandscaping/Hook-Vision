@@ -53,6 +53,7 @@ const META: Record<string, { label: string; icon: (c: string, s: number) => Reac
   catchid:   { label: "Catch",   icon: (c, s) => <MaterialCommunityIcons name="camera-iris"        size={s} color={c} /> },
   history:   { label: "History", icon: (c, s) => <Feather                name="clock"              size={s} color={c} /> },
   community: { label: "Brain",   icon: (c, s) => <MaterialCommunityIcons name="brain"              size={s} color={c} /> },
+  insta360:  { label: "360°",    icon: (c, s) => <MaterialCommunityIcons name="camera-wireless"     size={s} color={c} /> },
 };
 
 const COLS    = 6;                             // tabs per row
@@ -87,7 +88,7 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
   const routes  = state.routes;
 
   // Strip routes that are hidden from the tab bar (href: null in layout)
-  const HIDDEN = new Set(["fishy", "map", "demo"]);
+  const HIDDEN = new Set(["fishy", "map", "demo", "insta360", "subscription"]);
   const visibleRoutes = routes.filter((r: any) => !HIDDEN.has(r.name));
 
   // Layout constants

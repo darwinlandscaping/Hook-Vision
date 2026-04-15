@@ -58,14 +58,16 @@ interface DailyConditions {
 // ─── Quick nav tiles ──────────────────────────────────────────────────────────
 
 const TILES = [
-  { label: "AI\nScan",        emoji: "📡", route: "/(tabs)/index",    border: "#00d4aa55" },
-  { label: "Trophy\nBarra",   emoji: "🎯", route: "/(tabs)/barra",    border: "#ff220055" },
-  { label: "NT\nTides",       emoji: "🌊", route: "/(tabs)/tides",    border: "#00a8ff55" },
-  { label: "Species\nGuide",  emoji: "🐟", route: "/(tabs)/species",  border: "#4caf5055" },
-  { label: "Fishy\nForecast", emoji: "🎣", route: "/(tabs)/forecast", border: "#ffd70055" },
-  { label: "Strike\nZones",   emoji: "🗺️",  route: "/(tabs)/zones",    border: "#ff980055" },
-  { label: "Scan\nHistory",   emoji: "📖", route: "/(tabs)/history",  border: "#e91e6355" },
-  { label: "Demo\nScans",     emoji: "🖼️", route: "/(tabs)/demo",     border: "#7986cb55" },
+  { label: "AI\nScan",        emoji: "📡", route: "/(tabs)/index",        border: "#00d4aa55" },
+  { label: "Trophy\nBarra",   emoji: "🎯", route: "/(tabs)/barra",        border: "#ff220055" },
+  { label: "NT\nTides",       emoji: "🌊", route: "/(tabs)/tides",        border: "#00a8ff55" },
+  { label: "Species\nGuide",  emoji: "🐟", route: "/(tabs)/species",      border: "#4caf5055" },
+  { label: "Fishy\nForecast", emoji: "🎣", route: "/(tabs)/forecast",     border: "#ffd70055" },
+  { label: "Strike\nZones",   emoji: "🗺️",  route: "/(tabs)/zones",        border: "#ff980055" },
+  { label: "360°\nCamera",    emoji: "📷", route: "/(tabs)/insta360",     border: "#a855f755" },
+  { label: "Subscribe\n⭐ Pro", emoji: "💳", route: "/(tabs)/subscription", border: "#ffd70055" },
+  { label: "Scan\nHistory",   emoji: "📖", route: "/(tabs)/history",      border: "#e91e6355" },
+  { label: "Demo\nScans",     emoji: "🖼️", route: "/(tabs)/demo",         border: "#7986cb55" },
 ];
 
 // ─── Darwin local time helper ─────────────────────────────────────────────────
@@ -274,6 +276,22 @@ export default function HomeScreen() {
         </>
       )}
 
+      {/* ── PAYMENT DUE BANNER ── */}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => router.push("/(tabs)/subscription")}
+        style={S.payBanner}
+      >
+        <View style={S.payBannerLeft}>
+          <MaterialCommunityIcons name="credit-card-clock" size={22} color="#ffd700" />
+          <View>
+            <Text style={S.payBannerTitle}>PAYMENT DUE — Activate Pro</Text>
+            <Text style={S.payBannerSub}>Unlock AI pipelines, 360° Camera, Smart HUD &amp; more</Text>
+          </View>
+        </View>
+        <Feather name="chevron-right" size={18} color="#ffd70088" />
+      </TouchableOpacity>
+
       {/* ── QUICK NAV ── */}
       <Text style={[S.sectionHead, { color: colors.mutedForeground }]}>QUICK ACCESS</Text>
       <View style={S.tileGrid}>
@@ -435,4 +453,18 @@ const S = StyleSheet.create({
   seasonContext: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20 },
   waterRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   waterText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 18 },
+
+  payBanner: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: "#ffd70014",
+    borderRadius: 14, borderWidth: 1.5, borderColor: "#ffd70055",
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  payBannerLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  payBannerTitle: {
+    color: "#ffd700", fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.5,
+  },
+  payBannerSub: {
+    color: "#ffffff88", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2,
+  },
 });

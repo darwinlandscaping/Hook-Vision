@@ -668,7 +668,8 @@ export default function LiveScreen() {
                 onPress={() => {
                   setCam2Panel(false);
                   setHudPanel(false);
-                  setInsta360Panel((v) => !v);
+                  setInsta360Panel(false);
+                  router.push("/insta360");
                 }}
               >
                 <MaterialCommunityIcons
