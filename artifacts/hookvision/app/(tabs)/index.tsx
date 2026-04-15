@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Brightness from "expo-brightness";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
@@ -728,6 +729,23 @@ export default function HomeScreen() {
   // 10-scan summary
   const boatHistoryRef   = useRef<FishAnalysis[]>([]);
   const [summaryText, setSummaryText] = useState<string | null>(null);
+
+  // ── Screen brightness — max while analysing, restore when done ────────────
+  const prevBrightnessRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    if (loading) {
+      Brightness.getBrightnessAsync()
+        .then((b) => { prevBrightnessRef.current = b; })
+        .catch(() => {});
+      Brightness.setBrightnessAsync(1.0).catch(() => {});
+    } else {
+      if (prevBrightnessRef.current !== null) {
+        Brightness.setBrightnessAsync(prevBrightnessRef.current).catch(() => {});
+        prevBrightnessRef.current = null;
+      }
+    }
+  }, [loading]);
 
   // ── Sonar Brain — Stage-1 fast barra arch detector ────────────────────────
   const [sonarBarraResult, setSonarBarraResult] = useState<SonarBarraResult | null>(null);
