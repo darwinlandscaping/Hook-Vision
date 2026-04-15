@@ -37,6 +37,7 @@ import { useHistory } from "@/context/HistoryContext";
 import { useNarrator } from "@/context/NarratorContext";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { getVision, quickScan, visionStatusSync, type MobileSonarScan } from "@/services/vision";
+import { LiveScanStore } from "@/stores/LiveScanStore";
 
 interface FishAnalysis {
   fishCount: number;
@@ -637,6 +638,8 @@ export default function HomeScreen() {
   const [streamChars, setStreamChars] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [imageLayout, setImageLayout] = useState({ width: 360, height: 240 });
+  const [scanSource, setScanSource] = useState<'manual' | 'live' | 'boat'>('manual');
+  const [boatActive, setBoatActive] = useState(false);
 
   // ── Sonar Brain — Stage-1 fast barra arch detector ────────────────────────
   const [sonarBarraResult, setSonarBarraResult] = useState<SonarBarraResult | null>(null);
@@ -687,6 +690,25 @@ export default function HomeScreen() {
       }
     }, [])
   );
+
+  // ── LiveScanStore subscription — receives images from Live Camera tab ──────
+  // Boat mode timer keeps running in Live tab; we display results here.
+  useEffect(() => {
+    setBoatActive(LiveScanStore.boatActive);
+    const unsub = LiveScanStore.subscribe((payload) => {
+      setBoatActive(LiveScanStore.boatActive);
+      setScanSource(payload.source);
+      setImageUri(payload.uri);
+      setImageBase64(payload.base64);
+      setAnalysis(null);
+      setSonarBarraResult(null);
+      setError(null);
+      autoAnalyzeRef.current = true;
+      locationPromiseRef.current = getNTLocationName(10_000);
+      LiveScanStore.clear();
+    });
+    return unsub;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cameraScale = useSharedValue(1);
   const galleryScale = useSharedValue(1);
@@ -1046,6 +1068,34 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <HVHeader subtitle="AI Sonar Analysis" />
+
+        {/* ── Boat mode + source banner ── */}
+        {(boatActive || scanSource !== 'manual') && (
+          <View style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: boatActive ? "#aaff0018" : "#00d4aa18",
+            borderWidth: 1,
+            borderColor: boatActive ? "#aaff0055" : "#00d4aa55",
+            borderRadius: 10,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            gap: 8,
+          }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={{ fontSize: 16 }}>{boatActive ? "⚓" : "📷"}</Text>
+              <Text style={{ color: boatActive ? "#aaff00" : "#00d4aa", fontWeight: "700", fontSize: 13, letterSpacing: 0.5 }}>
+                {boatActive ? "BOAT MODE ACTIVE" : scanSource === 'live' ? "LIVE CAM SCAN" : "SCAN"}
+              </Text>
+            </View>
+            {boatActive && (
+              <Text style={{ color: "#aaff00aa", fontSize: 11 }}>
+                Auto-scanning every 20s · Results stream in real time
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* ── Sonar image + AI interpretation overlay ── */}
         <View

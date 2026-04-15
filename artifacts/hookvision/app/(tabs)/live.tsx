@@ -29,6 +29,7 @@ import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/context/HistoryContext";
 import { CHARACTERS, useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
+import { LiveScanStore } from "@/stores/LiveScanStore";
 
 // ─── Native-only imports ──────────────────────────────────────────────────────
 let CameraView: any = null;
@@ -304,7 +305,7 @@ export default function LiveScreen() {
     [speak, character]
   );
 
-  // ── Scan ─────────────────────────────────────────────────────────────────
+  // ── Scan — capture photo then send to Scan tab for full AI analysis ──────
   const scanNow = useCallback(async () => {
     if (scanning) return;
     setScanning(true);
@@ -326,45 +327,21 @@ export default function LiveScreen() {
       } else {
         if (!nativeCamRef.current) throw new Error("Camera not ready.");
         const photo = await nativeCamRef.current.takePictureAsync({
-          base64: true, quality: 1, skipProcessing: false,
+          base64: true, quality: 0.85, skipProcessing: false,
         });
         if (!photo?.base64) throw new Error("Failed to capture photo.");
         base64 = photo.base64;
         uri    = photo.uri ?? "";
       }
 
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
-      const baseUrl = domain ? `https://${domain}` : "";
-      const response = await fetch(`${baseUrl}/api/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64 }),
-      });
-
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        throw new Error(errBody?.error ?? "Analysis failed. Try again.");
-      }
-
-      const data: FishAnalysis = await response.json();
-      setResult(data);
-      setScanCount((n) => n + 1);
-
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
-      if (autoSpeak || boatMode) speakResult(data);
+      // Push image to Scan tab — analysis + streaming results all happen there
+      LiveScanStore.push(base64, uri, boatMode ? "boat" : "live");
+      router.navigate("/");   // go to Scan tab (no-op if already there)
 
-      addEntry({
-        id: Date.now().toString() + Math.random().toString(36).slice(2, 9),
-        imageUri: uri,
-        timestamp: Date.now(),
-        fishCount: data.fishCount,
-        species: data.species,
-        depth: data.depth,
-        suggestion: data.suggestion,
-      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       setError(msg);
@@ -374,7 +351,7 @@ export default function LiveScreen() {
     } finally {
       setScanning(false);
     }
-  }, [scanning, autoSpeak, boatMode, speakResult, addEntry]);
+  }, [scanning, boatMode]);
 
   // ── Pick from gallery & analyse ──────────────────────────────────────────
   const pickFromGallery = useCallback(async () => {
@@ -413,38 +390,13 @@ export default function LiveScreen() {
       );
       if (!jpeg.base64) throw new Error("Could not read image.");
 
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
-      const baseUrl = domain ? `https://${domain}` : "";
-      const response = await fetch(`${baseUrl}/api/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: jpeg.base64 }),
-      });
-
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        throw new Error(errBody?.error ?? "Analysis failed. Try again.");
-      }
-
-      const data: FishAnalysis = await response.json();
-      setResult(data);
-      setScanCount((n) => n + 1);
-
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
-      if (autoSpeak) speakResult(data);
-
-      addEntry({
-        id: Date.now().toString() + Math.random().toString(36).slice(2, 9),
-        imageUri: asset.uri,
-        timestamp: Date.now(),
-        fishCount: data.fishCount,
-        species: data.species,
-        depth: data.depth,
-        suggestion: data.suggestion,
-      });
+      // Send to Scan tab for full streaming analysis
+      LiveScanStore.push(jpeg.base64, asset.uri, "live");
+      router.navigate("/");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gallery analysis failed.";
       setError(msg);
@@ -455,9 +407,9 @@ export default function LiveScreen() {
       setScanning(false);
       setGalleryPicking(false);
     }
-  }, [galleryPicking, scanning, autoSpeak, speakResult, addEntry]);
+  }, [galleryPicking, scanning]);
 
-  // ── Open native camera app (same as Scan Sonar tab) ──────────────────────
+  // ── Open native camera app → send to Scan tab ────────────────────────────
   const openCamera = useCallback(async () => {
     if (galleryPicking || scanning) return;
     if (Platform.OS !== "web") {
@@ -486,33 +438,11 @@ export default function LiveScreen() {
         { compress: 0.85, format: SaveFormat.JPEG, base64: true }
       );
       if (!jpeg.base64) throw new Error("Could not read image.");
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
-      const baseUrl = domain ? `https://${domain}` : "";
-      const response = await fetch(`${baseUrl}/api/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: jpeg.base64 }),
-      });
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        throw new Error(errBody?.error ?? "Analysis failed. Try again.");
-      }
-      const data: FishAnalysis = await response.json();
-      setResult(data);
-      setScanCount((n) => n + 1);
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      if (autoSpeak) speakResult(data);
-      addEntry({
-        id: Date.now().toString() + Math.random().toString(36).slice(2, 9),
-        imageUri: asset.uri,
-        timestamp: Date.now(),
-        fishCount: data.fishCount,
-        species: data.species,
-        depth: data.depth,
-        suggestion: data.suggestion,
-      });
+      LiveScanStore.push(jpeg.base64, asset.uri, "live");
+      router.navigate("/");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Camera failed.";
       setError(msg);
@@ -523,18 +453,22 @@ export default function LiveScreen() {
       setScanning(false);
       setGalleryPicking(false);
     }
-  }, [galleryPicking, scanning, autoSpeak, speakResult, addEntry]);
+  }, [galleryPicking, scanning]);
 
   // ── Boat mode auto-scan loop ──────────────────────────────────────────────
   const stopBoatLoop = useCallback(() => {
     if (mountTimer.current) { clearInterval(mountTimer.current); mountTimer.current = null; }
     if (cdTimer.current)    { clearInterval(cdTimer.current);    cdTimer.current = null; }
     setCountdown(0);
+    LiveScanStore.setBoatActive(false);
   }, []);
 
   const startBoatLoop = useCallback(() => {
     stopBoatLoop();
+    LiveScanStore.setBoatActive(true);
     setCountdown(AUTO_INTERVAL);
+    // Fire first scan immediately then every AUTO_INTERVAL seconds
+    scanNow();
     cdTimer.current = setInterval(() =>
       setCountdown((c) => (c <= 1 ? AUTO_INTERVAL : c - 1)), 1000);
     mountTimer.current = setInterval(() => scanNow(), AUTO_INTERVAL * 1000);
