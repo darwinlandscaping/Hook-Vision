@@ -658,12 +658,58 @@ router.post("/analyze", async (req, res) => {
   }
 
   try {
-    // ── Run CV scan + zoom crops + intelligence fetch in parallel ─────────
-    const [cvScan, zoomCrops, intelligenceCtx] = await Promise.all([
+    // Detect MIME type first (fast, sync) so flash scan can start immediately
+    const mimeType = detectMimeType(imageBase64);
+
+    // ── FLASH SCAN: fire immediately with minimal payload ─────────────────
+    // gpt-4.1-mini + raw image only → first result in ~0.8–1.5 s, well before
+    // the heavy preprocessing + reference-image dual-scan completes (~3–5 s).
+    const flashPromise = openai.chat.completions.create({
+      model: "gpt-4.1-mini",
+      max_completion_tokens: 90,
+      temperature: 0,
+      stream: false,
+      messages: [
+        {
+          role: "system",
+          content: 'You are an expert sonar fish detector. Reply with ONLY a JSON object — no markdown, no extra text: {"species":"string","fishCount":integer,"confidence":float 0-1,"quickRead":"max 12 words describing what you see"}',
+        },
+        {
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "low" } },
+            { type: "text", text: "Quick read: what species and how many fish do you see? Reply JSON only." },
+          ],
+        },
+      ],
+    });
+
+    // ── Heavy preprocessing starts in parallel with flash scan ────────────
+    const preprocessPromise = Promise.all([
       analyzeSonarImage(imageBase64),
       generateZoomCrops(imageBase64),
       getIntelligenceContext(),
     ]);
+
+    // ── Open streaming headers immediately so flash result can be flushed ──
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+
+    // ── Emit flash result the moment it arrives ───────────────────────────
+    try {
+      const flashResult = await flashPromise;
+      const flashRaw    = flashResult.choices[0]?.message?.content ?? "{}";
+      const flashClean  = flashRaw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      const flashMatch  = flashClean.match(/\{[\s\S]*?\}/);
+      if (flashMatch) {
+        res.write(`__FLASH__:${flashMatch[0]}\n`);
+      }
+    } catch { /* non-fatal — user still gets full scan */ }
+
+    // ── Await preprocessing results ───────────────────────────────────────
+    const [cvScan, zoomCrops, intelligenceCtx] = await preprocessPromise;
 
     const condCtx  = getConditionsContext();
     const cvBlock  = cvScan ? "\n\n" + formatCvContext(cvScan) : "";
@@ -679,9 +725,6 @@ router.post("/analyze", async (req, res) => {
       : "";
 
     const analysisPrompt = `${condCtx ? condCtx + "\n\n" : ""}${intelligenceCtx}${zoomNote}\n\n${ANALYSIS_STEP_PROMPT}${cvBlock}`;
-
-    // Detect actual image MIME type so vision API gets correct format header
-    const mimeType = detectMimeType(imageBase64);
 
     // ── Sonar Brain: inject cross-modal few-shot references ───────────────
     // ORDER:
@@ -771,7 +814,7 @@ router.post("/analyze", async (req, res) => {
       messages: sharedMessages,
     });
 
-    // Open scan1 stream immediately — first bytes arrive in ~1s
+    // Open scan1 stream — first bytes arrive in ~1s after preprocessing
     const stream = await openai.chat.completions.create({
       model: "gpt-4.1",
       max_completion_tokens: 600,
@@ -780,11 +823,6 @@ router.post("/analyze", async (req, res) => {
       stream: true,
       messages: sharedMessages,
     });
-
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders();
 
     let raw = '';
     for await (const chunk of stream) {

@@ -752,6 +752,10 @@ export default function HomeScreen() {
   // ── Sonar Brain — Stage-1 fast barra arch detector ────────────────────────
   const [sonarBarraResult, setSonarBarraResult] = useState<SonarBarraResult | null>(null);
   const [sonarBarraLoading, setSonarBarraLoading] = useState(false);
+  // ── Flash scan — gpt-4.1-mini instant first read (~0.8-1.5 s) ──────────────
+  const [flashResult, setFlashResult] = useState<{
+    species: string; fishCount: number; confidence: number; quickRead: string;
+  } | null>(null);
   // ── Dual-scan consensus (scan 2 runs in background, appended as __SCAN2__ token) ──
   const [scan2Consensus, setScan2Consensus] = useState<{
     agreed: boolean; species2: string | null; confidence2: number | null;
@@ -925,6 +929,7 @@ export default function HomeScreen() {
     setSonarBarraResult(null);
     setSonarBarraLoading(true);
     setScan2Consensus(null);
+    setFlashResult(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     // ── Gate: quick sonar-screen check before spending a full analysis call ──
@@ -986,8 +991,10 @@ export default function HomeScreen() {
       }
 
       // ── Streaming read ────────────────────────────────────────────────────────
-      // First bytes arrive in ~1-2s; we accumulate the full JSON then parse once.
+      // __FLASH__ arrives in ~0.8-1.5s (gpt-4.1-mini, raw image only).
+      // Full dual-scan (gpt-4.1 with crops + refs) follows ~3-5s later.
       let accumulated = "";
+      let flashParsed = false;
       if (response.body) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -998,12 +1005,26 @@ export default function HomeScreen() {
           const chunk = decoder.decode(value, { stream: true });
           accumulated += chunk;
           setStreamChars(accumulated.length);
+          // Parse flash result the moment it arrives — show instant banner
+          if (!flashParsed && accumulated.includes("__FLASH__:")) {
+            const fm = accumulated.match(/__FLASH__:(\{[^\n]+\})/);
+            if (fm) {
+              try {
+                const fd = JSON.parse(fm[1]);
+                if (fd.species) setFlashResult(fd);
+              } catch { /* silent */ }
+              flashParsed = true;
+            }
+          }
         }
         setStreaming(false);
       } else {
         // Fallback for environments without ReadableStream
         accumulated = await response.text();
       }
+
+      // ── Strip flash prefix line before JSON parsing ────────────────────────
+      accumulated = accumulated.replace(/__FLASH__:[^\n]*\n?/, "");
 
       // ── Extract CV blob positions appended by server ──────────────────────
       let parsedCvRegions: Array<{ xFrac: number; yFrac: number; size: number }> = [];
@@ -1047,6 +1068,7 @@ export default function HomeScreen() {
         data.species = "Unknown species";
       }
       setAnalysis(data);
+      setFlashResult(null); // full analysis arrived — dismiss flash banner
 
       // ── Auto-save to Brain library (fire-and-forget) ──────────────────────
       {
@@ -1262,7 +1284,7 @@ export default function HomeScreen() {
               setAnalysis(null); setError(null);
               setLoading(false); setStreaming(false); setStreamChars(0);
               setSonarBarraResult(null); setSonarBarraLoading(false);
-              setScan2Consensus(null);
+              setScan2Consensus(null); setFlashResult(null);
               setCompareCard(null); setCompareExp(null);
               setCapturedLocation(null); setCvScan(null); setCvRegions([]);
               locationPromiseRef.current = null;
@@ -1384,6 +1406,24 @@ export default function HomeScreen() {
                 <Text style={[styles.stageLabel, { color: "#ffffff40" }]}>Building report</Text>
               </View>
             </View>
+
+            {/* ⚡ Flash instant read — appears ~1s before full analysis */}
+            {flashResult && (
+              <View style={styles.flashBanner}>
+                <Text style={styles.flashBadge}>⚡ INSTANT READ</Text>
+                <Text style={styles.flashSpecies}>{flashResult.species}</Text>
+                <View style={styles.flashRow}>
+                  {flashResult.fishCount > 0 && (
+                    <Text style={styles.flashChip}>{flashResult.fishCount} fish</Text>
+                  )}
+                  <Text style={styles.flashChip}>{Math.round(flashResult.confidence * 100)}% conf</Text>
+                </View>
+                {!!flashResult.quickRead && (
+                  <Text style={styles.flashQuick}>{flashResult.quickRead}</Text>
+                )}
+                <Text style={styles.flashSub}>Full analysis arriving…</Text>
+              </View>
+            )}
 
             {/* Progress bar */}
             <View style={[styles.progressTrack, { backgroundColor: colors.secondary }]}>
@@ -1931,6 +1971,18 @@ const styles = StyleSheet.create({
   progressTrack:   { height: 4, borderRadius: 2, overflow: "hidden" },
   progressFill:    { height: 4, borderRadius: 2, backgroundColor: "#00d4aa" },
   analysingHint:   { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 },
+
+  /* ⚡ Flash instant-read banner (gpt-4.1-mini, ~1 s) */
+  flashBanner: {
+    backgroundColor: "#ffd70014", borderWidth: 1, borderColor: "#ffd70055",
+    borderRadius: 12, padding: 12, gap: 6,
+  },
+  flashBadge:   { fontSize: 10, fontFamily: "Inter_700Bold", color: "#ffd700", letterSpacing: 1.5 },
+  flashSpecies: { fontSize: 15, fontFamily: "Oswald_700Bold", color: "#ffd700", letterSpacing: 1 },
+  flashRow:     { flexDirection: "row", gap: 8 },
+  flashChip:    { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#ffd700", backgroundColor: "#ffd70022", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+  flashQuick:   { fontSize: 12, fontFamily: "Inter_400Regular", color: "#ffffffcc", lineHeight: 18 },
+  flashSub:     { fontSize: 10, fontFamily: "Inter_400Regular", color: "#ffffff44" },
 
   /* Sonar Brain Stage-1 verdict card */
   sonarBrainCard: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 10 },
