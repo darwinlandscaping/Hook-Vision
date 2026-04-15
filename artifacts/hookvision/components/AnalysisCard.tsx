@@ -4,7 +4,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useVoice } from "@/hooks/useVoice";
 import { useFishImage, getSpeciesLabel } from "@/hooks/useFishImage";
-import { useCraigsLure } from "@/hooks/useCraigsLure";
+import { useLureLibrary } from "@/hooks/useLureLibrary";
 import { ArchZoomPanel } from "@/components/ArchZoomPanel";
 
 interface FishAnalysis {
@@ -211,11 +211,10 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
   const crocPulse = useRef(new Animated.Value(1)).current;
   const { speak, stop, speaking } = useVoice();
   const fishImageUrl = useFishImage(analysis.crocAlert ? "saltwater crocodile" : analysis.species);
-  const { result: craigsResult, loading: craigsLoading } = useCraigsLure(
+  const lureEntry = useLureLibrary(
     analysis.crocAlert ? undefined : analysis.lure,
     analysis.crocAlert ? undefined : analysis.lureType
   );
-  const craigsProduct = craigsResult?.products[0] ?? null;
 
   useEffect(() => {
     if (analysis.crocAlert) {
@@ -487,23 +486,16 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
                 colors={colors}
                 delay={200}
               />
-              {/* Craig's Fishing Warehouse product card */}
-              {craigsLoading ? (
-                <View style={[styles.craigsCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-                  <MaterialCommunityIcons name="hook" size={24} color={colors.border} />
-                  <Text style={[styles.craigsLoadingText, { color: colors.mutedForeground }]}>
-                    Searching Craig's Fishing Warehouse…
-                  </Text>
-                </View>
-              ) : craigsProduct ? (
+              {/* Lure library product card — instant, always matches the recommendation */}
+              {lureEntry ? (
                 <TouchableOpacity
                   activeOpacity={0.85}
-                  onPress={() => Linking.openURL(craigsProduct.productUrl)}
+                  onPress={() => Linking.openURL(lureEntry.productUrl)}
                   style={[styles.craigsCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}
                 >
                   <View style={[styles.craigsImageWrap, { backgroundColor: colors.card }]}>
                     <Image
-                      source={{ uri: craigsProduct.imageUrl }}
+                      source={{ uri: lureEntry.imageUrl }}
                       style={styles.craigsImage}
                       resizeMode="cover"
                     />
@@ -515,7 +507,7 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
                       </Text>
                     </View>
                     <Text style={[styles.craigsProductName, { color: colors.foreground }]} numberOfLines={2}>
-                      {craigsProduct.name}
+                      {lureEntry.name}
                     </Text>
                     <View style={styles.craigsFooter}>
                       <Text style={[styles.craigsViewBtn, { color: colors.accent }]}>
@@ -524,10 +516,10 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
                     </View>
                   </View>
                 </TouchableOpacity>
-              ) : craigsResult ? (
+              ) : (
                 <TouchableOpacity
                   activeOpacity={0.8}
-                  onPress={() => Linking.openURL(craigsResult.searchUrl)}
+                  onPress={() => Linking.openURL(`https://craigsfishingwarehouse.com.au/?s=${encodeURIComponent(analysis.lure ?? "")}&post_type=product`)}
                   style={[styles.craigsSearchBtn, { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}44` }]}
                 >
                   <MaterialCommunityIcons name="fish" size={15} color={colors.primary} />
@@ -535,7 +527,7 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
                     Search for this lure at Craig's Fishing Warehouse →
                   </Text>
                 </TouchableOpacity>
-              ) : null}
+              )}
             </>
           )}
           {analysis.technique && (
