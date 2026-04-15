@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Platform,
   StyleSheet,
   Text,
@@ -30,6 +31,13 @@ import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/context/HistoryContext";
 import { CHARACTERS, useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
 import { LiveScanStore } from "@/stores/LiveScanStore";
+import { useInsta360 } from "@/hooks/useInsta360";
+
+// ─── Conditional IntentLauncher (Android only) ────────────────────────────────
+let IntentLauncher: any = null;
+if (Platform.OS === "android") {
+  try { IntentLauncher = require("expo-intent-launcher"); } catch {}
+}
 
 // ─── Native-only imports ──────────────────────────────────────────────────────
 let CameraView: any = null;
@@ -275,6 +283,11 @@ export default function LiveScreen() {
   const mountTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
   const cdTimer      = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ── Insta360 ──────────────────────────────────────────────────────────────
+  const insta360 = useInsta360();
+  const [insta360Panel, setInsta360Panel] = useState(false);
+  const [insta360Snapping, setInsta360Snapping] = useState(false);
+
   const AUTO_INTERVAL = 40;
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
@@ -304,6 +317,40 @@ export default function LiveScreen() {
     (analysis: FishAnalysis) => speak(buildSpeech(analysis, character)),
     [speak, character]
   );
+
+  // ── Open device WiFi settings ──────────────────────────────────────────────
+  const openWifiSettings = useCallback(async () => {
+    try {
+      if (Platform.OS === "android" && IntentLauncher) {
+        await IntentLauncher.startActivityAsync(
+          IntentLauncher.ActivityAction.WIFI_SETTINGS
+        );
+      } else {
+        // iOS — open Settings root (WiFi is top-level)
+        await Linking.openURL("App-prefs:WIFI");
+      }
+    } catch {
+      try { await Linking.openSettings(); } catch {}
+    }
+  }, []);
+
+  // ── Insta360 manual snap → send to Scan tab for AI analysis ───────────────
+  const insta360Snap = useCallback(async () => {
+    if (insta360.status !== "connected" || insta360Snapping) return;
+    setInsta360Snapping(true);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    try {
+      const snap = await insta360.takeSnapshot();
+      if (!snap) { setError("Insta360 snapshot failed — check connection."); return; }
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      LiveScanStore.push(snap.base64, snap.uri, "live");
+      router.navigate("/");
+    } catch (err) {
+      setError("Insta360 snapshot failed.");
+    } finally {
+      setInsta360Snapping(false);
+    }
+  }, [insta360, insta360Snapping]);
 
   // ── Scan — capture photo then send to Scan tab for full AI analysis ──────
   const scanNow = useCallback(async () => {
@@ -536,12 +583,206 @@ export default function LiveScreen() {
             </TouchableOpacity>
           )}
 
+          {/* Insta360 status chip (top-right when not in boat mode) */}
           {!boatMode && (
-            <View style={{ marginLeft: "auto" }}>
+            <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <TouchableOpacity
+                style={[
+                  styles.chip,
+                  insta360.status === "connected"
+                    ? { backgroundColor: "#00d4aa22", borderColor: "#00d4aa88" }
+                    : insta360.status === "searching"
+                    ? { backgroundColor: "#ffd70022", borderColor: "#ffd70066" }
+                    : { backgroundColor: "#ffffff11", borderColor: "#ffffff33" },
+                ]}
+                onPress={() => {
+                  if (!insta360Panel) {
+                    setInsta360Panel(true);
+                    if (insta360.status === "disconnected") insta360.startSearch();
+                  } else {
+                    setInsta360Panel(false);
+                    if (insta360.status === "searching") insta360.stopSearch();
+                  }
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="camera-wireless"
+                  size={13}
+                  color={
+                    insta360.status === "connected"
+                      ? "#00d4aa"
+                      : insta360.status === "searching"
+                      ? "#ffd700"
+                      : "#ffffff88"
+                  }
+                />
+                <Text
+                  style={[
+                    styles.chipText,
+                    {
+                      color:
+                        insta360.status === "connected"
+                          ? "#00d4aa"
+                          : insta360.status === "searching"
+                          ? "#ffd700"
+                          : "#ffffff88",
+                    },
+                  ]}
+                >
+                  {insta360.status === "connected"
+                    ? "📡 Insta360"
+                    : insta360.status === "searching"
+                    ? "Searching…"
+                    : "Insta360"}
+                </Text>
+              </TouchableOpacity>
               <NarratorSettingsTrigger />
             </View>
           )}
         </View>
+
+        {/* ── Insta360 connection panel ───────────────────────────────────── */}
+        {insta360Panel && !boatMode && (
+          <View
+            style={{
+              position: "absolute",
+              top: (isNative ? insets.top : topPad) + 60,
+              left: 12,
+              right: 12,
+              backgroundColor: "#0a1628ee",
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor:
+                insta360.status === "connected" ? "#00d4aa66" : "#ffd70044",
+              padding: 16,
+              gap: 12,
+              zIndex: 50,
+            }}
+          >
+            {/* Header */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <MaterialCommunityIcons name="camera-wireless" size={20} color="#00d4aa" />
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, letterSpacing: 0.5 }}>
+                  INSTA360 CONNECT
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => { setInsta360Panel(false); if (insta360.status === "searching") insta360.stopSearch(); }}
+              >
+                <Feather name="x" size={18} color="#ffffff88" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Status row */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              {insta360.status === "searching" && (
+                <ActivityIndicator size="small" color="#ffd700" />
+              )}
+              {insta360.status === "connected" && (
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#00d4aa" }} />
+              )}
+              {insta360.status === "disconnected" && (
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#ffffff44" }} />
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: insta360.status === "connected" ? "#00d4aa" : insta360.status === "searching" ? "#ffd700" : "#ffffff88", fontWeight: "600", fontSize: 13 }}>
+                  {insta360.status === "connected"
+                    ? `✓ Connected — ${insta360.cameraInfo?.model ?? "Insta360"}`
+                    : insta360.status === "searching"
+                    ? "Searching for Insta360 at 192.168.42.1…"
+                    : "Not connected"}
+                </Text>
+                {insta360.cameraInfo && (
+                  <Text style={{ color: "#ffffff55", fontSize: 11, marginTop: 2 }}>
+                    {insta360.cameraInfo.manufacturer} · FW {insta360.cameraInfo.firmwareVersion}
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            {/* Instructions (when not connected) */}
+            {insta360.status !== "connected" && (
+              <View style={{ backgroundColor: "#ffffff0a", borderRadius: 10, padding: 12, gap: 6 }}>
+                <Text style={{ color: "#ffffffcc", fontSize: 12, lineHeight: 18 }}>
+                  1. On your Insta360 camera, go to{"\n"}
+                  {'   '}⚙️ Settings → WiFi / Bluetooth → Enable WiFi{"\n"}
+                  2. Connect your phone to the Insta360 WiFi network{"\n"}
+                  3. Return here — connection detects automatically
+                </Text>
+              </View>
+            )}
+
+            {/* Action buttons */}
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {insta360.status !== "connected" && (
+                <>
+                  <TouchableOpacity
+                    onPress={openWifiSettings}
+                    style={{
+                      flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+                      gap: 6, backgroundColor: "#00a8ff22", borderRadius: 10,
+                      borderWidth: 1, borderColor: "#00a8ff66", paddingVertical: 10,
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name="wifi" size={15} color="#00a8ff" />
+                    <Text style={{ color: "#00a8ff", fontWeight: "600", fontSize: 13 }}>Open WiFi Settings</Text>
+                  </TouchableOpacity>
+                  {insta360.status === "disconnected" ? (
+                    <TouchableOpacity
+                      onPress={() => insta360.startSearch()}
+                      style={{
+                        flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+                        gap: 6, backgroundColor: "#ffd70022", borderRadius: 10,
+                        borderWidth: 1, borderColor: "#ffd70066", paddingVertical: 10,
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialCommunityIcons name="radar" size={15} color="#ffd700" />
+                      <Text style={{ color: "#ffd700", fontWeight: "600", fontSize: 13 }}>Start Search</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => insta360.stopSearch()}
+                      style={{
+                        flexDirection: "row", alignItems: "center", justifyContent: "center",
+                        gap: 6, backgroundColor: "#ff440022", borderRadius: 10,
+                        borderWidth: 1, borderColor: "#ff440066", paddingVertical: 10, paddingHorizontal: 14,
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Feather name="square" size={14} color="#ff4400" />
+                      <Text style={{ color: "#ff4400", fontWeight: "600", fontSize: 13 }}>Stop</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+
+              {insta360.status === "connected" && (
+                <TouchableOpacity
+                  onPress={insta360Snap}
+                  disabled={insta360Snapping || insta360.snapping}
+                  style={{
+                    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+                    gap: 8, backgroundColor: "#00d4aa", borderRadius: 12, paddingVertical: 12,
+                    opacity: (insta360Snapping || insta360.snapping) ? 0.5 : 1,
+                  }}
+                  activeOpacity={0.8}
+                >
+                  {(insta360Snapping || insta360.snapping) ? (
+                    <ActivityIndicator size="small" color="#0a1628" />
+                  ) : (
+                    <MaterialCommunityIcons name="camera-wireless" size={18} color="#0a1628" />
+                  )}
+                  <Text style={{ color: "#0a1628", fontWeight: "800", fontSize: 14, letterSpacing: 0.4 }}>
+                    {(insta360Snapping || insta360.snapping) ? "Capturing…" : "📸 Snap & Scan"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Aim guide */}
         <View style={styles.aimGuide} pointerEvents="none">
