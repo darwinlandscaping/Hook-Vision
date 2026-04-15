@@ -1,6 +1,6 @@
 kind = "mobile"
 previewPath = "/"
-title = "HookVision"
+title = "HookVision WA"
 version = "1.0.0"
 id = "artifacts/hookvision"
 router = "expo-domain"
