@@ -925,6 +925,29 @@ export default function HomeScreen() {
     setScan2Consensus(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    // ── Gate: quick sonar-screen check before spending a full analysis call ──
+    try {
+      const gDomain  = process.env.EXPO_PUBLIC_DOMAIN;
+      const gBaseUrl = gDomain ? `https://${gDomain}` : "";
+      const gRes = await fetch(`${gBaseUrl}/api/sonar-validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64 }),
+      });
+      if (gRes.ok) {
+        const gData = await gRes.json() as { isSonar: boolean; reason?: string | null };
+        if (!gData.isSonar) {
+          const why = gData.reason ?? "Please photograph your sonar / fish finder screen.";
+          setError(`Not a sonar image — ${why}`);
+          setLoading(false);
+          setSonarBarraLoading(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          return;
+        }
+      }
+      // If fetch fails or returns non-200 → fail open (allow the analysis through)
+    } catch { /* network error — fail open */ }
+
     // ── Sonar Brain Stage-1: fire sonar-barra-check in parallel ──────────────
     // Resolves in ~600ms — shows BARRA ARCH verdict while full analysis streams
     {
@@ -1300,6 +1323,10 @@ export default function HomeScreen() {
 
             {/* Stage steps */}
             <View style={styles.analysingStages}>
+              <View style={styles.analysingStageRow}>
+                <View style={[styles.stageDot, { backgroundColor: "#00d4aa" }]} />
+                <Text style={[styles.stageLabel, { color: "#00d4aa" }]}>✓ Sonar image verified</Text>
+              </View>
               <View style={styles.analysingStageRow}>
                 <View style={[styles.stageDot, { backgroundColor: "#00d4aa" }]} />
                 <Text style={[styles.stageLabel, { color: "#00d4aa" }]}>Image uploaded</Text>
