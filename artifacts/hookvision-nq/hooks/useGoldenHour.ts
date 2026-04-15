@@ -1,39 +1,40 @@
 import { useEffect, useState } from "react";
 
-const DARWIN_LAT = -12.4634;
-const DARWIN_LON = 130.8456;
-const DARWIN_TZ_OFFSET = 9.5; // UTC+9:30, no daylight saving in NT
+// Karumba, Gulf of Carpentaria — representative NQ Gulf location
+const NQ_LAT = -17.488;
+const NQ_LON = 140.839;
+const NQ_TZ_OFFSET = 10; // UTC+10, Queensland — no daylight saving
 
-/** Convert UTC Date to Darwin local time */
-function toDarwin(utc: Date): Date {
-  return new Date(utc.getTime() + DARWIN_TZ_OFFSET * 3_600_000);
+/** Convert UTC Date to NQ local time (AEST, no DST) */
+function toNQ(utc: Date): Date {
+  return new Date(utc.getTime() + NQ_TZ_OFFSET * 3_600_000);
 }
 
-/** Darwin local decimal hour (e.g. 6.75 = 6:45 AM) from a UTC date */
-function darwinHour(utc: Date): number {
-  const d = toDarwin(utc);
+/** NQ local decimal hour (e.g. 6.75 = 6:45 AM) from a UTC date */
+function nqHour(utc: Date): number {
+  const d = toNQ(utc);
   return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
 }
 
 /**
- * Compute sunrise and sunset for Darwin NT using the NOAA simplified algorithm.
- * Returns local Darwin decimal hours (e.g. { rise: 6.72, set: 18.71 }).
+ * Compute sunrise and sunset for Gulf Country NQ using the NOAA simplified algorithm.
+ * Returns local NQ decimal hours (e.g. { rise: 6.12, set: 18.45 }).
  */
 function calcSunTimes(utcDate: Date): { rise: number; set: number } {
   const toRad = Math.PI / 180;
-  const darwinDate = toDarwin(utcDate);
+  const nqDate = toNQ(utcDate);
 
   // Day of year
-  const start = new Date(darwinDate.getFullYear(), 0, 0);
-  const doy   = Math.floor((darwinDate.getTime() - start.getTime()) / 86_400_000);
+  const start = new Date(nqDate.getFullYear(), 0, 0);
+  const doy   = Math.floor((nqDate.getTime() - start.getTime()) / 86_400_000);
 
   // Solar declination (degrees)
   const dec = 23.45 * Math.sin(toRad * (360 / 365) * (doy - 81));
 
   // Cosine of hour angle at sunrise/sunset (accounting for refraction: -0.833°)
   const cosH =
-    (-Math.sin(toRad * 0.833) - Math.sin(toRad * DARWIN_LAT) * Math.sin(toRad * dec)) /
-    (Math.cos(toRad * DARWIN_LAT) * Math.cos(toRad * dec));
+    (-Math.sin(toRad * 0.833) - Math.sin(toRad * NQ_LAT) * Math.sin(toRad * dec)) /
+    (Math.cos(toRad * NQ_LAT) * Math.cos(toRad * dec));
 
   const H = Math.acos(Math.max(-1, Math.min(1, cosH))) * (180 / Math.PI);
 
@@ -42,9 +43,9 @@ function calcSunTimes(utcDate: Date): { rise: number; set: number } {
   const ET = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
 
   // Time Correction (minutes)
-  const TC = 4 * (DARWIN_LON - 15 * DARWIN_TZ_OFFSET) + ET;
+  const TC = 4 * (NQ_LON - 15 * NQ_TZ_OFFSET) + ET;
 
-  // Solar noon in Darwin local decimal hours
+  // Solar noon in NQ local decimal hours
   const noon = 12 - TC / 60;
 
   return {
@@ -58,7 +59,7 @@ export interface GoldenHourState {
   phase: "morning" | "evening" | null;
   /** 0 → just started, 1 → peak (sunrise/sunset itself), back to 0 at end */
   intensity: number;
-  /** Darwin local time string e.g. "06:42" */
+  /** NQ local time string e.g. "06:42" */
   sunriseStr: string;
   sunsetStr:  string;
 }
@@ -76,7 +77,7 @@ function computeState(now: Date): GoldenHourState {
     return { isGoldenHour: true, phase: "evening", intensity: 0.95, sunriseStr: "06:52", sunsetStr: "18:43" };
   }
   const { rise, set } = calcSunTimes(now);
-  const current = darwinHour(now);
+  const current = nqHour(now);
 
   const GOLDEN_HOUR = 1.0; // one hour window each side
 
@@ -112,7 +113,8 @@ function computeState(now: Date): GoldenHourState {
 
 /**
  * Returns golden-hour state recalculated every minute.
- * isGoldenHour is true for 1 hour after Darwin sunrise and 1 hour before Darwin sunset.
+ * isGoldenHour is true for 1 hour after NQ sunrise and 1 hour before NQ sunset.
+ * Uses Karumba, Gulf Country as the reference location (AEST UTC+10, no DST).
  */
 export function useGoldenHour(): GoldenHourState {
   const [state, setState] = useState<GoldenHourState>(() => computeState(new Date()));

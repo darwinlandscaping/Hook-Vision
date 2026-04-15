@@ -1,10 +1,13 @@
-export interface DarwinStore {
+export interface RegionalStore {
   id: string;
   name: string;
   shortName: string;
   color: string;
   searchUrl: (lure: string) => string;
 }
+
+/** @deprecated Use RegionalStore */
+export type DarwinStore = RegionalStore;
 
 export interface LureEntry {
   name: string;
@@ -15,8 +18,8 @@ export interface LureEntry {
   keywords: string[];
 }
 
-// ── All Darwin fishing stores ────────────────────────────────────────────────
-export const DARWIN_STORES: DarwinStore[] = [
+// ── NQ / QLD regional fishing stores ─────────────────────────────────────────
+export const REGIONAL_STORES: RegionalStore[] = [
   {
     id: "craigs",
     name: "Craig's Fishing Warehouse",
@@ -27,7 +30,7 @@ export const DARWIN_STORES: DarwinStore[] = [
   },
   {
     id: "bcf",
-    name: "BCF Darwin",
+    name: "BCF Cairns",
     shortName: "BCF",
     color: "#0077b6",
     searchUrl: (lure) =>
@@ -35,7 +38,7 @@ export const DARWIN_STORES: DarwinStore[] = [
   },
   {
     id: "tackleworld",
-    name: "Tackle World Darwin",
+    name: "Tackle World Cairns",
     shortName: "Tackle World",
     color: "#2d6a4f",
     searchUrl: (lure) =>
@@ -43,21 +46,24 @@ export const DARWIN_STORES: DarwinStore[] = [
   },
   {
     id: "anaconda",
-    name: "Anaconda Darwin",
+    name: "Anaconda Cairns",
     shortName: "Anaconda",
     color: "#6a0572",
     searchUrl: (lure) =>
       `https://www.anacondastores.com.au/fishing?q=${encodeURIComponent(lure)}`,
   },
   {
-    id: "ntfishing",
-    name: "NT Fishing Supplies",
-    shortName: "NT Fishing",
+    id: "gulftackle",
+    name: "Gulf Tackle Centre",
+    shortName: "Gulf Tackle",
     color: "#f4a261",
     searchUrl: (lure) =>
-      `https://www.ntfishingsupplies.com.au/search?q=${encodeURIComponent(lure)}`,
+      `https://www.bcf.com.au/search?q=${encodeURIComponent(lure)}`,
   },
 ];
+
+/** @deprecated Use REGIONAL_STORES */
+export const DARWIN_STORES = REGIONAL_STORES;
 
 const CRAIGS = "https://craigsfishingwarehouse.com.au";
 
@@ -311,12 +317,17 @@ export function findBestLure(lureText: string, lureType?: string): LureEntry | n
 }
 
 /**
- * Generate buy links for all Darwin stores for a given lure name.
+ * Generate buy links for all NQ/QLD regional stores for a given lure name.
  */
-export function getDarwinStoreLinks(lureName: string): { store: DarwinStore; url: string }[] {
+export function getRegionalStoreLinks(lureName: string): { store: RegionalStore; url: string }[] {
   const searchTerm = lureName.replace(/—.*$/, "").trim();
-  return DARWIN_STORES.map((store) => ({
+  return REGIONAL_STORES.map((store) => ({
     store,
     url: store.searchUrl(searchTerm),
   }));
+}
+
+/** @deprecated Use getRegionalStoreLinks */
+export function getDarwinStoreLinks(lureName: string): { store: RegionalStore; url: string }[] {
+  return getRegionalStoreLinks(lureName);
 }

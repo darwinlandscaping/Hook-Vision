@@ -5,7 +5,7 @@ import { useColors } from "@/hooks/useColors";
 import { useVoice } from "@/hooks/useVoice";
 import { useFishImage, getSpeciesLabel } from "@/hooks/useFishImage";
 import { useLureLibrary } from "@/hooks/useLureLibrary";
-import { getDarwinStoreLinks } from "@/lib/lureLibrary";
+import { getRegionalStoreLinks } from "@/lib/lureLibrary";
 import { ArchZoomPanel } from "@/components/ArchZoomPanel";
 
 interface FishAnalysis {
@@ -489,7 +489,7 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
               />
               {/* Lure library card — image always matches the recommendation */}
               {lureEntry ? (() => {
-                const storeLinks = getDarwinStoreLinks(lureEntry.name);
+                const storeLinks = getRegionalStoreLinks(lureEntry.name);
                 return (
                   <View>
                     {/* Lure image + name */}
@@ -514,9 +514,9 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
                       </View>
                     </View>
 
-                    {/* Darwin stores buy row */}
+                    {/* NQ stores buy row */}
                     <Text style={[styles.craigsStoreBadge, { color: colors.primary, backgroundColor: `${colors.primary}14`, marginTop: 8, marginBottom: 4, alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, overflow: "hidden", fontSize: 9, fontWeight: "700" }]}>
-                      BUY IN DARWIN
+                      BUY IN QLD
                     </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
                       <View style={{ flexDirection: "row", gap: 6, paddingRight: 8 }}>
@@ -547,7 +547,7 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
                 >
                   <MaterialCommunityIcons name="fish" size={15} color={colors.primary} />
                   <Text style={[styles.craigsSearchText, { color: colors.primary }]}>
-                    Search for this lure in Darwin →
+                    Search for this lure in QLD →
                   </Text>
                 </TouchableOpacity>
               )}
