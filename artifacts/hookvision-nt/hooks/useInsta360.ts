@@ -3,11 +3,10 @@ import { AppState, Platform } from "react-native";
 import * as FileSystem from "expo-file-system";
 import { polarFilter } from "@/utils/polarFilter";
 
-// ─── Insta360 / OSC API constants ─────────────────────────────────────────────
-const BASE_URL   = "http://192.168.42.1";
-const INFO_URL   = `${BASE_URL}/osc/info`;
-const CMD_URL    = `${BASE_URL}/osc/commands/execute`;
-const STATUS_URL = `${BASE_URL}/osc/commands/status`;
+// ─── Default Insta360 / OSC API constants (overridable per discovered camera) ──
+const DEFAULT_BASE_URL = "http://192.168.42.1";
+const DEFAULT_INFO_PATH = "/osc/info";
+const DEFAULT_CMD_PATH  = "/osc/commands/execute";
 
 // Timing — tuned for Android (Samsung Smart Network Switch + Adaptive WiFi)
 const PING_TIMEOUT_MS  = 5000;  // ms per single attempt
@@ -30,7 +29,11 @@ export interface UseInsta360Result {
   snapping: boolean;
   /** Human-readable hint for the connection failure reason (Samsung-aware) */
   connectionHint: string;
+  /** The base URL of the currently targeted camera */
+  activeBaseUrl: string;
   startSearch: () => void;
+  /** Start searching for a specific camera by URL (from scanner discovery) */
+  startSearchAt: (baseUrl: string, infoPath?: string, cmdPath?: string) => void;
   stopSearch: () => void;
   takeSnapshot: () => Promise<{ base64: string; uri: string } | null>;
 }
@@ -131,12 +134,12 @@ async function pingWithRetry(url: string, retries = 5): Promise<string> {
 }
 
 // ─── Poll a command until done ────────────────────────────────────────────────
-async function pollCommand(commandId: string, timeoutMs: number): Promise<any> {
+async function pollCommand(statusUrl: string, commandId: string, timeoutMs: number): Promise<any> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 800));
     try {
-      const text = await parallelPing(`${STATUS_URL}?id=${encodeURIComponent(commandId)}`);
+      const text = await parallelPing(`${statusUrl}?id=${encodeURIComponent(commandId)}`);
       const data = JSON.parse(text) as any;
       if (data.state === "done") return data;
       if (data.state === "error") throw new Error(data.error?.message ?? "Command failed");
@@ -145,23 +148,23 @@ async function pollCommand(commandId: string, timeoutMs: number): Promise<any> {
       throw e;
     }
   }
-  throw new Error("Insta360 snapshot timed out");
+  throw new Error("Camera snapshot timed out");
 }
 
 // ─── Error → human hint (Android/Samsung-aware) ───────────────────────────────
-function hintFromError(err: Error): string {
+function hintFromError(err: Error, baseUrl: string): string {
   const m = err.message ?? "";
   if (m === "timeout" || m.includes("timed out")) {
     if (Platform.OS === "android") {
-      return "Timeout — connect phone to the camera WiFi (LIVE-xxxxxx), then when Android asks 'No internet, stay connected?' tap STAY. Samsung: Settings → Wi-Fi → Advanced → turn off 'Switch to mobile data'.";
+      return `Timeout — phone must be connected to the camera WiFi hotspot (${baseUrl}). When Android asks "No internet, stay connected?" tap STAY. Samsung: Settings → Wi-Fi → Advanced → turn off 'Switch to mobile data'.`;
     }
-    return "Timeout — check WiFi is connected to the Insta360 hotspot (LIVE-xxxxxx).";
+    return `Timeout — confirm phone WiFi is connected to the camera hotspot. Camera IP: ${baseUrl}`;
   }
   if (m === "network_error" || m.includes("network")) {
-    return "Network error — is the phone on the Insta360 WiFi? Try turning off mobile data temporarily.";
+    return "Network error — is the phone on the camera WiFi? Try turning off mobile data temporarily.";
   }
   if (m.startsWith("http_")) {
-    return `Camera responded HTTP ${m.replace("http_", "")} — try restarting the Insta360.`;
+    return `Camera at ${baseUrl} responded HTTP ${m.replace("http_", "")} — try restarting the camera.`;
   }
   return "Camera not found — check it's powered on and WiFi mode is active.";
 }
@@ -176,6 +179,12 @@ export function useInsta360(): UseInsta360Result {
   const pollTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
   const active      = useRef(false);
   const isConnected = useRef(false);
+
+  // ── Mutable camera target (updated by startSearchAt) ──────────────────────
+  const baseUrlRef  = useRef(DEFAULT_BASE_URL);
+  const infoPathRef = useRef(DEFAULT_INFO_PATH);
+  const cmdPathRef  = useRef(DEFAULT_CMD_PATH);
+  const [activeBaseUrl, setActiveBaseUrl] = useState(DEFAULT_BASE_URL);
 
   const stopSearch = useCallback(() => {
     active.current      = false;
@@ -193,15 +202,16 @@ export function useInsta360(): UseInsta360Result {
 
   const pingCamera = useCallback(async () => {
     if (!active.current) return;
+    const infoUrl = `${baseUrlRef.current}${infoPathRef.current}`;
     try {
-      const text = await pingWithRetry(INFO_URL, 3);
+      const text = await pingWithRetry(infoUrl, 3);
       if (!active.current) return;
       const data = JSON.parse(text) as any;
       setCameraInfo({
-        manufacturer:    data.manufacturer    ?? "Insta360",
-        model:           data.model           ?? "Camera",
-        firmwareVersion: data.firmwareVersion ?? "–",
-        serialNumber:    data.serialNumber    ?? "–",
+        manufacturer:    data.manufacturer    ?? "Camera",
+        model:           data.model           ?? data.info?.model_name ?? "Camera",
+        firmwareVersion: data.firmwareVersion ?? data.firmware_version ?? "–",
+        serialNumber:    data.serialNumber    ?? data.serial_number    ?? "–",
       });
       setHint("");
       if (!isConnected.current) {
@@ -216,13 +226,45 @@ export function useInsta360(): UseInsta360Result {
       isConnected.current = false;
       setStatus("searching");
       setCameraInfo(null);
-      setHint(hintFromError(err));
+      setHint(hintFromError(err, baseUrlRef.current));
       reschedule(pingCamera, false);
     }
   }, [reschedule]);
 
   const startSearch = useCallback(() => {
-    if (active.current) return;
+    // Default Insta360 target
+    baseUrlRef.current  = DEFAULT_BASE_URL;
+    infoPathRef.current = DEFAULT_INFO_PATH;
+    cmdPathRef.current  = DEFAULT_CMD_PATH;
+    setActiveBaseUrl(DEFAULT_BASE_URL);
+    if (active.current) {
+      isConnected.current = false;
+      setStatus("searching");
+      setCameraInfo(null);
+      setHint("");
+      pingCamera();
+      return;
+    }
+    active.current      = true;
+    isConnected.current = false;
+    setStatus("searching");
+    setCameraInfo(null);
+    setHint("");
+    pingCamera();
+    pollTimer.current = setInterval(pingCamera, POLL_MS_SEARCH);
+  }, [pingCamera]);
+
+  const startSearchAt = useCallback((
+    baseUrl: string,
+    infoPath = DEFAULT_INFO_PATH,
+    cmdPath  = DEFAULT_CMD_PATH,
+  ) => {
+    // Stop any current search and retarget to the given camera IP
+    if (pollTimer.current) { clearInterval(pollTimer.current); pollTimer.current = null; }
+    baseUrlRef.current  = baseUrl;
+    infoPathRef.current = infoPath;
+    cmdPathRef.current  = cmdPath;
+    setActiveBaseUrl(baseUrl);
     active.current      = true;
     isConnected.current = false;
     setStatus("searching");
@@ -236,9 +278,10 @@ export function useInsta360(): UseInsta360Result {
   const takeSnapshot = useCallback(async (): Promise<{ base64: string; uri: string } | null> => {
     if (status !== "connected" || snapping) return null;
     setSnapping(true);
+    const cmdUrl    = `${baseUrlRef.current}${cmdPathRef.current}`;
+    const statusUrl = `${baseUrlRef.current}/osc/commands/status`;
     try {
-      // Fire takePicture via XHR POST (parallel race only works for GET pings)
-      const postText = await xhrFetch(CMD_URL, {
+      const postText = await xhrFetch(cmdUrl, {
         method:    "POST",
         headers:   { "Content-Type": "application/json" },
         body:      JSON.stringify({ name: "camera.takePicture" }),
@@ -250,14 +293,14 @@ export function useInsta360(): UseInsta360Result {
       if (execData.state === "done") {
         fileUrl = execData.results?.fileUrl ?? null;
       } else if (execData.state === "inProgress" && execData.id) {
-        const pollResult = await pollCommand(execData.id, SNAP_TIMEOUT);
+        const pollResult = await pollCommand(statusUrl, execData.id, SNAP_TIMEOUT);
         fileUrl = pollResult.results?.fileUrl ?? null;
       }
 
       if (!fileUrl) throw new Error("No file URL from camera");
-      const fullUrl = fileUrl.startsWith("http") ? fileUrl : `${BASE_URL}${fileUrl}`;
+      const fullUrl = fileUrl.startsWith("http") ? fileUrl : `${baseUrlRef.current}${fileUrl}`;
 
-      const localUri = FileSystem.cacheDirectory + `insta360_${Date.now()}.jpg`;
+      const localUri = FileSystem.cacheDirectory + `wificam_${Date.now()}.jpg`;
       const dl = await FileSystem.downloadAsync(fullUrl, localUri);
       if (dl.status !== 200) throw new Error("Image download failed");
 
@@ -267,7 +310,7 @@ export function useInsta360(): UseInsta360Result {
       const b64 = await polarFilter(raw);
       return { base64: b64, uri: localUri };
     } catch (err) {
-      console.warn("[Insta360] snapshot error:", err);
+      console.warn("[WiFiCam] snapshot error:", err);
       return null;
     } finally {
       setSnapping(false);
@@ -281,8 +324,6 @@ export function useInsta360(): UseInsta360Result {
   }, []);
 
   // ── AppState watchdog — burst-ping when app returns to foreground ──────────
-  // Samsung may have dropped the WiFi while the screen was off. Re-ping
-  // immediately when the user switches back so reconnection is instant.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active" && active.current) {
@@ -292,5 +333,8 @@ export function useInsta360(): UseInsta360Result {
     return () => sub.remove();
   }, [pingCamera]);
 
-  return { status, cameraInfo, snapping, connectionHint, startSearch, stopSearch, takeSnapshot };
+  return {
+    status, cameraInfo, snapping, connectionHint, activeBaseUrl,
+    startSearch, startSearchAt, stopSearch, takeSnapshot,
+  };
 }

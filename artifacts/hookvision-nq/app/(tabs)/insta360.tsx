@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useInsta360Context } from "@/contexts/Insta360Context";
+import { useCameraScanner, type DiscoveredCamera } from "@/hooks/useCameraScanner";
 
 // ─── Conditional IntentLauncher (Android only) ────────────────────────────────
 let IntentLauncher: any = null;
@@ -67,9 +68,9 @@ const SAMSUNG_STEPS: {
     title: "Connect to Camera WiFi Hotspot",
     body:
       "Open WiFi settings and join your camera's hotspot:\n" +
-      "• Insta360 X4/X3/X2: "LIVE-xxxxxx" or "Insta360 X4-xxxxxx"\n" +
-      "• GoPro Max / Hero: "GOPRO-XXXX"\n" +
-      "• DJI Osmo Action / Pocket: "DJI_OSMO-XXXX" or "OSMO-ACTION-XXXX"\n" +
+      "• Insta360 X4/X3/X2: LIVE-xxxxxx or Insta360 X4-xxxxxx\n" +
+      "• GoPro Max / Hero: GOPRO-XXXX\n" +
+      "• DJI Osmo Action / Pocket: DJI_OSMO-XXXX or OSMO-ACTION-XXXX\n" +
       "• Other cameras: check the camera screen or manual\n" +
       "Password is usually printed on the camera body or visible on-screen.",
     btnLabel: "Open WiFi Settings",
@@ -176,7 +177,26 @@ const CROC_RISK_COLOR: Record<string, string> = {
 export default function Insta360Screen() {
   const insets = useSafeAreaInsets();
   const { camera, pipelines } = useInsta360Context();
-  const { status, cameraInfo, snapping, connectionHint, startSearch, stopSearch, takeSnapshot } = camera;
+  const {
+    status, cameraInfo, snapping, connectionHint,
+    activeBaseUrl, startSearch, startSearchAt, stopSearch, takeSnapshot,
+  } = camera;
+
+  // ── Camera scanner — detects all reachable WiFi cameras in parallel ──────
+  const scanner = useCameraScanner();
+  const [selectedCamera, setSelectedCamera] = useState<DiscoveredCamera | null>(null);
+
+  const handleSelectCamera = useCallback((cam: DiscoveredCamera) => {
+    setSelectedCamera(cam);
+    // Auto-match the brand picker chip
+    const brand = cam.brand === "Insta360" ? "insta360"
+      : cam.brand === "GoPro"  ? "gopro"
+      : cam.brand === "DJI"    ? "dji"
+      : "other";
+    setCamType(brand as CamType);
+    // Connect to the chosen camera
+    startSearchAt(cam.baseUrl, cam.infoPath, cam.cmdPath);
+  }, [startSearchAt]);
 
   const [camType,         setCamType]         = useState<CamType>("insta360");
   const [previewUri,      setPreviewUri]      = useState<string | null>(null);
@@ -331,6 +351,103 @@ export default function Insta360Screen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── Camera Discovery Scanner ─────────────────────────────────────── */}
+        <View style={[styles.card, { gap: 12 }]}>
+          <View style={styles.cardRow}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialCommunityIcons name="wifi-find" size={16} color={C.teal} />
+              <Text style={styles.cardLabel}>DETECT CAMERAS ON WiFi</Text>
+            </View>
+            <TouchableOpacity
+              onPress={scanner.scan}
+              disabled={scanner.scanning}
+              style={[styles.miniBtn, { borderColor: C.teal + "99" }, scanner.scanning && { opacity: 0.5 }]}
+              activeOpacity={0.7}
+            >
+              {scanner.scanning ? (
+                <>
+                  <MaterialCommunityIcons name="radar" size={13} color={C.teal} />
+                  <Text style={[styles.miniBtnText, { color: C.teal }]}>Scanning…</Text>
+                </>
+              ) : (
+                <>
+                  <Feather name="search" size={13} color={C.teal} />
+                  <Text style={[styles.miniBtnText, { color: C.teal }]}>Scan WiFi</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Scanning progress indicator */}
+          {scanner.scanning && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={styles.scanDot} />
+              <Text style={{ color: C.gold, fontSize: 12 }}>
+                Probing Insta360 · GoPro · DJI · Other…
+              </Text>
+            </View>
+          )}
+
+          {/* Discovered cameras list */}
+          {scanner.discovered.length > 0 ? (
+            <View style={{ gap: 8 }}>
+              <Text style={[styles.cardLabel, { color: C.dim }]}>
+                {scanner.discovered.length} CAMERA{scanner.discovered.length > 1 ? "S" : ""} FOUND — TAP TO CONNECT
+              </Text>
+              {scanner.discovered.map((cam) => {
+                const isActive = selectedCamera?.id === cam.id && isConnected;
+                const isSel    = selectedCamera?.id === cam.id;
+                const brandCfg = CAMERA_CONFIGS[
+                  cam.brand === "Insta360" ? "insta360"
+                  : cam.brand === "GoPro"  ? "gopro"
+                  : cam.brand === "DJI"    ? "dji"
+                  : "other"
+                ];
+                return (
+                  <TouchableOpacity
+                    key={cam.id}
+                    onPress={() => handleSelectCamera(cam)}
+                    activeOpacity={0.75}
+                    style={[
+                      styles.camDiscoveryRow,
+                      { borderColor: isSel ? brandCfg.color : C.border },
+                      isActive && { backgroundColor: brandCfg.color + "18" },
+                    ]}
+                  >
+                    <View style={[styles.camDiscoveryIcon, { backgroundColor: brandCfg.color + "22" }]}>
+                      <MaterialCommunityIcons name={brandCfg.icon as any} size={20} color={brandCfg.color} />
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={{ color: C.white, fontSize: 13, fontWeight: "700" }}>
+                        {cam.manufacturer} {cam.model}
+                      </Text>
+                      <Text style={{ color: C.mute, fontSize: 10 }}>
+                        {cam.ip}  ·  {cam.responseMs}ms
+                      </Text>
+                    </View>
+                    {isActive ? (
+                      <View style={[styles.miniChip, { backgroundColor: C.teal + "22", borderColor: C.teal }]}>
+                        <Text style={{ color: C.teal, fontSize: 9, fontWeight: "800" }}>LIVE</Text>
+                      </View>
+                    ) : isSel ? (
+                      <View style={[styles.miniChip, { backgroundColor: C.gold + "22", borderColor: C.gold }]}>
+                        <Text style={{ color: C.gold, fontSize: 9, fontWeight: "800" }}>CONNECTING</Text>
+                      </View>
+                    ) : (
+                      <Feather name="arrow-right-circle" size={18} color={C.mute} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : !scanner.scanning ? (
+            <Text style={[styles.cardSubtitle, { textAlign: "center", paddingVertical: 4 }]}>
+              Connect your phone to a camera's WiFi hotspot first, then tap{" "}
+              <Text style={{ color: C.teal }}>Scan WiFi</Text> to detect it.
+            </Text>
+          ) : null}
+        </View>
+
         {/* ── Camera ring + connect button ───────────────────────────────────── */}
         <View style={styles.ringWrap}>
           <View style={styles.ringOuter}>
@@ -848,6 +965,17 @@ const styles = StyleSheet.create({
     backgroundColor: C.card,
   },
   camChipLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
+
+  camDiscoveryRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    padding: 12, borderRadius: 12,
+    borderWidth: 1.5, borderColor: C.border,
+    backgroundColor: C.card,
+  },
+  camDiscoveryIcon: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: "center", justifyContent: "center",
+  },
 
   scroll: { padding: 14, gap: 12 },
 
