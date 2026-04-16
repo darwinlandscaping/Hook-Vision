@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const { width: W, height: H } = Dimensions.get("window");
 
@@ -203,6 +204,24 @@ export default function WelcomeScreen() {
         <Text style={styles.tagline}>NQ'S AI FISHING GUIDE</Text>
       </Animated.View>
 
+      {/* ── HUD Glasses + 360 Camera quick-launch ── */}
+      <Animated.View style={[styles.quickLaunch, { top: topPad + 54, opacity: logoOpacity }]}>
+        <Pressable
+          style={({ pressed }) => [styles.quickPill, pressed && { opacity: 0.7 }]}
+          onPress={() => router.replace("/(tabs)/live" as any)}
+        >
+          <MaterialCommunityIcons name="glasses" size={18} color={GOLD} />
+          <Text style={styles.quickPillText}>HUD</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.quickPill, pressed && { opacity: 0.7 }]}
+          onPress={() => router.replace("/(tabs)/insta360" as any)}
+        >
+          <MaterialCommunityIcons name="rotate-360" size={18} color={GOLD} />
+          <Text style={styles.quickPillText}>360° CAM</Text>
+        </Pressable>
+      </Animated.View>
+
       {/* ── Enter button ── */}
       <Animated.View style={[styles.btnWrap, { bottom: insets.bottom > 0 ? insets.bottom + 24 : 40, opacity: btnOpacity, transform: [{ scale: btnScale }] }]}>
         <Pressable style={({ pressed }) => [styles.enterBtn, pressed && styles.enterBtnPressed]} onPress={enter}>
@@ -259,4 +278,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: -8,
   },
+
+  quickLaunch: { position: "absolute", right: 16, flexDirection: "column", gap: 8, alignItems: "flex-end" },
+  quickPill: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderWidth: 1, borderColor: "rgba(255,215,0,0.45)",
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7,
+  },
+  quickPillText: { fontSize: 11, fontFamily: "Oswald_700Bold", color: "#ffd700", letterSpacing: 1.5 },
 });
