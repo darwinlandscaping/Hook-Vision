@@ -25,6 +25,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { VideoView, useVideoPlayer } from "expo-video";
 
+import { BrainOrb, type BrainStats } from "@/components/BrainOrb";
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { DemoStore } from "@/app/(tabs)/demo";
@@ -180,6 +181,11 @@ export default function CommunityScreen() {
   const hotspotTimer  = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastFeedId    = useRef<number>(0);
   const isFocused     = useRef(false);
+
+  // ── Brain Stats (for BrainOrb) ────────────────────────────────────────────
+  const [brainStats, setBrainStats]       = useState<BrainStats | null>(null);
+  const [loadingBrain, setLoadingBrain]   = useState(false);
+  const brainTimer                        = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Brain Video Library ────────────────────────────────────────────────────
   const [videoLibrary, setVideoLibrary]   = useState<BrainVideo[]>([]);
@@ -492,12 +498,25 @@ export default function CommunityScreen() {
     }
   }, []);
 
+  // ── fetch brain stats ─────────────────────────────────────────────────────
+  const fetchBrainStats = useCallback(async () => {
+    setLoadingBrain(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/brain/stats`);
+      if (!res.ok) return;
+      const data = await res.json() as BrainStats & { ok: boolean };
+      setBrainStats(data);
+    } catch { /* silent */ } finally {
+      setLoadingBrain(false);
+    }
+  }, []);
+
   // ── refresh everything ─────────────────────────────────────────────────────
   const refreshAll = useCallback(async () => {
     setNewCount(0);
     setAlertDismissed(false);
-    await Promise.all([fetchFeed(false), fetchInsights(true), fetchHotspots()]);
-  }, [fetchFeed, fetchInsights, fetchHotspots]);
+    await Promise.all([fetchFeed(false), fetchInsights(true), fetchHotspots(), fetchBrainStats()]);
+  }, [fetchFeed, fetchInsights, fetchHotspots, fetchBrainStats]);
 
   // ── start / stop polling on focus ─────────────────────────────────────────
   useFocusEffect(useCallback(() => {
@@ -508,16 +527,19 @@ export default function CommunityScreen() {
     fetchFeed(false);
     fetchHotspots();
     fetchVideos();
+    fetchBrainStats();
     if (!insights) fetchInsights(true);
 
     feedTimer.current     = setInterval(() => fetchFeed(true), FEED_POLL_MS);
     insightsTimer.current = setInterval(() => fetchInsights(false), INSIGHTS_POLL_MS);
     hotspotTimer.current  = setInterval(() => fetchHotspots(), HOTSPOT_POLL_MS);
+    brainTimer.current    = setInterval(() => fetchBrainStats(), 30_000);
     // Poll for video status updates every 8s (catches processing → done transitions)
     videoPolling.current  = setInterval(() => fetchVideos(), 8_000);
 
     return () => {
       isFocused.current = false;
+      if (brainTimer.current)    clearInterval(brainTimer.current);
       if (feedTimer.current)     clearInterval(feedTimer.current);
       if (insightsTimer.current) clearInterval(insightsTimer.current);
       if (hotspotTimer.current)  clearInterval(hotspotTimer.current);
@@ -603,6 +625,15 @@ export default function CommunityScreen() {
           />
         }
       >
+        {/* ── HOOKVISION BRAIN ORB ─────────────────────────────────────── */}
+        <BrainOrb
+          stats={brainStats}
+          loading={loadingBrain}
+          fgColor={colors.foreground}
+          mutedColor={colors.mutedForeground}
+          cardColor={colors.card}
+        />
+
         {/* ── BEST GO'S — HOTSPOT TRACKER ──────────────────────────────── */}
         {hotspots.length > 0 && (
           <View style={[styles.hotspotCard, { backgroundColor: colors.card, borderColor: "#ff990040" }]}>

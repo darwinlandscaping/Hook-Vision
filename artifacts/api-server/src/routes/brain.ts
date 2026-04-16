@@ -15,13 +15,56 @@
  */
 
 import { Router } from "express";
-import { desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { db, brainVideos, communityReports } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { analyzeSonarImage, type SonarScan } from "../lib/vision.js";
 import { logger } from "../lib/logger.js";
+import { getSonarBrainStats } from "../lib/sonarBrain.js";
+import { getCrocLibraryStats } from "../lib/crocLibrary.js";
+import { getLibraryStats as getBarraStats } from "../lib/barraLibrary.js";
 
 const router = Router();
+
+// ─── GET /api/brain/stats ──────────────────────────────────────────────────
+// Aggregates all brain knowledge sources into a single "brain size" metric.
+// Powers the pulsating BrainOrb on the Intel tab.
+
+router.get("/brain/stats", async (_req, res) => {
+  try {
+    const [sonar, croc, barra, reportsRow, videosRow] = await Promise.allSettled([
+      getSonarBrainStats(),
+      getCrocLibraryStats(),
+      getBarraStats(),
+      db.select({ total: count() }).from(communityReports),
+      db.select({ total: count() }).from(brainVideos),
+    ]);
+
+    const sonarRefs      = sonar.status      === "fulfilled" ? sonar.value.totalRefs        : 0;
+    const crocPhotos     = croc.status       === "fulfilled" ? croc.value.total              : 0;
+    const barraPhotos    = barra.status      === "fulfilled" ? barra.value.total             : 0;
+    const communityTotal = reportsRow.status === "fulfilled" ? (reportsRow.value[0]?.total ?? 0) : 0;
+    const videoScans     = videosRow.status  === "fulfilled" ? (videosRow.value[0]?.total ?? 0) : 0;
+
+    const totalDataPoints = sonarRefs + crocPhotos + barraPhotos + communityTotal + videoScans;
+
+    res.json({
+      ok: true,
+      totalDataPoints,
+      sources: {
+        sonarScans:       sonarRefs,
+        crocPhotos,
+        barraPhotos,
+        communityReports: communityTotal,
+        videoScans,
+      },
+      message: `${totalDataPoints.toLocaleString()} knowledge units powering the HookVision Brain`,
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch brain stats");
+    res.status(500).json({ error: "Failed to fetch brain stats" });
+  }
+});
 
 // ─── POST /api/brain/video ─────────────────────────────────────────────────
 
