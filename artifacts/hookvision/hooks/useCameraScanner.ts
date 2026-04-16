@@ -243,25 +243,33 @@ function quickPing(url: string, timeoutMs: number): Promise<string> {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 export interface CameraScannerResult {
-  scanning:   boolean;
-  discovered: DiscoveredCamera[];
-  scan:       (brandFilter?: CameraBrand) => void;
-  clear:      () => void;
+  scanning:      boolean;
+  discovered:    DiscoveredCamera[];
+  probedCount:   number;   // IPs checked in last scan (success + fail)
+  lastScanDone:  boolean;  // true once at least one full scan has finished
+  scan:          (brandFilter?: CameraBrand) => void;
+  clear:         () => void;
 }
 
 export function useCameraScanner(): CameraScannerResult {
-  const [scanning,   setScanning]   = useState(false);
-  const [discovered, setDiscovered] = useState<DiscoveredCamera[]>([]);
+  const [scanning,     setScanning]     = useState(false);
+  const [discovered,   setDiscovered]   = useState<DiscoveredCamera[]>([]);
+  const [probedCount,  setProbedCount]  = useState(0);
+  const [lastScanDone, setLastScanDone] = useState(false);
   const abortRef = useRef(false);
 
   const clear = useCallback(() => {
     setDiscovered([]);
+    setProbedCount(0);
+    setLastScanDone(false);
   }, []);
 
   const scan = useCallback(async (brandFilter?: CameraBrand) => {
     abortRef.current = false;
     setScanning(true);
     setDiscovered([]);
+    setProbedCount(0);
+    setLastScanDone(false);
 
     const probes = brandFilter
       ? PROBES.filter((p) => p.brand === brandFilter)
@@ -299,16 +307,21 @@ export function useCameraScanner(): CameraScannerResult {
             if (prev.some((c) => c.id === cam.id)) return prev;
             return [...prev, cam];
           });
+          setProbedCount((n) => n + 1);
         }
         return cam;
       } catch {
+        if (!abortRef.current) setProbedCount((n) => n + 1);
         return null;
       }
     };
 
     await Promise.allSettled(probes.map(probeOne));
-    if (!abortRef.current) setScanning(false);
+    if (!abortRef.current) {
+      setScanning(false);
+      setLastScanDone(true);
+    }
   }, []);
 
-  return { scanning, discovered, scan, clear };
+  return { scanning, discovered, probedCount, lastScanDone, scan, clear };
 }

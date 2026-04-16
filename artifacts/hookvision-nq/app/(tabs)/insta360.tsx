@@ -338,6 +338,15 @@ export default function Insta360Screen() {
 
   const handleManualConnect = useCallback(() => connectToIp(manualIp), [connectToIp, manualIp]);
 
+  // Auto-open Samsung guide when a scan finishes with 0 cameras on Android
+  useEffect(() => {
+    if (scanner.lastScanDone && scanner.discovered.length === 0 && Platform.OS === "android") {
+      setSamsungGuide(true);
+    }
+  }, [scanner.lastScanDone, scanner.discovered.length]);
+
+  const isWeb = Platform.OS === "web";
+
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* ── Header ──────────────────────────────────────────────────────────── */}
@@ -383,6 +392,55 @@ export default function Insta360Screen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── Web-mode notice ──────────────────────────────────────────────── */}
+        {isWeb && (
+          <View style={{
+            backgroundColor: "#ff880022", borderRadius: 12,
+            borderWidth: 1.5, borderColor: "#ff880099",
+            padding: 14, gap: 8,
+          }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialCommunityIcons name="cellphone" size={20} color={C.orange} />
+              <Text style={{ color: C.orange, fontSize: 13, fontWeight: "800" }}>USE EXPO GO ON YOUR PHONE</Text>
+            </View>
+            <Text style={{ color: C.dim, fontSize: 12, lineHeight: 18 }}>
+              WiFi camera scanning does not work in a web browser — browser security blocks
+              local network requests. To connect to a camera:{"\n"}
+              {"  1. "}Install <Text style={{ color: C.white, fontWeight: "700" }}>Expo Go</Text> on your phone{"\n"}
+              {"  2. "}Scan the QR code shown in the workflows panel{"\n"}
+              {"  3. "}Open the WiFi Cam tab in Expo Go{"\n\n"}
+              Manual IP entry below will also work once you're in the native app.
+            </Text>
+          </View>
+        )}
+
+        {/* ── Samsung critical warning — always visible on Android ──────────── */}
+        {Platform.OS === "android" && (
+          <View style={{
+            backgroundColor: "#ff440018", borderRadius: 12,
+            borderWidth: 1.5, borderColor: "#ff440099",
+            padding: 12, gap: 8,
+          }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <MaterialCommunityIcons name="android" size={18} color="#ff6644" />
+              <Text style={{ color: "#ff6644", fontSize: 12, fontWeight: "800" }}>SAMSUNG / ANDROID — MUST DO FIRST</Text>
+            </View>
+            <Text style={{ color: C.dim, fontSize: 12, lineHeight: 19 }}>
+              <Text style={{ color: C.white, fontWeight: "700" }}>1. </Text>
+              Go to WiFi Settings → join the camera's hotspot{"\n"}
+              <Text style={{ color: "#ff6644", fontWeight: "800" }}>2. When Android asks "No internet — stay connected?" → tap STAY CONNECTED{"\n"}</Text>
+              <Text style={{ color: C.white, fontWeight: "700" }}>3. </Text>
+              WiFi Settings → ⋮ → Advanced → Switch to mobile data → <Text style={{ fontWeight: "700" }}>OFF{"\n"}</Text>
+              <Text style={{ color: C.white, fontWeight: "700" }}>4. </Text>
+              Settings → Connections → More connection settings → Adaptive connectivity → <Text style={{ fontWeight: "700" }}>OFF</Text>
+            </Text>
+            <TouchableOpacity onPress={openWifi} style={[styles.miniBtn, { alignSelf: "flex-start", borderColor: "#ff664488", backgroundColor: "#ff440018" }]} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="wifi" size={13} color="#ff6644" />
+              <Text style={[styles.miniBtnText, { color: "#ff6644" }]}>Open WiFi Settings</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ── STEP 1: Connect to hotspot ───────────────────────────────────── */}
         <View style={[styles.card, { gap: 10 }]}>
           <View style={styles.cardRow}>
@@ -392,10 +450,12 @@ export default function Insta360Screen() {
               </View>
               <Text style={styles.cardLabel}>CONNECT TO CAMERA HOTSPOT</Text>
             </View>
-            <TouchableOpacity onPress={openWifi} style={[styles.miniBtn, { borderColor: C.gold + "88" }]} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="wifi" size={13} color={C.gold} />
-              <Text style={[styles.miniBtnText, { color: C.gold }]}>WiFi Settings</Text>
-            </TouchableOpacity>
+            {!isWeb && (
+              <TouchableOpacity onPress={openWifi} style={[styles.miniBtn, { borderColor: C.gold + "88" }]} activeOpacity={0.7}>
+                <MaterialCommunityIcons name="wifi" size={13} color={C.gold} />
+                <Text style={[styles.miniBtnText, { color: C.gold }]}>WiFi Settings</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <View style={{ backgroundColor: CAMERA_CONFIGS[camType].color + "14", borderRadius: 8, padding: 10, gap: 3 }}>
             <Text style={{ color: C.dim, fontSize: 10, fontWeight: "700", letterSpacing: 0.8 }}>LOOK FOR THIS HOTSPOT:</Text>
@@ -404,15 +464,25 @@ export default function Insta360Screen() {
             </Text>
             {camType === "smartlife" && (
               <Text style={{ color: C.mute, fontSize: 11, marginTop: 2 }}>
-                On some models: enable AP/pairing mode by holding the reset button 5 s.
+                Hold reset button 5 s to enable AP/pairing mode — default hotspot IP: 192.168.4.1
+              </Text>
+            )}
+            {camType === "insta360" && (
+              <Text style={{ color: C.mute, fontSize: 11, marginTop: 2 }}>
+                Press the Mode button 3× on the camera to activate WiFi hotspot
+              </Text>
+            )}
+            {camType === "gopro" && (
+              <Text style={{ color: C.mute, fontSize: 11, marginTop: 2 }}>
+                Swipe down → Connections → Connect Device → GoPro App (or Quick)
+              </Text>
+            )}
+            {camType === "dji" && (
+              <Text style={{ color: C.mute, fontSize: 11, marginTop: 2 }}>
+                Swipe down on camera screen → WiFi icon to enable hotspot
               </Text>
             )}
           </View>
-          {Platform.OS === "android" && (
-            <Text style={{ color: C.orange, fontSize: 11 }}>
-              ⚠ Samsung: tap "Stay Connected" if Android asks — without this the camera is unreachable.
-            </Text>
-          )}
         </View>
 
         {/* ── STEP 2: Find & connect ────────────────────────────────────────── */}
@@ -567,10 +637,15 @@ export default function Insta360Screen() {
 
           {/* Scan progress */}
           {scanner.scanning && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <View style={styles.scanDot} />
-              <Text style={{ color: C.gold, fontSize: 12 }}>
-                Probing Insta360 · GoPro · DJI · SmartLife · Generic…
+            <View style={{ gap: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View style={styles.scanDot} />
+                <Text style={{ color: C.gold, fontSize: 12 }}>
+                  Scanning… ({scanner.probedCount} IPs checked so far)
+                </Text>
+              </View>
+              <Text style={{ color: C.mute, fontSize: 11 }}>
+                Checking Insta360 · GoPro · DJI · SmartLife · Generic IPs in parallel
               </Text>
             </View>
           )}
@@ -585,10 +660,10 @@ export default function Insta360Screen() {
                 const isActive = selectedCamera?.id === cam.id && isConnected;
                 const isSel    = selectedCamera?.id === cam.id;
                 const brandCfg = CAMERA_CONFIGS[
-                  cam.brand === "Insta360"   ? "insta360"
-                  : cam.brand === "GoPro"    ? "gopro"
-                  : cam.brand === "DJI"      ? "dji"
-                  : cam.brand === "SmartLife" ? "smartlife"
+                  cam.brand === "Insta360"    ? "insta360"
+                  : cam.brand === "GoPro"     ? "gopro"
+                  : cam.brand === "DJI"       ? "dji"
+                  : cam.brand === "SmartLife"  ? "smartlife"
                   : "other"
                 ];
                 return (
@@ -630,12 +705,45 @@ export default function Insta360Screen() {
             </View>
           )}
 
-          {/* No cameras hint */}
-          {!scanner.scanning && scanner.discovered.length === 0 && !isConnected && !isSearching && (
+          {/* No cameras — first time or just instructions */}
+          {!scanner.scanning && !scanner.lastScanDone && scanner.discovered.length === 0 && !isConnected && !isSearching && (
             <Text style={[styles.cardSubtitle, { textAlign: "center", paddingVertical: 2 }]}>
-              Tap a quick-connect IP above, enter your camera's IP manually, or tap{" "}
+              Tap a quick-connect IP above, type your camera's IP manually, or tap{" "}
               <Text style={{ color: C.blue }}>Scan Network</Text> to auto-detect.
             </Text>
+          )}
+
+          {/* No cameras after a full scan */}
+          {!scanner.scanning && scanner.lastScanDone && scanner.discovered.length === 0 && !isConnected && (
+            <View style={{
+              backgroundColor: C.red + "18", borderRadius: 10,
+              borderWidth: 1, borderColor: C.red + "44", padding: 12, gap: 8,
+            }}>
+              <Text style={{ color: C.red, fontSize: 12, fontWeight: "800" }}>
+                ✗ No cameras found — checked {scanner.probedCount} IPs
+              </Text>
+              <Text style={{ color: C.dim, fontSize: 12, lineHeight: 19 }}>
+                Check these things:{"\n"}
+                <Text style={{ color: C.white }}>{"  ✓ "}</Text>Camera is ON and in WiFi hotspot mode{"\n"}
+                <Text style={{ color: C.white }}>{"  ✓ "}</Text>Phone is connected to the camera's WiFi (not your home network){"\n"}
+                {Platform.OS === "android"
+                  ? <Text style={{ color: "#ff6644", fontWeight: "700" }}>{"  ✗ Samsung: did you tap STAY CONNECTED when Android asked?\n  ✗ Is Switch to mobile data turned OFF?"}</Text>
+                  : <Text style={{ color: C.white }}>{"  ✓ "}</Text>}
+                {Platform.OS !== "android" ? "Camera hotspot password entered correctly" : ""}
+                {"\n"}
+                <Text style={{ color: C.white }}>{"  ✓ "}</Text>Using Expo Go on your phone (not web browser)
+              </Text>
+              {Platform.OS === "android" && (
+                <TouchableOpacity
+                  onPress={() => setSamsungGuide(true)}
+                  style={[styles.miniBtn, { alignSelf: "flex-start", borderColor: "#ff664488", backgroundColor: "#ff440018" }]}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="android" size={13} color="#ff6644" />
+                  <Text style={[styles.miniBtnText, { color: "#ff6644" }]}>Open Samsung Fix Guide ↓</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
 
