@@ -36,6 +36,7 @@ import { CHARACTERS, useNarrator, type NarratorCharacter } from "@/context/Narra
 import { LiveScanStore } from "@/stores/LiveScanStore";
 import { useInsta360Context } from "@/contexts/Insta360Context";
 import { useCamera2, DEFAULT_CAM2_IP, DEFAULT_CAM2_PATH } from "@/hooks/useCamera2";
+import { useCameraScanner, type DiscoveredCamera } from "@/hooks/useCameraScanner";
 import { HUD_PAGE_URL } from "@/hooks/useHudStream";
 import { Insta360PipelineCard } from "@/components/Insta360PipelineCard";
 import { polarFilter } from "@/utils/polarFilter";
@@ -306,6 +307,12 @@ export default function LiveScreen() {
 
   // ── Smart-glass HUD panel ─────────────────────────────────────────────────
   const [hudPanel, setHudPanel] = useState(false);
+
+  // ── SmartLife camera auto-discovery ───────────────────────────────────────
+  const slScanner = useCameraScanner();
+  const [smartlifePanel,  setSmartlifePanel]  = useState(false);
+  const [slConnecting,    setSlConnecting]    = useState(false);
+  const [slConnectedCam,  setSlConnectedCam]  = useState<DiscoveredCamera | null>(null);
 
   const AUTO_INTERVAL = 40;
 
@@ -758,6 +765,52 @@ export default function LiveScreen() {
                 </Text>
               </TouchableOpacity>
 
+              {/* ── SmartLife chip ────────────────────────────────────── */}
+              <TouchableOpacity
+                style={[
+                  styles.chip,
+                  cam2Connected && slConnectedCam
+                    ? { backgroundColor: "#00d4aa22", borderColor: "#00d4aa88" }
+                    : slScanner.scanning
+                    ? { backgroundColor: "#ffd70022", borderColor: "#ffd70066" }
+                    : smartlifePanel
+                    ? { backgroundColor: "#00d4aa11", borderColor: "#00d4aa55" }
+                    : { backgroundColor: "#ffffff11", borderColor: "#ffffff33" },
+                ]}
+                onPress={() => {
+                  setInsta360Panel(false);
+                  setCam2Panel(false);
+                  setHudPanel(false);
+                  const opening = !smartlifePanel;
+                  setSmartlifePanel(opening);
+                  if (opening && !slScanner.scanning) {
+                    slScanner.clear();
+                    slScanner.scan("SmartLife");
+                  }
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="cctv"
+                  size={14}
+                  color={
+                    cam2Connected && slConnectedCam ? "#00d4aa"
+                    : slScanner.scanning ? "#ffd700"
+                    : "#ffffff88"
+                  }
+                />
+                <Text style={[styles.chipText, {
+                  color: cam2Connected && slConnectedCam ? "#00d4aa"
+                    : slScanner.scanning ? "#ffd700"
+                    : "#ffffff88",
+                }]}>
+                  {cam2Connected && slConnectedCam
+                    ? "SmartLife ✓"
+                    : slScanner.scanning
+                    ? "Scanning…"
+                    : "SmartLife"}
+                </Text>
+              </TouchableOpacity>
+
               {/* ── Smart Glass HUD chip ─────────────────────────────────── */}
               <TouchableOpacity
                 style={[
@@ -769,6 +822,7 @@ export default function LiveScreen() {
                 onPress={() => {
                   setInsta360Panel(false);
                   setCam2Panel(false);
+                  setSmartlifePanel(false);
                   setHudPanel((v) => !v);
                 }}
               >
@@ -1155,6 +1209,186 @@ export default function LiveScreen() {
                   </View>
                 </View>
               )}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── SmartLife auto-discovery panel ──────────────────────────────────── */}
+        {smartlifePanel && !boatMode && (
+          <View style={{
+            position: "absolute",
+            top: (isNative ? insets.top : topPad) + 60,
+            left: 12, right: 12,
+            maxHeight: 560,
+            backgroundColor: "#0a1628ee",
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: cam2Connected && slConnectedCam ? "#00d4aa66" : "#00d4aa33",
+            zIndex: 50,
+            overflow: "hidden",
+          }}>
+            <ScrollView
+              style={{ padding: 16 }}
+              contentContainerStyle={{ gap: 12, paddingBottom: 12 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Header */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <MaterialCommunityIcons name="cctv" size={20} color="#00d4aa" />
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, letterSpacing: 0.5 }}>
+                    SMARTLIFE AUTO-CONNECT
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setSmartlifePanel(false)}>
+                  <Feather name="x" size={18} color="#ffffff88" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Status row */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {cam2Connected && slConnectedCam ? (
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#00d4aa" }} />
+                ) : slScanner.scanning ? (
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#ffd700" }} />
+                ) : (
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#ffffff44" }} />
+                )}
+                <Text style={{ color: cam2Connected && slConnectedCam ? "#00d4aa" : slScanner.scanning ? "#ffd700" : "#ffffff88", fontWeight: "600", fontSize: 13, flex: 1 }}>
+                  {cam2Connected && slConnectedCam
+                    ? `✓ Connected — ${slConnectedCam.ip}${slConnectedCam.snapshotPath}`
+                    : slScanner.scanning
+                    ? "Scanning WiFi for SmartLife cameras…"
+                    : slScanner.discovered.filter(c => c.brand === "SmartLife").length > 0
+                    ? `Found ${slScanner.discovered.filter(c => c.brand === "SmartLife").length} camera(s)`
+                    : "No SmartLife cameras detected"}
+                </Text>
+              </View>
+
+              {/* Discovered cameras list */}
+              {slScanner.discovered.filter(c => c.brand === "SmartLife").map((cam) => (
+                <View key={cam.id} style={{
+                  backgroundColor: "#00d4aa0a",
+                  borderRadius: 10, borderWidth: 1, borderColor: "#00d4aa33",
+                  padding: 12, gap: 8,
+                }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <MaterialCommunityIcons name="cctv" size={18} color="#00d4aa" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>{cam.model}</Text>
+                      <Text style={{ color: "#ffffff88", fontSize: 11 }}>
+                        {cam.ip}{cam.snapshotPath} · {cam.responseMs}ms
+                      </Text>
+                    </View>
+                    <View style={{ backgroundColor: "#00d4aa22", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ color: "#00d4aa", fontSize: 10, fontWeight: "700" }}>LIVE</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSlConnecting(true);
+                      cam2.setIp(cam.ip);
+                      cam2.setPath(cam.snapshotPath);
+                      cam2.stopSearch();
+                      setTimeout(() => {
+                        cam2.startSearch();
+                        setSlConnectedCam(cam);
+                        setSlConnecting(false);
+                        setCam2Panel(false);
+                      }, 200);
+                    }}
+                    disabled={slConnecting}
+                    style={{
+                      flexDirection: "row", alignItems: "center", justifyContent: "center",
+                      gap: 8, backgroundColor: "#00d4aa22", borderRadius: 10,
+                      borderWidth: 1, borderColor: "#00d4aa66", paddingVertical: 10,
+                      opacity: slConnecting ? 0.5 : 1,
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons name="link-variant" size={16} color="#00d4aa" />
+                    <Text style={{ color: "#00d4aa", fontWeight: "700", fontSize: 13 }}>
+                      {slConnecting ? "Connecting…" : "Auto-Connect to Live Tab"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              {/* Rescan button */}
+              <TouchableOpacity
+                onPress={() => { slScanner.clear(); slScanner.scan("SmartLife"); }}
+                disabled={slScanner.scanning}
+                style={{
+                  flexDirection: "row", alignItems: "center", justifyContent: "center",
+                  gap: 8, backgroundColor: "#ffffff0f", borderRadius: 10,
+                  borderWidth: 1, borderColor: "#ffffff22", paddingVertical: 10,
+                  opacity: slScanner.scanning ? 0.5 : 1,
+                }}
+                activeOpacity={0.8}
+              >
+                <Feather name="refresh-cw" size={14} color="#ffffff88" />
+                <Text style={{ color: "#ffffff88", fontWeight: "600", fontSize: 13 }}>
+                  {slScanner.scanning ? "Scanning…" : "Rescan WiFi"}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Disconnect button when connected */}
+              {cam2Connected && slConnectedCam && (
+                <TouchableOpacity
+                  onPress={() => { cam2.stopSearch(); setSlConnectedCam(null); }}
+                  style={{
+                    flexDirection: "row", alignItems: "center", justifyContent: "center",
+                    gap: 8, backgroundColor: "#ff440011", borderRadius: 10,
+                    borderWidth: 1, borderColor: "#ff440044", paddingVertical: 10,
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="square" size={14} color="#ff4400" />
+                  <Text style={{ color: "#ff4400", fontWeight: "600", fontSize: 13 }}>Disconnect</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Live preview thumbnail */}
+              {cam2Connected && slConnectedCam && (
+                <View style={{ borderRadius: 10, overflow: "hidden", aspectRatio: 16 / 9 }}>
+                  <Image
+                    source={{ uri: `http://${cam2.ip}${cam2.path}?t=${cam2.tick}` }}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                    onLoad={cam2.onPreviewLoad}
+                    onError={cam2.onPreviewError}
+                  />
+                  <View style={{
+                    position: "absolute", bottom: 0, left: 0, right: 0,
+                    backgroundColor: "#00000066", paddingHorizontal: 8, paddingVertical: 4,
+                    flexDirection: "row", alignItems: "center", gap: 6,
+                  }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#00d4aa" }} />
+                    <Text style={{ color: "#00d4aacc", fontSize: 10, fontWeight: "600" }}>
+                      SMARTLIFE LIVE · frame {cam2.tick}
+                    </Text>
+                    <Text style={{ color: "#ffffff66", fontSize: 10, marginLeft: "auto" }}>
+                      Tap SCAN to analyse
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Setup guide */}
+              <View style={{ backgroundColor: "#ffffff0a", borderRadius: 10, padding: 12, gap: 6 }}>
+                <Text style={{ color: "#00d4aa", fontSize: 11, fontWeight: "700", letterSpacing: 1 }}>
+                  SETUP GUIDE
+                </Text>
+                <Text style={{ color: "#ffffffbb", fontSize: 12, lineHeight: 18 }}>
+                  1. Open SmartLife app → tap your camera → Settings{"\n"}
+                  2. Enable "Local Recording" or note the camera IP{"\n"}
+                  3. Connect phone to the same WiFi as the camera{"\n"}
+                  4. Tap Rescan — discovered cameras appear above{"\n"}
+                  5. Tap "Auto-Connect" to stream in the Live tab{"\n\n"}
+                  Common SmartLife snapshot paths:{"\n"}
+                  {"  "}/snapshot.cgi · /cgi-bin/snapshot.cgi · /image.jpg
+                </Text>
+              </View>
             </ScrollView>
           </View>
         )}

@@ -355,7 +355,7 @@ export default function Insta360Screen() {
         <View style={[styles.card, { gap: 12 }]}>
           <View style={styles.cardRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <MaterialCommunityIcons name="wifi-find" size={16} color={C.teal} />
+              <MaterialCommunityIcons name="wifi" size={16} color={C.teal} />
               <Text style={styles.cardLabel}>DETECT CAMERAS ON WiFi</Text>
             </View>
             <TouchableOpacity
