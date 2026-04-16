@@ -24,6 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { useFocusEffect } from "expo-router";
 import { useInsta360Context } from "@/contexts/Insta360Context";
 import { useCameraScanner, type DiscoveredCamera } from "@/hooks/useCameraScanner";
 
@@ -198,18 +199,49 @@ export default function Insta360Screen() {
   // ── Camera scanner — detects all reachable WiFi cameras in parallel ──────
   const scanner = useCameraScanner();
   const [selectedCamera, setSelectedCamera] = useState<DiscoveredCamera | null>(null);
+  const autoConnectedRef = useRef(false);
 
   const handleSelectCamera = useCallback((cam: DiscoveredCamera) => {
     setSelectedCamera(cam);
     // Auto-match the brand picker chip
-    const brand = cam.brand === "Insta360" ? "insta360"
-      : cam.brand === "GoPro"  ? "gopro"
-      : cam.brand === "DJI"    ? "dji"
+    const brand = cam.brand === "Insta360"   ? "insta360"
+      : cam.brand === "GoPro"    ? "gopro"
+      : cam.brand === "DJI"      ? "dji"
+      : cam.brand === "SmartLife" ? "smartlife"
       : "other";
     setCamType(brand as CamType);
     // Connect to the chosen camera
     startSearchAt(cam.baseUrl, cam.infoPath, cam.cmdPath);
   }, [startSearchAt]);
+
+  // ── Auto-scan when this tab gains focus ────────────────────────────────
+  useFocusEffect(
+    useCallback(() => {
+      autoConnectedRef.current = false;
+      if (status === "disconnected") {
+        scanner.scan();
+      }
+    }, []) // intentionally empty — fire once per focus
+  );
+
+  // ── Auto-connect to first discovered camera ────────────────────────────
+  // Prioritises Insta360 then SmartLife then anything else
+  useEffect(() => {
+    if (
+      scanner.discovered.length === 0 ||
+      isConnected ||
+      isSearching ||
+      autoConnectedRef.current
+    ) return;
+    autoConnectedRef.current = true;
+    const priority = ["Insta360", "SmartLife", "GoPro", "DJI", "Other"] as const;
+    const pick =
+      priority.reduce<DiscoveredCamera | null>((best, brand) => {
+        if (best) return best;
+        return scanner.discovered.find((c) => c.brand === brand) ?? null;
+      }, null) ?? scanner.discovered[0];
+    handleSelectCamera(pick);
+  }, [scanner.discovered, isConnected, isSearching, handleSelectCamera]);
 
   const [camType,         setCamType]         = useState<CamType>("insta360");
   const [previewUri,      setPreviewUri]      = useState<string | null>(null);
@@ -387,6 +419,67 @@ export default function Insta360Screen() {
           );
         })}
       </View>
+
+      {/* ── Auto-scan status banner ──────────────────────────────────────────── */}
+      {scanner.scanning && !isConnected && (
+        <View style={{
+          flexDirection: "row", alignItems: "center", gap: 10,
+          backgroundColor: C.gold + "18", paddingHorizontal: 16, paddingVertical: 10,
+          borderBottomWidth: 1, borderBottomColor: C.gold + "44",
+        }}>
+          <MaterialCommunityIcons name="radar" size={18} color={C.gold} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.gold, fontSize: 13, fontWeight: "800" }}>
+              AUTO-SCANNING YOUR NETWORK…
+            </Text>
+            <Text style={{ color: C.gold + "aa", fontSize: 11 }}>
+              Checking {scanner.probedCount} / {18} IPs — Insta360 · SmartLife · GoPro · DJI
+            </Text>
+          </View>
+        </View>
+      )}
+      {!scanner.scanning && isConnected && selectedCamera && (
+        <View style={{
+          flexDirection: "row", alignItems: "center", gap: 10,
+          backgroundColor: C.teal + "18", paddingHorizontal: 16, paddingVertical: 10,
+          borderBottomWidth: 1, borderBottomColor: C.teal + "44",
+        }}>
+          <MaterialCommunityIcons name="check-circle" size={18} color={C.teal} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.teal, fontSize: 13, fontWeight: "800" }}>
+              CONNECTED — {selectedCamera.manufacturer} {selectedCamera.model}
+            </Text>
+            <Text style={{ color: C.teal + "aa", fontSize: 11 }}>
+              {selectedCamera.ip}  ·  {selectedCamera.responseMs}ms
+            </Text>
+          </View>
+          <TouchableOpacity onPress={stopSearch} style={{ padding: 4 }} activeOpacity={0.7}>
+            <Feather name="x-circle" size={16} color={C.teal} />
+          </TouchableOpacity>
+        </View>
+      )}
+      {!scanner.scanning && scanner.lastScanDone && scanner.discovered.length === 0 && !isConnected && !isSearching && (
+        <View style={{
+          flexDirection: "row", alignItems: "center", gap: 10,
+          backgroundColor: C.red + "18", paddingHorizontal: 16, paddingVertical: 10,
+          borderBottomWidth: 1, borderBottomColor: C.red + "44",
+        }}>
+          <MaterialCommunityIcons name="wifi-off" size={18} color={C.red} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.red, fontSize: 12, fontWeight: "800" }}>
+              NO CAMERAS FOUND — checked {scanner.probedCount} IPs
+            </Text>
+            <Text style={{ color: C.red + "aa", fontSize: 11 }}>
+              {Platform.OS === "android"
+                ? "Samsung: tap STAY CONNECTED when asked, disable Smart Network Switch"
+                : "Make sure your phone is on the camera's WiFi hotspot, not your home network"}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => scanner.scan()} style={{ padding: 4 }} activeOpacity={0.7}>
+            <MaterialCommunityIcons name="refresh" size={18} color={C.red} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
