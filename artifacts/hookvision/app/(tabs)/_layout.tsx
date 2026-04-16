@@ -16,7 +16,7 @@ import { Insta360Provider } from "@/contexts/Insta360Context";
 // insta360 is hidden from tab bar (accessed via Live tab chip) to keep Brain visible
 const TAB_ROUTES = [
   "live", "home", "buff", "tides", "species",
-  "barra", "zones", "forecast", "catchid", "history", "community",
+  "barra", "zones", "forecast", "catchid", "history", "community", "web",
 ] as const;
 
 function tabPath(name: string) {
@@ -69,6 +69,10 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="community">
         <Icon sf={{ default: "brain.head.profile", selected: "brain.head.profile" }} />
         <Label>Intel</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="web">
+        <Icon sf={{ default: "globe", selected: "globe" }} />
+        <Label>Web</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -280,6 +284,18 @@ function ClassicTabLayout() {
               <SymbolView name="brain.head.profile" tintColor={color} size={22} />
             ) : (
               <MaterialCommunityIcons name="brain" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="web"
+        options={{
+          title: "Web",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="globe" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="web" size={22} color={color} />
             ),
         }}
       />
