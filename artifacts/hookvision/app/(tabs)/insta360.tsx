@@ -146,6 +146,80 @@ function PulseRing({ color, size = 120 }: { color: string; size?: number }) {
   );
 }
 
+// ─── SmartLife PTZ control pad ────────────────────────────────────────────────
+const SL_COLOR = "#00ffcc";
+
+function ptzBtn(
+  cmd: string,
+  icon: string,
+  active: string | null,
+  onPress: (cmd: string) => void,
+) {
+  const isActive = active === cmd;
+  return (
+    <TouchableOpacity
+      key={cmd}
+      onPress={() => onPress(cmd)}
+      activeOpacity={0.75}
+      style={{
+        width: 52, height: 52, borderRadius: 26,
+        backgroundColor: isActive ? SL_COLOR + "44" : SL_COLOR + "18",
+        borderWidth: 2, borderColor: SL_COLOR + (isActive ? "ff" : "55"),
+        alignItems: "center", justifyContent: "center",
+      }}
+    >
+      <MaterialCommunityIcons name={icon as any} size={22} color={SL_COLOR} />
+    </TouchableOpacity>
+  );
+}
+
+function SmartLifePTZ({ baseUrl }: { baseUrl: string }) {
+  const [active, setActive] = useState<string | null>(null);
+
+  const sendPTZ = useCallback(async (cmd: string) => {
+    setActive(cmd);
+    const candidates = [
+      `http://${baseUrl}/ptz.cgi?cmd=ptzctrl&act=${cmd}&speed=45`,
+      `http://${baseUrl}/cgi-bin/ptz.cgi?act=${cmd}&speed=45`,
+      `http://${baseUrl}/cgi-bin/hi3510/ptz.cgi?-step=0&-act=${cmd}&-speed=32`,
+    ];
+    for (const url of candidates) {
+      try { await fetch(url, { signal: AbortSignal.timeout(1500) }); break; }
+      catch {}
+    }
+    setTimeout(() => setActive(null), 400);
+  }, [baseUrl]);
+
+  return (
+    <View style={{ alignItems: "center", gap: 4 }}>
+      <Text style={{ color: C.mute, fontSize: 10, fontWeight: "700", letterSpacing: 0.8, marginBottom: 2 }}>PTZ</Text>
+      {ptzBtn("up",    "arrow-up-circle-outline",    active, sendPTZ)}
+      <View style={{ flexDirection: "row", gap: 4, alignItems: "center" }}>
+        {ptzBtn("left", "arrow-left-circle-outline", active, sendPTZ)}
+        <TouchableOpacity
+          onPress={() => sendPTZ("stop")}
+          activeOpacity={0.75}
+          style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: C.red + "22", borderWidth: 2, borderColor: C.red + "66", alignItems: "center", justifyContent: "center" }}
+        >
+          <MaterialCommunityIcons name="stop-circle-outline" size={22} color={C.red} />
+        </TouchableOpacity>
+        {ptzBtn("right", "arrow-right-circle-outline", active, sendPTZ)}
+      </View>
+      {ptzBtn("down",  "arrow-down-circle-outline",   active, sendPTZ)}
+      <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+        <TouchableOpacity onPress={() => sendPTZ("zoomin")} activeOpacity={0.75}
+          style={{ flex: 1, height: 34, borderRadius: 8, backgroundColor: SL_COLOR + "18", borderWidth: 1.5, borderColor: SL_COLOR + "55", alignItems: "center", justifyContent: "center" }}>
+          <MaterialCommunityIcons name="magnify-plus-outline" size={18} color={SL_COLOR} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => sendPTZ("zoomout")} activeOpacity={0.75}
+          style={{ flex: 1, height: 34, borderRadius: 8, backgroundColor: SL_COLOR + "18", borderWidth: 1.5, borderColor: SL_COLOR + "55", alignItems: "center", justifyContent: "center" }}>
+          <MaterialCommunityIcons name="magnify-minus-outline" size={18} color={SL_COLOR} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 // ─── Zone badge ──────────────────────────────────────────────────────────────
 function ZoneBadge({ label, active }: { label: string; active: boolean }) {
   return (
@@ -253,6 +327,9 @@ export default function Insta360Screen() {
   const [brainError,      setBrainError]       = useState<string | null>(null);
   const [manualIp,        setManualIp]        = useState("");
   const [connectStep,     setConnectStep]     = useState<"idle"|"connecting">("idle");
+  const [slTick,          setSlTick]          = useState(0);
+  const [slStreamOk,      setSlStreamOk]      = useState(false);
+  const [slEndpointIdx,   setSlEndpointIdx]   = useState(0);
 
   const baseUrl = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -335,6 +412,29 @@ export default function Insta360Screen() {
       }
     };
   }, [status]);
+
+  // ── SmartLife live stream ticker (polls snapshot every 1.5 s) ──────────────
+  const SL_ENDPOINTS = [
+    "/snapshot.cgi", "/cgi-bin/snapshot.cgi",
+    "/snap.jpg", "/video0.jpg", "/Streaming/channels/1/picture",
+  ];
+  useEffect(() => {
+    if (!isConnected || camType !== "smartlife") {
+      setSlTick(0); setSlStreamOk(false); setSlEndpointIdx(0);
+      return;
+    }
+    const t = setInterval(() => setSlTick((n) => n + 1), 1500);
+    return () => clearInterval(t);
+  }, [isConnected, camType]);
+
+  // ── SmartLife IP (strip http:// prefix for PTZ commands) ───────────────────
+  const slIp = activeBaseUrl
+    ? activeBaseUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")
+    : "192.168.4.1";
+
+  const slStreamUrl = activeBaseUrl
+    ? `${activeBaseUrl}${SL_ENDPOINTS[slEndpointIdx]}?_t=${slTick}`
+    : null;
 
   // Open any Android settings intent (with iOS App-Prefs fallback)
   const openSettings = useCallback((intent?: string) => {
@@ -861,8 +961,111 @@ export default function Insta360Screen() {
           </View>
         )}
 
+        {/* ── SmartLife Live View ──────────────────────────────────────────────── */}
+        {isConnected && camType === "smartlife" && (
+          <View style={[styles.card, { gap: 12, borderColor: SL_COLOR + "55", borderWidth: 1.5 }]}>
+            {/* Header */}
+            <View style={styles.cardRow}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <MaterialCommunityIcons name="cctv" size={18} color={SL_COLOR} />
+                <Text style={[styles.cardLabel, { color: SL_COLOR }]}>SMARTLIFE LIVE VIEW</Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: C.red + "22", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: C.red + "44" }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.red }} />
+                <Text style={{ color: C.red, fontSize: 10, fontWeight: "800" }}>LIVE</Text>
+              </View>
+            </View>
+
+            {/* Stream frame — polls snapshot endpoint every 1.5 s */}
+            {slStreamUrl ? (
+              <View style={{ borderRadius: 12, overflow: "hidden", backgroundColor: "#000", aspectRatio: 16 / 9 }}>
+                {slStreamOk ? (
+                  <Image
+                    source={{ uri: slStreamUrl }}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                    onLoad={() => setSlStreamOk(true)}
+                    onError={() => {
+                      // Rotate to next known endpoint
+                      setSlEndpointIdx((i) => (i + 1) % SL_ENDPOINTS.length);
+                    }}
+                  />
+                ) : (
+                  <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <Image
+                      source={{ uri: slStreamUrl }}
+                      style={{ position: "absolute", width: "100%", height: "100%" }}
+                      resizeMode="cover"
+                      onLoad={() => setSlStreamOk(true)}
+                      onError={() => setSlEndpointIdx((i) => (i + 1) % SL_ENDPOINTS.length)}
+                    />
+                    <MaterialCommunityIcons name="cctv" size={36} color={SL_COLOR + "66"} />
+                    <Text style={{ color: SL_COLOR + "99", fontSize: 12, fontWeight: "700" }}>
+                      {slTick < 3 ? "Connecting to stream…" : `Trying endpoint ${slEndpointIdx + 1}/${SL_ENDPOINTS.length}`}
+                    </Text>
+                    <Text style={{ color: C.mute, fontSize: 10, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}>
+                      {slIp}{SL_ENDPOINTS[slEndpointIdx]}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={{ borderRadius: 12, backgroundColor: "#000", aspectRatio: 16/9, alignItems: "center", justifyContent: "center" }}>
+                <MaterialCommunityIcons name="cctv" size={40} color={C.mute} />
+                <Text style={{ color: C.mute, fontSize: 12, marginTop: 8 }}>Connect to camera first</Text>
+              </View>
+            )}
+
+            {/* Controls row: PTZ (left) + Snapshot/Web UI (right) */}
+            <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+              <SmartLifePTZ baseUrl={slIp} />
+              <View style={{ flex: 1, gap: 8, justifyContent: "center", paddingTop: 28 }}>
+                {/* Snapshot */}
+                <TouchableOpacity
+                  onPress={doSnapshot}
+                  disabled={snapping || snappingManual}
+                  activeOpacity={0.8}
+                  style={[{
+                    flexDirection: "row", alignItems: "center", justifyContent: "center",
+                    gap: 6, height: 44, borderRadius: 10,
+                    backgroundColor: C.teal + "22", borderWidth: 1.5, borderColor: C.teal + "88",
+                  }, (snapping || snappingManual) && { opacity: 0.4 }]}
+                >
+                  <MaterialCommunityIcons name="camera" size={18} color={C.teal} />
+                  <Text style={{ color: C.teal, fontWeight: "800", fontSize: 13 }}>
+                    {snapping || snappingManual ? "CAPTURING…" : "SNAPSHOT"}
+                  </Text>
+                </TouchableOpacity>
+                {/* Open camera web UI in browser */}
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(`http://${slIp}/`).catch(() => {})}
+                  activeOpacity={0.8}
+                  style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 44, borderRadius: 10, backgroundColor: SL_COLOR + "18", borderWidth: 1.5, borderColor: SL_COLOR + "44" }}
+                >
+                  <MaterialCommunityIcons name="web" size={18} color={SL_COLOR} />
+                  <Text style={{ color: SL_COLOR, fontWeight: "800", fontSize: 13 }}>WEB UI</Text>
+                </TouchableOpacity>
+                {/* Stream endpoint badge */}
+                <View style={{ backgroundColor: C.border, borderRadius: 6, padding: 6 }}>
+                  <Text style={{ color: C.mute, fontSize: 10, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}>
+                    {slIp}{SL_ENDPOINTS[slEndpointIdx]}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Snapshot result */}
+            {previewUri && (
+              <View style={{ gap: 6 }}>
+                <Text style={{ color: C.mute, fontSize: 10, fontWeight: "700", letterSpacing: 0.8 }}>LAST SNAPSHOT</Text>
+                <Image source={{ uri: previewUri }} style={[styles.previewImg, { borderRadius: 10 }]} resizeMode="cover" />
+              </View>
+            )}
+          </View>
+        )}
+
         {/* ── Snapshot preview ─────────────────────────────────────────────── */}
-        {isConnected && (
+        {isConnected && camType !== "smartlife" && (
           <View style={styles.card}>
             <View style={styles.cardRow}>
               <Text style={styles.cardLabel}>LIVE SNAPSHOT</Text>
