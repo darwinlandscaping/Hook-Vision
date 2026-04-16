@@ -65,6 +65,97 @@ function Cam1Feed({ tick, ptzLog }: { tick: number; ptzLog: string | null }) {
         <path d="M0,50 L0,28 Q8,14 18,28 Q22,6 32,25 Q38,10 48,26 L48,50Z" fill={s.night?"#030a10":"#0d1f2a"} />
         <path d="M252,50 L252,30 Q260,14 268,28 Q274,8 284,26 Q290,15 300,27 L300,50Z" fill={s.night?"#030a10":"#0d1f2a"} />
       </svg>
+
+      {/* ── Birds in CAM1 sky ──────────────────────────────────────────────── */}
+      {/* Each bird group uses tick to slide across the sky at different speeds/heights */}
+      <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "44%", overflow: "hidden", pointerEvents: "none" }} viewBox="0 0 300 80" preserveAspectRatio="none">
+        {/* Bird wing path helper — M-shape silhouette */}
+        {/* Group 1: 3 brahminy kites soaring high-left → right (scene 0,1,3) */}
+        {!s.night && [0,1,2].map(i => {
+          const x = ((tick * 3.5 + i * 55) % 340) - 20;
+          const y = 12 + i * 5 + Math.sin(tick * 0.4 + i) * 2;
+          const sz = 10 - i * 1.5; // bigger lead bird
+          return (
+            <g key={`kite-${i}`} transform={`translate(${x},${y})`} opacity={0.85 - i * 0.15}>
+              {/* wings up-swept — osprey/brahminy kite shape */}
+              <path d={`M0,${sz*0.4} Q${sz*0.5},0 ${sz},${sz*0.4} Q${sz*1.5},0 ${sz*2},${sz*0.4}`}
+                fill="none" stroke={s.label.includes("SUNSET") ? "#cc4400" : "#1a1a2a"}
+                strokeWidth={sz > 8 ? 1.8 : 1.3} strokeLinecap="round" />
+              {/* body dot */}
+              <circle cx={sz} cy={sz*0.35} r={sz*0.18} fill={s.label.includes("SUNSET") ? "#cc4400" : "#1a1a2a"} />
+            </g>
+          );
+        })}
+
+        {/* Group 2: pelican/frigatebird gliding mid-sky (scene 0,1) */}
+        {!s.night && scene !== 3 && [0,1].map(i => {
+          const x = ((tick * 2.2 + i * 90 + 40) % 360) - 30;
+          const y = 28 + i * 8 + Math.sin(tick * 0.3 + i * 2) * 3;
+          const sz = 14 - i * 3; // pelican larger
+          return (
+            <g key={`pelican-${i}`} transform={`translate(${x},${y})`} opacity={0.7}>
+              {/* flat broad wings — pelican soaring */}
+              <path d={`M0,${sz*0.3} Q${sz*0.6},${-sz*0.1} ${sz},${sz*0.3} Q${sz*1.4},${-sz*0.1} ${sz*2},${sz*0.3}`}
+                fill="none" stroke="#151525" strokeWidth={sz > 10 ? 2 : 1.4} strokeLinecap="round" />
+              <path d={`M${sz*0.7},${sz*0.3} L${sz*0.9},${sz*0.7} L${sz*1.3},${sz*0.7} L${sz*1.1},${sz*0.3}`}
+                fill="#151525" opacity={0.6} />
+            </g>
+          );
+        })}
+
+        {/* Group 3: small terns flicking right-to-left */}
+        {!s.night && [0,1,2,3].map(i => {
+          const x = 300 - ((tick * 5 + i * 60) % 340);
+          const y = 20 + i * 6 + Math.sin(tick * 0.6 + i * 1.3) * 2.5;
+          const flap = Math.sin(tick * 2 + i) > 0; // flapping vs gliding
+          return (
+            <g key={`tern-${i}`} transform={`translate(${x},${y})`} opacity={0.75}>
+              <path d={flap
+                ? `M0,4 Q3.5,0 7,4 Q10.5,0 14,4`   // wings up
+                : `M0,2 Q3.5,5 7,2 Q10.5,5 14,2`}  // wings down
+                fill="none" stroke="#222238" strokeWidth="1.1" strokeLinecap="round" />
+            </g>
+          );
+        })}
+
+        {/* Group 4: IR night mode — birds show as bright IR blobs */}
+        {s.night && [0,1,2].map(i => {
+          const x = ((tick * 4 + i * 80) % 340) - 20;
+          const y = 15 + i * 12 + Math.sin(tick * 0.5 + i) * 4;
+          return (
+            <g key={`ir-bird-${i}`} transform={`translate(${x},${y})`} opacity={0.9}>
+              <path d={`M0,4 Q5,0 10,4 Q15,0 20,4`}
+                fill="none" stroke="#00ff88" strokeWidth="1.4" strokeLinecap="round"
+                filter="url(#glow)" />
+              <ellipse cx={10} cy={3.5} rx={2} ry={1.2} fill="#00ff88" opacity={0.7} />
+            </g>
+          );
+        })}
+
+        {/* IR glow filter */}
+        {s.night && (
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="1.2" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+        )}
+
+        {/* Sunset scene: silhouette frigatebirds (dark against orange sky) */}
+        {scene === 3 && [0,1].map(i => {
+          const x = ((tick * 2.8 + i * 110) % 350) - 25;
+          const y = 8 + i * 14;
+          return (
+            <g key={`frig-${i}`} transform={`translate(${x},${y})`} opacity={0.9}>
+              {/* Frigatebird — long angular wings, forked tail */}
+              <path d={`M0,5 Q6,0 13,5 Q19,0 26,5`} fill="none" stroke="#330000" strokeWidth="2" strokeLinecap="round" />
+              <path d={`M11,5 L13,10 L15,5`} fill="#330000" />
+              <circle cx={13} cy={4.5} r={1.5} fill="#330000" />
+            </g>
+          );
+        })}
+      </svg>
       {/* scan lines */}
       <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 4px)", pointerEvents: "none" }} />
       {s.night && <div style={{ position: "absolute", inset: 0, background: "rgba(0,70,35,0.16)", pointerEvents: "none" }} />}
