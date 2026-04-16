@@ -11,11 +11,13 @@ import {
   Animated as RNAnimated,
   Easing,
   Image,
+  Keyboard,
   Linking,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -46,12 +48,23 @@ const C = {
   mute:    "#ffffff44",
 };
 
-// ─── Camera brands with their WiFi SSID patterns ─────────────────────────────
+// ─── Camera brands with their WiFi SSID patterns + quick IPs ─────────────────
 const CAMERA_CONFIGS = {
-  insta360: { label: "Insta360", ssid: "LIVE-xxxxxx  /  Insta360 X4-xxxxxx",   icon: "rotate-360",     color: "#00d4aa" },
-  gopro:    { label: "GoPro",    ssid: "GOPRO-XXXX",                            icon: "camera",          color: "#0099ff" },
-  dji:      { label: "DJI Osmo", ssid: "DJI_OSMO-XXXX  /  OSMO-ACTION-XXXX",  icon: "video-outline",   color: "#1a9fff" },
-  other:    { label: "Other",    ssid: "Check camera screen or manual",         icon: "wifi",            color: "#ffd700" },
+  insta360:   { label: "Insta360",   ssid: "LIVE-xxxxxx  /  Insta360 X4-xxxxxx",  icon: "rotate-360",   color: "#00d4aa",
+                quickIps: ["192.168.42.1"],
+                infoPath: "/osc/info", cmdPath: "/osc/commands/execute" },
+  gopro:      { label: "GoPro",      ssid: "GOPRO-XXXX",                           icon: "camera",        color: "#0099ff",
+                quickIps: ["10.5.5.9:8080"],
+                infoPath: "/gopro/camera/info", cmdPath: "/gopro/camera/shutter/start" },
+  dji:        { label: "DJI Osmo",   ssid: "DJI_OSMO-XXXX  /  OSMO-ACTION-XXXX",  icon: "video-outline", color: "#1a9fff",
+                quickIps: ["192.168.2.1"],
+                infoPath: "/osc/info", cmdPath: "/osc/commands/execute" },
+  smartlife:  { label: "SmartLife",  ssid: "SmartLife_XXXX  /  IP camera hotspot", icon: "cctv",          color: "#00ffcc",
+                quickIps: ["192.168.4.1", "192.168.1.100", "192.168.0.100"],
+                infoPath: "/snapshot.cgi", cmdPath: "/snapshot.cgi" },
+  other:      { label: "Other",      ssid: "Check camera screen or manual",         icon: "wifi",          color: "#ffd700",
+                quickIps: ["192.168.1.1", "192.168.0.1"],
+                infoPath: "/osc/info", cmdPath: "/osc/commands/execute" },
 } as const;
 type CamType = keyof typeof CAMERA_CONFIGS;
 
@@ -206,6 +219,8 @@ export default function Insta360Screen() {
   const [brainResult,     setBrainResult]      = useState<BrainResult | null>(null);
   const [brainLoading,    setBrainLoading]     = useState(false);
   const [brainError,      setBrainError]       = useState<string | null>(null);
+  const [manualIp,        setManualIp]        = useState("");
+  const [connectStep,     setConnectStep]     = useState<"idle"|"connecting">("idle");
 
   const baseUrl = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -306,6 +321,23 @@ export default function Insta360Screen() {
   // Convenience — open WiFi settings
   const openWifi = useCallback(() => openSettings("android.settings.WIFI_SETTINGS"), [openSettings]);
 
+  // Connect to a camera by manual IP / quick-tap IP
+  const connectToIp = useCallback((ipStr: string) => {
+    const raw = ipStr.trim();
+    if (!raw) return;
+    Keyboard.dismiss();
+    setManualIp(raw);
+    setConnectStep("connecting");
+    const cfg = CAMERA_CONFIGS[camType];
+    // Build base URL — handle optional port like "10.5.5.9:8080"
+    const baseUrl = raw.startsWith("http") ? raw : `http://${raw}`;
+    startSearchAt(baseUrl, cfg.infoPath, cfg.cmdPath);
+    // Reset connecting state after a moment
+    setTimeout(() => setConnectStep("idle"), 3500);
+  }, [camType, startSearchAt]);
+
+  const handleManualConnect = useCallback(() => connectToIp(manualIp), [connectToIp, manualIp]);
+
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* ── Header ──────────────────────────────────────────────────────────── */}
@@ -351,56 +383,212 @@ export default function Insta360Screen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Camera Discovery Scanner ─────────────────────────────────────── */}
+        {/* ── STEP 1: Connect to hotspot ───────────────────────────────────── */}
+        <View style={[styles.card, { gap: 10 }]}>
+          <View style={styles.cardRow}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={[styles.stepBadge, { backgroundColor: C.blue + "33", borderColor: C.blue + "88" }]}>
+                <Text style={{ color: C.blue, fontSize: 11, fontWeight: "800" }}>1</Text>
+              </View>
+              <Text style={styles.cardLabel}>CONNECT TO CAMERA HOTSPOT</Text>
+            </View>
+            <TouchableOpacity onPress={openWifi} style={[styles.miniBtn, { borderColor: C.gold + "88" }]} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="wifi" size={13} color={C.gold} />
+              <Text style={[styles.miniBtnText, { color: C.gold }]}>WiFi Settings</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ backgroundColor: CAMERA_CONFIGS[camType].color + "14", borderRadius: 8, padding: 10, gap: 3 }}>
+            <Text style={{ color: C.dim, fontSize: 10, fontWeight: "700", letterSpacing: 0.8 }}>LOOK FOR THIS HOTSPOT:</Text>
+            <Text style={{ color: CAMERA_CONFIGS[camType].color, fontSize: 13, fontWeight: "700" }}>
+              {CAMERA_CONFIGS[camType].ssid}
+            </Text>
+            {camType === "smartlife" && (
+              <Text style={{ color: C.mute, fontSize: 11, marginTop: 2 }}>
+                On some models: enable AP/pairing mode by holding the reset button 5 s.
+              </Text>
+            )}
+          </View>
+          {Platform.OS === "android" && (
+            <Text style={{ color: C.orange, fontSize: 11 }}>
+              ⚠ Samsung: tap "Stay Connected" if Android asks — without this the camera is unreachable.
+            </Text>
+          )}
+        </View>
+
+        {/* ── STEP 2: Find & connect ────────────────────────────────────────── */}
         <View style={[styles.card, { gap: 12 }]}>
           <View style={styles.cardRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <MaterialCommunityIcons name="wifi" size={16} color={C.teal} />
-              <Text style={styles.cardLabel}>DETECT CAMERAS ON WiFi</Text>
+              <View style={[styles.stepBadge, { backgroundColor: C.teal + "33", borderColor: C.teal + "88" }]}>
+                <Text style={{ color: C.teal, fontSize: 11, fontWeight: "800" }}>2</Text>
+              </View>
+              <Text style={styles.cardLabel}>FIND &amp; CONNECT</Text>
             </View>
+            {/* Status chip */}
+            <View style={[styles.statusChip, { borderColor: statusColor + "88", backgroundColor: statusColor + "18" }]}>
+              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+              <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+            </View>
+          </View>
+
+          {/* Camera ring — status indicator */}
+          <View style={{ alignItems: "center", paddingVertical: 4 }}>
+            <View style={styles.ringOuter}>
+              {isSearching && <PulseRing color={C.gold} size={110} />}
+              {isConnected && <PulseRing color={C.teal} size={110} />}
+              <View style={[styles.ringInner, { borderColor: statusColor, width: 88, height: 88, borderRadius: 44 }]}>
+                <MaterialCommunityIcons
+                  name={isConnected ? "camera-wireless" : "camera-wireless-outline"}
+                  size={36}
+                  color={statusColor}
+                />
+                {isConnected && cameraInfo && (
+                  <Text style={[styles.ringModel, { fontSize: 9 }]}>{cameraInfo.model}</Text>
+                )}
+              </View>
+            </View>
+          </View>
+
+          {/* Quick-tap IPs */}
+          <View style={{ gap: 6 }}>
+            <Text style={{ color: C.mute, fontSize: 10, fontWeight: "700", letterSpacing: 0.8 }}>
+              QUICK-CONNECT — TAP TO TRY:
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+              {CAMERA_CONFIGS[camType].quickIps.map((ip) => (
+                <TouchableOpacity
+                  key={ip}
+                  onPress={() => connectToIp(ip)}
+                  activeOpacity={0.7}
+                  style={{
+                    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8,
+                    backgroundColor: CAMERA_CONFIGS[camType].color + "22",
+                    borderWidth: 1.5, borderColor: CAMERA_CONFIGS[camType].color + "88",
+                  }}
+                >
+                  <Text style={{ color: CAMERA_CONFIGS[camType].color, fontSize: 12, fontWeight: "700", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}>
+                    {ip}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Manual IP entry */}
+          <View style={{ gap: 6 }}>
+            <Text style={{ color: C.mute, fontSize: 10, fontWeight: "700", letterSpacing: 0.8 }}>
+              OR ENTER CAMERA IP ADDRESS:
+            </Text>
+            <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+              <TextInput
+                value={manualIp}
+                onChangeText={setManualIp}
+                placeholder="e.g. 192.168.42.1"
+                placeholderTextColor={C.mute}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                onSubmitEditing={handleManualConnect}
+                style={{
+                  flex: 1, height: 42, borderRadius: 10,
+                  borderWidth: 1.5, borderColor: C.border,
+                  backgroundColor: C.card + "cc",
+                  paddingHorizontal: 12,
+                  color: C.white, fontSize: 14,
+                  fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                }}
+              />
+              <TouchableOpacity
+                onPress={handleManualConnect}
+                disabled={!manualIp.trim() || connectStep === "connecting"}
+                activeOpacity={0.8}
+                style={{
+                  height: 42, paddingHorizontal: 16, borderRadius: 10,
+                  backgroundColor: C.teal,
+                  alignItems: "center", justifyContent: "center",
+                  opacity: !manualIp.trim() ? 0.4 : 1,
+                }}
+              >
+                <Text style={{ color: "#000", fontWeight: "800", fontSize: 13 }}>
+                  {connectStep === "connecting" ? "…" : "CONNECT"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Action buttons row */}
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {/* Scan button */}
             <TouchableOpacity
               onPress={scanner.scan}
               disabled={scanner.scanning}
-              style={[styles.miniBtn, { borderColor: C.teal + "99" }, scanner.scanning && { opacity: 0.5 }]}
               activeOpacity={0.7}
+              style={[{
+                flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+                height: 42, borderRadius: 10, gap: 6,
+                borderWidth: 1.5, borderColor: C.blue + "88",
+                backgroundColor: C.blue + "18",
+              }, scanner.scanning && { opacity: 0.55 }]}
             >
-              {scanner.scanning ? (
-                <>
-                  <MaterialCommunityIcons name="radar" size={13} color={C.teal} />
-                  <Text style={[styles.miniBtnText, { color: C.teal }]}>Scanning…</Text>
-                </>
-              ) : (
-                <>
-                  <Feather name="search" size={13} color={C.teal} />
-                  <Text style={[styles.miniBtnText, { color: C.teal }]}>Scan WiFi</Text>
-                </>
-              )}
+              <MaterialCommunityIcons name={scanner.scanning ? "radar" : "wifi"} size={15} color={C.blue} />
+              <Text style={{ color: C.blue, fontSize: 12, fontWeight: "800" }}>
+                {scanner.scanning ? "SCANNING…" : "SCAN NETWORK"}
+              </Text>
             </TouchableOpacity>
+
+            {/* Stop / Disconnect */}
+            {isSearching ? (
+              <TouchableOpacity
+                onPress={stopSearch}
+                activeOpacity={0.8}
+                style={{
+                  height: 42, paddingHorizontal: 16, borderRadius: 10,
+                  borderWidth: 1.5, borderColor: C.gold + "88",
+                  backgroundColor: C.gold + "18",
+                  alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: C.gold, fontWeight: "800", fontSize: 12 }}>STOP</Text>
+              </TouchableOpacity>
+            ) : isConnected ? (
+              <TouchableOpacity
+                onPress={stopSearch}
+                activeOpacity={0.8}
+                style={{
+                  height: 42, paddingHorizontal: 16, borderRadius: 10,
+                  borderWidth: 1.5, borderColor: C.red + "88",
+                  backgroundColor: C.red + "18",
+                  alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: C.red, fontWeight: "800", fontSize: 12 }}>DISCONNECT</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
-          {/* Scanning progress indicator */}
+          {/* Scan progress */}
           {scanner.scanning && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <View style={styles.scanDot} />
               <Text style={{ color: C.gold, fontSize: 12 }}>
-                Probing Insta360 · GoPro · DJI · Other…
+                Probing Insta360 · GoPro · DJI · SmartLife · Generic…
               </Text>
             </View>
           )}
 
-          {/* Discovered cameras list */}
-          {scanner.discovered.length > 0 ? (
+          {/* Discovered cameras */}
+          {scanner.discovered.length > 0 && (
             <View style={{ gap: 8 }}>
-              <Text style={[styles.cardLabel, { color: C.dim }]}>
+              <Text style={[styles.cardLabel, { color: C.blue }]}>
                 {scanner.discovered.length} CAMERA{scanner.discovered.length > 1 ? "S" : ""} FOUND — TAP TO CONNECT
               </Text>
               {scanner.discovered.map((cam) => {
                 const isActive = selectedCamera?.id === cam.id && isConnected;
                 const isSel    = selectedCamera?.id === cam.id;
                 const brandCfg = CAMERA_CONFIGS[
-                  cam.brand === "Insta360" ? "insta360"
-                  : cam.brand === "GoPro"  ? "gopro"
-                  : cam.brand === "DJI"    ? "dji"
+                  cam.brand === "Insta360"   ? "insta360"
+                  : cam.brand === "GoPro"    ? "gopro"
+                  : cam.brand === "DJI"      ? "dji"
+                  : cam.brand === "SmartLife" ? "smartlife"
                   : "other"
                 ];
                 return (
@@ -440,47 +628,14 @@ export default function Insta360Screen() {
                 );
               })}
             </View>
-          ) : !scanner.scanning ? (
-            <Text style={[styles.cardSubtitle, { textAlign: "center", paddingVertical: 4 }]}>
-              Connect your phone to a camera's WiFi hotspot first, then tap{" "}
-              <Text style={{ color: C.teal }}>Scan WiFi</Text> to detect it.
+          )}
+
+          {/* No cameras hint */}
+          {!scanner.scanning && scanner.discovered.length === 0 && !isConnected && !isSearching && (
+            <Text style={[styles.cardSubtitle, { textAlign: "center", paddingVertical: 2 }]}>
+              Tap a quick-connect IP above, enter your camera's IP manually, or tap{" "}
+              <Text style={{ color: C.blue }}>Scan Network</Text> to auto-detect.
             </Text>
-          ) : null}
-        </View>
-
-        {/* ── Camera ring + connect button ───────────────────────────────────── */}
-        <View style={styles.ringWrap}>
-          <View style={styles.ringOuter}>
-            {isSearching && <PulseRing color={C.gold} size={130} />}
-            {isConnected && <PulseRing color={C.teal} size={130} />}
-            <View style={[styles.ringInner, { borderColor: statusColor }]}>
-              <MaterialCommunityIcons
-                name={isConnected ? "camera-wireless" : "camera-wireless-outline"}
-                size={44}
-                color={statusColor}
-              />
-              {isConnected && cameraInfo && (
-                <Text style={styles.ringModel}>{cameraInfo.model}</Text>
-              )}
-            </View>
-          </View>
-
-          {/* Connect / Disconnect buttons */}
-          {isDisconnected ? (
-            <TouchableOpacity style={[styles.btn, { backgroundColor: C.teal }]} onPress={startSearch} activeOpacity={0.8}>
-              <Feather name="wifi" size={16} color="#000" />
-              <Text style={[styles.btnText, { color: "#000" }]}>SEARCH FOR CAMERA</Text>
-            </TouchableOpacity>
-          ) : isSearching ? (
-            <TouchableOpacity style={[styles.btn, { backgroundColor: C.border, borderColor: C.gold, borderWidth: 1.5 }]} onPress={stopSearch} activeOpacity={0.8}>
-              <Feather name="x-circle" size={16} color={C.gold} />
-              <Text style={[styles.btnText, { color: C.gold }]}>STOP SEARCH</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={[styles.btn, { backgroundColor: C.border, borderColor: C.red + "88", borderWidth: 1.5 }]} onPress={stopSearch} activeOpacity={0.8}>
-              <Feather name="wifi-off" size={16} color={C.red} />
-              <Text style={[styles.btnText, { color: C.red }]}>DISCONNECT</Text>
-            </TouchableOpacity>
           )}
         </View>
 
@@ -902,9 +1057,10 @@ export default function Insta360Screen() {
             {"\n• Camera must be in WiFi mode (hold Wi-Fi / mode button)"}
             {"\n• Keep camera <10 m from phone for best signal"}
             {"\n• Auto-scan fires every 6 s — croc + bird watch on the water"}
-            {camType === "insta360" ? "\n• Insta360 X4/X3: press the Mode button 3× to activate WiFi hotspot" : ""}
-            {camType === "gopro"    ? "\n• GoPro: swipe down → Connections → Connect Device → GoPro App (or Quick)" : ""}
-            {camType === "dji"      ? "\n• DJI Osmo: swipe down on screen → WiFi icon to enable hotspot" : ""}
+            {camType === "insta360"  ? "\n• Insta360 X4/X3: press the Mode button 3× to activate WiFi hotspot" : ""}
+            {camType === "gopro"     ? "\n• GoPro: swipe down → Connections → Connect Device → GoPro App (or Quick)" : ""}
+            {camType === "dji"       ? "\n• DJI Osmo: swipe down on screen → WiFi icon to enable hotspot" : ""}
+            {camType === "smartlife" ? "\n• SmartLife/Tuya: in the app go to Add Device → Other → Local Network, or enable AP mode by holding reset 5 s\n• Default hotspot IP: 192.168.4.1  (no password needed in AP mode)" : ""}
           </Text>
         </View>
       </ScrollView>
@@ -1080,4 +1236,10 @@ const styles = StyleSheet.create({
     backgroundColor: C.gold, borderRadius: 10, paddingVertical: 11,
   },
   wifiBtnText: { color: C.bg, fontWeight: "800", fontSize: 13, letterSpacing: 0.5 },
+
+  stepBadge: {
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 1.5,
+    alignItems: "center", justifyContent: "center",
+  },
 });
