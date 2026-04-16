@@ -1,7 +1,10 @@
 /**
- * HookVision — 360 Camera Screen
- * Dedicated Insta360 camera management, Samsung WiFi fix guide,
- * live pipeline results, snapshot preview, and auto-scan toggle.
+ * HookVision — WiFi Camera Screen
+ * Supports any WiFi-hotspot camera: Insta360 (X4, X3, X2, ONE RS, Go 3),
+ * GoPro (Max, Hero 12/11/10), DJI Osmo (Action 4/5, Pocket 3), and other
+ * cameras that serve a local HTTP preview stream.
+ * Includes Samsung WiFi fix guide, AI brain analysis, auto-scan pipelines,
+ * live snapshot preview, croc vision, and bird detection.
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -42,6 +45,15 @@ const C = {
   mute:    "#ffffff44",
 };
 
+// ─── Camera brands with their WiFi SSID patterns ─────────────────────────────
+const CAMERA_CONFIGS = {
+  insta360: { label: "Insta360", ssid: "LIVE-xxxxxx  /  Insta360 X4-xxxxxx",   icon: "rotate-360",     color: "#00d4aa" },
+  gopro:    { label: "GoPro",    ssid: "GOPRO-XXXX",                            icon: "camera",          color: "#0099ff" },
+  dji:      { label: "DJI Osmo", ssid: "DJI_OSMO-XXXX  /  OSMO-ACTION-XXXX",  icon: "video-outline",   color: "#1a9fff" },
+  other:    { label: "Other",    ssid: "Check camera screen or manual",         icon: "wifi",            color: "#ffd700" },
+} as const;
+type CamType = keyof typeof CAMERA_CONFIGS;
+
 // ─── Samsung step-by-step guide ────────────────────────────────────────────────
 const SAMSUNG_STEPS: {
   icon: string;
@@ -52,8 +64,14 @@ const SAMSUNG_STEPS: {
 }[] = [
   {
     icon: "wifi",
-    title: "Connect to Insta360 WiFi",
-    body: 'Open WiFi settings and connect to "LIVE-xxxxxx" (shown on the camera screen). Password is printed on the camera body.',
+    title: "Connect to Camera WiFi Hotspot",
+    body:
+      "Open WiFi settings and join your camera's hotspot:\n" +
+      "• Insta360 X4/X3/X2: "LIVE-xxxxxx" or "Insta360 X4-xxxxxx"\n" +
+      "• GoPro Max / Hero: "GOPRO-XXXX"\n" +
+      "• DJI Osmo Action / Pocket: "DJI_OSMO-XXXX" or "OSMO-ACTION-XXXX"\n" +
+      "• Other cameras: check the camera screen or manual\n" +
+      "Password is usually printed on the camera body or visible on-screen.",
     btnLabel: "Open WiFi Settings",
     intent: "android.settings.WIFI_SETTINGS",
   },
@@ -160,6 +178,7 @@ export default function Insta360Screen() {
   const { camera, pipelines } = useInsta360Context();
   const { status, cameraInfo, snapping, connectionHint, startSearch, stopSearch, takeSnapshot } = camera;
 
+  const [camType,         setCamType]         = useState<CamType>("insta360");
   const [previewUri,      setPreviewUri]      = useState<string | null>(null);
   const [previewBase64,   setPreviewBase64]   = useState<string | null>(null);
   const [samsungGuide,    setSamsungGuide]     = useState(false);
@@ -273,7 +292,7 @@ export default function Insta360Screen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <MaterialCommunityIcons name="camera-wireless" size={22} color={C.teal} />
-          <Text style={styles.headerTitle}>INSTA360  <Text style={{ color: C.teal }}>360°</Text></Text>
+          <Text style={styles.headerTitle}>WIFI  <Text style={{ color: C.teal }}>CAM</Text></Text>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           {(status === "searching" || status === "connected") && (
@@ -287,6 +306,25 @@ export default function Insta360Screen() {
             <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
           </View>
         </View>
+      </View>
+
+      {/* ── Camera type selector ─────────────────────────────────────────────── */}
+      <View style={styles.camPicker}>
+        {(Object.keys(CAMERA_CONFIGS) as CamType[]).map((key) => {
+          const cfg = CAMERA_CONFIGS[key];
+          const active = camType === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setCamType(key)}
+              activeOpacity={0.7}
+              style={[styles.camChip, active && { backgroundColor: cfg.color + "28", borderColor: cfg.color }]}
+            >
+              <MaterialCommunityIcons name={cfg.icon as any} size={13} color={active ? cfg.color : C.mute} />
+              <Text style={[styles.camChipLabel, { color: active ? cfg.color : C.mute }]}>{cfg.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <ScrollView
@@ -401,7 +439,7 @@ export default function Insta360Screen() {
               </TouchableOpacity>
             </View>
             <Text style={styles.cardSubtitle}>
-              GPT-4.1 reads the 360° frame: birds, surface busts, water colour, croc risk, tactics, cast zone.
+              GPT-4.1 reads the camera frame: birds, surface busts, water colour, croc risk, tactics, cast zone.
             </Text>
             {brainError && (
               <Text style={{ color: C.red, fontSize: 12, marginTop: 4 }}>{brainError}</Text>
@@ -416,7 +454,7 @@ export default function Insta360Screen() {
             <View style={styles.cardRow}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <MaterialCommunityIcons name="brain" size={16} color={C.teal} />
-                <Text style={[styles.cardLabel, { color: C.teal }]}>INSTA360 BRAIN</Text>
+                <Text style={[styles.cardLabel, { color: C.teal }]}>WIFI CAM BRAIN</Text>
               </View>
               <View style={{ flexDirection: "row", gap: 6 }}>
                 <View style={[styles.miniChip, {
@@ -688,12 +726,12 @@ export default function Insta360Screen() {
           <View style={styles.cardRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <MaterialCommunityIcons name="android" size={18} color={C.gold} />
-              <Text style={[styles.cardLabel, { color: C.gold }]}>SAMSUNG WiFi FIX GUIDE</Text>
+              <Text style={[styles.cardLabel, { color: C.gold }]}>ANDROID WiFi FIX GUIDE</Text>
             </View>
             <Feather name={samsungGuide ? "chevron-up" : "chevron-down"} size={16} color={C.gold} />
           </View>
           <Text style={styles.cardSubtitle}>
-            Samsung phones often drop camera WiFi — follow these steps if Search fails.
+            Android (especially Samsung) can drop camera WiFi — follow these steps if Search fails.
           </Text>
         </TouchableOpacity>
 
@@ -740,11 +778,16 @@ export default function Insta360Screen() {
         <View style={styles.card}>
           <Text style={styles.cardLabel}>QUICK TIPS</Text>
           <Text style={styles.cardSubtitle}>
-            • Camera hotspot SSID: <Text style={{ color: C.white }}>LIVE-xxxxxx</Text> (shown on camera screen){"\n"}
-            • Default WiFi password is printed on the camera body{"\n"}
-            • Camera must be in WiFi mode (hold Wi-Fi button){"\n"}
-            • Keep camera &lt;10 m from phone for best signal{"\n"}
-            • Auto-scan pipeline fires every 6 s — use in boat mode for continuous croc + bird watch
+            {"• "}
+            <Text style={{ color: C.dim }}>{CAMERA_CONFIGS[camType].label} hotspot SSID: </Text>
+            <Text style={{ color: C.white }}>{CAMERA_CONFIGS[camType].ssid}</Text>
+            {"\n• Password is usually printed on the camera body or visible on-screen"}
+            {"\n• Camera must be in WiFi mode (hold Wi-Fi / mode button)"}
+            {"\n• Keep camera <10 m from phone for best signal"}
+            {"\n• Auto-scan fires every 6 s — croc + bird watch on the water"}
+            {camType === "insta360" ? "\n• Insta360 X4/X3: press the Mode button 3× to activate WiFi hotspot" : ""}
+            {camType === "gopro"    ? "\n• GoPro: swipe down → Connections → Connect Device → GoPro App (or Quick)" : ""}
+            {camType === "dji"      ? "\n• DJI Osmo: swipe down on screen → WiFi icon to enable hotspot" : ""}
           </Text>
         </View>
       </ScrollView>
@@ -792,6 +835,19 @@ const styles = StyleSheet.create({
   },
   statusDot:  { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 10, fontWeight: "700", letterSpacing: 1 },
+
+  camPicker: {
+    flexDirection: "row", gap: 6, flexWrap: "wrap",
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: C.border,
+  },
+  camChip: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 20, borderWidth: 1, borderColor: C.border,
+    backgroundColor: C.card,
+  },
+  camChipLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
 
   scroll: { padding: 14, gap: 12 },
 
