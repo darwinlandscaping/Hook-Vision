@@ -116,36 +116,51 @@ export default function HomeScreen() {
     return () => clearInterval(id);
   }, []);
 
-  const [conds, setConds]       = useState<DailyConditions | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [fetchErr, setFetchErr] = useState(false);
+  const [conds, setConds]         = useState<DailyConditions | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [fetchErr, setFetchErr]   = useState(false);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
+  const fetchedAtRef              = useRef<number | null>(null);
 
-  const fetchConditions = useCallback(() => {
+  const fetchConditions = useCallback((force = false) => {
+    // Skip if fresh data already loaded (< 2 min old) unless forced
+    if (!force && fetchedAtRef.current && Date.now() - fetchedAtRef.current < 2 * 60_000) return;
+
     const domain  = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
-    fetch(`${baseUrl}/api/daily-conditions`)
-      .then((r) => r.json())
+    const ctrl    = new AbortController();
+    const timer   = setTimeout(() => ctrl.abort(), 10_000); // 10s timeout
+
+    fetch(`${baseUrl}/api/daily-conditions`, { signal: ctrl.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((d) => {
         setConds(d as DailyConditions);
-        setFetchedAt(Date.now());
+        const now = Date.now();
+        setFetchedAt(now);
+        fetchedAtRef.current = now;
         setLoading(false);
         setFetchErr(false);
       })
-      .catch(() => { setFetchErr(true); setLoading(false); });
+      .catch((e) => {
+        if (e?.name !== "AbortError") { setFetchErr(true); setLoading(false); }
+      })
+      .finally(() => clearTimeout(timer));
   }, []);
 
-  // Fetch on mount
-  useEffect(() => { fetchConditions(); }, [fetchConditions]);
+  // Fetch once on mount
+  useEffect(() => { fetchConditions(true); }, [fetchConditions]);
 
-  // Re-fetch every time the tab comes into focus
+  // Re-fetch on focus only if data is stale (> 2 min old)
   useFocusEffect(useCallback(() => {
     fetchConditions();
   }, [fetchConditions]));
 
-  // Auto-refresh every 5 minutes while screen is mounted
+  // Auto-refresh every 5 minutes
   useEffect(() => {
-    const id = setInterval(() => fetchConditions(), 5 * 60_000);
+    const id = setInterval(() => fetchConditions(true), 5 * 60_000);
     return () => clearInterval(id);
   }, [fetchConditions]);
 
