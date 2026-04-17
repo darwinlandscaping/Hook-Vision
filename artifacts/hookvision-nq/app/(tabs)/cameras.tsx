@@ -318,6 +318,16 @@ export default function CamerasScreen() {
   const [streamChars,  setStreamChars]  = useState(0);
   const [streamSpeed,  setStreamSpeed]  = useState(0);   // chars/sec
   const [totalMs,      setTotalMs]      = useState(0);
+  const [liveMs,       setLiveMs]       = useState(0);
+  const brainStartRef = useRef<number>(0);
+
+  // Tick every 33ms while loading to show live elapsed time
+  useEffect(() => {
+    if (!brainLoading) { setLiveMs(0); return; }
+    brainStartRef.current = Date.now();
+    const id = setInterval(() => setLiveMs(Date.now() - brainStartRef.current), 33);
+    return () => clearInterval(id);
+  }, [brainLoading]);
 
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -578,7 +588,7 @@ export default function CamerasScreen() {
             <Text style={{ fontSize: 16 }}>🧠</Text>
             <View style={{ flex: 1 }}>
               <Text style={[S.brainTitle, { color: C.teal }]}>AI BRAIN ANALYSER</Text>
-              <Text style={[S.brainSub, { color: C.mute }]}>gpt-4.1-mini · streaming · detail:low · fastest mode</Text>
+              <Text style={[S.brainSub, { color: C.mute }]}>gpt-4.1-nano · streaming SSE · detail:low · 200 token cap</Text>
             </View>
             {/* Turbo badge */}
             <View style={[S.turboBadge, { backgroundColor: C.purple + "22", borderColor: C.purple + "66" }]}>
@@ -590,7 +600,7 @@ export default function CamerasScreen() {
           <TouchableOpacity onPress={runBrain} disabled={brainLoading} activeOpacity={0.8}
             style={[S.scanBtn, { backgroundColor: brainLoading ? C.teal + "12" : C.teal + "28", borderColor: brainLoading ? C.teal + "44" : C.teal + "99", opacity: brainLoading ? 0.85 : 1 }]}>
             {brainLoading
-              ? <Text style={[S.scanBtnText, { color: C.teal }]}>⚡  STREAMING… {streamChars} chars · {streamSpeed} c/s</Text>
+              ? <Text style={[S.scanBtnText, { color: C.teal }]}>⚡  {liveMs}ms · {streamChars} chars · {streamSpeed} c/s</Text>
               : <Text style={[S.scanBtnText, { color: C.teal }]}>📸  SNAP + AI BRAIN SCAN</Text>
             }
           </TouchableOpacity>
@@ -607,7 +617,7 @@ export default function CamerasScreen() {
             <>
               {/* Speed stats */}
               <View style={[S.speedRow, { backgroundColor: C.purple + "12", borderColor: C.purple + "33" }]}>
-                <Text style={[S.speedText, { color: C.purple }]}>⚡ {totalMs}ms · {streamChars} chars · {streamSpeed} c/s · gpt-4.1-mini</Text>
+                <Text style={[S.speedText, { color: C.purple }]}>⚡ {totalMs}ms · {streamChars} chars · {streamSpeed} c/s · gpt-4.1-nano</Text>
               </View>
 
               {/* Summary */}

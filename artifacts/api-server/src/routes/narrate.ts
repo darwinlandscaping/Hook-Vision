@@ -90,7 +90,7 @@ ${content}`;
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-4.1-nano",
       max_completion_tokens: 300,
       messages: [
         { role: "system", content: systemPrompt },
