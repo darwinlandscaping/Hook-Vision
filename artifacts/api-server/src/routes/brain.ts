@@ -304,7 +304,7 @@ Rules:
 - Respond ONLY with valid JSON, no markdown`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-4.1-mini",
       max_completion_tokens: 500,
       response_format: { type: "json_object" },
       messages: [{ role: "user", content: prompt }],
