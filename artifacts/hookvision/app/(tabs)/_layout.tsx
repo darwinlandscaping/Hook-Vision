@@ -16,7 +16,7 @@ import { Insta360Provider } from "@/contexts/Insta360Context";
 // insta360 is hidden from tab bar (accessed via Live tab chip) to keep Brain visible
 const TAB_ROUTES = [
   "live", "home", "buff", "tides", "species",
-  "barra", "zones", "forecast", "catchid", "history", "community", "web",
+  "barra", "zones", "forecast", "catchid", "history", "community", "smartlife",
 ] as const;
 
 function tabPath(name: string) {
@@ -70,9 +70,9 @@ function NativeTabLayout() {
         <Icon sf={{ default: "brain.head.profile", selected: "brain.head.profile" }} />
         <Label>Intel</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="web">
-        <Icon sf={{ default: "globe", selected: "globe" }} />
-        <Label>Web</Label>
+      <NativeTabs.Trigger name="smartlife">
+        <Icon sf={{ default: "video.badge.waveform", selected: "video.badge.waveform.fill" }} />
+        <Label>SmartCam</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -288,18 +288,19 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="web"
+        name="smartlife"
         options={{
-          title: "Web",
+          title: "SmartCam",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="globe" tintColor={color} size={22} />
+              <SymbolView name="video.badge.waveform" tintColor={color} size={22} />
             ) : (
-              <MaterialCommunityIcons name="web" size={22} color={color} />
+              <MaterialCommunityIcons name="cctv" size={22} color={color} />
             ),
         }}
       />
-      {/* Hidden screen — accessible from Intel tab map button */}
+      {/* Hidden screens */}
+      <Tabs.Screen name="web" options={{ href: null }} />
       <Tabs.Screen name="map" options={{ href: null }} />
     </Tabs>
     </View>

@@ -1,7 +1,8 @@
 /**
  * CrocTabBar — 2-row croc-mouth navigation bar
- * Row 1: Live · Home · Boof · Tides · Species · Barra
- * Row 2: Scan · Zones · Fishy · Catch · History · Brain  (+ hidden: fishy/map/demo)
+ * Row 1: Scan · Live · Home · Boof · Tides · Species · Barra   (7 tabs)
+ * Row 2: Zones · Fishy · Catch · History · Brain · SmartCam    (6 tabs, centred)
+ * Hidden: fishy · map · demo · insta360 · subscription · web
  */
 import React from "react";
 // @ts-ignore — types bundled with expo-router at runtime
@@ -41,22 +42,23 @@ const P = {
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 const META: Record<string, { label: string; icon: (c: string, s: number) => React.ReactNode }> = {
-  index:     { label: "Scan",    icon: (c, s) => <MaterialCommunityIcons name="radar"              size={s} color={c} /> },
-  live:      { label: "Live",    icon: (c, s) => <Feather                name="video"              size={s} color={c} /> },
-  home:      { label: "Home",    icon: (c, s) => <Feather                name="home"               size={s} color={c} /> },
-  buff:      { label: "Boof",    icon: (c, s) => <MaterialCommunityIcons name="shopping"           size={s} color={c} /> },
-  tides:     { label: "Tides",   icon: (c, s) => <MaterialCommunityIcons name="waves"              size={s} color={c} /> },
-  species:   { label: "Species", icon: (c, s) => <MaterialCommunityIcons name="fish"               size={s} color={c} /> },
-  barra:     { label: "Barra",   icon: (c, s) => <MaterialCommunityIcons name="crosshairs-gps"    size={s} color={c} /> },
-  zones:     { label: "Zones",   icon: (c, s) => <MaterialCommunityIcons name="map-marker-radius"  size={s} color={c} /> },
-  forecast:  { label: "Fishy",   icon: (c, s) => <MaterialCommunityIcons name="weather-windy"     size={s} color={c} /> },
-  catchid:   { label: "Catch",   icon: (c, s) => <MaterialCommunityIcons name="camera-iris"        size={s} color={c} /> },
-  history:   { label: "History", icon: (c, s) => <Feather                name="clock"              size={s} color={c} /> },
-  community: { label: "Brain",   icon: (c, s) => <MaterialCommunityIcons name="brain"              size={s} color={c} /> },
-  insta360:  { label: "360°",    icon: (c, s) => <MaterialCommunityIcons name="camera-wireless"     size={s} color={c} /> },
+  index:      { label: "Scan",      icon: (c, s) => <MaterialCommunityIcons name="radar"              size={s} color={c} /> },
+  live:       { label: "Live",      icon: (c, s) => <Feather                name="video"              size={s} color={c} /> },
+  home:       { label: "Home",      icon: (c, s) => <Feather                name="home"               size={s} color={c} /> },
+  buff:       { label: "Boof",      icon: (c, s) => <MaterialCommunityIcons name="shopping"           size={s} color={c} /> },
+  tides:      { label: "Tides",     icon: (c, s) => <MaterialCommunityIcons name="waves"              size={s} color={c} /> },
+  species:    { label: "Species",   icon: (c, s) => <MaterialCommunityIcons name="fish"               size={s} color={c} /> },
+  barra:      { label: "Barra",     icon: (c, s) => <MaterialCommunityIcons name="crosshairs-gps"    size={s} color={c} /> },
+  zones:      { label: "Zones",     icon: (c, s) => <MaterialCommunityIcons name="map-marker-radius"  size={s} color={c} /> },
+  forecast:   { label: "Fishy",     icon: (c, s) => <MaterialCommunityIcons name="weather-windy"     size={s} color={c} /> },
+  catchid:    { label: "Catch",     icon: (c, s) => <MaterialCommunityIcons name="camera-iris"        size={s} color={c} /> },
+  history:    { label: "History",   icon: (c, s) => <Feather                name="clock"              size={s} color={c} /> },
+  community:  { label: "Brain",     icon: (c, s) => <MaterialCommunityIcons name="brain"              size={s} color={c} /> },
+  smartlife:  { label: "SmartCam",  icon: (c, s) => <MaterialCommunityIcons name="cctv"               size={s} color={c} /> },
+  insta360:   { label: "360°",      icon: (c, s) => <MaterialCommunityIcons name="camera-wireless"     size={s} color={c} /> },
 };
 
-const COLS    = 6;                             // tabs per row
+const COLS    = 7;                             // tabs per row
 const W       = Dimensions.get("window").width;
 const SLOT_W  = W / COLS;
 
@@ -88,7 +90,7 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
   const routes  = state.routes;
 
   // Strip routes that are hidden from the tab bar (href: null in layout)
-  const HIDDEN = new Set(["fishy", "map", "demo", "insta360", "subscription"]);
+  const HIDDEN = new Set(["fishy", "map", "demo", "insta360", "subscription", "web"]);
   const visibleRoutes = routes.filter((r: any) => !HIDDEN.has(r.name));
 
   // Layout constants
