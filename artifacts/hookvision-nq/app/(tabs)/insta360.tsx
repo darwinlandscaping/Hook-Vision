@@ -270,10 +270,18 @@ export default function Insta360Screen() {
     activeBaseUrl, startSearch, startSearchAt, stopSearch, takeSnapshot,
   } = camera;
 
+  // ── Derive connection booleans before any hook that references them ──────
+  const isConnected    = status === "connected";
+  const isSearching    = status === "searching";
+  const isDisconnected = status === "disconnected";
+
   // ── Camera scanner — detects all reachable WiFi cameras in parallel ──────
   const scanner = useCameraScanner();
   const [selectedCamera, setSelectedCamera] = useState<DiscoveredCamera | null>(null);
   const autoConnectedRef = useRef(false);
+
+  // ── camType must be declared before handleSelectCamera which calls setCamType ──
+  const [camType,         setCamType]         = useState<CamType>("insta360");
 
   const handleSelectCamera = useCallback((cam: DiscoveredCamera) => {
     setSelectedCamera(cam);
@@ -317,7 +325,6 @@ export default function Insta360Screen() {
     handleSelectCamera(pick);
   }, [scanner.discovered, isConnected, isSearching, handleSelectCamera]);
 
-  const [camType,         setCamType]         = useState<CamType>("insta360");
   const [previewUri,      setPreviewUri]      = useState<string | null>(null);
   const [previewBase64,   setPreviewBase64]   = useState<string | null>(null);
   const [samsungGuide,    setSamsungGuide]     = useState(false);
@@ -334,10 +341,6 @@ export default function Insta360Screen() {
   const baseUrl = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
     : "";
-
-  const isConnected  = status === "connected";
-  const isSearching  = status === "searching";
-  const isDisconnected = status === "disconnected";
 
   // Status colour
   const statusColor =
@@ -478,6 +481,21 @@ export default function Insta360Screen() {
   }, [scanner.lastScanDone, scanner.discovered.length]);
 
   const isWeb = Platform.OS === "web";
+
+  // ── Web graceful degradation ───────────────────────────────────────────────
+  if (isWeb) {
+    return (
+      <View style={[styles.root, { paddingTop: insets.top, alignItems: "center", justifyContent: "center" }]}>
+        <MaterialCommunityIcons name="camera-wireless-outline" size={56} color={C.mute} />
+        <Text style={{ color: C.white, fontSize: 17, fontWeight: "700", marginTop: 16, textAlign: "center" }}>
+          WiFi Cam
+        </Text>
+        <Text style={{ color: C.dim, fontSize: 13, marginTop: 8, textAlign: "center", maxWidth: 280, lineHeight: 20 }}>
+          This feature requires the HookVision mobile app. Connect your phone to the camera's WiFi hotspot and open this tab in the app.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
