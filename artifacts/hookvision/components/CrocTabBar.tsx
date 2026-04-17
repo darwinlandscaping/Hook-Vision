@@ -55,6 +55,7 @@ const META: Record<string, { label: string; icon: (c: string, s: number) => Reac
   history:    { label: "History",   icon: (c, s) => <Feather                name="clock"              size={s} color={c} /> },
   community:  { label: "Brain",     icon: (c, s) => <MaterialCommunityIcons name="brain"              size={s} color={c} /> },
   smartlife:  { label: "SmartCam",  icon: (c, s) => <MaterialCommunityIcons name="cctv"               size={s} color={c} /> },
+  cameras:    { label: "360° Cams", icon: (c, s) => <MaterialCommunityIcons name="rotate-360"          size={s} color={c} /> },
   insta360:   { label: "360°",      icon: (c, s) => <MaterialCommunityIcons name="camera-wireless"     size={s} color={c} /> },
 };
 
