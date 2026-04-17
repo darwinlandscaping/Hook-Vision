@@ -70,10 +70,6 @@ function NativeTabLayout() {
         <Icon sf={{ default: "brain.head.profile", selected: "brain.head.profile" }} />
         <Label>Intel</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="web">
-        <Icon sf={{ default: "globe", selected: "globe" }} />
-        <Label>Web</Label>
-      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -287,19 +283,8 @@ function ClassicTabLayout() {
             ),
         }}
       />
-      <Tabs.Screen
-        name="web"
-        options={{
-          title: "Web",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="globe" tintColor={color} size={22} />
-            ) : (
-              <MaterialCommunityIcons name="web" size={22} color={color} />
-            ),
-        }}
-      />
-      {/* Hidden screen — accessible from Intel tab map button */}
+      {/* Hidden screens */}
+      <Tabs.Screen name="web" options={{ href: null }} />
       <Tabs.Screen name="map" options={{ href: null }} />
     </Tabs>
     </View>
