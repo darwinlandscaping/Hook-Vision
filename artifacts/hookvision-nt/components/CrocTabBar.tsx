@@ -54,9 +54,10 @@ const META: Record<string, { label: string; icon: (c: string, s: number) => Reac
   history:   { label: "History", icon: (c, s) => <Feather                name="clock"              size={s} color={c} /> },
   community: { label: "Brain",   icon: (c, s) => <MaterialCommunityIcons name="brain"              size={s} color={c} /> },
   insta360:  { label: "360°",    icon: (c, s) => <MaterialCommunityIcons name="camera-wireless"     size={s} color={c} /> },
+  smartlife: { label: "SmartCam", icon: (c, s) => <MaterialCommunityIcons name="cctv"              size={s} color={c} /> },
 };
 
-const COLS    = 6;                             // tabs per row
+const COLS    = 7;                             // tabs per row
 const W       = Dimensions.get("window").width;
 const SLOT_W  = W / COLS;
 
