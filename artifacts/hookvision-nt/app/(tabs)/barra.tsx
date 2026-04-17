@@ -618,6 +618,9 @@ export default function BarraScreen() {
       {/* ── MILLION DOLLAR FISH ── */}
       <MDFCard colors={colors} />
 
+      {/* ── DARWIN TIDE CARD ── */}
+      <DarwinTideCard nextTide={nextTide} colors={colors} />
+
       {/* ── AI TROPHY PREDICTOR ── */}
       <SectionTitle emoji="🎯" label="AI TROPHY PREDICTOR" sub="70cm+ fish · powered by 40yr NT data" color="#ff2200" />
       <BigRedButton onPress={predict} loading={loading} />
@@ -855,4 +858,23 @@ const styles = StyleSheet.create({
   factRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 12 },
   factEmoji: { fontSize: 18, marginTop: 1 },
   factText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  // Tide card
+  tideCardHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tideCardTitle: { flex: 1, fontSize: 13, fontFamily: "Inter_700Bold", letterSpacing: 0.4 },
+  tidePhaseBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20, borderWidth: 1 },
+  tidePhaseText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  tideCardBody: { flexDirection: "row", alignItems: "center", gap: 14 },
+  tideMainBlock: { flex: 1, gap: 3 },
+  tideTypeLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, textTransform: "uppercase" },
+  tideMainRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tideHeight: { fontSize: 32, fontFamily: "Oswald_700Bold", lineHeight: 36 },
+  tideTypePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
+  tideTypePillText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  tideTime: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  tideCountdownBlock: { alignItems: "center", gap: 2, paddingLeft: 14, borderLeftWidth: 1 },
+  tideCountdownLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
+  tideCountdownNum: { fontSize: 22, fontFamily: "Oswald_700Bold", lineHeight: 26 },
+  tideLoadingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tideLoadingText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  tideSource: { fontSize: 9, fontFamily: "Inter_400Regular", textAlign: "right" },
 });

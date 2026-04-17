@@ -130,7 +130,7 @@ export default function HomeScreen() {
     const ctrl    = new AbortController();
     const timer   = setTimeout(() => ctrl.abort(), 10_000);
 
-    fetch(`${baseUrl}/api/daily-conditions`, { signal: ctrl.signal })
+    fetch(`${baseUrl}/api/daily-conditions?region=nq`, { signal: ctrl.signal })
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
