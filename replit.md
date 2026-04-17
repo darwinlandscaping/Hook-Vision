@@ -127,6 +127,16 @@ Reason: this is the function actually called by `useLinking.js`; without the pat
 ### 2. `fork/getPathFromState-forks.js` + `fork/getStateFromPath-forks.js`
 Same `NODE_ENV` guard pattern — also patched to `if (true)`.
 
+### 4. `fork/getStateFromPath-forks.js` — `matchForEmptyPath` index fallback
+Added `leafNodes.find((config) => config.isIndex && !config.regex)` as a secondary
+match in `matchForEmptyPath` (after the primary `path === ''` check). Without this,
+NQ and NT's root `app/index.tsx` route occasionally fails to match when the Replit
+proxy baseUrl is active, causing the router to fall through to `+not-found`.
+
+### 5. `app/+not-found.tsx` (NQ + NT) — auto-redirect
+Both NQ and NT `+not-found.tsx` redirect to `/(tabs)/home` in 50ms on web as a
+bulletproof fallback for any remaining routing edge cases via the Replit proxy.
+
 ### 3. Metro `HmrServer.js`
 Path: `node_modules/.pnpm/metro@0.83.3/.../metro/src/HmrServer.js`
 Wrapped `this._registerEntryPoint(...)` with `.catch(() => {})` at line ~196.
