@@ -1279,7 +1279,7 @@ export default function LiveScreen() {
                       cam2.setIp(cam.ip);
                       cam2.setPath(cam.snapshotPath);
                       cam2.stopSearch();
-                      setTimeout(() => { cam2.startSearch(); setSlConnectedCam(cam); setSlConnecting(false); }, 200);
+                      setTimeout(() => { cam2.startSearch(); setSlConnectedCam(cam); setSlConnecting(false); setCam2Panel(false); }, 200);
                     }}
                     disabled={slConnecting}
                     style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#00d4aa22", borderRadius: 10, borderWidth: 1, borderColor: "#00d4aa66", paddingVertical: 10, opacity: slConnecting ? 0.5 : 1 }}
