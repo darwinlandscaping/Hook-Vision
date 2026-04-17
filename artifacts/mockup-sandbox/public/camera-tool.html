@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>HookVision · Camera Live Feed</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#0a1628;color:#fff;font-family:-apple-system,system-ui,sans-serif;padding:14px;min-height:100vh}
+h1{color:#ffd700;font-size:17px;font-weight:800;letter-spacing:0.3px;margin-bottom:3px}
+.sub{color:rgba(255,255,255,0.35);font-size:11px;margin-bottom:14px}
+.card{background:#0d1f3a;border-radius:12px;padding:13px 14px;border:1px solid #1a2f4a;margin-bottom:10px}
+.card.teal{border-color:rgba(0,212,170,0.45)}
+.card.blue{border-color:rgba(0,168,255,0.45)}
+.card.gold{border-color:rgba(255,215,0,0.35)}
+.card.red{border-color:rgba(255,68,0,0.45);background:rgba(255,68,0,0.1)}
+.card-title{font-weight:800;font-size:12px;margin-bottom:4px;letter-spacing:0.4px}
+.mute{color:rgba(255,255,255,0.35);font-size:10px;line-height:1.7}
+.mono{font-family:monospace}
+input{width:100%;background:#061018;border:1.5px solid #1a2f4a;border-radius:8px;color:#fff;padding:11px 13px;font-size:14px;font-family:monospace;outline:none;-webkit-appearance:none;margin-bottom:9px}
+input:focus{border-color:rgba(0,212,170,0.6)}
+.btn{width:100%;padding:14px;border-radius:11px;border:none;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:8px;letter-spacing:0.3px;-webkit-appearance:none;outline:none;transition:opacity 0.15s}
+.btn:active{opacity:0.75}
+.btn-teal{background:rgba(0,212,170,0.2);border:2px solid rgba(0,212,170,0.7)!important;color:#00d4aa;border:none}
+.btn-blue{background:rgba(0,168,255,0.18);border:1.5px solid rgba(0,168,255,0.55)!important;color:#00a8ff;border:none}
+.btn-gold{background:rgba(255,215,0,0.15);border:1.5px solid rgba(255,215,0,0.5)!important;color:#ffd700;border:none}
+.btn-mute{background:#1a2f4a;color:rgba(255,255,255,0.5);border:none}
+.btn-sm{padding:9px 14px;font-size:12px;border-radius:8px;font-weight:800}
+.row{display:flex;gap:8px;margin-bottom:8px}
+.row .btn{margin-bottom:0}
+#feed-wrap{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;margin-bottom:10px;position:relative;border:1.5px solid rgba(0,212,170,0.4)}
+#feed-img{width:100%;height:100%;object-fit:cover;display:block}
+.live-badge{position:absolute;top:8px;right:8px;display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.75);border-radius:5px;padding:3px 8px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#ff4400;animation:pulse 1s infinite}
+.live-txt{color:#ff4400;font-weight:800;font-size:9px}
+.conn-bar{display:flex;justify-content:space-between;align-items:center;background:#0d1f3a;border-radius:8px;padding:7px 11px;margin-bottom:10px;border:1px solid rgba(0,212,170,0.3)}
+.conn-ip{color:#00ffcc;font-family:monospace;font-size:11px;display:flex;align-items:center;gap:6px}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:#00d4aa;animation:pulse 1s infinite}
+.conn-stats{color:rgba(255,255,255,0.35);font-size:9px;display:flex;gap:10px;align-items:center}
+.stop-btn{color:#ff4400;font-weight:800;font-size:10px;cursor:pointer;background:none;border:none}
+.progress-wrap{width:100%;height:5px;background:#1a2f4a;border-radius:3px;overflow:hidden;margin-bottom:7px}
+.progress-bar{height:100%;background:#00ffcc;border-radius:3px;transition:width 0.35s}
+#log-box{background:#020c18;border-radius:9px;padding:9px 11px;min-height:72px;max-height:130px;overflow:hidden;margin-bottom:9px;border:1px solid #1a2f4a}
+.log-ok{color:#00ff88;font-family:monospace;font-size:10px;line-height:1.8}
+.log-miss{color:rgba(255,255,255,0.15);font-family:monospace;font-size:10px;line-height:1.8}
+.log-try{color:#ffd700;font-family:monospace;font-size:10px;line-height:1.8}
+.result-row{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #1a2f4a;align-items:flex-start}
+.result-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+.result-label{flex:1;color:rgba(255,255,255,0.35);font-size:10px}
+.result-sub{color:rgba(255,255,255,0.2);font-size:8px;margin-top:1px}
+.result-val{font-weight:800;font-size:10px;text-align:right;max-width:55%}
+.badge{display:inline-block;background:rgba(0,255,136,0.18);border:1px solid rgba(0,255,136,0.35);border-radius:5px;padding:2px 8px;color:#00ff88;font-weight:800;font-size:9px}
+.hotspot-note{background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:8px 11px;margin-bottom:9px}
+.notes-box{background:#020c18;border-radius:8px;padding:9px 11px;border:1px solid #1a2f4a;margin-top:8px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
+@keyframes think{from{width:0}to{width:100%}}
+@keyframes slide{0%{width:0;margin-left:0}50%{width:40%;margin-left:30%}100%{width:0;margin-left:100%}}
+input::placeholder{color:rgba(255,255,255,0.12)}
+</style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────── -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+  <div style="display:flex;align-items:center;gap:9px">
+    <div style="width:34px;height:34px;border-radius:9px;background:rgba(255,215,0,0.15);border:1.5px solid rgba(255,215,0,0.4);display:flex;align-items:center;justify-content:center;font-size:18px">🎯</div>
+    <div>
+      <h1>LIVE FEED TRIAL</h1>
+      <div class="sub">SmartLife Camera → AI Brain</div>
+    </div>
+  </div>
+  <div id="statusBadge" style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:7px;padding:4px 10px">
+    <div id="statusDot" style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3)"></div>
+    <span id="statusTxt" style="color:rgba(255,255,255,0.5);font-weight:800;font-size:10px">READY</span>
+  </div>
+</div>
+
+<!-- ── Hotspot note ──────────────────────────────────────────── -->
+<div class="hotspot-note" id="hotspotNote">
+  <div style="color:#ffd700;font-weight:800;font-size:11px;margin-bottom:4px">📶 MAKE SURE YOUR TABLET IS ON THE CAMERA'S WIFI</div>
+  <div class="mute">Connect your tablet to the SmartLife camera hotspot (SmartLife-XXXX) or the same home WiFi as the camera. Then tap <b style="color:#00ffcc">AUTO-SCAN</b>.</div>
+</div>
+
+<!-- ── Setup ─────────────────────────────────────────────────── -->
+<div class="card" id="setupPanel">
+  <div class="card-title" style="color:#00ffcc;margin-bottom:8px">CAMERA IP ADDRESS</div>
+  <input id="ipInput" value="192.168.4.1" placeholder="192.168.4.1" autocomplete="off" autocorrect="off" spellcheck="false" />
+  <div class="mute" style="margin-bottom:10px">Auto-tries: /snapshot.cgi → /cgi-bin/snapshot.cgi → /snap.jpg → /video0.jpg</div>
+  <button class="btn btn-teal" onclick="startScan()">🔍 AUTO-SCAN NETWORK</button>
+  <div class="row">
+    <button class="btn btn-blue btn-sm" onclick="connectManual()" style="flex:1">▶ Connect to IP Above</button>
+    <button class="btn btn-mute btn-sm" onclick="startTablet()" style="flex:1">📱 Tablet Camera</button>
+  </div>
+</div>
+
+<!-- ── Scan ───────────────────────────────────────────────────── -->
+<div class="card teal" id="scanPanel" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
+    <div class="card-title" style="color:#00ffcc">🔍 SCANNING FOR CAMERA…</div>
+    <button class="btn-sm btn-mute btn" onclick="stopScan()" style="width:auto;margin:0;padding:5px 11px;font-size:11px">■ STOP</button>
+  </div>
+  <div class="progress-wrap"><div class="progress-bar" id="pbar" style="width:0%"></div></div>
+  <div class="mute" id="scanPct" style="margin-bottom:8px">0% · scanning…</div>
+  <div id="log-box"><div id="log"></div></div>
+  <div class="mute">Make sure tablet WiFi is on the same network as the camera.</div>
+</div>
+
+<!-- ── Connecting ─────────────────────────────────────────────── -->
+<div class="card" id="connectingPanel" style="display:none;text-align:center;padding:20px">
+  <div style="font-size:24px;margin-bottom:7px">📡</div>
+  <div class="card-title" style="color:#ffd700">Connecting to camera…</div>
+  <div class="mute" id="connectingTxt" style="margin-top:4px">Trying endpoints…</div>
+  <div class="progress-wrap" style="margin-top:12px;width:70%;margin-left:auto;margin-right:auto"><div style="height:100%;border-radius:3px;background:#ffd700;animation:slide 1.5s ease-in-out infinite"></div></div>
+</div>
+
+<!-- ── Live ───────────────────────────────────────────────────── -->
+<div id="livePanel" style="display:none">
+  <div class="conn-bar">
+    <div class="conn-ip"><div class="conn-dot"></div><span id="connLabel">camera</span></div>
+    <div class="conn-stats">
+      <span id="latLabel">—ms</span>
+      <span id="fpsLabel">0fps</span>
+      <button class="stop-btn" onclick="stopLive()">■ STOP</button>
+    </div>
+  </div>
+  <div id="feed-wrap">
+    <img id="feed-img" src="" alt="" onerror="onImgErr()" />
+    <video id="feed-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:none"></video>
+    <div class="live-badge"><div class="live-dot"></div><span class="live-txt">LIVE</span></div>
+  </div>
+  <div class="row">
+    <button class="btn btn-blue" onclick="capture()" style="flex:1;padding:13px">📸 CAPTURE</button>
+    <button class="btn btn-teal" onclick="sendToBrain()" id="brainBtn" style="flex:1;padding:13px">🧠 AI BRAIN</button>
+  </div>
+</div>
+
+<!-- ── Captured ───────────────────────────────────────────────── -->
+<div id="capturedPanel" style="display:none" class="card">
+  <div style="display:flex;gap:9px;align-items:flex-start">
+    <div style="flex-shrink:0;width:85px;border-radius:7px;overflow:hidden;border:1px solid #1a2f4a">
+      <img id="capThumb" src="" alt="" style="width:100%;display:block" />
+    </div>
+    <div style="flex:1">
+      <div style="color:rgba(255,255,255,0.8);font-weight:700;font-size:12px;margin-bottom:2px">FRAME CAPTURED</div>
+      <div class="mute" id="capTime" style="margin-bottom:8px"></div>
+      <button class="btn btn-gold btn-sm" onclick="sendToBrain()" style="width:auto;padding:8px 14px">🧠 Analyse Frame</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Error ──────────────────────────────────────────────────── -->
+<div class="card red" id="errorPanel" style="display:none">
+  <div class="card-title" style="color:#ff4400;margin-bottom:6px">⚠ CAMERA NOT FOUND</div>
+  <div class="mute" id="errTxt" style="margin-bottom:10px"></div>
+  <div style="background:#020c18;border-radius:8px;padding:9px 11px;margin-bottom:10px;border:1px solid #1a2f4a">
+    <div style="color:#ffd700;font-weight:800;font-size:10px;margin-bottom:6px">CHECKLIST</div>
+    <div class="mute">• Tablet WiFi must be on <b style="color:#00ffcc">the same network as the camera</b> (SmartLife hotspot, or home WiFi)</div>
+    <div class="mute">• Camera's hotspot IP is usually <code style="color:#00ffcc">192.168.4.1</code></div>
+    <div class="mute">• Home network IP: check SmartLife app → Device → "…" → Device Info</div>
+    <div class="mute">• SmartLife hotspot password is usually <b style="color:#ffd700">12345678</b></div>
+  </div>
+  <div class="row">
+    <button class="btn btn-mute btn-sm" onclick="reset()" style="flex:1">← Back</button>
+    <button class="btn btn-teal btn-sm" onclick="startScan()" style="flex:1">🔍 Scan Again</button>
+  </div>
+</div>
+
+<!-- ── AI Brain ───────────────────────────────────────────────── -->
+<div class="card teal" id="brainPanel" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:18px">🧠</span>
+      <div>
+        <div class="card-title" style="color:#00d4aa">AI BRAIN ANALYSER</div>
+        <div class="mute">GPT-4.1 Vision · HookVision Intelligence</div>
+      </div>
+    </div>
+    <div class="badge" id="confBadge" style="display:none"></div>
+  </div>
+
+  <div id="brainThink" style="text-align:center;padding:16px 0;display:none">
+    <div style="font-size:26px;margin-bottom:6px">🧠</div>
+    <div style="color:#00d4aa;font-weight:800;font-size:13px" id="thinkTxt">Analysing frame…</div>
+    <div class="mute" style="margin-top:3px">Vision model · sonar cross-ref · croc scan</div>
+    <div class="progress-wrap" style="width:70%;margin:12px auto 0"><div style="height:100%;background:#00d4aa;border-radius:3px;animation:think 1.8s ease-in-out forwards"></div></div>
+  </div>
+
+  <div id="brainResults" style="display:none"></div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const IPS = [
+  '192.168.4.1','192.168.4.2','192.168.4.3',
+  '192.168.10.1','192.168.1.1','192.168.1.100','192.168.1.101','192.168.1.102',
+  '192.168.0.1','192.168.0.100','192.168.100.1',
+  '10.0.0.1','10.0.0.2','10.10.10.1','172.16.0.1'
+];
+const SUBS   = ['192.168.4','192.168.1','192.168.0','10.0.0'];
+const SUFX   = [2,3,4,5,6,7,8,9,10,11,12,15,20,30,50,99,100,101,102,103,104,105,110,120,150,200,254];
+const EPS    = ['/snapshot.cgi','/cgi-bin/snapshot.cgi','/snap.jpg','/video0.jpg','/Streaming/channels/1/picture','/image.jpg'];
+
+const BRAIN = [
+  {fish:'Barramundi school · 3–5 fish · 2–4kg avg',croc:'CLEAR · no thermal signature',cast:'CAST LEFT 25°, 12m — fish busting surface',depth:'4.2m · soft mud bottom',clarity:'TANNIN/MURKY · 0.4m vis',activity:'HIGH — bait ball near left bank',conf:87,notes:'Osprey diving confirms fish. Cast to shadow edge at the snag. Early morning — top bite window.'},
+  {fish:'2 Barramundi arches · 6m depth',croc:'LOW RISK · movement 40m upstream',cast:'HOLD — fish moving toward you',depth:'6.1m · rocky structure',clarity:'CLEAR · 1.2m vis',activity:'MODERATE — fish tight to structure',conf:74,notes:'Fish pinned to rocky bottom. Slow weighted jig on structure. Wait for them to rise.'},
+  {fish:'Large single arch · est. 60–80cm barra',croc:'⚠ CAUTION — 15m, bank left',cast:'CAST RIGHT 30°, away from croc',depth:'3.8m · sandy flat',clarity:'MURKY · run-off tannin',activity:'HIGH — golden hour feeding window',conf:91,notes:'Sunset bite window active. Big fish working the flat edge. Stay away from left bank — croc confirmed.'},
+  {fish:'No arches · surface bust 3 min ago',croc:'CLEAR',cast:'WAIT — fish regrouping 4m below',depth:'5.5m',clarity:'CLEAR · 1.0m vis',activity:'LOW · between windows',conf:62,notes:'Bust window has closed. Fish regrouping below surface. Hold 5–10 min, they will rise again.'},
+  {fish:'Catfish school + 1 barra silhouette',croc:'CLEAR',cast:'CAST MID-CHANNEL, slow drift',depth:'3.1m · gravel flat',clarity:'SLIGHTLY MURKY · 0.6m vis',activity:'MODERATE — dawn patrol active',conf:78,notes:'Barra sitting below catfish school. Weighted lure through the school bottom edge. Tide pushing in — good timing.'},
+];
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let poll=null, abort=false, brainIdx=0, fps=0, fc=0, liveMode='ip', liveStream=null, liveIp='', liveEp='';
+setInterval(()=>{ fps=fc; fc=0; el('fpsLabel').textContent=fps+'fps'; }, 1000);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const el = id => document.getElementById(id);
+const show = (...ids) => ids.forEach(id => { const e=el(id); if(e) e.style.display='block'; });
+const hide = (...ids) => ids.forEach(id => { const e=el(id); if(e) e.style.display='none'; });
+const setStatus = (txt, col) => {
+  el('statusTxt').textContent=txt; el('statusTxt').style.color=col;
+  el('statusDot').style.background=col;
+};
+
+function probe(ip, ep, ms=2200) {
+  return new Promise(resolve => {
+    const img = new Image(); let d=false;
+    const fin = v => { if(!d){d=true;resolve(v);} };
+    const t = setTimeout(()=>fin(false), ms);
+    img.onload  = () => { clearTimeout(t); fin(true); };
+    img.onerror = () => { clearTimeout(t); fin(false); };
+    img.src = 'http://'+ip+ep+'?_t='+Date.now();
+  });
+}
+
+function addLog(txt, cls) {
+  const log = el('log');
+  const d = document.createElement('div');
+  d.className = cls; d.textContent = txt;
+  log.appendChild(d);
+  if (log.children.length > 9) log.removeChild(log.children[0]);
+}
+
+// ── Scan ──────────────────────────────────────────────────────────────────────
+async function startScan() {
+  abort = false;
+  hide('setupPanel','errorPanel','connectingPanel','livePanel','capturedPanel','brainPanel','hotspotNote');
+  show('scanPanel');
+  el('log').innerHTML = '';
+  setStatus('SCANNING…', '#ffd700');
+
+  const ips = [...IPS];
+  for (const sub of SUBS) for (const s of SUFX) { const ip=sub+'.'+s; if(!ips.includes(ip)) ips.push(ip); }
+
+  for (let i=0; i<ips.length; i++) {
+    if (abort) return;
+    const ip = ips[i];
+    const pct = Math.round(i/ips.length*100);
+    el('pbar').style.width = pct+'%';
+    el('scanPct').textContent = pct+'% · probing '+ip+'…';
+    addLog('Probing '+ip+'…', 'log-try');
+
+    const hits = await Promise.all(EPS.slice(0,3).map(ep => probe(ip,ep,1800).then(ok=>({ep,ok}))));
+    const found = hits.find(h=>h.ok);
+    if (found) {
+      addLog('✓ FOUND: '+ip+found.ep, 'log-ok');
+      hide('scanPanel');
+      connect(ip, found.ep);
+      return;
+    }
+    addLog('✗ '+ip+' — no camera', 'log-miss');
+  }
+  hide('scanPanel');
+  showError('No SmartLife camera found on this network. Is the tablet WiFi connected to the same network as the camera?');
+}
+
+function stopScan() { abort=true; reset(); }
+
+// ── Connect ───────────────────────────────────────────────────────────────────
+function connectManual() {
+  const ip = el('ipInput').value.trim() || '192.168.4.1';
+  connect(ip, EPS[0]);
+}
+
+function connect(ip, firstEp) {
+  liveIp = ip; liveEp = firstEp; liveMode = 'ip';
+  hide('setupPanel','scanPanel','errorPanel','hotspotNote');
+  show('connectingPanel');
+  el('connectingTxt').textContent = 'Trying '+ip+firstEp+'…';
+  setStatus('CONNECTING…','#ffd700');
+
+  const t0 = Date.now();
+  tryEndpoint(ip, 0, () => {
+    el('latLabel').textContent = (Date.now()-t0)+'ms';
+    hide('connectingPanel');
+    show('livePanel');
+    el('connLabel').textContent = ip+liveEp;
+    setStatus('LIVE', '#00d4aa');
+    startPoll('http://'+ip+liveEp);
+  }, () => {
+    hide('connectingPanel');
+    showError('Reached '+ip+' but no snapshot endpoint worked. Camera might use a different protocol. Try a different IP.');
+  });
+}
+
+function tryEndpoint(ip, idx, onOk, onFail) {
+  if (idx >= EPS.length) { onFail(); return; }
+  const ep = EPS[idx];
+  el('connectingTxt').textContent = 'Trying '+ep+'…';
+  probe(ip, ep, 2500).then(ok => {
+    if (ok) { liveEp = ep; onOk(); }
+    else tryEndpoint(ip, idx+1, onOk, onFail);
+  });
+}
+
+function startPoll(baseUrl) {
+  const img = el('feed-img');
+  img.style.display = 'block';
+  el('feed-video').style.display = 'none';
+  if (poll) clearInterval(poll);
+  poll = setInterval(() => { img.src = baseUrl+'?_t='+Date.now(); fc++; }, 500);
+}
+
+function onImgErr() { /* silent — camera might momentarily glitch */ }
+
+// ── Tablet camera ─────────────────────────────────────────────────────────────
+async function startTablet() {
+  liveMode = 'tablet';
+  hide('setupPanel','errorPanel','hotspotNote');
+  show('connectingPanel');
+  el('connectingTxt').textContent = 'Requesting camera access…';
+  setStatus('CONNECTING…','#ffd700');
+  try {
+    liveStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280}},audio:false});
+    const vid = el('feed-video');
+    vid.srcObject = liveStream; vid.play();
+    el('feed-img').style.display = 'none';
+    vid.style.display = 'block';
+    hide('connectingPanel');
+    show('livePanel');
+    el('connLabel').textContent = 'tablet camera';
+    setStatus('LIVE','#00d4aa');
+    poll = setInterval(()=>fc++, 250);
+  } catch(e) {
+    hide('connectingPanel');
+    showError('Camera permission denied: '+e.message+'. Please allow camera access and try again.');
+  }
+}
+
+// ── Stop / Reset ──────────────────────────────────────────────────────────────
+function stopLive() {
+  if (poll) clearInterval(poll);
+  if (liveStream) liveStream.getTracks().forEach(t=>t.stop()); liveStream=null;
+  el('feed-img').src='';
+  hide('livePanel','capturedPanel','brainPanel');
+  reset();
+}
+
+function reset() {
+  abort=true;
+  hide('scanPanel','connectingPanel','errorPanel','livePanel','capturedPanel','brainPanel');
+  show('setupPanel','hotspotNote');
+  setStatus('READY','rgba(255,255,255,0.35)');
+}
+
+// ── Capture ───────────────────────────────────────────────────────────────────
+function capture() {
+  let src = '';
+  if (liveMode==='tablet') {
+    const vid=el('feed-video');
+    const c=document.createElement('canvas');
+    c.width=vid.videoWidth||640; c.height=vid.videoHeight||480;
+    c.getContext('2d').drawImage(vid,0,0);
+    src=c.toDataURL('image/jpeg',0.85);
+  } else {
+    src=el('feed-img').src;
+  }
+  if (!src) return;
+  el('capThumb').src=src;
+  el('capTime').textContent=new Date().toLocaleTimeString();
+  show('capturedPanel');
+}
+
+// ── AI Brain ──────────────────────────────────────────────────────────────────
+function sendToBrain() {
+  el('brainBtn').disabled=true;
+  show('brainPanel');
+  hide('brainResults');
+  show('brainThink');
+  el('confBadge').style.display='none';
+  let dots='.';
+  const dt=setInterval(()=>{ dots=dots.length>=3?'.':dots+'.'; el('thinkTxt').textContent='Analysing frame'+dots; },400);
+  // Re-trigger animation
+  const bar=el('brainThink').querySelector('div:last-child div');
+  if(bar){bar.style.animation='none';void bar.offsetWidth;bar.style.animation='think 1.8s ease-in-out forwards';}
+
+  setTimeout(()=>{
+    clearInterval(dt);
+    const b=BRAIN[brainIdx%BRAIN.length]; brainIdx++;
+    hide('brainThink');
+    show('brainResults');
+    el('confBadge').style.display='inline-block';
+    el('confBadge').textContent=b.conf+'% CONFIDENCE';
+    el('brainResults').innerHTML =
+      row('🐟','Fish Presence','sonar arches + surface bust',b.fish,'#00ff88')+
+      row('🦊','Croc Risk','thermal edge + movement',b.croc, b.croc.includes('⚠')?'#ff4400':'#00ff88')+
+      row('🎣','Best Cast Zone','sonar → surface fusion',b.cast,'#ffd700')+
+      row('📏','Water Depth','sonar OCR + contour',b.depth,'#00a8ff')+
+      row('💧','Clarity','colour analysis',b.clarity,'#00d4aa')+
+      row('⚡','Bite Activity','multi-signal score',b.activity,'#ff9900')+
+      '<div class="notes-box"><div style="color:#ffd700;font-weight:800;font-size:9px;margin-bottom:3px">📋 FIELD NOTES</div><div style="color:rgba(255,255,255,0.8);font-size:11px;line-height:1.6">'+b.notes+'</div></div>'+
+      '<button class="btn btn-teal" onclick="sendToBrain()" style="margin-top:9px;padding:11px">🔄 RE-ANALYSE NEXT FRAME</button>';
+    el('brainBtn').disabled=false;
+  }, 1700+Math.random()*900);
+}
+
+function row(icon,label,sub,val,col) {
+  return '<div class="result-row"><div class="result-icon">'+icon+'</div><div style="flex:1"><div class="result-label">'+label+'</div><div class="result-sub">'+sub+'</div></div><div class="result-val" style="color:'+col+'">'+val+'</div></div>';
+}
+
+// ── Error ─────────────────────────────────────────────────────────────────────
+function showError(msg) {
+  el('errTxt').textContent=msg;
+  hide('scanPanel','connectingPanel','setupPanel');
+  show('errorPanel');
+  setStatus('ERROR','#ff4400');
+}
+</script>
+</body>
+</html>

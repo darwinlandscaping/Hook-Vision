@@ -413,8 +413,8 @@ export default function LiveTrial() {
 
           <ModeBtn
             icon="⬇"
-            title="OPTION 2 — DOWNLOAD LOCAL TOOL  (Connects directly to SmartLife)"
-            desc="Downloads a single HTML file. Open it on your tablet — it runs on HTTP so it CAN connect directly to your camera at 192.168.4.1. Full scanner + live feed + AI brain, no internet needed."
+            title="OPTION 2 — OPEN LOCAL TOOL ON TABLET  (Connects directly to SmartLife)"
+            desc="Scan the QR code with your tablet — opens a standalone tool that bypasses HTTPS restrictions and connects directly to your camera at 192.168.4.1."
             color={C.sl}
             onClick={() => setMode("download")}
           />
@@ -430,30 +430,50 @@ export default function LiveTrial() {
       )}
 
       {/* ── Download panel ── */}
-      {mode === "download" && !isLive && (
-        <div style={{ background:C.card, borderRadius:10, padding:"13px 14px", border:`1.5px solid ${C.sl}55` }}>
-          <div style={{ color:C.sl, fontWeight:800, fontSize:12, marginBottom:8 }}>⬇ LOCAL CAMERA TOOL</div>
-          <div style={{ color:C.mute, fontSize:10, lineHeight:1.7, marginBottom:10 }}>
-            1. Tap <b style={{color:C.sl}}>DOWNLOAD</b> — saves <code style={{color:C.dim}}>hookvision-camera-trial.html</code> to your tablet<br/>
-            2. Open your tablet's <b style={{color:C.dim}}>Files</b> app → tap the file → opens in browser<br/>
-            3. It runs on <b style={{color:C.dim}}>file://</b> — no HTTPS, so it CAN talk directly to <code style={{color:C.sl}}>192.168.4.1</code><br/>
-            4. Tap <b style={{color:C.sl}}>AUTO-SCAN NETWORK</b> inside the tool — your camera connects instantly
-          </div>
-          {!downloaded ? (
-            <button onClick={downloadStandalone} style={{ width:"100%", height:48, borderRadius:10, cursor:"pointer", fontWeight:800, fontSize:14, outline:"none", background:C.sl+"25", border:`2px solid ${C.sl}88`, color:C.sl, marginBottom:8 }}>
-              ⬇ DOWNLOAD LOCAL TOOL
-            </button>
-          ) : (
-            <div style={{ background:C.green+"18", border:`1px solid ${C.green}55`, borderRadius:9, padding:"10px 12px", marginBottom:8, textAlign:"center" }}>
-              <div style={{ color:C.green, fontWeight:800, fontSize:12, marginBottom:2 }}>✓ DOWNLOADED!</div>
-              <div style={{ color:C.mute, fontSize:10 }}>Find <code>hookvision-camera-trial.html</code> in your Downloads folder → tap to open</div>
+      {mode === "download" && !isLive && (() => {
+        const toolUrl = `https://898f5a0e-eba6-4a78-b40d-d78f0539d56e-00-o6803yqna0ig.spock.replit.dev/__mockup/camera-tool.html`;
+        const qr = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=00ffcc&bgcolor=0d1f3a&data=${encodeURIComponent(toolUrl)}`;
+        return (
+          <div style={{ background:C.card, borderRadius:10, padding:"13px 14px", border:`1.5px solid ${C.sl}55` }}>
+            <div style={{ color:C.sl, fontWeight:800, fontSize:12, marginBottom:8 }}>📲 OPEN CAMERA TOOL ON YOUR TABLET</div>
+
+            {/* QR + instructions side by side */}
+            <div style={{ display:"flex", gap:12, alignItems:"flex-start", marginBottom:12 }}>
+              <div style={{ flexShrink:0, background:"#061018", padding:6, borderRadius:8, border:`1px solid ${C.border}` }}>
+                <img src={qr} width={110} height={110} alt="QR" style={{ display:"block", borderRadius:4 }} />
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ color:C.dim, fontWeight:800, fontSize:11, marginBottom:5 }}>Scan this QR with your tablet</div>
+                <div style={{ color:C.mute, fontSize:9, lineHeight:1.8 }}>
+                  1. Open your tablet camera → point at QR<br/>
+                  2. Tap the link that appears<br/>
+                  3. Tap <b style={{color:C.sl}}>AUTO-SCAN NETWORK</b><br/>
+                  4. Camera connects automatically ✓
+                </div>
+              </div>
             </div>
-          )}
-          <button onClick={() => setMode("choose")} style={{ width:"100%", height:36, borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:11, outline:"none", background:"transparent", border:`1px solid ${C.border}`, color:C.mute }}>
-            ← Back to options
-          </button>
-        </div>
-      )}
+
+            {/* URL display */}
+            <div style={{ background:"#061018", borderRadius:8, padding:"9px 11px", border:`1px solid ${C.border}`, marginBottom:10 }}>
+              <div style={{ color:C.mute, fontSize:9, marginBottom:3 }}>OR OPEN THIS URL ON YOUR TABLET:</div>
+              <div style={{ color:C.sl, fontFamily:"monospace", fontSize:9, lineHeight:1.5, wordBreak:"break-all" }}>{toolUrl}</div>
+            </div>
+
+            <div style={{ background:C.gold+"12", border:`1px solid ${C.gold}33`, borderRadius:8, padding:"8px 10px", marginBottom:10 }}>
+              <div style={{ color:C.gold, fontSize:9, lineHeight:1.7 }}>
+                <b>Why this works:</b> The tool opens in your tablet's browser directly — no HTTPS restrictions — so it can connect to your SmartLife camera at <code style={{color:C.sl}}>192.168.4.1</code>. Make sure the tablet WiFi is on the same network as the camera first.
+              </div>
+            </div>
+
+            <button onClick={downloadStandalone} style={{ width:"100%", height:42, borderRadius:9, cursor:"pointer", fontWeight:800, fontSize:12, outline:"none", background:"rgba(255,255,255,0.06)", border:`1px solid ${C.border}`, color:C.mute, marginBottom:8 }}>
+              {downloaded ? "✓ Downloaded — find it in Downloads folder" : "⬇ Also available as download (for offline use)"}
+            </button>
+            <button onClick={() => setMode("choose")} style={{ width:"100%", height:36, borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:11, outline:"none", background:"transparent", border:`1px solid ${C.border}`, color:C.mute }}>
+              ← Back to options
+            </button>
+          </div>
+        );
+      })()}
 
       {/* ── Cloud URL panel ── */}
       {mode === "cloudurl" && !isLive && (
