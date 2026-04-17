@@ -103,7 +103,7 @@ function buildSpeech(a: FishAnalysis, character: NarratorCharacter): string {
       return `${count === 1 ? "One unit" : `${count} fish ya mug`} — ${nick}, ${a.depth}, ${a.distance}. I'm tellin' ya deadset.${lureNote} Get in there.`;
     case "ATTENBOROUGH":
       if (count === 0) return "The ancient waters yield nothing to our instruments at this moment. We must seek them elsewhere.";
-      return `Here, in the remarkable Queensland Gulf waters, ${count === 1 ? "a solitary" : `${count}`} ${nick} ${count === 1 ? "rests" : "rest"} at ${a.depth}.${lureNote}`;
+      return `Here, in the remarkable Kimberley waters, ${count === 1 ? "a solitary" : `${count}`} ${nick} ${count === 1 ? "rests" : "rest"} at ${a.depth}.${lureNote}`;
     case "WIFE":
       if (count === 0) return "Nothing on the sonar. Honestly. I told you to move the boat twenty minutes ago. The gutters still need cleaning when you get home.";
       return `Okay fine — ${count === 1 ? "there's one" : `there are ${count} fish`} showing, ${nick} at ${a.depth}. Don't stuff it up.${lureNote ? ` And ${lureNote.trim()}` : ""} You better bring something home.`;
@@ -287,6 +287,7 @@ export default function LiveScreen() {
   const [scanCount, setScanCount]       = useState(0);
   const [polarOn, setPolarOn]           = useState(true);   // polarised-lens filter
   const [polarising, setPolarising]     = useState(false);  // filter in progress
+  const [feedView, setFeedView]         = useState<"camera" | "visual">("camera"); // full-screen feed toggle
 
   const nativeCamRef = useRef<any>(null);
   const webCamRef    = useRef<any>(null);
@@ -1232,6 +1233,7 @@ export default function LiveScreen() {
               contentContainerStyle={{ gap: 12, paddingBottom: 12 }}
               showsVerticalScrollIndicator={false}
             >
+              {/* Header */}
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <MaterialCommunityIcons name="cctv" size={20} color="#00d4aa" />
@@ -1243,6 +1245,8 @@ export default function LiveScreen() {
                   <Feather name="x" size={18} color="#ffffff88" />
                 </TouchableOpacity>
               </View>
+
+              {/* Status row */}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 {cam2Connected && slConnectedCam ? (
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#00d4aa" }} />
@@ -1261,13 +1265,21 @@ export default function LiveScreen() {
                     : "No SmartLife cameras detected"}
                 </Text>
               </View>
+
+              {/* Discovered cameras list */}
               {slScanner.discovered.filter(c => c.brand === "SmartLife").map((cam) => (
-                <View key={cam.id} style={{ backgroundColor: "#00d4aa0a", borderRadius: 10, borderWidth: 1, borderColor: "#00d4aa33", padding: 12, gap: 8 }}>
+                <View key={cam.id} style={{
+                  backgroundColor: "#00d4aa0a",
+                  borderRadius: 10, borderWidth: 1, borderColor: "#00d4aa33",
+                  padding: 12, gap: 8,
+                }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                     <MaterialCommunityIcons name="cctv" size={18} color="#00d4aa" />
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>{cam.model}</Text>
-                      <Text style={{ color: "#ffffff88", fontSize: 11 }}>{cam.ip}{cam.snapshotPath} · {cam.responseMs}ms</Text>
+                      <Text style={{ color: "#ffffff88", fontSize: 11 }}>
+                        {cam.ip}{cam.snapshotPath} · {cam.responseMs}ms
+                      </Text>
                     </View>
                     <View style={{ backgroundColor: "#00d4aa22", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
                       <Text style={{ color: "#00d4aa", fontSize: 10, fontWeight: "700" }}>LIVE</Text>
@@ -1279,48 +1291,95 @@ export default function LiveScreen() {
                       cam2.setIp(cam.ip);
                       cam2.setPath(cam.snapshotPath);
                       cam2.stopSearch();
-                      setTimeout(() => { cam2.startSearch(); setSlConnectedCam(cam); setSlConnecting(false); setCam2Panel(false); }, 200);
+                      setTimeout(() => {
+                        cam2.startSearch();
+                        setSlConnectedCam(cam);
+                        setSlConnecting(false);
+                        setCam2Panel(false);
+                      }, 200);
                     }}
                     disabled={slConnecting}
-                    style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#00d4aa22", borderRadius: 10, borderWidth: 1, borderColor: "#00d4aa66", paddingVertical: 10, opacity: slConnecting ? 0.5 : 1 }}
+                    style={{
+                      flexDirection: "row", alignItems: "center", justifyContent: "center",
+                      gap: 8, backgroundColor: "#00d4aa22", borderRadius: 10,
+                      borderWidth: 1, borderColor: "#00d4aa66", paddingVertical: 10,
+                      opacity: slConnecting ? 0.5 : 1,
+                    }}
                     activeOpacity={0.8}
                   >
                     <MaterialCommunityIcons name="link-variant" size={16} color="#00d4aa" />
-                    <Text style={{ color: "#00d4aa", fontWeight: "700", fontSize: 13 }}>{slConnecting ? "Connecting…" : "Auto-Connect to Live Tab"}</Text>
+                    <Text style={{ color: "#00d4aa", fontWeight: "700", fontSize: 13 }}>
+                      {slConnecting ? "Connecting…" : "Auto-Connect to Live Tab"}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ))}
+
+              {/* Rescan button */}
               <TouchableOpacity
                 onPress={() => { slScanner.clear(); slScanner.scan("SmartLife"); }}
                 disabled={slScanner.scanning}
-                style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#ffffff0f", borderRadius: 10, borderWidth: 1, borderColor: "#ffffff22", paddingVertical: 10, opacity: slScanner.scanning ? 0.5 : 1 }}
+                style={{
+                  flexDirection: "row", alignItems: "center", justifyContent: "center",
+                  gap: 8, backgroundColor: "#ffffff0f", borderRadius: 10,
+                  borderWidth: 1, borderColor: "#ffffff22", paddingVertical: 10,
+                  opacity: slScanner.scanning ? 0.5 : 1,
+                }}
                 activeOpacity={0.8}
               >
                 <Feather name="refresh-cw" size={14} color="#ffffff88" />
-                <Text style={{ color: "#ffffff88", fontWeight: "600", fontSize: 13 }}>{slScanner.scanning ? "Scanning…" : "Rescan WiFi"}</Text>
+                <Text style={{ color: "#ffffff88", fontWeight: "600", fontSize: 13 }}>
+                  {slScanner.scanning ? "Scanning…" : "Rescan WiFi"}
+                </Text>
               </TouchableOpacity>
+
+              {/* Disconnect button when connected */}
               {cam2Connected && slConnectedCam && (
                 <TouchableOpacity
                   onPress={() => { cam2.stopSearch(); setSlConnectedCam(null); }}
-                  style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#ff440011", borderRadius: 10, borderWidth: 1, borderColor: "#ff440044", paddingVertical: 10 }}
+                  style={{
+                    flexDirection: "row", alignItems: "center", justifyContent: "center",
+                    gap: 8, backgroundColor: "#ff440011", borderRadius: 10,
+                    borderWidth: 1, borderColor: "#ff440044", paddingVertical: 10,
+                  }}
                   activeOpacity={0.8}
                 >
                   <Feather name="square" size={14} color="#ff4400" />
                   <Text style={{ color: "#ff4400", fontWeight: "600", fontSize: 13 }}>Disconnect</Text>
                 </TouchableOpacity>
               )}
+
+              {/* Live preview thumbnail */}
               {cam2Connected && slConnectedCam && (
                 <View style={{ borderRadius: 10, overflow: "hidden", aspectRatio: 16 / 9 }}>
-                  <Image source={{ uri: `http://${cam2.ip}${cam2.path}?t=${cam2.tick}` }} style={{ width: "100%", height: "100%" }} resizeMode="cover" onLoad={cam2.onPreviewLoad} onError={cam2.onPreviewError} />
-                  <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#00000066", paddingHorizontal: 8, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Image
+                    source={{ uri: `http://${cam2.ip}${cam2.path}?t=${cam2.tick}` }}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                    onLoad={cam2.onPreviewLoad}
+                    onError={cam2.onPreviewError}
+                  />
+                  <View style={{
+                    position: "absolute", bottom: 0, left: 0, right: 0,
+                    backgroundColor: "#00000066", paddingHorizontal: 8, paddingVertical: 4,
+                    flexDirection: "row", alignItems: "center", gap: 6,
+                  }}>
                     <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#00d4aa" }} />
-                    <Text style={{ color: "#00d4aacc", fontSize: 10, fontWeight: "600" }}>SMARTLIFE LIVE · frame {cam2.tick}</Text>
-                    <Text style={{ color: "#ffffff66", fontSize: 10, marginLeft: "auto" }}>Tap SCAN to analyse</Text>
+                    <Text style={{ color: "#00d4aacc", fontSize: 10, fontWeight: "600" }}>
+                      SMARTLIFE LIVE · frame {cam2.tick}
+                    </Text>
+                    <Text style={{ color: "#ffffff66", fontSize: 10, marginLeft: "auto" }}>
+                      Tap SCAN to analyse
+                    </Text>
                   </View>
                 </View>
               )}
+
+              {/* Setup guide */}
               <View style={{ backgroundColor: "#ffffff0a", borderRadius: 10, padding: 12, gap: 6 }}>
-                <Text style={{ color: "#00d4aa", fontSize: 11, fontWeight: "700", letterSpacing: 1 }}>SETUP GUIDE</Text>
+                <Text style={{ color: "#00d4aa", fontSize: 11, fontWeight: "700", letterSpacing: 1 }}>
+                  SETUP GUIDE
+                </Text>
                 <Text style={{ color: "#ffffffbb", fontSize: 12, lineHeight: 18 }}>
                   1. Open SmartLife app → tap your camera → Settings{"\n"}
                   2. Enable "Local Recording" or note the camera IP{"\n"}
@@ -1611,6 +1670,157 @@ export default function LiveScreen() {
                 : "Point at sonar — tap to scan"}
           </Text>
         </View>
+
+        {/* ── AI VISUAL FEED full-screen overlay ─────────────────────────────── */}
+        {feedView === "visual" && (
+          <View style={[StyleSheet.absoluteFill, styles.visualFeedBg]}>
+            {/* Visual feed top label */}
+            <View style={[styles.visualFeedHeader, { paddingTop: (isNative ? insets.top : topPad) + 10 }]}>
+              <SonarPulse size={10} active={scanning} />
+              <Text style={styles.visualFeedTitle}>📡 AI VISUAL FEED</Text>
+              <TouchableOpacity onPress={() => setFeedView("camera")} style={styles.visualFeedClose}>
+                <Feather name="camera" size={13} color="#00d4aacc" />
+                <Text style={styles.visualFeedCloseText}>CAMERA</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* No result yet — idle state */}
+            {!result && !scanning && (
+              <View style={styles.visualFeedIdle}>
+                <MaterialCommunityIcons name="fish" size={72} color="#00d4aa18" />
+                <Text style={styles.visualFeedIdleText}>
+                  {"Tap ● SCAN below\nto see AI analysis here"}
+                </Text>
+              </View>
+            )}
+
+            {/* Scanning spinner */}
+            {scanning && (
+              <View style={styles.visualFeedIdle}>
+                <ActivityIndicator size="large" color="#00d4aa" />
+                <Text style={[styles.visualFeedIdleText, { color: "#00d4aacc" }]}>Analysing sonar…</Text>
+              </View>
+            )}
+
+            {/* Result — rich full-screen AI data card */}
+            {result && !scanning && (
+              <ScrollView
+                contentContainerStyle={styles.visualFeedContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Giant fish count */}
+                <View style={{ alignItems: "center", marginBottom: 8 }}>
+                  <Text style={styles.visualFeedCount}>{result.fishCount}</Text>
+                  <Text style={styles.visualFeedCountLabel}>FISH DETECTED</Text>
+                </View>
+
+                {/* Species */}
+                <Text style={styles.visualFeedSpecies}>{result.species}</Text>
+
+                {/* Depth + distance */}
+                <Text style={styles.visualFeedDepth}>{result.depth} · {result.distance}</Text>
+
+                {/* Confidence bar */}
+                <View style={styles.visualFeedConfWrap}>
+                  <View style={styles.visualFeedConfTrack}>
+                    <View
+                      style={[
+                        styles.visualFeedConfFill,
+                        {
+                          width: `${result.confidence}%` as any,
+                          backgroundColor:
+                            result.confidence > 80
+                              ? "#00ff88"
+                              : result.confidence > 60
+                              ? "#ffd700"
+                              : "#ff6600",
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.visualFeedConfText}>{result.confidence}% confidence</Text>
+                </View>
+
+                {/* Lure recommendation */}
+                {result.lure ? (
+                  <View style={styles.visualFeedLureCard}>
+                    <Text style={styles.visualFeedLureLabel}>RECOMMENDED LURE</Text>
+                    <Text style={styles.visualFeedLureName}>{result.lure}</Text>
+                    {result.technique ? (
+                      <Text style={styles.visualFeedTechnique}>{result.technique}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
+
+                {/* AI suggestion */}
+                {result.suggestion ? (
+                  <Text style={styles.visualFeedSuggestion}>"{result.suggestion}"</Text>
+                ) : null}
+
+                {/* Voice / replay button */}
+                <TouchableOpacity
+                  style={[
+                    styles.visualFeedVoiceBtn,
+                    speaking
+                      ? { backgroundColor: `${charInfo.color}22`, borderColor: charInfo.color }
+                      : { backgroundColor: "#00d4aa22", borderColor: "#00d4aa66" },
+                  ]}
+                  onPress={() => { if (speaking) stopSpeaking(); else speakResult(result); }}
+                >
+                  <Feather
+                    name={speaking ? "volume-x" : "volume-2"}
+                    size={18}
+                    color={speaking ? charInfo.color : "#00d4aa"}
+                  />
+                  <Text style={[styles.visualFeedVoiceTxt, { color: speaking ? charInfo.color : "#00d4aa" }]}>
+                    {speaking ? `Stop ${charInfo.emoji}` : `${charInfo.emoji} Read Result`}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Clear */}
+                <TouchableOpacity
+                  style={styles.visualFeedClearBtn}
+                  onPress={() => { setResult(null); stopSpeaking(); }}
+                >
+                  <Feather name="trash-2" size={14} color="#ffffff55" />
+                  <Text style={styles.visualFeedClearTxt}>Clear</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+
+            {/* Camera PiP thumbnail (bottom-left) */}
+            <View style={styles.pipThumb} pointerEvents="none">
+              <Feather name="camera" size={16} color="#00d4aacc" />
+              <Text style={styles.pipThumbText}>CAM</Text>
+            </View>
+          </View>
+        )}
+
+        {/* ── Floating swap feed button ───────────────────────────────────────── */}
+        <TouchableOpacity
+          style={[
+            styles.swapFeedBtn,
+            feedView === "visual"
+              ? { backgroundColor: "#00d4aa", borderColor: "#00d4aa" }
+              : { backgroundColor: "#0a1628cc", borderColor: "#00d4aa88" },
+          ]}
+          onPress={() => {
+            if (Platform.OS !== "web") {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            }
+            setFeedView((v) => (v === "camera" ? "visual" : "camera"));
+          }}
+          activeOpacity={0.85}
+        >
+          <Feather
+            name="refresh-cw"
+            size={15}
+            color={feedView === "visual" ? "#0a1628" : "#00d4aa"}
+          />
+          <Text style={[styles.swapFeedBtnText, { color: feedView === "visual" ? "#0a1628" : "#00d4aa" }]}>
+            {feedView === "camera" ? "AI VIEW" : "CAMERA"}
+          </Text>
+        </TouchableOpacity>
       </>
     );
   }
@@ -1912,7 +2122,7 @@ const styles = StyleSheet.create({
   // ── Bottom bar ────────────────────────────────────────────────────────────
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    alignItems: "center", paddingTop: 12, gap: 8, zIndex: 10,
+    alignItems: "center", paddingTop: 12, gap: 8, zIndex: 35,
   },
   boatModeBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
@@ -1962,5 +2172,213 @@ const styles = StyleSheet.create({
   gallerySpacer: {
     width: 72,
     height: 72,
+  },
+
+  // ── Feed swap button (floating, bottom-right) ─────────────────────────────
+  swapFeedBtn: {
+    position: "absolute",
+    bottom: 170,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    zIndex: 40,
+  },
+  swapFeedBtnText: {
+    fontSize: 10,
+    fontFamily: "Oswald_700Bold",
+    letterSpacing: 1.2,
+  },
+
+  // ── Visual (AI) feed full-screen overlay ─────────────────────────────────
+  visualFeedBg: {
+    backgroundColor: "#060d1a",
+    zIndex: 20,
+  },
+  visualFeedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#00d4aa22",
+  },
+  visualFeedTitle: {
+    flex: 1,
+    color: "#00d4aacc",
+    fontSize: 11,
+    fontFamily: "Oswald_700Bold",
+    letterSpacing: 2,
+  },
+  visualFeedClose: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "#00d4aa14",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#00d4aa44",
+  },
+  visualFeedCloseText: {
+    color: "#00d4aacc",
+    fontSize: 10,
+    fontFamily: "Oswald_700Bold",
+    letterSpacing: 1,
+  },
+  visualFeedIdle: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+  },
+  visualFeedIdleText: {
+    color: "#ffffff44",
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  visualFeedContent: {
+    padding: 24,
+    gap: 18,
+    alignItems: "center",
+    paddingBottom: 200,
+  },
+  visualFeedCount: {
+    fontSize: 100,
+    fontFamily: "Oswald_700Bold",
+    color: "#00d4aa",
+    lineHeight: 100,
+  },
+  visualFeedCountLabel: {
+    fontSize: 12,
+    fontFamily: "Oswald_700Bold",
+    color: "#00d4aa88",
+    letterSpacing: 3,
+    marginTop: 4,
+  },
+  visualFeedSpecies: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    textAlign: "center",
+  },
+  visualFeedDepth: {
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+    color: "#ffffff88",
+    textAlign: "center",
+  },
+  visualFeedConfWrap: {
+    width: "100%",
+    gap: 5,
+  },
+  visualFeedConfTrack: {
+    height: 7,
+    backgroundColor: "#ffffff15",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  visualFeedConfFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  visualFeedConfText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "#ffffff44",
+    textAlign: "right",
+  },
+  visualFeedLureCard: {
+    width: "100%",
+    backgroundColor: "#00d4aa0f",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#00d4aa33",
+    gap: 4,
+  },
+  visualFeedLureLabel: {
+    fontSize: 10,
+    fontFamily: "Oswald_700Bold",
+    color: "#00d4aa",
+    letterSpacing: 2,
+  },
+  visualFeedLureName: {
+    fontSize: 17,
+    fontFamily: "Inter_600SemiBold",
+    color: "#ffffffee",
+  },
+  visualFeedTechnique: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "#ffffff77",
+  },
+  visualFeedSuggestion: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "#ffffffaa",
+    textAlign: "center",
+    lineHeight: 22,
+    fontStyle: "italic",
+  },
+  visualFeedVoiceBtn: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 15,
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
+  visualFeedVoiceTxt: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  visualFeedClearBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "#ffffff08",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ffffff22",
+  },
+  visualFeedClearTxt: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "#ffffff55",
+  },
+
+  // ── PiP camera thumbnail label ────────────────────────────────────────────
+  pipThumb: {
+    position: "absolute",
+    bottom: 200,
+    left: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#0a162888",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#00d4aa33",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  pipThumbText: {
+    fontSize: 9,
+    fontFamily: "Oswald_700Bold",
+    color: "#00d4aa88",
+    letterSpacing: 1.5,
   },
 });

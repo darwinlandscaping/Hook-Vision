@@ -287,6 +287,7 @@ export default function LiveScreen() {
   const [scanCount, setScanCount]       = useState(0);
   const [polarOn, setPolarOn]           = useState(true);   // polarised-lens filter
   const [polarising, setPolarising]     = useState(false);  // filter in progress
+  const [feedView, setFeedView]         = useState<"camera" | "visual">("camera"); // full-screen feed toggle
 
   const nativeCamRef = useRef<any>(null);
   const webCamRef    = useRef<any>(null);
@@ -1669,6 +1670,157 @@ export default function LiveScreen() {
                 : "Point at sonar — tap to scan"}
           </Text>
         </View>
+
+        {/* ── AI VISUAL FEED full-screen overlay ─────────────────────────────── */}
+        {feedView === "visual" && (
+          <View style={[StyleSheet.absoluteFill, styles.visualFeedBg]}>
+            {/* Visual feed top label */}
+            <View style={[styles.visualFeedHeader, { paddingTop: (isNative ? insets.top : topPad) + 10 }]}>
+              <SonarPulse size={10} active={scanning} />
+              <Text style={styles.visualFeedTitle}>📡 AI VISUAL FEED</Text>
+              <TouchableOpacity onPress={() => setFeedView("camera")} style={styles.visualFeedClose}>
+                <Feather name="camera" size={13} color="#00d4aacc" />
+                <Text style={styles.visualFeedCloseText}>CAMERA</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* No result yet — idle state */}
+            {!result && !scanning && (
+              <View style={styles.visualFeedIdle}>
+                <MaterialCommunityIcons name="fish" size={72} color="#00d4aa18" />
+                <Text style={styles.visualFeedIdleText}>
+                  {"Tap ● SCAN below\nto see AI analysis here"}
+                </Text>
+              </View>
+            )}
+
+            {/* Scanning spinner */}
+            {scanning && (
+              <View style={styles.visualFeedIdle}>
+                <ActivityIndicator size="large" color="#00d4aa" />
+                <Text style={[styles.visualFeedIdleText, { color: "#00d4aacc" }]}>Analysing sonar…</Text>
+              </View>
+            )}
+
+            {/* Result — rich full-screen AI data card */}
+            {result && !scanning && (
+              <ScrollView
+                contentContainerStyle={styles.visualFeedContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Giant fish count */}
+                <View style={{ alignItems: "center", marginBottom: 8 }}>
+                  <Text style={styles.visualFeedCount}>{result.fishCount}</Text>
+                  <Text style={styles.visualFeedCountLabel}>FISH DETECTED</Text>
+                </View>
+
+                {/* Species */}
+                <Text style={styles.visualFeedSpecies}>{result.species}</Text>
+
+                {/* Depth + distance */}
+                <Text style={styles.visualFeedDepth}>{result.depth} · {result.distance}</Text>
+
+                {/* Confidence bar */}
+                <View style={styles.visualFeedConfWrap}>
+                  <View style={styles.visualFeedConfTrack}>
+                    <View
+                      style={[
+                        styles.visualFeedConfFill,
+                        {
+                          width: `${result.confidence}%` as any,
+                          backgroundColor:
+                            result.confidence > 80
+                              ? "#00ff88"
+                              : result.confidence > 60
+                              ? "#ffd700"
+                              : "#ff6600",
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.visualFeedConfText}>{result.confidence}% confidence</Text>
+                </View>
+
+                {/* Lure recommendation */}
+                {result.lure ? (
+                  <View style={styles.visualFeedLureCard}>
+                    <Text style={styles.visualFeedLureLabel}>RECOMMENDED LURE</Text>
+                    <Text style={styles.visualFeedLureName}>{result.lure}</Text>
+                    {result.technique ? (
+                      <Text style={styles.visualFeedTechnique}>{result.technique}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
+
+                {/* AI suggestion */}
+                {result.suggestion ? (
+                  <Text style={styles.visualFeedSuggestion}>"{result.suggestion}"</Text>
+                ) : null}
+
+                {/* Voice / replay button */}
+                <TouchableOpacity
+                  style={[
+                    styles.visualFeedVoiceBtn,
+                    speaking
+                      ? { backgroundColor: `${charInfo.color}22`, borderColor: charInfo.color }
+                      : { backgroundColor: "#00d4aa22", borderColor: "#00d4aa66" },
+                  ]}
+                  onPress={() => { if (speaking) stopSpeaking(); else speakResult(result); }}
+                >
+                  <Feather
+                    name={speaking ? "volume-x" : "volume-2"}
+                    size={18}
+                    color={speaking ? charInfo.color : "#00d4aa"}
+                  />
+                  <Text style={[styles.visualFeedVoiceTxt, { color: speaking ? charInfo.color : "#00d4aa" }]}>
+                    {speaking ? `Stop ${charInfo.emoji}` : `${charInfo.emoji} Read Result`}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Clear */}
+                <TouchableOpacity
+                  style={styles.visualFeedClearBtn}
+                  onPress={() => { setResult(null); stopSpeaking(); }}
+                >
+                  <Feather name="trash-2" size={14} color="#ffffff55" />
+                  <Text style={styles.visualFeedClearTxt}>Clear</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+
+            {/* Camera PiP thumbnail (bottom-left) */}
+            <View style={styles.pipThumb} pointerEvents="none">
+              <Feather name="camera" size={16} color="#00d4aacc" />
+              <Text style={styles.pipThumbText}>CAM</Text>
+            </View>
+          </View>
+        )}
+
+        {/* ── Floating swap feed button ───────────────────────────────────────── */}
+        <TouchableOpacity
+          style={[
+            styles.swapFeedBtn,
+            feedView === "visual"
+              ? { backgroundColor: "#00d4aa", borderColor: "#00d4aa" }
+              : { backgroundColor: "#0a1628cc", borderColor: "#00d4aa88" },
+          ]}
+          onPress={() => {
+            if (Platform.OS !== "web") {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            }
+            setFeedView((v) => (v === "camera" ? "visual" : "camera"));
+          }}
+          activeOpacity={0.85}
+        >
+          <Feather
+            name="refresh-cw"
+            size={15}
+            color={feedView === "visual" ? "#0a1628" : "#00d4aa"}
+          />
+          <Text style={[styles.swapFeedBtnText, { color: feedView === "visual" ? "#0a1628" : "#00d4aa" }]}>
+            {feedView === "camera" ? "AI VIEW" : "CAMERA"}
+          </Text>
+        </TouchableOpacity>
       </>
     );
   }
@@ -1970,7 +2122,7 @@ const styles = StyleSheet.create({
   // ── Bottom bar ────────────────────────────────────────────────────────────
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    alignItems: "center", paddingTop: 12, gap: 8, zIndex: 10,
+    alignItems: "center", paddingTop: 12, gap: 8, zIndex: 35,
   },
   boatModeBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
@@ -2020,5 +2172,213 @@ const styles = StyleSheet.create({
   gallerySpacer: {
     width: 72,
     height: 72,
+  },
+
+  // ── Feed swap button (floating, bottom-right) ─────────────────────────────
+  swapFeedBtn: {
+    position: "absolute",
+    bottom: 170,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    zIndex: 40,
+  },
+  swapFeedBtnText: {
+    fontSize: 10,
+    fontFamily: "Oswald_700Bold",
+    letterSpacing: 1.2,
+  },
+
+  // ── Visual (AI) feed full-screen overlay ─────────────────────────────────
+  visualFeedBg: {
+    backgroundColor: "#060d1a",
+    zIndex: 20,
+  },
+  visualFeedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#00d4aa22",
+  },
+  visualFeedTitle: {
+    flex: 1,
+    color: "#00d4aacc",
+    fontSize: 11,
+    fontFamily: "Oswald_700Bold",
+    letterSpacing: 2,
+  },
+  visualFeedClose: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "#00d4aa14",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#00d4aa44",
+  },
+  visualFeedCloseText: {
+    color: "#00d4aacc",
+    fontSize: 10,
+    fontFamily: "Oswald_700Bold",
+    letterSpacing: 1,
+  },
+  visualFeedIdle: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+  },
+  visualFeedIdleText: {
+    color: "#ffffff44",
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  visualFeedContent: {
+    padding: 24,
+    gap: 18,
+    alignItems: "center",
+    paddingBottom: 200,
+  },
+  visualFeedCount: {
+    fontSize: 100,
+    fontFamily: "Oswald_700Bold",
+    color: "#00d4aa",
+    lineHeight: 100,
+  },
+  visualFeedCountLabel: {
+    fontSize: 12,
+    fontFamily: "Oswald_700Bold",
+    color: "#00d4aa88",
+    letterSpacing: 3,
+    marginTop: 4,
+  },
+  visualFeedSpecies: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    textAlign: "center",
+  },
+  visualFeedDepth: {
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+    color: "#ffffff88",
+    textAlign: "center",
+  },
+  visualFeedConfWrap: {
+    width: "100%",
+    gap: 5,
+  },
+  visualFeedConfTrack: {
+    height: 7,
+    backgroundColor: "#ffffff15",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  visualFeedConfFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  visualFeedConfText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "#ffffff44",
+    textAlign: "right",
+  },
+  visualFeedLureCard: {
+    width: "100%",
+    backgroundColor: "#00d4aa0f",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#00d4aa33",
+    gap: 4,
+  },
+  visualFeedLureLabel: {
+    fontSize: 10,
+    fontFamily: "Oswald_700Bold",
+    color: "#00d4aa",
+    letterSpacing: 2,
+  },
+  visualFeedLureName: {
+    fontSize: 17,
+    fontFamily: "Inter_600SemiBold",
+    color: "#ffffffee",
+  },
+  visualFeedTechnique: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "#ffffff77",
+  },
+  visualFeedSuggestion: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "#ffffffaa",
+    textAlign: "center",
+    lineHeight: 22,
+    fontStyle: "italic",
+  },
+  visualFeedVoiceBtn: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 15,
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
+  visualFeedVoiceTxt: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  visualFeedClearBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "#ffffff08",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ffffff22",
+  },
+  visualFeedClearTxt: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "#ffffff55",
+  },
+
+  // ── PiP camera thumbnail label ────────────────────────────────────────────
+  pipThumb: {
+    position: "absolute",
+    bottom: 200,
+    left: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#0a162888",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#00d4aa33",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  pipThumbText: {
+    fontSize: 9,
+    fontFamily: "Oswald_700Bold",
+    color: "#00d4aa88",
+    letterSpacing: 1.5,
   },
 });
