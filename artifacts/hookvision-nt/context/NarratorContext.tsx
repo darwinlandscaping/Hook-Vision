@@ -1,3 +1,15 @@
+/**
+ * NarratorContext — AI voice narrator for HookVision.
+ *
+ * Platform strategy:
+ *   Web    → Web Speech API (SpeechSynthesis), character-tuned pitch/rate
+ *   Native → expo-av Audio.Sound streaming from GET /api/tts URL
+ *            fallback: expo-speech (system TTS) with iOS voice selection
+ *
+ * The GET /api/tts endpoint generates Microsoft Edge TTS (24kHz MP3) and is
+ * designed specifically to be streamed directly by expo-av on iOS/Android,
+ * removing the need for any local speech engine on native.
+ */
 import React, {
   createContext,
   useCallback,
@@ -10,15 +22,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Speech from "expo-speech";
 import { Platform } from "react-native";
 
-// expo-audio (replaces deprecated expo-av)
-let _createAudioPlayer: any = null;
-let _setAudioModeAsync: any = null;
+// expo-av: native audio playback from URL (streams TTS MP3 directly)
+let _Audio: any = null;
 if (Platform.OS !== "web") {
   try {
-    const ea = require("expo-audio");
-    _createAudioPlayer = ea.createAudioPlayer;
-    _setAudioModeAsync = ea.setAudioModeAsync;
-  } catch {}
+    _Audio = require("expo-av").Audio;
+  } catch (e) {
+    console.warn("[Narrator] expo-av not available:", e);
+  }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -47,17 +58,17 @@ export interface LanguageInfo {
 }
 
 export const CHARACTERS: CharacterInfo[] = [
-  { id: "AUSSIE",       name: "Blue the Guide",      emoji: "🎣", tagline: "Sun-leathered NT barra legend",        color: "#00d4aa" },
+  { id: "AUSSIE",       name: "Blue the Guide",      emoji: "🎣", tagline: "Sun-leathered WA barra legend",        color: "#00d4aa" },
   { id: "BENAUD",       name: "Richie Benaud",        emoji: "🏏", tagline: "Cricket's voice, fishing's poet",      color: "#ffd700" },
   { id: "CHOPPER",      name: "Chopper Read",          emoji: "🪖", tagline: "Melbourne's most dangerous narrator", color: "#ff4500" },
   { id: "ATTENBOROUGH", name: "David Attenborough",   emoji: "🌿", tagline: "BBC natural history legend",           color: "#4a9eff" },
   { id: "WIFE",         name: "The Nagging Wife",      emoji: "👩", tagline: "Knows the tides. Not impressed.",     color: "#ff69b4" },
   { id: "ARNIE",        name: "Arnold S.",             emoji: "💪", tagline: "He'll be back — with a big barra",   color: "#e53935" },
-  { id: "BURGUNDY",     name: "Ron Burgundy",          emoji: "📺", tagline: "Kind of a big deal on NT waters",    color: "#b8860b" },
+  { id: "BURGUNDY",     name: "Ron Burgundy",          emoji: "📺", tagline: "Kind of a big deal on WA waters",    color: "#b8860b" },
   { id: "IRWIN",        name: "Steve Irwin",           emoji: "🐊", tagline: "Crikey! Isn't she a beauty!",        color: "#8bc34a" },
   { id: "GRYLLS",       name: "Bear Grylls",           emoji: "🏕️", tagline: "Every cast is a survival mission",  color: "#795548" },
   { id: "RAMSAY",       name: "Gordon Ramsay",         emoji: "👨‍🍳", tagline: "This fish is RAW. Donkey!",       color: "#f4511e" },
-  { id: "MORGAN",       name: "Morgan Freeman",        emoji: "🎬", tagline: "The voice of the NT cosmos",         color: "#7986cb" },
+  { id: "MORGAN",       name: "Morgan Freeman",        emoji: "🎬", tagline: "The voice of the Kimberley cosmos",   color: "#7986cb" },
   { id: "DUNDEE",       name: "Crocodile Dundee",      emoji: "🪃", tagline: "That's not a rod. THAT's a rod.",    color: "#ff8f00" },
   { id: "YODA",         name: "Master Yoda",           emoji: "✨", tagline: "Strong with the Force, this barra is", color: "#69f0ae" },
   { id: "CONNERY",      name: "Sean Connery",          emoji: "🍸", tagline: "The name is Barra. Barramundi.",     color: "#90caf9" },
@@ -69,55 +80,37 @@ export const CHARACTERS: CharacterInfo[] = [
   { id: "BOGAN",        name: "Aussie Bogan",          emoji: "🍺", tagline: "Fully sick conditions, deadset",      color: "#ff7043" },
 ];
 
-// Which characters use a male voice
 const CHARACTER_GENDER: Record<NarratorCharacter, "male" | "female"> = {
-  AUSSIE:       "male",
-  BENAUD:       "male",
-  CHOPPER:      "male",
-  ATTENBOROUGH: "male",
-  WIFE:         "female",
-  ARNIE:        "male",
-  BURGUNDY:     "male",
-  IRWIN:        "male",
-  GRYLLS:       "male",
-  RAMSAY:       "male",
-  MORGAN:       "male",
-  DUNDEE:       "male",
-  YODA:         "male",
-  CONNERY:      "male",
-  BOBROSS:      "male",
-  SPARROW:      "male",
-  TYSON:        "male",
-  SAMUEL:       "male",
-  JEFF:         "male",
-  BOGAN:        "male",
+  AUSSIE: "male", BENAUD: "male", CHOPPER: "male", ATTENBOROUGH: "male",
+  WIFE: "female", ARNIE: "male", BURGUNDY: "male", IRWIN: "male",
+  GRYLLS: "male", RAMSAY: "male", MORGAN: "male", DUNDEE: "male",
+  YODA: "male", CONNERY: "male", BOBROSS: "male", SPARROW: "male",
+  TYSON: "male", SAMUEL: "male", JEFF: "male", BOGAN: "male",
 };
 
-// Voice tuning per character (pitch & rate)
 const CHARACTER_VOICE_TUNING: Record<NarratorCharacter, { pitch: number; rate: number }> = {
-  AUSSIE:       { pitch: 0.80, rate: 0.95 },  // laconic, relaxed
-  BENAUD:       { pitch: 0.70, rate: 0.82 },  // measured, authoritative, slow
-  CHOPPER:      { pitch: 0.65, rate: 1.00 },  // gravelly, direct
-  ATTENBOROUGH: { pitch: 0.72, rate: 0.78 },  // reverent, slow, deep
-  WIFE:         { pitch: 1.15, rate: 1.05 },  // energetic, slightly higher
-  ARNIE:        { pitch: 0.55, rate: 0.75 },  // very deep Austrian, deliberate
-  BURGUNDY:     { pitch: 0.90, rate: 1.00 },  // pompous anchor voice
-  IRWIN:        { pitch: 0.88, rate: 1.20 },  // enthusiastic, fast Aussie
-  GRYLLS:       { pitch: 0.82, rate: 1.05 },  // earnest, breathless
-  RAMSAY:       { pitch: 0.78, rate: 1.15 },  // aggressive, rapid-fire UK
-  MORGAN:       { pitch: 0.60, rate: 0.80 },  // very deep, slow, profound
-  DUNDEE:       { pitch: 0.82, rate: 0.90 },  // laid-back Australian
-  YODA:         { pitch: 0.68, rate: 0.72 },  // deep, very slow
-  CONNERY:      { pitch: 0.65, rate: 0.88 },  // deep Scottish
-  BOBROSS:      { pitch: 0.76, rate: 0.72 },  // gentle, soothing, very slow
-  SPARROW:      { pitch: 0.83, rate: 0.93 },  // slightly irregular
-  TYSON:        { pitch: 0.95, rate: 1.08 },  // surprisingly high-ish
-  SAMUEL:       { pitch: 0.70, rate: 1.05 },  // emphatic, intense
-  JEFF:         { pitch: 0.88, rate: 0.88 },  // measured, contemplative
-  BOGAN:        { pitch: 0.83, rate: 1.22 },  // enthusiastic, fast Aussie
+  AUSSIE:       { pitch: 0.80, rate: 0.95 },
+  BENAUD:       { pitch: 0.70, rate: 0.82 },
+  CHOPPER:      { pitch: 0.65, rate: 1.00 },
+  ATTENBOROUGH: { pitch: 0.72, rate: 0.78 },
+  WIFE:         { pitch: 1.15, rate: 1.05 },
+  ARNIE:        { pitch: 0.55, rate: 0.75 },
+  BURGUNDY:     { pitch: 0.90, rate: 1.00 },
+  IRWIN:        { pitch: 0.88, rate: 1.20 },
+  GRYLLS:       { pitch: 0.82, rate: 1.05 },
+  RAMSAY:       { pitch: 0.78, rate: 1.15 },
+  MORGAN:       { pitch: 0.60, rate: 0.80 },
+  DUNDEE:       { pitch: 0.82, rate: 0.90 },
+  YODA:         { pitch: 0.68, rate: 0.72 },
+  CONNERY:      { pitch: 0.65, rate: 0.88 },
+  BOBROSS:      { pitch: 0.76, rate: 0.72 },
+  SPARROW:      { pitch: 0.83, rate: 0.93 },
+  TYSON:        { pitch: 0.95, rate: 1.08 },
+  SAMUEL:       { pitch: 0.70, rate: 1.05 },
+  JEFF:         { pitch: 0.88, rate: 0.88 },
+  BOGAN:        { pitch: 0.83, rate: 1.22 },
 };
 
-// iOS male/female voice IDs tried in order
 const IOS_MALE_VOICES = [
   "com.apple.voice.enhanced.en-AU.Lee",
   "com.apple.ttsbundle.Lee-compact",
@@ -147,7 +140,7 @@ export const LANGUAGES: LanguageInfo[] = [
   { code: "pt-BR", name: "Português",  flag: "🇧🇷" },
 ];
 
-// ─── Context ──────────────────────────────────────────────────────────────────
+// ─── Context interface ────────────────────────────────────────────────────────
 interface NarratorCtx {
   character: NarratorCharacter;
   language: NarratorLanguage;
@@ -166,43 +159,60 @@ interface NarratorCtx {
 
 const NarratorContext = createContext<NarratorCtx | null>(null);
 
-// ─── Native Audio (expo-audio, module-level) ──────────────────────────────────
-let _nativePlayer: any = null;
-let _nativeListener: any = null;
+// ─── Native audio (expo-av Audio.Sound) ──────────────────────────────────────
+// Module-level so we can stop across renders without stale refs
+let _avSound: any = null;
 
-function stopNativeAudio() {
-  if (_nativeListener) {
-    try { _nativeListener.remove(); } catch {}
-    _nativeListener = null;
-  }
-  if (_nativePlayer) {
-    try { _nativePlayer.pause(); _nativePlayer.remove(); } catch {}
-    _nativePlayer = null;
+async function stopAvSound(): Promise<void> {
+  if (_avSound) {
+    try {
+      await _avSound.stopAsync();
+      await _avSound.unloadAsync();
+    } catch {}
+    _avSound = null;
   }
 }
 
-async function playNativeUrl(url: string, onDone: () => void): Promise<boolean> {
-  if (!_createAudioPlayer) return false;
+/**
+ * Play TTS audio from URL using expo-av Audio.Sound.
+ * Returns true on success, false if expo-av is unavailable.
+ */
+async function playUrlWithAv(url: string, onDone: () => void): Promise<boolean> {
+  if (!_Audio) return false;
   try {
-    stopNativeAudio();
-    const player = _createAudioPlayer({ uri: url });
-    _nativePlayer = player;
-    _nativeListener = player.addListener("playbackStatusUpdate", (status: any) => {
+    await stopAvSound();
+
+    // Configure audio session for playback (plays even in silent mode)
+    await _Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+    });
+
+    const { sound } = await _Audio.Sound.createAsync(
+      { uri: url },
+      { shouldPlay: true, volume: 1.0 }
+    );
+    _avSound = sound;
+
+    sound.setOnPlaybackStatusUpdate((status: any) => {
       if (status?.didJustFinish) {
-        stopNativeAudio();
-        onDone();
+        stopAvSound().then(onDone);
+      }
+      if (status?.error) {
+        stopAvSound().then(onDone);
       }
     });
-    player.play();
+
     return true;
   } catch (err) {
-    console.warn("[Narrator] expo-audio failed:", err);
-    stopNativeAudio();
+    console.warn("[Narrator] expo-av playback failed:", err);
+    await stopAvSound();
     return false;
   }
 }
 
-// ─── Web: pick a voice matching gender + language ─────────────────────────────
+// ─── Web speech helpers ───────────────────────────────────────────────────────
 async function getWebVoice(lang: string, gender: "male" | "female"): Promise<SpeechSynthesisVoice | undefined> {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return undefined;
 
@@ -239,7 +249,6 @@ async function getWebVoice(lang: string, gender: "male" | "female"): Promise<Spe
   return voices.find(v => v.lang.startsWith(base));
 }
 
-// ─── Web: play via speechSynthesis with gender + character tuning ─────────────
 let _webUtterance: SpeechSynthesisUtterance | null = null;
 
 function stopWebSpeech() {
@@ -249,10 +258,8 @@ function stopWebSpeech() {
   _webUtterance = null;
 }
 
-// ─── Web: unlock speechSynthesis inside user gesture ─────────────────────────
 function unlockSpeechSynthesis() {
-  if (typeof window === "undefined") return;
-  if (!("speechSynthesis" in window)) return;
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   const u = new SpeechSynthesisUtterance("");
   u.volume = 0;
   window.speechSynthesis.speak(u);
@@ -266,26 +273,15 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading]           = useState(false);
   const [transcript, setTranscript]     = useState("");
   const [handsFree, setHandsFreeState]  = useState(false);
-  const languageRef   = useRef(language);
-  const characterRef  = useRef(character);
-  const handsFreeRef  = useRef(handsFree);
+  const languageRef  = useRef(language);
+  const characterRef = useRef(character);
+  const handsFreeRef = useRef(handsFree);
 
   useEffect(() => { languageRef.current = language; }, [language]);
   useEffect(() => { characterRef.current = character; }, [character]);
   useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
 
-  // Configure expo-audio session (native only)
-  useEffect(() => {
-    if (Platform.OS !== "web" && _setAudioModeAsync) {
-      _setAudioModeAsync({
-        playsInSilentMode: true,
-        interruptionMode: "doNotMix",
-        shouldPlayInBackground: false,
-      }).catch(() => {});
-    }
-  }, []);
-
-  // Persist preferences
+  // Restore saved preferences
   useEffect(() => {
     AsyncStorage.multiGet(["narrator_character", "narrator_language", "narrator_handsfree"]).then(
       (pairs) => {
@@ -314,24 +310,25 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem("narrator_handsfree", on ? "1" : "0");
   }, []);
 
+  // ─── Build TTS URL (GET /api/tts) for expo-av streaming ────────────────────
+  const buildTtsUrl = useCallback((text: string, char: NarratorCharacter): string => {
+    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const base   = domain ? `https://${domain}` : "";
+    return `${base}/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(languageRef.current)}&character=${encodeURIComponent(char)}`;
+  }, []);
+
+  // ─── Stop all playback ──────────────────────────────────────────────────────
   const stop = useCallback(() => {
     if (Platform.OS === "web") {
       stopWebSpeech();
     } else {
-      stopNativeAudio();
+      stopAvSound();
       Speech.stop().catch(() => {});
     }
     setSpeaking(false);
   }, []);
 
-  // ─── Build TTS URL (native only) ───────────────────────────────────────────
-  const ttsUrl = useCallback((text: string, char: NarratorCharacter) => {
-    const domain = process.env.EXPO_PUBLIC_DOMAIN;
-    const baseUrl = domain ? `https://${domain}` : "";
-    return `${baseUrl}/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(languageRef.current)}&character=${encodeURIComponent(char)}`;
-  }, []);
-
-  // ─── Web: speechSynthesis with character-matched voice + tuning ───────────
+  // ─── Web: SpeechSynthesis with character voice tuning ─────────────────────
   const playTTSWeb = useCallback(async (text: string, char: NarratorCharacter) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       setSpeaking(false);
@@ -343,36 +340,33 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
 
     const gender = CHARACTER_GENDER[char];
     const tuning = CHARACTER_VOICE_TUNING[char];
-
-    const voice = await getWebVoice(languageRef.current, gender);
+    const voice  = await getWebVoice(languageRef.current, gender);
 
     const utt = new SpeechSynthesisUtterance(text);
-    if (voice) {
-      utt.voice = voice;
-      utt.lang  = voice.lang;
-    } else {
-      utt.lang = languageRef.current;
-    }
+    if (voice) { utt.voice = voice; utt.lang = voice.lang; }
+    else        { utt.lang = languageRef.current; }
     utt.pitch  = tuning.pitch;
     utt.rate   = tuning.rate;
     utt.volume = 1.0;
-
-    utt.onend  = () => { _webUtterance = null; setSpeaking(false); };
+    utt.onend   = () => { _webUtterance = null; setSpeaking(false); };
     utt.onerror = () => { _webUtterance = null; setSpeaking(false); };
 
     _webUtterance = utt;
     window.speechSynthesis.speak(utt);
   }, []);
 
-  // ─── Native: expo-audio (TTS URL) → expo-speech fallback ─────────────────
+  // ─── Native: expo-av Audio.Sound → expo-speech fallback ───────────────────
   const playTTSNative = useCallback(async (text: string, char: NarratorCharacter) => {
     setSpeaking(true);
 
-    const worked = await playNativeUrl(ttsUrl(text, char), () => setSpeaking(false));
+    // Primary path: stream TTS MP3 from GET /api/tts via expo-av Audio.Sound
+    const ttsUrl = buildTtsUrl(text, char);
+    const avWorked = await playUrlWithAv(ttsUrl, () => setSpeaking(false));
 
-    if (!worked) {
-      const gender  = CHARACTER_GENDER[char];
-      const tuning  = CHARACTER_VOICE_TUNING[char];
+    if (!avWorked) {
+      // Fallback: expo-speech (system TTS) with iOS voice selection
+      const gender    = CHARACTER_GENDER[char];
+      const tuning    = CHARACTER_VOICE_TUNING[char];
       const iosVoices = gender === "male" ? IOS_MALE_VOICES : IOS_FEMALE_VOICES;
 
       const tryVoice = async (voices: string[]): Promise<void> => {
@@ -393,8 +387,8 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
               voice: voiceId,
               rate: tuning.rate,
               pitch: tuning.pitch,
-              onDone:   () => { setSpeaking(false); resolve(); },
-              onError:  () => reject(new Error("voice unavailable")),
+              onDone:    () => { setSpeaking(false); resolve(); },
+              onError:   () => reject(new Error("voice unavailable")),
               onStopped: () => { setSpeaking(false); resolve(); },
             });
           });
@@ -405,9 +399,9 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
 
       try { await tryVoice([...iosVoices]); } catch { setSpeaking(false); }
     }
-  }, [ttsUrl]);
+  }, [buildTtsUrl]);
 
-  // ─── speak(): direct call (demo button, live camera) ─────────────────────
+  // ─── speak(): direct TTS call ───────────────────────────────────────────────
   const speak = useCallback(
     (text: string) => {
       stop();
@@ -422,33 +416,28 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     [stop, playTTSWeb, playTTSNative]
   );
 
-  // ─── autoSpeak(): only fires when hands-free mode is on ───────────────────
+  // ─── autoSpeak(): only fires when hands-free mode is on ────────────────────
   const autoSpeak = useCallback(
-    (text: string) => {
-      if (handsFreeRef.current) speak(text);
-    },
+    (text: string) => { if (handsFreeRef.current) speak(text); },
     [speak]
   );
 
-  // ─── narratePage(): AI narration then speaks ──────────────────────────────
+  // ─── narratePage(): AI → text → TTS ────────────────────────────────────────
   const narratePage = useCallback(
     async (pageType: string, content: string) => {
       if (loading) return;
       setLoading(true);
       stop();
 
-      // Unlock speechSynthesis inside the user gesture before any async work
-      if (Platform.OS === "web") {
-        unlockSpeechSynthesis();
-      }
+      if (Platform.OS === "web") unlockSpeechSynthesis();
 
       try {
         const domain = process.env.EXPO_PUBLIC_DOMAIN;
-        const baseUrl = domain ? `https://${domain}` : "";
-        const resp = await fetch(`${baseUrl}/api/narrate`, {
-          method: "POST",
+        const base   = domain ? `https://${domain}` : "";
+        const resp   = await fetch(`${base}/api/narrate`, {
+          method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, character, language, pageType }),
+          body:    JSON.stringify({ content, character, language, pageType }),
         });
         if (!resp.ok) throw new Error(`Narrate HTTP ${resp.status}`);
         const { text } = await resp.json();
