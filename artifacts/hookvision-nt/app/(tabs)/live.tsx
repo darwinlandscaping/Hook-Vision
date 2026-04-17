@@ -103,7 +103,7 @@ function buildSpeech(a: FishAnalysis, character: NarratorCharacter): string {
       return `${count === 1 ? "One unit" : `${count} fish ya mug`} — ${nick}, ${a.depth}, ${a.distance}. I'm tellin' ya deadset.${lureNote} Get in there.`;
     case "ATTENBOROUGH":
       if (count === 0) return "The ancient waters yield nothing to our instruments at this moment. We must seek them elsewhere.";
-      return `Here, in the remarkable Kimberley waters, ${count === 1 ? "a solitary" : `${count}`} ${nick} ${count === 1 ? "rests" : "rest"} at ${a.depth}.${lureNote}`;
+      return `Here, in the remarkable Top End waters, ${count === 1 ? "a solitary" : `${count}`} ${nick} ${count === 1 ? "rests" : "rest"} at ${a.depth}.${lureNote}`;
     case "WIFE":
       if (count === 0) return "Nothing on the sonar. Honestly. I told you to move the boat twenty minutes ago. The gutters still need cleaning when you get home.";
       return `Okay fine — ${count === 1 ? "there's one" : `there are ${count} fish`} showing, ${nick} at ${a.depth}. Don't stuff it up.${lureNote ? ` And ${lureNote.trim()}` : ""} You better bring something home.`;
