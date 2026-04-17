@@ -25,7 +25,7 @@ const HV_LOGO = require("@/assets/images/hv-logo2-nobg.png");
 
 interface DailyConditions {
   date: string;
-  darwinLocalTime: string;
+  waLocalTime: string;
   season: {
     name: string;
     emoji: string;
@@ -337,7 +337,7 @@ export default function HomeScreen() {
       {/* ── WEATHER DETAIL ── */}
       {conds?.weather && (
         <>
-          <Text style={[S.sectionHead, { color: colors.mutedForeground }]}>DARWIN LIVE WEATHER</Text>
+          <Text style={[S.sectionHead, { color: colors.mutedForeground }]}>NT LIVE WEATHER</Text>
           <LilyPadCard innerStyle={S.weatherInner}>
             <View style={S.weatherGrid}>
               <WeatherCell emoji="🌡️" label="Air Temp"     value={`${conds.weather.tempC}°C`}            accent="#ff9800" />
@@ -348,7 +348,7 @@ export default function HomeScreen() {
               <WeatherCell emoji="📈" label="Baro Trend"   value={conds.weather.pressureTrend === "falling" ? "Falling 🐟" : conds.weather.pressureTrend === "rising" ? "Rising" : "Steady"} accent={conds.weather.pressureTrend === "falling" ? "#00d4aa" : "#888"} />
             </View>
             <Text style={[S.weatherSource, { color: colors.mutedForeground }]}>
-              Source: BOM Darwin Airport · {conds.darwinLocalTime}
+              Source: BOM Darwin Airport · {darwin.timeStr}
             </Text>
           </LilyPadCard>
         </>

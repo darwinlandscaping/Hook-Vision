@@ -19,9 +19,21 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Artifacts
 
-### HookVision (`artifacts/hookvision`)
+### HookVision NT (`artifacts/hookvision-nt`)
 
-A polished NT fishing mobile app built with Expo + React Native targeting NT Australia.
+NT Australia Edition of HookVision — Expo + React Native targeting Northern Territory.
+
+- app.json: name "HookVision NT", slug "hookvision-nt", scheme "hookvision-nt", package "com.hookvision.nt"
+- Port 25353, baseUrl /hookvision-nt, Darwin time (UTC+9:30) for golden hour + clock
+- `darwin` variable in home.tsx uses `getDarwinTime()` (UTC+9:30 — correct for NT)
+- Weather source line uses `darwin.timeStr` (local Darwin time) since API returns waLocalTime (WA time)
+- NT LIVE WEATHER section heading (not "DARWIN LIVE WEATHER")
+- NT species guide, NT regulations, NT tides (Darwin BOM primary ports)
+- DailyConditions interface uses `waLocalTime: string` (API field name from WA/Broome BOM)
+
+### HookVision WA (`artifacts/hookvision`)
+
+A polished WA/Kimberley fishing mobile app built with Expo + React Native targeting the Kimberley region.
 
 **Features:**
 - AI sonar analysis via GPT-4 vision (fish count, depth, species, lure advice) — 5 NT priority species: Barra → Fingermark → Rock Cod → Mangrove Jack → Thready
@@ -84,7 +96,10 @@ North Queensland / Gulf Country Edition of HookVision — a complete standalone 
 - NQ barra hotspots: Karumba Point, Norman River Cut Bank, Mitchell River Mouth, Weipa Causeway, Albert River, etc.
 - NQ species: Sooty Grunter, Golden Snapper (Fingermark), Coral Trout replacing NT-only species
 - All "Top End"/"NT Fisheries" terminology replaced with NQ/QLD equivalents
-- Package: `@workspace/hookvision-nq`; port 25352; scheme `hookvision-nq`
+- Package: `@workspace/hookvision-nq`; port 25352; scheme `hookvision-nq`; android package `com.hookvision.nq`
+- `qldTime` variable in home.tsx uses `getQldTime()` (AEST UTC+10 — correct for QLD)
+- Weather source line uses `qldTime.timeStr` (local Brisbane time) since API returns waLocalTime (WA time)
+- DailyConditions interface uses `waLocalTime: string` (API field name — the field is WA-named but only used for cache-busting, display uses local computed time)
 
 ### API Server (`artifacts/api-server`)
 

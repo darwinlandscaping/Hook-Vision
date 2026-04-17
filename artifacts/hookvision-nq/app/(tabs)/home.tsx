@@ -25,7 +25,7 @@ const HV_LOGO = require("@/assets/images/hv-logo2-nobg.png");
 
 interface DailyConditions {
   date: string;
-  darwinLocalTime: string;
+  waLocalTime: string;
   season: {
     name: string;
     emoji: string;
@@ -109,10 +109,10 @@ export default function HomeScreen() {
   const insets  = useSafeAreaInsets();
   const topPad  = Platform.OS === "web" ? 0 : insets.top;
 
-  // Darwin clock ticks every minute so golden hour updates live
-  const [darwin, setDarwin] = useState(getQldTime);
+  // QLD/Brisbane clock ticks every minute so golden hour updates live
+  const [qldTime, setQldTime] = useState(getQldTime);
   useEffect(() => {
-    const id = setInterval(() => setDarwin(getQldTime()), 60_000);
+    const id = setInterval(() => setQldTime(getQldTime()), 60_000);
     return () => clearInterval(id);
   }, []);
 
@@ -161,7 +161,7 @@ export default function HomeScreen() {
   }, [fetchConditions]);
 
   const narrate = conds
-    ? `Welcome to HookVision NQ. Today's NQ Gulf conditions: ${conds.season.emoji} ${conds.season.name}. Moon: ${conds.moon.emoji} ${conds.moon.name}. ${conds.barraActivity.replace(/[^a-zA-Z0-9 .—!%\/]/g, "").trim()}. ${darwin.isGolden ? "Golden hour is active — prime feeding time right now!" : ""} Today's briefing: ${conds.aiBriefing}`
+    ? `Welcome to HookVision NQ. Today's NQ Gulf conditions: ${conds.season.emoji} ${conds.season.name}. Moon: ${conds.moon.emoji} ${conds.moon.name}. ${conds.barraActivity.replace(/[^a-zA-Z0-9 .—!%\/]/g, "").trim()}. ${qldTime.isGolden ? "Golden hour is active — prime feeding time right now!" : ""} Today's briefing: ${conds.aiBriefing}`
     : `Welcome to HookVision NQ. Loading today's NQ Gulf fishing conditions.`;
 
   useAutoNarrate(() => narrate);
@@ -234,14 +234,14 @@ export default function HomeScreen() {
           ) : (
             <View style={S.condItem}>
               <Text style={S.condEmoji}>🕐</Text>
-              <Text style={[S.condLabel, { color: colors.mutedForeground }]}>{darwin.timeStr}</Text>
+              <Text style={[S.condLabel, { color: colors.mutedForeground }]}>{qldTime.timeStr}</Text>
             </View>
           )}
           <View style={[S.condDivider, { backgroundColor: colors.border }]} />
-          <View style={[S.condItem, darwin.isGolden && S.goldenItem]}>
+          <View style={[S.condItem, qldTime.isGolden && S.goldenItem]}>
             <Text style={S.condEmoji}>⚡</Text>
-            <Text style={[S.condLabel, { color: darwin.isGolden ? "#ffd700" : colors.mutedForeground }]} numberOfLines={2}>
-              {darwin.isGolden ? "Golden\nHour!" : "Not\nGolden"}
+            <Text style={[S.condLabel, { color: qldTime.isGolden ? "#ffd700" : colors.mutedForeground }]} numberOfLines={2}>
+              {qldTime.isGolden ? "Golden\nHour!" : "Not\nGolden"}
             </Text>
           </View>
         </View>
@@ -348,7 +348,7 @@ export default function HomeScreen() {
               <WeatherCell emoji="📈" label="Baro Trend"   value={conds.weather.pressureTrend === "falling" ? "Falling 🐟" : conds.weather.pressureTrend === "rising" ? "Rising" : "Steady"} accent={conds.weather.pressureTrend === "falling" ? "#00d4aa" : "#888"} />
             </View>
             <Text style={[S.weatherSource, { color: colors.mutedForeground }]}>
-              Source: BOM Karumba Station · {conds.darwinLocalTime}
+              Source: BOM Karumba Station · {qldTime.timeStr}
             </Text>
           </LilyPadCard>
         </>

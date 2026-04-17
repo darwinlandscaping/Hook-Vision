@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "HookVision",
-    "slug": "hookvision",
+    "name": "HookVision NT",
+    "slug": "hookvision-nt",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "hookvision",
+    "scheme": "hookvision-nt",
     "description": "NT Australia's AI-powered barramundi fishing guide. Sonar analysis, tide predictions, species identification, live camera overlay, and Barra Brain community learning.",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
@@ -33,7 +33,7 @@
       }
     },
     "android": {
-      "package": "com.hookvision.app",
+      "package": "com.hookvision.nt",
       "versionCode": 1,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
