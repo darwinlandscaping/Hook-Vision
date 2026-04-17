@@ -464,38 +464,69 @@ export default function Insta360Demo() {
       </div>
 
       {/* ── STEP 1: Welcome / Power on ──────────────────────────────────────── */}
-      {phase === "welcome" && (
-        <Card accent={C.i360+"55"}>
-          <div style={{ textAlign:"center", padding:"10px 0" }}>
-            <CameraIcon />
-            <div style={{ color:C.i360b, fontWeight:800, fontSize:15, marginTop:10, marginBottom:4 }}>INSTA360 ONE X3</div>
-            <div style={{ color:C.mute, fontSize:10, marginBottom:14 }}>Dual-lens 360° · 5.7K · GPS · waterproof to 10m</div>
-
-            <div style={{ background:"#060c1a", borderRadius:10, padding:"11px 13px", marginBottom:12, textAlign:"left" }}>
-              <div style={{ color:C.gold, fontWeight:800, fontSize:10, marginBottom:7 }}>STEP 1 OF 4 — POWER ON CAMERA</div>
-              {[
-                { icon:"🔴", txt:"Hold the power button (top of camera) for 3 seconds" },
-                { icon:"🔊", txt:"Wait for the startup chime + LED turns green" },
-                { icon:"📶", txt:"Camera creates its own WiFi hotspot automatically" },
-                { icon:"🌐", txt:"You'll join that hotspot in Step 2" },
-              ].map((s,i) => (
-                <div key={i} style={{ display:"flex", gap:9, marginBottom:6 }}>
-                  <span style={{ fontSize:14, flexShrink:0 }}>{s.icon}</span>
-                  <span style={{ color:C.dim, fontSize:10, lineHeight:1.5 }}>{s.txt}</span>
+      {phase === "welcome" && (() => {
+        const toolUrl = "https://898f5a0e-eba6-4a78-b40d-d78f0539d56e-00-o6803yqna0ig.spock.replit.dev/__mockup/insta360-tool.html";
+        const toolQr = qr(toolUrl, 160, "a855f7");
+        return (
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {/* ── REAL CAMERA CONNECT — top priority card ── */}
+            <Card accent={C.green+"88"} style={{ background:"#061a10" }}>
+              <div style={{ color:C.green, fontWeight:800, fontSize:13, marginBottom:8 }}>
+                📲 YOU HAVE YOUR INSTA360 READY — USE THIS
+              </div>
+              <div style={{ display:"flex", gap:12, alignItems:"flex-start", marginBottom:10 }}>
+                <div style={{ flexShrink:0, background:"#040810", padding:6, borderRadius:9, border:`1px solid ${C.border}` }}>
+                  <img src={toolQr} width={110} height={110} alt="QR" style={{ display:"block", borderRadius:4 }} />
                 </div>
-              ))}
-            </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ color:C.dim, fontWeight:800, fontSize:11, marginBottom:5 }}>Scan QR with your tablet camera</div>
+                  <div style={{ color:C.mute, fontSize:9, lineHeight:1.9 }}>
+                    1. Open camera app → point at QR → tap link<br/>
+                    2. Make sure tablet WiFi is on <b style={{color:C.i360b}}>INSTA360 X3 XXXX</b> hotspot<br/>
+                    3. Tap <b style={{color:C.green}}>AUTO-SCAN</b> in the tool → connects instantly<br/>
+                    4. Tap AI BRAIN to analyse what camera sees ✓
+                  </div>
+                </div>
+              </div>
+              <div style={{ background:"#061018", borderRadius:8, padding:"8px 10px", border:`1px solid ${C.border}`, marginBottom:8 }}>
+                <div style={{ color:C.mute, fontSize:9, marginBottom:2 }}>DIRECT URL (type into tablet browser):</div>
+                <div style={{ color:C.green, fontFamily:"monospace", fontSize:8, wordBreak:"break-all", lineHeight:1.5 }}>{toolUrl}</div>
+              </div>
+              <div style={{ background:C.gold+"14", border:`1px solid ${C.gold}33`, borderRadius:7, padding:"7px 10px" }}>
+                <div style={{ color:C.gold, fontSize:9, lineHeight:1.7 }}>
+                  <b>Why a separate tool?</b> This canvas runs on HTTPS — browsers block direct HTTP connections to your camera. The tool link opens on HTTP (local), bypassing that restriction so it can reach <code style={{color:C.i360b}}>192.168.42.1</code> directly.
+                </div>
+              </div>
+            </Card>
 
-            <BigBtn label="✓ CAMERA IS ON & LED IS GREEN" color={C.green} onClick={() => setPhase("wifi")} />
-            <div style={{ color:C.mute, fontSize:9, marginTop:8, lineHeight:1.7 }}>
-              Don't have an Insta360 yet? Continue anyway to see the full live demo with your tablet camera instead.
-            </div>
-            <button onClick={() => setPhase("live")} style={{ marginTop:6, background:"none", border:`1px solid ${C.border}`, color:C.mute, fontSize:10, cursor:"pointer", borderRadius:7, padding:"7px 16px" }}>
-              Skip to Live Demo →
-            </button>
+            {/* ── Or: full guided setup below ── */}
+            <Card accent={C.i360+"55"}>
+              <div style={{ textAlign:"center", padding:"6px 0 10px" }}>
+                <CameraIcon />
+                <div style={{ color:C.i360b, fontWeight:800, fontSize:13, marginTop:8, marginBottom:3 }}>OR FOLLOW THE GUIDED SETUP</div>
+                <div style={{ color:C.mute, fontSize:9, marginBottom:12 }}>Step-by-step: power on → WiFi → app → connect</div>
+                <div style={{ background:"#060c1a", borderRadius:10, padding:"10px 12px", marginBottom:10, textAlign:"left" }}>
+                  <div style={{ color:C.gold, fontWeight:800, fontSize:10, marginBottom:6 }}>STEP 1 — POWER ON CAMERA</div>
+                  {[
+                    { icon:"🔴", txt:"Hold power button (top) for 3 seconds" },
+                    { icon:"🔊", txt:"Wait for startup chime + LED turns green" },
+                    { icon:"📶", txt:"Camera creates its own WiFi hotspot automatically" },
+                  ].map((s,i) => (
+                    <div key={i} style={{ display:"flex", gap:9, marginBottom:5 }}>
+                      <span style={{ fontSize:13, flexShrink:0 }}>{s.icon}</span>
+                      <span style={{ color:C.dim, fontSize:10, lineHeight:1.5 }}>{s.txt}</span>
+                    </div>
+                  ))}
+                </div>
+                <BigBtn label="✓ CAMERA IS ON — NEXT: JOIN WIFI →" color={C.i360b} onClick={() => setPhase("wifi")} />
+                <button onClick={() => setPhase("live")} style={{ marginTop:8, background:"none", border:`1px solid ${C.border}`, color:C.mute, fontSize:10, cursor:"pointer", borderRadius:7, padding:"6px 16px" }}>
+                  Skip to 360° Demo →
+                </button>
+              </div>
+            </Card>
           </div>
-        </Card>
-      )}
+        );
+      })()}
 
       {/* ── STEP 2: WiFi Join ────────────────────────────────────────────────── */}
       {phase === "wifi" && (
