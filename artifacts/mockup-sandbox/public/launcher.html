@@ -2,102 +2,116 @@
 <html><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>HookVision Camera Launcher</title>
+<title>HookVision — Camera Launcher</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#060d1a;color:#fff;font-family:-apple-system,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;padding:18px 14px}
-h1{font-size:15px;font-weight:900;letter-spacing:0.4px;color:#fff;text-align:center;margin-bottom:2px}
-.sub{color:rgba(255,255,255,0.3);font-size:10px;margin-bottom:20px;text-align:center}
-.card{width:100%;max-width:340px;border-radius:15px;padding:16px;margin-bottom:14px;display:flex;flex-direction:column;align-items:center}
-.card-sl{background:#061810;border:2px solid rgba(0,255,136,0.45)}
-.card-i3{background:#0d0617;border:2px solid rgba(168,85,247,0.55)}
-.title{font-weight:900;font-size:14px;text-align:center;margin-bottom:4px}
-.desc{font-size:9px;color:rgba(255,255,255,0.35);text-align:center;margin-bottom:12px;line-height:1.7}
-.qr-wrap{background:#040810;border-radius:12px;padding:9px;margin-bottom:12px;border:1.5px solid rgba(255,255,255,0.08)}
-.step{font-size:9px;color:rgba(255,255,255,0.3);text-align:center;line-height:2}
-.open-btn{width:100%;padding:13px;border-radius:10px;font-weight:900;font-size:13px;cursor:pointer;text-decoration:none;text-align:center;display:block;margin-top:8px}
-.open-sl{background:rgba(0,255,136,0.18);border:2px solid rgba(0,255,136,0.6);color:#00ff88}
-.open-i3{background:rgba(168,85,247,0.18);border:2px solid rgba(168,85,247,0.7);color:#a855f7}
-.divider{display:flex;align-items:center;gap:10px;width:100%;max-width:340px;margin-bottom:14px}
-.divider-line{flex:1;height:1px;background:rgba(255,255,255,0.08)}
-.divider-txt{color:rgba(255,255,255,0.2);font-size:10px;font-weight:700}
-.logo{width:38px;height:38px;border-radius:10px;background:rgba(0,168,255,0.15);border:1.5px solid rgba(0,168,255,0.4);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:6px}
-.note{font-size:8px;color:rgba(255,255,255,0.15);text-align:center;line-height:2;margin-top:8px}
+body{background:#050c18;color:#fff;font-family:-apple-system,system-ui,sans-serif;padding:18px 16px 28px;min-height:100vh}
+h1{font-size:16px;font-weight:900;margin-bottom:2px}
+.sub{color:rgba(255,255,255,0.3);font-size:10px;margin-bottom:20px}
+.card{border-radius:14px;padding:16px;margin-bottom:12px}
+.card-live{background:#051a14;border:2px solid rgba(0,212,170,0.7)}
+.card-sl{background:#061810;border:1.5px solid rgba(0,255,136,0.35)}
+.card-i3{background:#0d0617;border:1.5px solid rgba(168,85,247,0.4)}
+.badge{display:inline-block;border-radius:6px;padding:3px 10px;font-weight:900;font-size:10px;margin-bottom:10px}
+.badge-live{background:rgba(0,212,170,0.2);border:1.5px solid rgba(0,212,170,0.7);color:#00d4aa}
+.badge-sec{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4)}
+.title{font-weight:900;font-size:15px;margin-bottom:3px}
+.desc{color:rgba(255,255,255,0.4);font-size:10px;line-height:1.7;margin-bottom:14px}
+.btn{display:block;width:100%;padding:16px;border-radius:12px;font-weight:900;font-size:15px;cursor:pointer;text-decoration:none;text-align:center;letter-spacing:0.2px}
+.btn-live{background:rgba(0,212,170,0.2);border:2px solid rgba(0,212,170,0.8)!important;color:#00d4aa;border:none}
+.btn-sl{background:rgba(0,255,136,0.12);border:1.5px solid rgba(0,255,136,0.5)!important;color:#00ff88;border:none;padding:13px;font-size:13px}
+.btn-i3{background:rgba(168,85,247,0.15);border:1.5px solid rgba(168,85,247,0.6)!important;color:#a855f7;border:none;padding:13px;font-size:13px}
+.qr-row{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+.qr-img{border-radius:8px;background:#040810;padding:6px;border:1px solid rgba(255,255,255,0.08);flex-shrink:0}
+.steps{color:rgba(255,255,255,0.35);font-size:9px;line-height:2.1}
+.steps b{color:rgba(255,255,255,0.65)}
+.divider{display:flex;align-items:center;gap:10px;margin:14px 0}
+.line{flex:1;height:1px;background:rgba(255,255,255,0.07)}
+.div-txt{color:rgba(255,255,255,0.18);font-size:10px;font-weight:700}
+.wifi-note{font-size:9px;color:rgba(255,255,255,0.2);margin-top:8px;line-height:1.8;text-align:center}
+.wifi-note b{color:rgba(255,255,255,0.45)}
+.header{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.logo{width:40px;height:40px;border-radius:11px;background:rgba(0,212,170,0.15);border:1.5px solid rgba(0,212,170,0.5);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
 </style>
 </head>
 <body>
 
-<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+<div class="header">
   <div class="logo">🎣</div>
   <div>
-    <h1>HOOKVISION CAMERAS</h1>
-    <div class="sub">Samsung · Scan QR to open tool</div>
+    <h1>HookVision Cameras</h1>
+    <div class="sub">Samsung · Tap to open tool</div>
   </div>
 </div>
 
-<!-- SmartLife card -->
-<div class="card card-sl" id="sl">
+<!-- ── LIVE CAMERA (primary) ──────────────────────────── -->
+<div class="card card-live">
+  <div class="badge badge-live">WORKS NOW — NO WIFI SWITCH</div>
+  <div class="title" style="color:#00d4aa">Your Samsung Camera → AI Brain</div>
+  <div class="desc">Uses your phone's own rear camera. Point at water, sonar screen, or the fish itself. Tap START CAMERA — live AI analysis immediately.</div>
+
+  <div class="qr-row">
+    <img class="qr-img" id="liveQr" width="120" height="120" alt="QR" />
+    <div class="steps">
+      <b>1.</b> Point Samsung camera at QR<br>
+      <b>2.</b> Tap the link that appears<br>
+      <b>3.</b> Allow camera permission<br>
+      <b>4.</b> Tap START CAMERA<br>
+      <b>5.</b> Tap AI BRAIN — done
+    </div>
+  </div>
+
+  <a id="liveBtn" href="#" class="btn btn-live">START CAMERA NOW</a>
+</div>
+
+<div class="divider"><div class="line"></div><div class="div-txt">EXTERNAL CAMERAS (switch WiFi first)</div><div class="line"></div></div>
+
+<!-- ── SmartLife ──────────────────────────────────────── -->
+<div class="card card-sl">
   <div class="title" style="color:#00ff88">SmartLife PTZ Camera</div>
-  <div class="desc">
-    IP cam on 192.168.4.1 · snapshot probing · sonar overlay<br>
-    AI Brain · cast zone · croc &amp; barra analysis
+  <div class="desc">Connect tablet to SmartLife camera hotspot (192.168.4.1), then tap below.</div>
+  <div class="qr-row">
+    <img class="qr-img" id="slQr" width="90" height="90" alt="QR" />
+    <div class="steps" style="font-size:9px">
+      <b>1.</b> Settings → WiFi → join SmartLife hotspot<br>
+      <b>2.</b> Scan QR or tap button<br>
+      <b>3.</b> Tap AUTO-SCAN in tool
+    </div>
   </div>
-  <div class="qr-wrap" id="sl-qr"></div>
-  <div class="step">① join SmartLife camera WiFi<br>② point Samsung camera at QR → tap link<br>③ tap AUTO-SCAN in the tool</div>
-  <a id="sl-link" href="#" class="open-btn open-sl">📷 Open SmartLife Tool</a>
+  <a id="slBtn" href="#" class="btn btn-sl">Open SmartLife Tool</a>
 </div>
 
-<div class="divider">
-  <div class="divider-line"></div>
-  <div class="divider-txt">AND</div>
-  <div class="divider-line"></div>
-</div>
-
-<!-- Insta360 card -->
-<div class="card card-i3" id="i3">
+<!-- ── Insta360 ────────────────────────────────────────── -->
+<div class="card card-i3">
   <div class="title" style="color:#a855f7">Insta360 ONE X3</div>
-  <div class="desc">
-    360° fisheye · 5.7K · auto-scan 192.168.42.1<br>
-    Full setup wizard · AI Brain · croc thermal · sonar fusion
+  <div class="desc">Connect to INSTA360 X3 XXXX hotspot (password on LCD), then tap below.</div>
+  <div class="qr-row">
+    <img class="qr-img" id="i3Qr" width="90" height="90" alt="QR" />
+    <div class="steps" style="font-size:9px">
+      <b>1.</b> Settings → WiFi → join INSTA360 hotspot<br>
+      <b>2.</b> Scan QR or tap button<br>
+      <b>3.</b> Tap AUTO-SCAN in tool
+    </div>
   </div>
-  <div class="qr-wrap" id="i3-qr"></div>
-  <div class="step">① join Insta360 X3 XXXX hotspot<br>② point Samsung camera at QR → tap link<br>③ tap AUTO-SCAN in the tool</div>
-  <a id="i3-link" href="#" class="open-btn open-i3">🎥 Open Insta360 Tool</a>
-</div>
-
-<div class="note">
-  Both tools run locally on this device — they bypass HTTPS to<br>reach cameras on your local network directly.<br>
-  SmartLife: 192.168.4.1 · Insta360: 192.168.42.1
+  <a id="i3Btn" href="#" class="btn btn-i3">Open Insta360 Tool</a>
 </div>
 
 <script>
 const BASE = "https://898f5a0e-eba6-4a78-b40d-d78f0539d56e-00-o6803yqna0ig.spock.replit.dev/__mockup/";
-const SL_URL = BASE + "camera-tool.html";
-const I3_URL = BASE + "insta360-tool.html";
-
-function qrUrl(text, size, color) {
-  const encoded = encodeURIComponent(text);
-  return `https://api.qrserver.com/v1/create-qr-code/?data=${encoded}&size=${size}x${size}&bgcolor=040810&color=${color}&margin=2&qzone=1&format=svg`;
+const URLS = {
+  live: BASE + "live.html",
+  sl:   BASE + "camera-tool.html",
+  i3:   BASE + "insta360-tool.html",
+};
+function qr(url, size, col) {
+  return "https://api.qrserver.com/v1/create-qr-code/?data=" + encodeURIComponent(url)
+    + "&size=" + size + "x" + size + "&bgcolor=040810&color=" + col + "&margin=2&qzone=1&format=svg";
 }
-
-// QR images
-const slQr = document.createElement("img");
-slQr.src = qrUrl(SL_URL, 180, "00ff88");
-slQr.width = 160; slQr.height = 160;
-slQr.style.display = "block";
-slQr.style.borderRadius = "6px";
-document.getElementById("sl-qr").appendChild(slQr);
-
-const i3Qr = document.createElement("img");
-i3Qr.src = qrUrl(I3_URL, 180, "a855f7");
-i3Qr.width = 160; i3Qr.height = 160;
-i3Qr.style.display = "block";
-i3Qr.style.borderRadius = "6px";
-document.getElementById("i3-qr").appendChild(i3Qr);
-
-// Direct open links (for when already on Samsung)
-document.getElementById("sl-link").href = SL_URL;
-document.getElementById("i3-link").href = I3_URL;
+document.getElementById("liveQr").src = qr(URLS.live, 200, "00d4aa");
+document.getElementById("slQr").src   = qr(URLS.sl, 150, "00ff88");
+document.getElementById("i3Qr").src   = qr(URLS.i3, 150, "a855f7");
+document.getElementById("liveBtn").href = URLS.live;
+document.getElementById("slBtn").href   = URLS.sl;
+document.getElementById("i3Btn").href   = URLS.i3;
 </script>
 </body></html>
