@@ -183,12 +183,6 @@ function SonarFeed({ tick }: { tick: number }) {
               fill="none" stroke={sc(f.s)} strokeWidth={sw(f.s)} opacity="0.9" />
           );
         })}
-        {/* Depth ruler */}
-        {[0,2,4,6,8,10].map((d, i) => (
-          <Text key={d} style={{ position: "absolute" }}>
-            {/* handled below */}
-          </Text>
-        ))}
         {/* Scan lines */}
         {Array.from({ length: 10 }).map((_, i) => (
           <Rect key={i} x="0" y={i * 11} width="300" height="0.6" fill="rgba(0,0,0,0.2)" />

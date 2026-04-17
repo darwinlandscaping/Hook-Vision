@@ -354,10 +354,16 @@ router.get("/tides", async (req, res) => {
 });
 
 router.get("/tides/locations", (_req, res) => {
+  const wa = Object.entries(WA_LOCATIONS).map(([id, loc]) => ({ id, region: "wa", name: loc.name, refPort: loc.refPort, offsetMinutes: loc.offsetMinutes }));
+  const nt = Object.entries(NT_LOCATIONS).map(([id, loc]) => ({ id, region: "nt", name: loc.name, refPort: loc.refPort, offsetMinutes: loc.offsetMinutes }));
+  const nq = Object.entries(NQ_LOCATIONS).map(([id, loc]) => ({ id, region: "nq", name: loc.name, refPort: loc.refPort, offsetMinutes: loc.offsetMinutes }));
   res.json({
-    wa: Object.entries(WA_LOCATIONS).map(([id, loc]) => ({ id, name: loc.name, refPort: loc.refPort, offsetMinutes: loc.offsetMinutes })),
-    nt: Object.entries(NT_LOCATIONS).map(([id, loc]) => ({ id, name: loc.name, refPort: loc.refPort, offsetMinutes: loc.offsetMinutes })),
-    nq: Object.entries(NQ_LOCATIONS).map(([id, loc]) => ({ id, name: loc.name, refPort: loc.refPort, offsetMinutes: loc.offsetMinutes })),
+    // Regional breakdown (new format)
+    wa,
+    nt,
+    nq,
+    // Flat array for backward compatibility with consumers expecting an array
+    all: [...wa, ...nt, ...nq],
   });
 });
 
