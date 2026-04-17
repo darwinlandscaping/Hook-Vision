@@ -3,6 +3,8 @@ import {
   getDailyConditions,
   refreshDailyConditions,
   getLiveWeather,
+  getLiveWeatherNT,
+  getLiveWeatherNQ,
   computeMoonNow,
 } from "../lib/dailyBriefing";
 
@@ -28,8 +30,13 @@ router.get("/daily-conditions", async (req, res) => {
   // Recompute moon from current WA time — pure math, instant
   const moon = computeMoonNow();
 
-  // Fetch fresh BOM weather (cached max 20min)
-  const weather = await getLiveWeather();
+  // Fetch region-appropriate BOM weather (cached max 20min per region)
+  const region = ((req.query["region"] as string) || "wa").toLowerCase();
+  const weather = region === "nt"
+    ? await getLiveWeatherNT()
+    : region === "nq"
+      ? await getLiveWeatherNQ()
+      : await getLiveWeather();
 
   // Recompute barra activity with fresh moon + weather
   let score = 50;

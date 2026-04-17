@@ -79,6 +79,86 @@ export function computeMoonNow(): MoonData {
   return computeMoon(new Date(Date.now() + waOffsetMs));
 }
 
+// ─── NT (Darwin Airport) weather ──────────────────────────────────────────────
+
+async function fetchNTWeather(): Promise<WAWeather | null> {
+  try {
+    const res = await fetch(
+      "http://www.bom.gov.au/fwo/IDD60801/IDD60801.014015.json",
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!res.ok) return null;
+    const data: any = await res.json();
+    const obs = data?.observations?.data?.[0];
+    if (!obs) return null;
+    return {
+      tempC:         obs.air_temp          ?? 33,
+      apparentTempC: obs.apparent_t        ?? obs.air_temp ?? 33,
+      humidity:      obs.rel_hum           ?? 65,
+      windDir:       obs.wind_dir          ?? "N/A",
+      windSpeedKmh:  obs.wind_spd_kmh      ?? 0,
+      pressureHpa:   obs.press             ?? 1008,
+      pressureTrend: obs.press_tend        ?? "steady",
+      conditions:    obs.weather           ?? "Mostly Sunny",
+    };
+  } catch (err) {
+    logger.warn({ err }, "BOM Darwin weather fetch failed — using defaults");
+    return null;
+  }
+}
+
+let _weatherCacheNT: { data: WAWeather | null; fetchedAt: number } | null = null;
+
+export async function getLiveWeatherNT(): Promise<WAWeather | null> {
+  const now = Date.now();
+  if (_weatherCacheNT && now - _weatherCacheNT.fetchedAt < WEATHER_TTL_MS) {
+    return _weatherCacheNT.data;
+  }
+  const data = await fetchNTWeather();
+  _weatherCacheNT = { data, fetchedAt: now };
+  return data;
+}
+
+// ─── NQ (Karumba) weather ─────────────────────────────────────────────────────
+
+async function fetchNQWeather(): Promise<WAWeather | null> {
+  try {
+    const res = await fetch(
+      "http://www.bom.gov.au/fwo/IDQ60801/IDQ60801.029004.json",
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!res.ok) return null;
+    const data: any = await res.json();
+    const obs = data?.observations?.data?.[0];
+    if (!obs) return null;
+    return {
+      tempC:         obs.air_temp          ?? 32,
+      apparentTempC: obs.apparent_t        ?? obs.air_temp ?? 32,
+      humidity:      obs.rel_hum           ?? 60,
+      windDir:       obs.wind_dir          ?? "N/A",
+      windSpeedKmh:  obs.wind_spd_kmh      ?? 0,
+      pressureHpa:   obs.press             ?? 1009,
+      pressureTrend: obs.press_tend        ?? "steady",
+      conditions:    obs.weather           ?? "Mostly Sunny",
+    };
+  } catch (err) {
+    logger.warn({ err }, "BOM Karumba weather fetch failed — using defaults");
+    return null;
+  }
+}
+
+let _weatherCacheNQ: { data: WAWeather | null; fetchedAt: number } | null = null;
+
+export async function getLiveWeatherNQ(): Promise<WAWeather | null> {
+  const now = Date.now();
+  if (_weatherCacheNQ && now - _weatherCacheNQ.fetchedAt < WEATHER_TTL_MS) {
+    return _weatherCacheNQ.data;
+  }
+  const data = await fetchNQWeather();
+  _weatherCacheNQ = { data, fetchedAt: now };
+  return data;
+}
+
 export function getDailyConditions(): DailyConditions | null {
   return _cache;
 }

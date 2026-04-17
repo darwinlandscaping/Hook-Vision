@@ -188,6 +188,102 @@ const CONF = {
   LOW:    { color: "#4a9eff", label: "LOW",    emoji: "🎣", bg: "#4a9eff18" },
 };
 
+// ─── Tide helpers & card ───────────────────────────────────────────────────────
+function getTidalPhase(
+  minutesUntil: number | null,
+  tideType: "HW" | "LW" | null,
+): { label: string; color: string; bg: string; emoji: string } {
+  if (minutesUntil === null || tideType === null) {
+    return { label: "LOADING", color: "#888", bg: "#88888818", emoji: "🌊" };
+  }
+  if (Math.abs(minutesUntil) <= 35) {
+    return { label: "SLACK TIDE", color: "#ff8c00", bg: "#ff8c0018", emoji: "⚖️" };
+  }
+  if (tideType === "HW") {
+    return { label: "INCOMING", color: "#00d4aa", bg: "#00d4aa18", emoji: "↗️" };
+  }
+  return { label: "OUTGOING", color: "#4a9eff", bg: "#4a9eff18", emoji: "↘️" };
+}
+
+function formatCountdown(absMinutes: number): string {
+  if (absMinutes < 60) return `${absMinutes} min`;
+  const h = Math.floor(absMinutes / 60);
+  const m = absMinutes % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function DarwinTideCard({
+  nextTide,
+  colors,
+}: {
+  nextTide: TideEntry | null;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  const minutesUntil = nextTide ? Math.round((nextTide.timestamp - nowMs) / 60000) : null;
+  const phase = getTidalPhase(minutesUntil, nextTide?.type ?? null);
+  const isHW = nextTide?.type === "HW";
+  const tideColor = isHW ? "#ff2200" : "#4a9eff";
+  const isPast = minutesUntil !== null && minutesUntil < 0;
+
+  return (
+    <LilyPadCard borderColor={`${phase.color}44`} borderLeftColor={phase.color} innerStyle={{ padding: 12, gap: 10 }}>
+      <View style={styles.tideCardHeader}>
+        <MaterialCommunityIcons name="waves" size={18} color={phase.color} />
+        <Text style={[styles.tideCardTitle, { color: colors.foreground }]}>DARWIN TIDES</Text>
+        <View style={[styles.tidePhaseBadge, { backgroundColor: phase.bg, borderColor: `${phase.color}55` }]}>
+          <Text style={[styles.tidePhaseText, { color: phase.color }]}>{phase.emoji} {phase.label}</Text>
+        </View>
+      </View>
+
+      {nextTide && minutesUntil !== null ? (
+        <View style={styles.tideCardBody}>
+          <View style={styles.tideMainBlock}>
+            <Text style={[styles.tideTypeLabel, { color: colors.mutedForeground }]}>
+              {isPast ? "LAST" : "NEXT"} {isHW ? "HIGH" : "LOW"} TIDE
+            </Text>
+            <View style={styles.tideMainRow}>
+              <Text style={[styles.tideHeight, { color: tideColor }]}>{nextTide.height.toFixed(1)}m</Text>
+              <View style={[styles.tideTypePill, { backgroundColor: `${tideColor}22`, borderColor: `${tideColor}44` }]}>
+                <Text style={[styles.tideTypePillText, { color: tideColor }]}>{isHW ? "HIGH" : "LOW"}</Text>
+              </View>
+            </View>
+            <Text style={[styles.tideTime, { color: colors.foreground }]}>{nextTide.time}</Text>
+          </View>
+
+          <View style={[styles.tideCountdownBlock, { borderColor: colors.border }]}>
+            <Text style={[styles.tideCountdownLabel, { color: colors.mutedForeground }]}>
+              {isPast ? "AGO" : "IN"}
+            </Text>
+            <Text style={[styles.tideCountdownNum, { color: phase.color }]}>
+              {formatCountdown(Math.abs(minutesUntil))}
+            </Text>
+            <MaterialCommunityIcons
+              name={isHW ? "arrow-up-bold" : "arrow-down-bold"}
+              size={18}
+              color={tideColor}
+            />
+          </View>
+        </View>
+      ) : (
+        <View style={styles.tideLoadingRow}>
+          <ActivityIndicator size="small" color={colors.mutedForeground} />
+          <Text style={[styles.tideLoadingText, { color: colors.mutedForeground }]}>Fetching Darwin tide data…</Text>
+        </View>
+      )}
+
+      <Text style={[styles.tideSource, { color: colors.mutedForeground }]}>
+        Darwin Harbour · BOM port Darwin
+      </Text>
+    </LilyPadCard>
+  );
+}
+
 // ─── Sub-components ────────────────────────────────────────────────────────────
 function SectionTitle({ emoji, label, sub, color = "#ff2200" }: { emoji: string; label: string; sub?: string; color?: string }) {
   return (
