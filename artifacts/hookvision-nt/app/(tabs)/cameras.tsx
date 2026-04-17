@@ -15,7 +15,7 @@ import Svg, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { Linking as ExpoLinking } from "expo-linking";
+import * as ExpoLinking from "expo-linking";
 import { useInsta360Context } from "@/contexts/Insta360Context";
 import { useCameraScanner, type DiscoveredCamera } from "@/hooks/useCameraScanner";
 import { HVHeader } from "@/components/HVHeader";
