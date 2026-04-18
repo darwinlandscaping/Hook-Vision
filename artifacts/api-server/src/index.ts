@@ -86,9 +86,14 @@ app.listen(port, (err) => {
   }, 6 * 60 * 60 * 1000);
 
   // Initialise CrocGuard detection API:
-  // Creates DB tables, hydrates in-memory caches, starts camera sampling loop
-  // and sonar status fusion engine.
-  initCrocguardDb()
-    .then(() => initCrocguardDetector())
-    .catch((err) => logger.warn({ err }, "CrocGuard init failed — detection API will be limited"));
+  // Creates SQLite DB + tables, hydrates in-memory caches, starts camera
+  // sampling loop and sonar status fusion engine.
+  try {
+    initCrocguardDb();
+    initCrocguardDetector().catch((err) =>
+      logger.warn({ err }, "CrocGuard detector start failed")
+    );
+  } catch (err) {
+    logger.warn({ err }, "CrocGuard init failed — detection API will be limited");
+  }
 });

@@ -1,195 +1,243 @@
 /**
- * CrocGuard Database Layer
+ * CrocGuard Database Layer — SQLite (better-sqlite3)
  * ────────────────────────────────────────────────────────────────────────────
- * Thin helpers over Drizzle/PostgreSQL for CrocGuard persisted data.
- * In-memory caches provide <1ms read access; the DB is only hit for writes
- * and initial hydration.
- *
- * Edge/RPi note: swap the import for better-sqlite3 + drizzle-orm/sqlite-core
- * to run offline without a PostgreSQL server.
+ * Uses its own SQLite file (crocguard.db) — fully self-contained, no external
+ * database server required. Designed to run on Raspberry Pi 4 or any Linux
+ * device.  In-memory Maps provide <1 ms read access for hot-path camera and
+ * sonar state; SQLite is used for writes and alert history only.
  */
-import { db, crocguardCameras, crocguardSonarReadings, crocguardAlerts } from "@workspace/db";
-import { eq, desc, sql } from "drizzle-orm";
+
+import Database from "better-sqlite3";
+import path from "path";
+import { fileURLToPath } from "url";
 import { logger } from "./logger.js";
 
-export type { CrocguardCamera, CrocguardSonarReading, CrocguardAlert } from "@workspace/db";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DB_PATH = process.env["CROCGUARD_DB_PATH"]
+  ?? path.join(__dirname, "../../crocguard.db");
 
-// ─── In-memory caches ────────────────────────────────────────────────────────
+let _db: Database.Database | null = null;
 
-/** Keyed by camera id */
-export const cameraCache = new Map<number, {
+function getDb(): Database.Database {
+  if (!_db) throw new Error("CrocGuard DB not initialised — call initCrocguardDb() first");
+  return _db;
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface CrocCamera {
   id: number;
   name: string;
   streamUrl: string;
-  type: string;
-  status: string;
+  type: string;         // mjpeg | hls | snapshot
+  status: string;       // online | offline
   lastSeen: Date | null;
-}>();
+}
 
-/** Keyed by unit_id — only the LATEST reading per sonar unit */
-export const sonarCache = new Map<string, {
+export interface SonarReading {
   unitId: string;
   unitName: string | null;
-  signalLevel: number;
+  signalLevel: number;  // 0-100
   movementDetected: boolean;
   updatedAt: Date;
-}>();
-
-// ─── Schema migration guard ───────────────────────────────────────────────────
-
-export async function initCrocguardDb(): Promise<void> {
-  try {
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS crocguard_cameras (
-        id          SERIAL PRIMARY KEY,
-        name        VARCHAR(128) NOT NULL,
-        stream_url  TEXT         NOT NULL,
-        type        VARCHAR(16)  NOT NULL DEFAULT 'mjpeg',
-        status      VARCHAR(16)  NOT NULL DEFAULT 'offline',
-        last_seen   TIMESTAMPTZ,
-        added_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS crocguard_sonar_readings (
-        id                SERIAL PRIMARY KEY,
-        unit_id           VARCHAR(64)  NOT NULL,
-        unit_name         VARCHAR(128),
-        signal_level      REAL         NOT NULL,
-        movement_detected BOOLEAN      NOT NULL DEFAULT FALSE,
-        raw_payload       TEXT,
-        recorded_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS crocguard_alerts (
-        id          SERIAL PRIMARY KEY,
-        source      VARCHAR(64)  NOT NULL,
-        severity    VARCHAR(16)  NOT NULL,
-        confidence  REAL         NOT NULL,
-        snapshot    TEXT,
-        resolved    BOOLEAN      NOT NULL DEFAULT FALSE,
-        resolved_at TIMESTAMPTZ,
-        metadata    TEXT,
-        created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-      );
-    `);
-    await hydrateCaches();
-    logger.info("CrocGuard DB initialised");
-  } catch (err) {
-    logger.warn({ err }, "CrocGuard DB init failed — running in memory-only mode");
-  }
 }
 
-async function hydrateCaches(): Promise<void> {
-  const cameras = await db.select().from(crocguardCameras);
+export interface AlertRow {
+  id: number;
+  source: string;
+  severity: string;     // orange | red
+  confidence: number;
+  snapshot: string | null;
+  resolved: number;     // SQLite boolean: 0 | 1
+  resolvedAt: string | null;
+  metadata: string | null;
+  createdAt: string;
+}
+
+// ─── In-memory caches ────────────────────────────────────────────────────────
+
+/** Live camera registry — keyed by camera id */
+export const cameraCache = new Map<number, CrocCamera>();
+
+/** Latest sonar reading per unit_id — keyed by unitId */
+export const sonarCache = new Map<string, SonarReading>();
+
+// ─── Initialisation ───────────────────────────────────────────────────────────
+
+export function initCrocguardDb(): void {
+  _db = new Database(DB_PATH, { verbose: undefined });
+
+  // WAL mode for better concurrent read performance (important on RPi SD cards)
+  _db.pragma("journal_mode = WAL");
+  _db.pragma("foreign_keys = ON");
+
+  _db.exec(`
+    CREATE TABLE IF NOT EXISTS cameras (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      name      TEXT    NOT NULL,
+      stream_url TEXT   NOT NULL,
+      type      TEXT    NOT NULL DEFAULT 'mjpeg',
+      status    TEXT    NOT NULL DEFAULT 'offline',
+      last_seen INTEGER,           -- unix epoch ms
+      added_at  INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000)
+    );
+
+    CREATE TABLE IF NOT EXISTS sonar_readings (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      unit_id           TEXT    NOT NULL,
+      unit_name         TEXT,
+      signal_level      REAL    NOT NULL,
+      movement_detected INTEGER NOT NULL DEFAULT 0,
+      raw_payload       TEXT,
+      recorded_at       INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sonar_unit_time
+      ON sonar_readings (unit_id, recorded_at DESC);
+
+    CREATE TABLE IF NOT EXISTS alerts (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      source      TEXT    NOT NULL,
+      severity    TEXT    NOT NULL,
+      confidence  REAL    NOT NULL,
+      snapshot    TEXT,
+      resolved    INTEGER NOT NULL DEFAULT 0,
+      resolved_at INTEGER,
+      metadata    TEXT,
+      created_at  INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_alerts_created
+      ON alerts (created_at DESC);
+  `);
+
+  hydrateCaches();
+  logger.info({ dbPath: DB_PATH }, "CrocGuard SQLite DB initialised");
+}
+
+function msToDate(ms: number | null): Date | null {
+  return ms != null ? new Date(ms) : null;
+}
+
+function hydrateCaches(): void {
+  const db = getDb();
+
+  const cameras = db.prepare("SELECT * FROM cameras").all() as Array<{
+    id: number; name: string; stream_url: string; type: string;
+    status: string; last_seen: number | null;
+  }>;
   cameras.forEach(c => cameraCache.set(c.id, {
-    id: c.id, name: c.name, streamUrl: c.streamUrl,
-    type: c.type, status: c.status, lastSeen: c.lastSeen ?? null,
+    id: c.id, name: c.name, streamUrl: c.stream_url,
+    type: c.type, status: c.status, lastSeen: msToDate(c.last_seen),
   }));
 
-  const sonar = await db
-    .select()
-    .from(crocguardSonarReadings)
-    .orderBy(desc(crocguardSonarReadings.recordedAt))
-    .limit(200);
+  // Only load latest reading per unit
+  const rows = db.prepare(`
+    SELECT s.*
+    FROM   sonar_readings s
+    INNER JOIN (
+      SELECT unit_id, MAX(recorded_at) AS max_ts
+      FROM   sonar_readings
+      GROUP  BY unit_id
+    ) latest ON s.unit_id = latest.unit_id AND s.recorded_at = latest.max_ts
+  `).all() as Array<{
+    unit_id: string; unit_name: string | null;
+    signal_level: number; movement_detected: number; recorded_at: number;
+  }>;
+  rows.forEach(r => sonarCache.set(r.unit_id, {
+    unitId: r.unit_id, unitName: r.unit_name,
+    signalLevel: r.signal_level,
+    movementDetected: Boolean(r.movement_detected),
+    updatedAt: new Date(r.recorded_at),
+  }));
 
-  for (const r of sonar) {
-    if (!sonarCache.has(r.unitId)) {
-      sonarCache.set(r.unitId, {
-        unitId: r.unitId,
-        unitName: r.unitName ?? null,
-        signalLevel: r.signalLevel,
-        movementDetected: r.movementDetected,
-        updatedAt: r.recordedAt,
-      });
-    }
+  logger.info(
+    { cameras: cameraCache.size, sonarUnits: sonarCache.size },
+    "CrocGuard caches hydrated",
+  );
+}
+
+// ─── Camera CRUD ──────────────────────────────────────────────────────────────
+
+export function addCamera(name: string, streamUrl: string, type: string): CrocCamera {
+  const db = getDb();
+  const info = db.prepare(
+    "INSERT INTO cameras (name, stream_url, type) VALUES (?, ?, ?)"
+  ).run(name, streamUrl, type);
+  const id = info.lastInsertRowid as number;
+  const cam: CrocCamera = { id, name, streamUrl, type, status: "offline", lastSeen: null };
+  cameraCache.set(id, cam);
+  return cam;
+}
+
+export function setCameraStatus(id: number, status: "online" | "offline"): void {
+  const db = getDb();
+  const now = Date.now();
+  if (status === "online") {
+    db.prepare("UPDATE cameras SET status = ?, last_seen = ? WHERE id = ?").run(status, now, id);
+    const cached = cameraCache.get(id);
+    if (cached) { cached.status = status; cached.lastSeen = new Date(now); }
+  } else {
+    db.prepare("UPDATE cameras SET status = ? WHERE id = ?").run(status, id);
+    const cached = cameraCache.get(id);
+    if (cached) cached.status = status;
   }
 }
 
-// ─── Camera helpers ───────────────────────────────────────────────────────────
-
-export async function addCamera(name: string, streamUrl: string, type: string) {
-  const [row] = await db
-    .insert(crocguardCameras)
-    .values({ name, streamUrl, type, status: "offline" })
-    .returning();
-  if (!row) throw new Error("Camera insert returned no row");
-  cameraCache.set(row.id, {
-    id: row.id, name: row.name, streamUrl: row.streamUrl,
-    type: row.type, status: row.status, lastSeen: null,
-  });
-  return row;
-}
-
-export async function setCameraStatus(id: number, status: "online" | "offline") {
-  const now = new Date();
-  await db
-    .update(crocguardCameras)
-    .set({ status, lastSeen: status === "online" ? now : undefined })
-    .where(eq(crocguardCameras.id, id));
-  const cached = cameraCache.get(id);
-  if (cached) {
-    cached.status = status;
-    if (status === "online") cached.lastSeen = now;
-  }
-}
-
-export function listCameras() {
+export function listCameras(): CrocCamera[] {
   return Array.from(cameraCache.values());
 }
 
-// ─── Sonar helpers ────────────────────────────────────────────────────────────
+// ─── Sonar CRUD ───────────────────────────────────────────────────────────────
 
-export async function ingestSonar(
+export function ingestSonar(
   unitId: string, unitName: string | undefined,
   signalLevel: number, movementDetected: boolean, raw?: string,
-) {
-  const now = new Date();
-  await db.insert(crocguardSonarReadings).values({
-    unitId, unitName, signalLevel, movementDetected, rawPayload: raw,
+): void {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO sonar_readings (unit_id, unit_name, signal_level, movement_detected, raw_payload)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(unitId, unitName ?? null, signalLevel, movementDetected ? 1 : 0, raw ?? null);
+
+  sonarCache.set(unitId, {
+    unitId, unitName: unitName ?? null,
+    signalLevel, movementDetected, updatedAt: new Date(),
   });
-  sonarCache.set(unitId, { unitId, unitName: unitName ?? null, signalLevel, movementDetected, updatedAt: now });
 }
 
-export function listSonar() {
+export function listSonar(): SonarReading[] {
   return Array.from(sonarCache.values());
 }
 
-// ─── Alert helpers ────────────────────────────────────────────────────────────
+// ─── Alert CRUD ───────────────────────────────────────────────────────────────
 
-export async function createAlert(
+export function createAlert(
   source: string, severity: "orange" | "red",
   confidence: number, snapshot?: string, metadata?: object,
-) {
-  const [row] = await db
-    .insert(crocguardAlerts)
-    .values({
-      source, severity, confidence,
-      snapshot: snapshot ?? null,
-      metadata: metadata ? JSON.stringify(metadata) : null,
-    })
-    .returning();
-  return row;
+): AlertRow {
+  const db = getDb();
+  const info = db.prepare(
+    `INSERT INTO alerts (source, severity, confidence, snapshot, metadata)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(source, severity, confidence, snapshot ?? null, metadata ? JSON.stringify(metadata) : null);
+  const id = info.lastInsertRowid as number;
+  return db.prepare("SELECT * FROM alerts WHERE id = ?").get(id) as AlertRow;
 }
 
-export async function resolveAlert(id: number) {
-  const [row] = await db
-    .update(crocguardAlerts)
-    .set({ resolved: true, resolvedAt: new Date() })
-    .where(eq(crocguardAlerts.id, id))
-    .returning();
-  return row;
+export function resolveAlert(id: number): AlertRow | null {
+  const db = getDb();
+  const now = Date.now();
+  db.prepare("UPDATE alerts SET resolved = 1, resolved_at = ? WHERE id = ?").run(now, id);
+  return (db.prepare("SELECT * FROM alerts WHERE id = ?").get(id) as AlertRow) ?? null;
 }
 
-export async function listAlerts(page = 1, limit = 20) {
+export function listAlerts(page = 1, limit = 20): { alerts: AlertRow[]; total: number; page: number; limit: number } {
+  const db = getDb();
   const offset = (page - 1) * limit;
-  const rows = await db
-    .select()
-    .from(crocguardAlerts)
-    .orderBy(desc(crocguardAlerts.createdAt))
-    .limit(limit)
-    .offset(offset);
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(crocguardAlerts);
-  return { alerts: rows, total: count, page, limit };
+  const alerts = db.prepare(
+    "SELECT * FROM alerts ORDER BY created_at DESC LIMIT ? OFFSET ?"
+  ).all(limit, offset) as AlertRow[];
+  const { total } = db.prepare("SELECT COUNT(*) AS total FROM alerts").get() as { total: number };
+  return { alerts, total, page, limit };
 }
