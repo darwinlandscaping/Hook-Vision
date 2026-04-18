@@ -8,6 +8,45 @@ import { getStatus, notifySonarUpdate } from "../lib/crocguardStatus.js";
 
 const router = Router();
 
+// ─── Acoustic Deterrent State (in-memory) ────────────────────────────────────
+type DeterrentMode  = "off" | "pulse" | "alarm" | "continuous";
+type DeterrentSound = "siren" | "horn" | "dolphin" | "ultrasonic";
+
+interface DeterrentState {
+  mode:        DeterrentMode;
+  sound:       DeterrentSound;
+  autoMode:    boolean;
+  triggeredAt: number | null;
+  updatedAt:   number;
+}
+
+let deterrent: DeterrentState = {
+  mode:        "off",
+  sound:       "siren",
+  autoMode:    true,
+  triggeredAt: null,
+  updatedAt:   Date.now(),
+};
+
+function normaliseDeterrent(overrideMode?: DeterrentMode) {
+  return {
+    mode:         overrideMode ?? deterrent.mode,
+    sound:        deterrent.sound,
+    auto_mode:    deterrent.autoMode,
+    triggered_at: deterrent.triggeredAt ? new Date(deterrent.triggeredAt).toISOString() : null,
+    updated_at:   new Date(deterrent.updatedAt).toISOString(),
+  };
+}
+
+/** Called by other routes/services when croc status escalates to RED */
+export function autoTriggerDeterrent() {
+  if (deterrent.autoMode && deterrent.mode === "off") {
+    deterrent.mode        = "alarm";
+    deterrent.triggeredAt = Date.now();
+    deterrent.updatedAt   = Date.now();
+  }
+}
+
 function normaliseAlert(row: AlertRow) {
   return {
     id:         row.id,
@@ -165,6 +204,59 @@ router.post("/alerts/resolve/:id", (req, res) => {
     if (!row) { res.status(404).json({ ok: false, error: "Alert not found" }); return; }
     res.json({ ok: true, alert: normaliseAlert(row) });
   } catch (err) { res.status(500).json({ ok: false, error: String(err) }); }
+});
+
+// ─── Deterrent endpoints ──────────────────────────────────────────────────────
+
+/** GET /api/crocguard/deterrent — current deterrent state
+ *  If autoMode is on and CrocGuard is RED, effective mode is "alarm" regardless of stored mode. */
+router.get("/deterrent", (_req, res) => {
+  const snap = getStatus();
+  let effective: DeterrentMode | undefined;
+  if (deterrent.autoMode && snap.status === "red" && deterrent.mode === "off") {
+    effective = "alarm";
+  }
+  res.json({ ok: true, croc_status: snap.status, deterrent: normaliseDeterrent(effective) });
+});
+
+/** POST /api/crocguard/deterrent — update mode / sound / auto_mode */
+router.post("/deterrent", (req, res) => {
+  const body = req.body as Record<string, unknown>;
+  const validModes:  DeterrentMode[]  = ["off", "pulse", "alarm", "continuous"];
+  const validSounds: DeterrentSound[] = ["siren", "horn", "dolphin", "ultrasonic"];
+
+  if (body["mode"] !== undefined) {
+    if (!validModes.includes(body["mode"] as DeterrentMode)) {
+      res.status(400).json({ ok: false, error: `mode must be one of: ${validModes.join(", ")}` }); return;
+    }
+    deterrent.mode = body["mode"] as DeterrentMode;
+  }
+  if (body["sound"] !== undefined) {
+    if (!validSounds.includes(body["sound"] as DeterrentSound)) {
+      res.status(400).json({ ok: false, error: `sound must be one of: ${validSounds.join(", ")}` }); return;
+    }
+    deterrent.sound = body["sound"] as DeterrentSound;
+  }
+  if (body["auto_mode"] !== undefined) {
+    deterrent.autoMode = Boolean(body["auto_mode"]);
+  }
+  deterrent.updatedAt = Date.now();
+  res.json({ ok: true, deterrent: normaliseDeterrent() });
+});
+
+/** POST /api/crocguard/deterrent/trigger — manually fire one deterrent pulse */
+router.post("/deterrent/trigger", (_req, res) => {
+  deterrent.mode        = "pulse";
+  deterrent.triggeredAt = Date.now();
+  deterrent.updatedAt   = Date.now();
+  res.json({ ok: true, deterrent: normaliseDeterrent(), message: "Acoustic deterrent triggered — one pulse fired" });
+});
+
+/** POST /api/crocguard/deterrent/off — silence / reset deterrent */
+router.post("/deterrent/off", (_req, res) => {
+  deterrent.mode      = "off";
+  deterrent.updatedAt = Date.now();
+  res.json({ ok: true, deterrent: normaliseDeterrent(), message: "Acoustic deterrent silenced" });
 });
 
 export default router;
