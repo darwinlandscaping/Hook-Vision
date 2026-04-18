@@ -15,6 +15,10 @@ const MODEL_PATH = path.join(__dirname, "../../models/yolov8n.onnx");
 const INPUT_SIZE = 640;
 const ANIMAL_CLASSES = new Set([14, 15, 16, 17, 18, 19, 20, 21, 22, 23]);
 
+// Vision enrichment is opt-in for edge deployments where network latency matters.
+// Set CROCGUARD_VISION_ENABLED=true to enable OpenAI croc-specific scoring.
+const VISION_ENABLED = process.env["CROCGUARD_VISION_ENABLED"] === "true";
+
 let session: ort.InferenceSession | null = null;
 
 const prevFrames  = new Map<number, Buffer>();
@@ -233,7 +237,7 @@ async function processCamera(camId: number, streamUrl: string, type: string) {
 
     pushVisualScore(camId, avg, buf.subarray(0, 8192).toString("base64"));
 
-    if (avg >= 20) enrichWithVision(camId, buf).catch(() => {});
+    if (VISION_ENABLED && avg >= 20) enrichWithVision(camId, buf).catch(() => {});
   } catch {
     setCameraStatus(camId, "offline");
   }
