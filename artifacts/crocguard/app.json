@@ -10,7 +10,7 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/images/splash-barra.png",
       "resizeMode": "cover",
       "backgroundColor": "#0d1f0f"
     },

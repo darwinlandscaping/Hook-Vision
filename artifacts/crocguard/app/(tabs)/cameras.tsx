@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Modal,
   Platform,
   StyleSheet,
@@ -32,6 +33,35 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function CameraThumbnail({ camera }: { camera: Camera }) {
+  const [imgError, setImgError] = useState(false);
+  const canPreview = (camera.type === "snapshot" || camera.type === "mjpeg") && !imgError;
+
+  if (canPreview) {
+    return (
+      <View style={styles.thumbContainer}>
+        <Image
+          source={{ uri: camera.stream_url }}
+          style={styles.thumb}
+          resizeMode="cover"
+          onError={() => setImgError(true)}
+        />
+        <View style={styles.thumbOverlay}>
+          <Text style={styles.thumbType}>{camera.type.toUpperCase()}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const iconName = camera.type === "hls" ? "cast" : "video-off";
+  return (
+    <View style={[styles.thumbContainer, styles.thumbPlaceholder]}>
+      <Feather name={iconName as "cast"} size={28} color="#4ade80" />
+      <Text style={styles.thumbPlaceholderText}>{camera.type.toUpperCase()}</Text>
+    </View>
+  );
+}
+
 export default function CamerasScreen() {
   const { settings } = useSettings();
   const [cameras, setCameras] = useState<Camera[]>([]);
@@ -45,7 +75,7 @@ export default function CamerasScreen() {
       const json = (await res.json()) as { ok: boolean; cameras: Camera[] };
       setCameras(json.cameras);
       setError(null);
-    } catch (e) {
+    } catch {
       setError("Could not load cameras. Is the device online?");
     } finally {
       setLoading(false);
@@ -80,7 +110,7 @@ export default function CamerasScreen() {
         <FlatList
           data={cameras}
           keyExtractor={(c) => String(c.id)}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
+          contentContainerStyle={{ padding: 16, gap: 14 }}
           ListEmptyComponent={
             !loading ? (
               <View style={styles.empty}>
@@ -95,18 +125,19 @@ export default function CamerasScreen() {
               onPress={() => setSelected(item)}
               activeOpacity={0.7}
             >
-              <View style={styles.cardRow}>
-                <Feather name="video" size={20} color="#22c55e" />
-                <Text style={styles.cameraName}>{item.name}</Text>
-                <StatusBadge status={item.status} />
+              <CameraThumbnail camera={item} />
+              <View style={styles.cardBody}>
+                <View style={styles.cardRow}>
+                  <Text style={styles.cameraName} numberOfLines={1}>{item.name}</Text>
+                  <StatusBadge status={item.status} />
+                </View>
+                {item.last_seen && (
+                  <Text style={styles.lastSeen}>
+                    Last seen: {new Date(item.last_seen).toLocaleTimeString()}
+                  </Text>
+                )}
+                <Text style={styles.tapHint}>Tap to view stream →</Text>
               </View>
-              <Text style={styles.cameraType}>{item.type.toUpperCase()}</Text>
-              {item.last_seen && (
-                <Text style={styles.lastSeen}>
-                  Last seen: {new Date(item.last_seen).toLocaleTimeString()}
-                </Text>
-              )}
-              <Text style={styles.tapHint}>Tap to view stream →</Text>
             </TouchableOpacity>
           )}
         />
@@ -162,15 +193,37 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#166534",
-    padding: 16,
+    overflow: "hidden",
+  },
+  thumbContainer: {
+    width: "100%",
+    height: 140,
+    backgroundColor: "#052e16",
+    position: "relative",
+  },
+  thumb: { width: "100%", height: "100%" },
+  thumbOverlay: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  thumbType: { color: "#4ade80", fontSize: 10, fontWeight: "700" },
+  thumbPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
     gap: 6,
   },
-  cardRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  cameraName: { flex: 1, color: "#fff", fontSize: 16, fontWeight: "700" },
+  thumbPlaceholderText: { color: "#4ade80", fontSize: 11, fontWeight: "600" },
+  cardBody: { padding: 12, gap: 4 },
+  cardRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  cameraName: { flex: 1, color: "#fff", fontSize: 15, fontWeight: "700" },
   badge: { borderWidth: 1, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   badgeText: { fontSize: 10, fontWeight: "700" },
-  cameraType: { color: "#86efac", fontSize: 12, marginLeft: 30 },
-  lastSeen: { color: "#6b7280", fontSize: 12, marginLeft: 30 },
+  lastSeen: { color: "#6b7280", fontSize: 12 },
   tapHint: { color: "#4ade80", fontSize: 12, textAlign: "right" },
   errorBox: {
     margin: 20,

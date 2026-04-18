@@ -41,6 +41,7 @@
   "dependencies": {
     "expo-av": "^16.0.8",
     "expo-keep-awake": "~15.0.8",
+    "expo-speech": "^14.0.8",
     "react-native-webview": "^13.15.0"
   }
 }

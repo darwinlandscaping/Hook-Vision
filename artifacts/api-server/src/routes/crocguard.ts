@@ -80,6 +80,23 @@ router.get("/status", (_req, res) => {
   res.json({ ok: true, ...getStatus() });
 });
 
+// ─── GET /config — alert sensitivity thresholds (read-only) ──────────────────
+router.get("/config", (_req, res) => {
+  res.json({
+    ok: true,
+    thresholds: {
+      red_visual: 70,
+      orange_sonar_only: 65,
+      red_combined_boost: 20,
+    },
+    decay: {
+      red_to_orange_s: 30,
+      orange_to_green_s: 60,
+    },
+    description: "red_visual: visual confidence % to trigger RED. orange_sonar_only: sonar-only max conf for ORANGE. decay times govern how quickly alert level drops when no new detections arrive.",
+  });
+});
+
 // ─── GET /brain-context ───────────────────────────────────────────────────────
 // Returns structured CrocGuard intelligence ready for injection into AI prompts.
 // Used by the phone-app brain and the forecast AI to add live croc risk context.

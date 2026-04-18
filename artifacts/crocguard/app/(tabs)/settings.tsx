@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -13,10 +13,39 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSettings } from "@/contexts/SettingsContext";
 
+interface CrocGuardConfig {
+  thresholds: {
+    red_visual: number;
+    orange_sonar_only: number;
+    red_combined_boost: number;
+  };
+  decay: {
+    red_to_orange_s: number;
+    orange_to_green_s: number;
+  };
+}
+
 export default function SettingsScreen() {
   const { settings, updateSettings } = useSettings();
   const [urlDraft, setUrlDraft] = useState(settings.apiBaseUrl);
   const [saving, setSaving] = useState(false);
+  const [config, setConfig] = useState<CrocGuardConfig | null>(null);
+  const [configError, setConfigError] = useState(false);
+
+  const fetchConfig = useCallback(async () => {
+    try {
+      const res = await fetch(`${settings.apiBaseUrl}/api/crocguard/config`);
+      const json = (await res.json()) as CrocGuardConfig & { ok: boolean };
+      setConfig(json);
+      setConfigError(false);
+    } catch {
+      setConfigError(true);
+    }
+  }, [settings.apiBaseUrl]);
+
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
 
   const saveUrl = async () => {
     const trimmed = urlDraft.trim().replace(/\/$/, "");
@@ -46,18 +75,16 @@ export default function SettingsScreen() {
               Enter the base URL of the CrocGuard device or the API server (e.g.{"\n"}
               https://yourapp.replit.dev or http://192.168.1.50:8080)
             </Text>
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.input}
-                value={urlDraft}
-                onChangeText={setUrlDraft}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-                placeholder="https://your-api-server"
-                placeholderTextColor="#4b5563"
-              />
-            </View>
+            <TextInput
+              style={styles.input}
+              value={urlDraft}
+              onChangeText={setUrlDraft}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              placeholder="https://your-api-server"
+              placeholderTextColor="#4b5563"
+            />
             <TouchableOpacity
               style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
               onPress={saveUrl}
@@ -74,7 +101,7 @@ export default function SettingsScreen() {
               <View>
                 <Text style={styles.toggleLabel}>Enable sound alerts</Text>
                 <Text style={styles.toggleHint}>
-                  Beep on orange, siren + vibration on red
+                  Beep on orange, siren + voice on red
                 </Text>
               </View>
               <Switch
@@ -84,6 +111,55 @@ export default function SettingsScreen() {
                 thumbColor={settings.audioEnabled ? "#22c55e" : "#6b7280"}
               />
             </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Alert Sensitivity</Text>
+              <TouchableOpacity onPress={fetchConfig}>
+                <Feather name="refresh-cw" size={14} color="#4ade80" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.hint}>
+              Detection thresholds configured on the CrocGuard device (read-only).
+            </Text>
+
+            {configError && (
+              <Text style={styles.configError}>
+                Cannot reach device — showing defaults when available.
+              </Text>
+            )}
+
+            {config ? (
+              <View style={styles.thresholdGrid}>
+                <View style={styles.thresholdCard}>
+                  <View style={[styles.thresholdDot, { backgroundColor: "#ef4444" }]} />
+                  <Text style={styles.thresholdLabel}>Red — Visual</Text>
+                  <Text style={styles.thresholdVal}>{config.thresholds.red_visual}%</Text>
+                  <Text style={styles.thresholdHint}>confidence to trigger RED</Text>
+                </View>
+                <View style={styles.thresholdCard}>
+                  <View style={[styles.thresholdDot, { backgroundColor: "#f97316" }]} />
+                  <Text style={styles.thresholdLabel}>Orange — Sonar</Text>
+                  <Text style={styles.thresholdVal}>{config.thresholds.orange_sonar_only}%</Text>
+                  <Text style={styles.thresholdHint}>max sonar-only confidence</Text>
+                </View>
+                <View style={styles.thresholdCard}>
+                  <View style={[styles.thresholdDot, { backgroundColor: "#22c55e" }]} />
+                  <Text style={styles.thresholdLabel}>Red Decay</Text>
+                  <Text style={styles.thresholdVal}>{config.decay.red_to_orange_s}s</Text>
+                  <Text style={styles.thresholdHint}>RED → ORANGE silence</Text>
+                </View>
+                <View style={styles.thresholdCard}>
+                  <View style={[styles.thresholdDot, { backgroundColor: "#22c55e" }]} />
+                  <Text style={styles.thresholdLabel}>Orange Decay</Text>
+                  <Text style={styles.thresholdVal}>{config.decay.orange_to_green_s}s</Text>
+                  <Text style={styles.thresholdHint}>ORANGE → GREEN silence</Text>
+                </View>
+              </View>
+            ) : !configError ? (
+              <Text style={styles.loadingText}>Loading thresholds…</Text>
+            ) : null}
           </View>
 
           <View style={styles.section}>
@@ -97,8 +173,12 @@ export default function SettingsScreen() {
               <Text style={styles.aboutVal} numberOfLines={1}>{settings.apiBaseUrl}</Text>
             </View>
             <View style={styles.aboutRow}>
-              <Text style={styles.aboutKey}>Poll interval</Text>
-              <Text style={styles.aboutVal}>2 seconds</Text>
+              <Text style={styles.aboutKey}>Online poll</Text>
+              <Text style={styles.aboutVal}>every 2 seconds</Text>
+            </View>
+            <View style={styles.aboutRow}>
+              <Text style={styles.aboutKey}>Offline retry</Text>
+              <Text style={styles.aboutVal}>every 5 seconds</Text>
             </View>
           </View>
         </ScrollView>
@@ -120,9 +200,9 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 12,
   },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: "#4ade80" },
   hint: { fontSize: 12, color: "#6b7280", lineHeight: 18 },
-  inputRow: { gap: 8 },
   input: {
     backgroundColor: "#0f2c1a",
     color: "#fff",
@@ -152,6 +232,23 @@ const styles = StyleSheet.create({
   },
   toggleLabel: { color: "#fff", fontSize: 14, fontWeight: "600" },
   toggleHint: { color: "#6b7280", fontSize: 12, marginTop: 2 },
+  configError: { color: "#f97316", fontSize: 12, fontStyle: "italic" },
+  loadingText: { color: "#4b7a52", fontSize: 13, fontStyle: "italic" },
+  thresholdGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  thresholdCard: {
+    flex: 1,
+    minWidth: "44%",
+    backgroundColor: "#0f2c1a",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#166534",
+    padding: 12,
+    gap: 3,
+  },
+  thresholdDot: { width: 10, height: 10, borderRadius: 5, marginBottom: 4 },
+  thresholdLabel: { color: "#86efac", fontSize: 11, fontWeight: "600" },
+  thresholdVal: { color: "#fff", fontSize: 20, fontWeight: "900" },
+  thresholdHint: { color: "#4b5563", fontSize: 10 },
   aboutRow: {
     flexDirection: "row",
     justifyContent: "space-between",
