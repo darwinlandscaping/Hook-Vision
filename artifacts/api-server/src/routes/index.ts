@@ -51,6 +51,6 @@ router.use(insta360crocRouter);
 router.use(insta360brainRouter);
 router.use(polarFilterRouter);
 router.use(hudRouter);
-router.use(crocguardRouter);
+router.use("/crocguard", crocguardRouter); // mounts at /api/crocguard/*
 
 export default router;

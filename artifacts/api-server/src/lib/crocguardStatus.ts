@@ -12,17 +12,22 @@
  *          OR visual confidence 30-70%
  * GREEN  : everything else
  *
- * Auto-decay — silence-based, not age-based
- * ──────────────────────────────────────────
- * "Silence" = no new qualifying detection has arrived within the threshold.
- * Every qualifying detection refreshes the relevant silence timer.
+ * State machine — escalation vs de-escalation
+ * ──────────────────────────────────────────────
+ * ESCALATION (upward: green→orange, green→red, orange→red) is IMMEDIATE.
+ * Any qualifying detection instantly raises the status level.
  *
+ * DE-ESCALATION (downward: red→orange, orange→green) is ONLY via timer-based
+ * silence decay.  A low-confidence frame arriving while status is RED does NOT
+ * immediately drop the status — it just stops refreshing the RED trigger timer.
+ * Once 30 s pass with no RED-triggering detection, the decay tick fires.
+ *
+ * Decay schedule
+ * ─────────────────
  * RED   → ORANGE after 30 s of silence (no new RED-triggering detection)
  * ORANGE → GREEN  after 60 s of silence (no new ORANGE-triggering detection)
  *
  * A single 5-second setInterval checks whether the current status should decay.
- * This avoids the delayed-setTimeout anti-pattern where timers fire even when
- * new detections are continuing to arrive.
  */
 
 import { sonarCache } from "./crocguardDb.js";
@@ -45,16 +50,18 @@ let currentConf   = 0;
 let currentSource: string | null = null;
 let statusChangedAt = Date.now();
 
+const RANK: Record<TrafficLight, number> = { green: 0, orange: 1, red: 2 };
+
 /**
  * Last time a detection arrived that meets the RED escalation threshold.
- * Set to 0 when we leave RED (cleared on decay).
+ * Reset to 0 when we fully leave RED (cleared on green decay).
  */
 let lastRedTriggerTs = 0;
 
 /**
  * Last time a detection arrived that meets the ORANGE escalation threshold
  * (includes sonar movement and 30-70% visual confidence).
- * Set to 0 when we leave ORANGE (cleared on decay).
+ * Reset to 0 when we fully reach GREEN (cleared on green decay).
  */
 let lastOrangeTriggerTs = 0;
 
@@ -73,18 +80,19 @@ function checkDecay() {
   if (currentStatus === "red" && lastRedTriggerTs > 0) {
     if (now - lastRedTriggerTs >= RED_SILENCE_MS) {
       logger.info("CrocGuard: RED → ORANGE (30 s silence)");
-      applyStatus("orange", currentConf * 0.5, currentSource);
-      lastRedTriggerTs = 0;
-      // Immediately seed orange silence from now
+      // Preserve orange silence seeded from now; red trigger is exhausted
       lastOrangeTriggerTs = now;
+      lastRedTriggerTs    = 0;
+      applyStatus("orange", Math.round(currentConf * 0.5), currentSource);
     }
   }
 
   if (currentStatus === "orange" && lastOrangeTriggerTs > 0) {
     if (now - lastOrangeTriggerTs >= ORANGE_SILENCE_MS) {
       logger.info("CrocGuard: ORANGE → GREEN (60 s silence)");
-      applyStatus("green", 0, null);
       lastOrangeTriggerTs = 0;
+      lastRedTriggerTs    = 0;
+      applyStatus("green", 0, null);
     }
   }
 }
@@ -95,9 +103,9 @@ function applyStatus(
   newStatus: TrafficLight, conf: number, source: string | null,
 ): void {
   const prev = currentStatus;
-  currentStatus  = newStatus;
-  currentConf    = conf;
-  currentSource  = source;
+  currentStatus   = newStatus;
+  currentConf     = conf;
+  currentSource   = source;
   statusChangedAt = Date.now();
 
   if (prev !== newStatus) {
@@ -122,10 +130,10 @@ function fuse(): { status: TrafficLight; conf: number; source: string | null } {
   const now = Date.now();
 
   // Gather sonar
-  const sonarUnits = Array.from(sonarCache.values());
+  const sonarUnits  = Array.from(sonarCache.values());
   const movingSonar = sonarUnits.find(u => u.movementDetected);
 
-  // Gather fresh visual scores (stale > 5 s)
+  // Gather fresh visual scores (stale > 5 s are discarded)
   const fresh = Array.from(visualScores.entries()).filter(([, v]) => now - v.ts < 5000);
   const maxVis = fresh.reduce<{ camId: number; conf: number } | null>((best, [id, v]) => {
     if (!best || v.conf > best.conf) return { camId: id, conf: v.conf };
@@ -174,20 +182,38 @@ export function notifySonarUpdate(): void {
   evaluate();
 }
 
+/**
+ * Evaluate current fused state and apply ONLY escalations immediately.
+ * De-escalations are exclusively handled by the silence-based decay timer.
+ */
 function evaluate(): void {
-  const { status, conf, source } = fuse();
+  const { status: fusedStatus, conf, source } = fuse();
   const now = Date.now();
 
-  // Refresh trigger timestamps for decay tracking
-  if (status === "red") {
+  // Always refresh silence timestamps when qualifying detections arrive
+  if (fusedStatus === "red") {
     lastRedTriggerTs    = now;
     lastOrangeTriggerTs = now; // red implies orange-level activity too
-  } else if (status === "orange") {
+  } else if (fusedStatus === "orange") {
     lastOrangeTriggerTs = now;
-    // Do NOT reset lastRedTriggerTs — it keeps decaying in background
+    // Do NOT reset lastRedTriggerTs — it keeps ticking towards 30 s silence
   }
 
-  applyStatus(status, conf, source);
+  // ESCALATION: only move upward immediately
+  if (RANK[fusedStatus] > RANK[currentStatus]) {
+    applyStatus(fusedStatus, conf, source);
+    return;
+  }
+
+  // SAME LEVEL: update conf/source (e.g., stronger camera replaces sonar source)
+  if (RANK[fusedStatus] === RANK[currentStatus]) {
+    applyStatus(fusedStatus, conf, source);
+    return;
+  }
+
+  // LOWER LEVEL: do NOT downgrade — let the decay timer handle de-escalation
+  // (e.g., a low-confidence camera frame arriving while status is RED should
+  //  NOT immediately reset to green; wait for 30 s silence first)
 }
 
 // ─── Exported read ────────────────────────────────────────────────────────────

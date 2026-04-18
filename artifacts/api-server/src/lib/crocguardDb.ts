@@ -42,16 +42,17 @@ export interface SonarReading {
   updatedAt: Date;
 }
 
+/** Raw SQLite row — column names match the alerts table (snake_case). */
 export interface AlertRow {
   id: number;
   source: string;
-  severity: string;     // orange | red
+  severity: string;       // orange | red
   confidence: number;
   snapshot: string | null;
-  resolved: number;     // SQLite boolean: 0 | 1
-  resolvedAt: string | null;
+  resolved: number;       // SQLite INTEGER: 0 | 1
+  resolved_at: number | null; // epoch ms (INTEGER)
   metadata: string | null;
-  createdAt: string;
+  created_at: number;     // epoch ms (INTEGER)
 }
 
 // ─── In-memory caches ────────────────────────────────────────────────────────

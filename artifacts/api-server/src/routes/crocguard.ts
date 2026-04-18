@@ -1,16 +1,19 @@
 /**
  * CrocGuard REST API Routes
  * ────────────────────────────────────────────────────────────────────────────
- * All routes are prefixed /api/crocguard by the parent router.
- * (Downstream consumers — phone app and web dashboard — use these paths.)
+ * This router is mounted at TWO paths in app.ts:
+ *   /api/crocguard  — namespaced path used by downstream phone app + dashboard
+ *   /crocguard      — compatibility alias matching the task spec contract
  *
- *  GET  /crocguard/status
- *  GET  /crocguard/cameras
- *  POST /crocguard/cameras
- *  GET  /crocguard/sonar
- *  POST /crocguard/sonar
- *  GET  /crocguard/alerts
- *  POST /crocguard/alerts/resolve/:id
+ * Route handler paths use NO prefix (the mount point provides the prefix), so
+ * the effective URLs are:
+ *   GET  /api/crocguard/status    (also /crocguard/status)
+ *   GET  /api/crocguard/cameras   (also /crocguard/cameras)
+ *   POST /api/crocguard/cameras   (also /crocguard/cameras)
+ *   GET  /api/crocguard/sonar     (also /crocguard/sonar)
+ *   POST /api/crocguard/sonar     (also /crocguard/sonar)
+ *   GET  /api/crocguard/alerts    (also /crocguard/alerts)
+ *   POST /api/crocguard/alerts/resolve/:id
  *
  * URL policy: CrocGuard is a local-network / edge (Raspberry Pi) product.
  * Camera streams are expected to be on LAN addresses (192.168.x, 10.x, etc.).
@@ -67,15 +70,15 @@ function validateStreamUrl(raw: unknown): string {
   return parsed.toString();
 }
 
-// ─── GET /api/crocguard/status ────────────────────────────────────────────────
+// ─── GET /status ──────────────────────────────────────────────────────────────
 
-router.get("/crocguard/status", (_req, res) => {
+router.get("/status", (_req, res) => {
   res.json({ ok: true, ...getStatus() });
 });
 
-// ─── GET /api/crocguard/cameras ───────────────────────────────────────────────
+// ─── GET /cameras ─────────────────────────────────────────────────────────────
 
-router.get("/crocguard/cameras", (_req, res) => {
+router.get("/cameras", (_req, res) => {
   const cameras = listCameras().map(c => ({
     id:        c.id,
     name:      c.name,
@@ -87,9 +90,9 @@ router.get("/crocguard/cameras", (_req, res) => {
   res.json({ ok: true, cameras });
 });
 
-// ─── POST /api/crocguard/cameras ──────────────────────────────────────────────
+// ─── POST /cameras ────────────────────────────────────────────────────────────
 
-router.post("/crocguard/cameras", (req, res) => {
+router.post("/cameras", (req, res) => {
   const { name, streamUrl, type } = req.body as Record<string, unknown>;
 
   if (!name || typeof name !== "string" || !name.trim()) {
@@ -122,9 +125,9 @@ router.post("/crocguard/cameras", (req, res) => {
   }
 });
 
-// ─── GET /api/crocguard/sonar ─────────────────────────────────────────────────
+// ─── GET /sonar ───────────────────────────────────────────────────────────────
 
-router.get("/crocguard/sonar", (_req, res) => {
+router.get("/sonar", (_req, res) => {
   const units = listSonar().map(u => ({
     unitId:           u.unitId,
     name:             u.unitName,
@@ -135,9 +138,9 @@ router.get("/crocguard/sonar", (_req, res) => {
   res.json({ ok: true, units, anyMovement: units.some(u => u.movementDetected) });
 });
 
-// ─── POST /api/crocguard/sonar ────────────────────────────────────────────────
+// ─── POST /sonar ──────────────────────────────────────────────────────────────
 
-router.post("/crocguard/sonar", (req, res) => {
+router.post("/sonar", (req, res) => {
   const { unit_id, unit_name, signal_level, movement_detected } = req.body as Record<string, unknown>;
 
   if (!unit_id || typeof unit_id !== "string" || !unit_id.trim()) {
@@ -165,9 +168,9 @@ router.post("/crocguard/sonar", (req, res) => {
   }
 });
 
-// ─── GET /api/crocguard/alerts ────────────────────────────────────────────────
+// ─── GET /alerts ──────────────────────────────────────────────────────────────
 
-router.get("/crocguard/alerts", (req, res) => {
+router.get("/alerts", (req, res) => {
   const page  = Math.max(1, parseInt(String(req.query["page"]  ?? "1"),  10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(String(req.query["limit"] ?? "20"), 10) || 20));
   try {
@@ -178,9 +181,9 @@ router.get("/crocguard/alerts", (req, res) => {
   }
 });
 
-// ─── POST /api/crocguard/alerts/resolve/:id ───────────────────────────────────
+// ─── POST /alerts/resolve/:id ─────────────────────────────────────────────────
 
-router.post("/crocguard/alerts/resolve/:id", (req, res) => {
+router.post("/alerts/resolve/:id", (req, res) => {
   const id = parseInt(req.params["id"] ?? "", 10);
   if (!id || isNaN(id)) {
     res.status(400).json({ ok: false, error: "Invalid alert id" });

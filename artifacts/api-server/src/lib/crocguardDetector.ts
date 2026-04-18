@@ -106,6 +106,12 @@ function buildInputTensor(jpegBuf: Buffer): ort.Tensor | null {
 }
 
 // ─── ONNX inference ───────────────────────────────────────────────────────────
+//
+// NOTE: Returns raw 0-100 confidence — no artificial ceiling.
+// A high ONNX score (>70) is sufficient to trigger RED status independently,
+// allowing edge/offline operation without the vision API.
+// The vision API (stage 2) refines the score with croc-specific classification
+// but is not required for any status level to be reached.
 
 async function runOnnx(jpegBuf: Buffer): Promise<number> {
   if (!session) return 0;
@@ -123,20 +129,24 @@ async function runOnnx(jpegBuf: Buffer): Promise<number> {
         if (c > maxConf) maxConf = c;
       }
     }
-    return Math.min(maxConf * 100, 50); // cap at 50 — only stage-2 can push above 50
+    return Math.min(maxConf * 100, 100); // full 0-100 range; red threshold (>70) reachable locally
   } catch {
     return 0;
   }
 }
 
 // ─── Motion heuristic (JPEG entropy proxy) ───────────────────────────────────
+//
+// Motion alone is capped at 50 — motion delta is an ambiguous signal
+// (wave splash, lighting change) and should not independently trigger RED.
+// Combined with ONNX or vision API it can contribute meaningfully.
 
 function motionScore(prev: Buffer | undefined, curr: Buffer): number {
   if (!prev) return 0;
   const delta = Math.abs(curr.length - prev.length);
   const base  = Math.max(curr.length, prev.length);
   if (!base) return 0;
-  return Math.min((delta / base) / 0.15 * 50, 50); // cap at 50 for same reason
+  return Math.min((delta / base) / 0.15 * 50, 50); // capped at 50; ambiguous alone
 }
 
 // ─── Stage 2: croc-specific vision API classification ─────────────────────────
