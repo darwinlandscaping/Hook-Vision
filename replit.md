@@ -122,6 +122,11 @@ Standalone crocodile safety monitor phone app — Expo + React Native, dark gree
 **Context:**
 - `contexts/SettingsContext.tsx` — AsyncStorage-backed apiBaseUrl + audioEnabled; defaults to REPLIT_DEV_DOMAIN
 
+**Background Monitor:**
+- `lib/backgroundMonitor.ts` — expo-task-manager + expo-background-fetch + expo-notifications
+  CROCGUARD_STATUS_CHECK task polls status in background; sends local notification + TTS on escalation
+  iOS UIBackgroundModes: audio + fetch + remote-notification; Android: POST_NOTIFICATIONS + VIBRATE
+
 **Design tokens:** dark forest (#0d1f0f) / green (#22c55e) / orange (#f97316) / red (#ef4444)
 
 ### API Server (`artifacts/api-server`)
