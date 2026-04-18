@@ -1,24 +1,24 @@
 /**
  * CrocGuard Visual Detection Pipeline
  * ────────────────────────────────────────────────────────────────────────────
- * Fetches JPEG snapshots from ONLINE camera streams at a set interval,
- * runs lightweight motion detection (JPEG entropy delta heuristic) and
- * optionally ONNX inference (YOLOv8-nano), then feeds confidence scores
- * into the status fusion engine.
+ * Fetches JPEG snapshots from ONLINE camera streams at 1 fps, runs a
+ * two-stage detection pipeline:
  *
- * Pipeline per cycle (target: <2 seconds end-to-end):
- *   1. Fetch JPEG snapshot from camera URL  (200 ms budget)
- *   2. Compute inter-frame delta score       ( 50 ms budget)
- *   3. ONNX inference if model loaded       (400 ms budget)
- *   4. 3-frame rolling average              (  0 ms — in-memory)
- *   5. Push (cameraId, confidence) to fusion engine
+ *  Stage 1 — fast screening (<100 ms)
+ *    ONNX YOLOv8-nano  : detect "animal-class" objects (80 COCO classes)
+ *    Motion heuristic  : JPEG entropy delta between successive frames
+ *    → averaged over 3 frames; if combined score > VISION_TRIGGER_THRESHOLD
+ *      proceed to Stage 2
  *
- * ONNX model:  yolov8n.onnx (~6 MB) downloaded once on first run.
- *              Falls back to motion-heuristic-only if download unavailable.
+ *  Stage 2 — croc-specific classification (~500 ms, only when triggered)
+ *    OpenAI vision API : "Is there a crocodile in this image?" → 0-100
+ *    Uses few-shot references from the Croc Reference Library for accuracy.
+ *    Result is cached per camera for VISION_CACHE_MS to avoid API hammering.
  *
- * URL safety: all camera URLs are validated by crocguardSanitizeUrl() before
- * they are stored; the detector trusts stored URLs but still enforces a short
- * fetch timeout to limit damage in case of stale/proxied entries.
+ * Confidence returned to the fusion engine is the Stage 2 croc-specific
+ * score when available, otherwise the Stage 1 score (capped at 50).
+ *
+ * Target end-to-end cycle: <2 s per camera.
  */
 
 import * as ort from "onnxruntime-node";
@@ -28,25 +28,30 @@ import { fileURLToPath } from "url";
 import { logger } from "./logger.js";
 import { setCameraStatus, listCameras } from "./crocguardDb.js";
 import { pushVisualScore, startDecayTick } from "./crocguardStatus.js";
+import { openai } from "@workspace/integrations-openai-ai-server";
+import { getCrocFewShotRefs } from "./crocLibrary.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const MODEL_URL          = "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.onnx";
-const MODEL_PATH         = path.join(__dirname, "../../models/yolov8n.onnx");
-const SAMPLE_INTERVAL_MS = 1000;   // 1 fps per camera
-const HEALTH_CHECK_MS    = 10_000; // 10 s camera health ping
-const INPUT_SIZE         = 640;    // YOLOv8 input resolution
+const MODEL_URL           = "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.onnx";
+const MODEL_PATH          = path.join(__dirname, "../../models/yolov8n.onnx");
+const SAMPLE_INTERVAL_MS  = 1000;   // 1 fps per camera
+const HEALTH_CHECK_MS     = 10_000; // 10 s camera health ping
+const INPUT_SIZE          = 640;    // YOLOv8 input resolution
+const VISION_TRIGGER      = 20;     // min stage-1 score to trigger vision API (0-100)
+const VISION_CACHE_MS     = 5_000;  // cache vision result for 5 s per camera
 
-// COCO "animal" class ids (0-indexed) — proxy for large organism presence
+// COCO animal-adjacent class ids
 const ANIMAL_CLASSES = new Set([14, 15, 16, 17, 18, 19, 20, 21, 22, 23]);
 
 let session: ort.InferenceSession | null = null;
 let modelLoading = false;
 
-/** Raw JPEG bytes from previous cycle per camera — used for entropy diff */
-const prevFrames = new Map<number, Buffer>();
-/** Rolling 3-frame confidence buffer per camera */
-const confBuffer = new Map<number, number[]>();
+const prevFrames  = new Map<number, Buffer>();
+const confBuffer  = new Map<number, number[]>();
+
+/** Vision API result cache: camId → { score, expiresAt } */
+const visionCache = new Map<number, { score: number; expiresAt: number }>();
 
 // ─── Model loading ────────────────────────────────────────────────────────────
 
@@ -110,7 +115,7 @@ async function runOnnx(jpegBuf: Buffer): Promise<number> {
     const results = await session.run({ [session.inputNames[0]!]: tensor });
     const data = results[session.outputNames[0]!]?.data as Float32Array | undefined;
     if (!data) return 0;
-    const numDets = 8400; // YOLOv8n default
+    const numDets = 8400;
     let maxConf = 0;
     for (let d = 0; d < numDets; d++) {
       for (const cls of ANIMAL_CLASSES) {
@@ -118,7 +123,7 @@ async function runOnnx(jpegBuf: Buffer): Promise<number> {
         if (c > maxConf) maxConf = c;
       }
     }
-    return Math.min(maxConf * 100, 85); // cap — vision API does final confirmation
+    return Math.min(maxConf * 100, 50); // cap at 50 — only stage-2 can push above 50
   } catch {
     return 0;
   }
@@ -131,8 +136,63 @@ function motionScore(prev: Buffer | undefined, curr: Buffer): number {
   const delta = Math.abs(curr.length - prev.length);
   const base  = Math.max(curr.length, prev.length);
   if (!base) return 0;
-  // ≥15% size change → max heuristic score of 50 (combined with ONNX for >70 RED threshold)
-  return Math.min((delta / base) / 0.15 * 50, 50);
+  return Math.min((delta / base) / 0.15 * 50, 50); // cap at 50 for same reason
+}
+
+// ─── Stage 2: croc-specific vision API classification ─────────────────────────
+
+const CROC_SYSTEM = `You are a wildlife safety AI specialising in crocodile detection from camera footage. Analyse the provided image and determine the probability (0-100) that a crocodile is visible or present. Consider partial visibility (eyes above waterline, submerged outline), reflected light on water, and vegetation shadows. Output ONLY a JSON object: {"crocodile_confidence": <number 0-100>, "explanation": "<brief reason>"}`;
+
+async function getCrocConfidence(camId: number, jpegBuf: Buffer): Promise<number> {
+  const now = Date.now();
+  const cached = visionCache.get(camId);
+  if (cached && now < cached.expiresAt) return cached.score;
+
+  try {
+    const refs = getCrocFewShotRefs(3);
+    const refContent = refs
+      .filter(r => r.thumbBase64)
+      .map(r => ({
+        type: "image_url" as const,
+        image_url: { url: `data:image/jpeg;base64,${r.thumbBase64}`, detail: "low" as const },
+      }));
+
+    const base64Frame = jpegBuf.toString("base64");
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 80,
+      messages: [
+        { role: "system", content: CROC_SYSTEM },
+        {
+          role: "user",
+          content: [
+            ...(refContent.length > 0
+              ? [{ type: "text" as const, text: "Reference crocodile images:" }, ...refContent]
+              : []),
+            { type: "text", text: "Analyse this camera frame:" },
+            {
+              type: "image_url",
+              image_url: { url: `data:image/jpeg;base64,${base64Frame}`, detail: "low" },
+            },
+          ],
+        },
+      ],
+    });
+
+    const text = response.choices[0]?.message?.content ?? "";
+    const jsonMatch = text.match(/\{[\s\S]*?\}/);
+    if (!jsonMatch) throw new Error("no JSON in response");
+    const parsed = JSON.parse(jsonMatch[0]) as { crocodile_confidence?: number };
+    const score = Math.min(100, Math.max(0, Number(parsed.crocodile_confidence ?? 0)));
+
+    visionCache.set(camId, { score, expiresAt: now + VISION_CACHE_MS });
+    logger.info({ camId, score }, "CrocGuard: vision API croc confidence");
+    return score;
+  } catch (err) {
+    logger.warn({ err, camId }, "CrocGuard: vision API call failed");
+    visionCache.set(camId, { score: 0, expiresAt: now + VISION_CACHE_MS });
+    return 0;
+  }
 }
 
 // ─── Per-camera cycle ─────────────────────────────────────────────────────────
@@ -150,17 +210,23 @@ async function processCameraFrame(camId: number, streamUrl: string): Promise<voi
     const motion = motionScore(prevFrames.get(camId), buf);
     prevFrames.set(camId, buf);
 
-    const onnxConf = session ? await runOnnx(buf) : 0;
-    const rawConf  = Math.max(motion, onnxConf);
+    const onnxConf    = session ? await runOnnx(buf) : 0;
+    const stage1Score = Math.max(motion, onnxConf);
 
-    // Rolling 3-frame average to suppress transient false positives
+    // Rolling 3-frame average on stage-1 to suppress transient spikes
     const buf3 = confBuffer.get(camId) ?? [];
-    buf3.push(rawConf);
+    buf3.push(stage1Score);
     if (buf3.length > 3) buf3.shift();
     confBuffer.set(camId, buf3);
+    const avg1 = buf3.reduce((a, b) => a + b, 0) / buf3.length;
 
-    const avgConf = buf3.reduce((a, b) => a + b, 0) / buf3.length;
-    pushVisualScore(camId, avgConf, buf.subarray(0, 8192).toString("base64"));
+    // Stage 2: croc-specific vision API when stage-1 is triggered
+    let finalScore = avg1;
+    if (avg1 >= VISION_TRIGGER) {
+      finalScore = await getCrocConfidence(camId, buf);
+    }
+
+    pushVisualScore(camId, finalScore, buf.subarray(0, 8192).toString("base64"));
   } catch {
     setCameraStatus(camId, "offline");
   }
@@ -180,24 +246,20 @@ async function runHealthChecks(): Promise<void> {
   }));
 }
 
-// ─── Public init ─────────────────────────────────────────────────────────────
+// ─── Public init ──────────────────────────────────────────────────────────────
 
 export async function initCrocguardDetector(): Promise<void> {
-  // Kick off model download in the background — does not block startup
   ensureModel().catch(() => {});
 
-  // Sample ONLY online cameras every second
+  // Sample ONLY online cameras
   setInterval(async () => {
     const online = listCameras().filter(c => c.status === "online");
     if (online.length === 0) return;
     await Promise.allSettled(online.map(c => processCameraFrame(c.id, c.streamUrl)));
   }, SAMPLE_INTERVAL_MS);
 
-  // Periodic health check for ALL cameras regardless of current status
   setInterval(runHealthChecks, HEALTH_CHECK_MS);
   runHealthChecks().catch(() => {});
-
-  // Start the status decay interval
   startDecayTick();
 
   logger.info("CrocGuard detector started");
