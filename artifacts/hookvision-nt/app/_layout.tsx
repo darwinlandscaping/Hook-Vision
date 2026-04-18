@@ -13,12 +13,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import GateScreen, { isUnlocked } from "@/components/GateScreen";
 import { GoldenHourOverlay } from "@/components/GoldenHourOverlay";
 import { HistoryProvider } from "@/context/HistoryContext";
 import { NarratorProvider } from "@/context/NarratorContext";
@@ -50,13 +51,18 @@ export default function RootLayout() {
     Oswald_400Regular,
     Oswald_700Bold,
   });
+  const [unlocked, setUnlocked] = useState(false);
+
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
+      if (isUnlocked()) setUnlocked(true);
     }
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) return <View style={{ flex: 1, backgroundColor: "#0a1628" }} />;
+
+  if (!unlocked) return <GateScreen onUnlock={() => setUnlocked(true)} />;
 
   return (
     <SafeAreaProvider>
