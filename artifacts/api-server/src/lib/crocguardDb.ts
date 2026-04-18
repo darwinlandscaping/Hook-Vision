@@ -233,3 +233,22 @@ export function listAlerts(page = 1, limit = 20): { alerts: AlertRow[]; total: n
   const { total } = db.prepare("SELECT COUNT(*) AS total FROM alerts").get() as { total: number };
   return { alerts, total, page, limit };
 }
+
+export interface AlertStats {
+  total: number;
+  count24h: number;
+  latestAlert: AlertRow | null;
+}
+
+export function getAlertStats(): AlertStats {
+  const db = getDb();
+  const since = Date.now() - 24 * 60 * 60 * 1000;
+  const { total }   = db.prepare("SELECT COUNT(*) AS total FROM alerts").get() as { total: number };
+  const { count24h } = db.prepare(
+    "SELECT COUNT(*) AS count24h FROM alerts WHERE created_at >= ?"
+  ).get(since) as { count24h: number };
+  const latestAlert = (db.prepare(
+    "SELECT * FROM alerts ORDER BY created_at DESC LIMIT 1"
+  ).get() as AlertRow | undefined) ?? null;
+  return { total, count24h, latestAlert };
+}

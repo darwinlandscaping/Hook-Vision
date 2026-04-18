@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { AlertRow } from "../lib/crocguardDb.js";
 import {
   addCamera, ingestSonar, listCameras, listSonar,
-  listAlerts, resolveAlert,
+  listAlerts, resolveAlert, getAlertStats,
 } from "../lib/crocguardDb.js";
 import { getStatus, notifySonarUpdate } from "../lib/crocguardStatus.js";
 
@@ -39,6 +39,51 @@ function validateStreamUrl(raw: unknown): string {
 
 router.get("/status", (_req, res) => {
   res.json({ ok: true, ...getStatus() });
+});
+
+// ─── GET /brain-context ───────────────────────────────────────────────────────
+// Returns structured CrocGuard intelligence ready for injection into AI prompts.
+// Used by the phone-app brain and the forecast AI to add live croc risk context.
+router.get("/brain-context", (_req, res) => {
+  const snap  = getStatus();
+  let stats   = { total: 0, count24h: 0, latestAlert: null as null | ReturnType<typeof getAlertStats>["latestAlert"] };
+  try { stats = getAlertStats(); } catch { /* DB not yet init on edge devices */ }
+
+  const riskLabel: Record<string, string> = {
+    green:  "LOW — no active detection",
+    orange: "MEDIUM — movement detected, croc likely nearby",
+    red:    "HIGH — active crocodile detection confirmed",
+  };
+
+  let aiBrief = `CrocGuard Waterway Safety Status: ${snap.status.toUpperCase()} — ${riskLabel[snap.status] ?? snap.status}.`;
+  if (stats.count24h > 0) {
+    aiBrief += ` ${stats.count24h} crocodile alert${stats.count24h > 1 ? "s" : ""} logged in the last 24 hours.`;
+  }
+  if (snap.status === "red") {
+    aiBrief += " ACTIVE ALERT: Anglers must exercise extreme caution near water. Do not wade. Stay in vessel. CrocGuard device has detected a crocodile with high confidence.";
+  } else if (snap.status === "orange") {
+    aiBrief += " CAUTION: Crocodile movement detected. Avoid wading and use extra vigilance near water edges and boat ramps.";
+  } else {
+    aiBrief += " Conditions appear safe, but saltwater crocodiles are always a risk in these waterways — never wade or hang limbs over the water.";
+  }
+
+  res.json({
+    ok: true,
+    status:       snap.status,
+    confidence:   snap.confidence,
+    source:       snap.source,
+    timestamp:    snap.timestamp,
+    alerts_24h:   stats.count24h,
+    alerts_total: stats.total,
+    latest_alert: stats.latestAlert ? {
+      id:         stats.latestAlert.id,
+      severity:   stats.latestAlert.severity,
+      confidence: stats.latestAlert.confidence,
+      source:     stats.latestAlert.source,
+      timestamp:  new Date(stats.latestAlert.created_at).toISOString(),
+    } : null,
+    ai_brief: aiBrief,
+  });
 });
 
 router.get("/cameras", (_req, res) => {

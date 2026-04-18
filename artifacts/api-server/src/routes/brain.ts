@@ -23,6 +23,7 @@ import { logger } from "../lib/logger.js";
 import { getSonarBrainStats } from "../lib/sonarBrain.js";
 import { getCrocLibraryStats } from "../lib/crocLibrary.js";
 import { getLibraryStats as getBarraStats } from "../lib/barraLibrary.js";
+import { getAlertStats } from "../lib/crocguardDb.js";
 
 const router = Router();
 
@@ -46,7 +47,10 @@ router.get("/brain/stats", async (_req, res) => {
     const communityTotal = reportsRow.status === "fulfilled" ? (reportsRow.value[0]?.total ?? 0) : 0;
     const videoScans     = videosRow.status  === "fulfilled" ? (videosRow.value[0]?.total ?? 0) : 0;
 
-    const totalDataPoints = sonarRefs + crocPhotos + barraPhotos + communityTotal + videoScans;
+    let crocguardAlerts = 0;
+    try { crocguardAlerts = getAlertStats().total; } catch { /* CrocGuard DB optional on non-edge builds */ }
+
+    const totalDataPoints = sonarRefs + crocPhotos + barraPhotos + communityTotal + videoScans + crocguardAlerts;
 
     res.json({
       ok: true,
@@ -57,6 +61,7 @@ router.get("/brain/stats", async (_req, res) => {
         barraPhotos,
         communityReports: communityTotal,
         videoScans,
+        crocguardAlerts,
       },
       message: `${totalDataPoints.toLocaleString()} knowledge units powering the HookVision Brain`,
     });

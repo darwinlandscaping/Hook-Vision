@@ -90,6 +90,30 @@ function getNTSeason(month: number): {
   };
 }
 
+// ─── CrocGuard types ──────────────────────────────────────────────────────────
+type CrocStatus = "green" | "orange" | "red";
+interface CrocGuardState { status: CrocStatus; confidence: number; alerts24h: number }
+
+function CrocGuardBadge({ cg, colors }: { cg: CrocGuardState; colors: ReturnType<typeof useColors> }) {
+  const cfg: Record<CrocStatus, { bg: string; icon: string; label: string }> = {
+    green:  { bg: "#16a34a", icon: "shield-check",   label: "CrocGuard: CLEAR" },
+    orange: { bg: "#d97706", icon: "shield-alert",   label: "CrocGuard: CAUTION" },
+    red:    { bg: "#dc2626", icon: "shield-off",     label: "CrocGuard: ALERT" },
+  };
+  const c = cfg[cg.status];
+  return (
+    <View style={[styles.crocBadge, { backgroundColor: `${c.bg}22`, borderColor: `${c.bg}66` }]}>
+      <MaterialCommunityIcons name={c.icon as any} size={13} color={c.bg} />
+      <Text style={[styles.crocBadgeText, { color: c.bg }]}>{c.label}</Text>
+      {cg.alerts24h > 0 && (
+        <View style={[styles.crocAlertPill, { backgroundColor: c.bg }]}>
+          <Text style={styles.crocAlertPillText}>{cg.alerts24h} alert{cg.alerts24h > 1 ? "s" : ""} / 24h</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface TideEntry {
   time: string;
@@ -193,7 +217,10 @@ function UrgencyBadge({ urgency, colors }: { urgency: string; colors: ReturnType
 }
 
 // ─── Spot Card ────────────────────────────────────────────────────────────────
-function SpotCard({ spot, index, colors }: { spot: ForecastSpot; index: number; colors: ReturnType<typeof useColors> }) {
+function SpotCard({ spot, index, colors, crocGuard }: {
+  spot: ForecastSpot; index: number; colors: ReturnType<typeof useColors>;
+  crocGuard: CrocGuardState | null;
+}) {
   const openSatMap = () => {
     if (!spot.boatRamp) return;
     const { lat, lng } = spot.boatRamp;
@@ -239,6 +266,7 @@ function SpotCard({ spot, index, colors }: { spot: ForecastSpot; index: number; 
             <Text style={[styles.rampHeaderText, { color: colors.mutedForeground }]}>NEAREST BOAT RAMP</Text>
           </View>
           <Text style={[styles.rampName, { color: colors.foreground }]}>{spot.boatRamp.name}</Text>
+          {crocGuard && <CrocGuardBadge cg={crocGuard} colors={colors} />}
           <View style={[styles.rampAccessRow, { backgroundColor: `${colors.accent}14`, borderColor: `${colors.accent}28` }]}>
             <MaterialCommunityIcons name="road-variant" size={12} color={colors.accent} />
             <Text style={[styles.rampAccessText, { color: colors.mutedForeground }]}>{spot.boatRamp.accessNote}</Text>
@@ -325,6 +353,27 @@ export default function ForecastScreen() {
   const [forecast, setForecast] = useState<ForecastResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [crocGuard, setCrocGuard] = useState<CrocGuardState | null>(null);
+
+  // Fetch CrocGuard status on mount and refresh every 30s
+  useEffect(() => {
+    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const baseUrl = domain ? `https://${domain}` : "";
+    let cancelled = false;
+    const load = () => {
+      fetch(`${baseUrl}/api/crocguard/brain-context`)
+        .then(r => r.json())
+        .then(d => {
+          if (!cancelled && d.ok) {
+            setCrocGuard({ status: d.status, confidence: d.confidence, alerts24h: d.alerts_24h ?? 0 });
+          }
+        })
+        .catch(() => {});
+    };
+    load();
+    const timer = setInterval(load, 30_000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, []);
 
   // Fetch today's tides on mount
   useEffect(() => {
@@ -507,7 +556,7 @@ export default function ForecastScreen() {
           </Text>
 
           {forecast.spots.map((spot, i) => (
-            <SpotCard key={i} spot={spot} index={i} colors={colors} />
+            <SpotCard key={i} spot={spot} index={i} colors={colors} crocGuard={crocGuard} />
           ))}
 
           {/* Narrator */}
@@ -692,6 +741,31 @@ const styles = StyleSheet.create({
   rampName: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
+  },
+  crocBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  crocBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.4,
+    flex: 1,
+  },
+  crocAlertPill: {
+    borderRadius: 20,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  crocAlertPillText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
   },
   rampAccessRow: {
     flexDirection: "row",

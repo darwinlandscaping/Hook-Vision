@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getStatus } from "../lib/crocguardStatus.js";
+import { getAlertStats } from "../lib/crocguardDb.js";
 
 const router = Router();
 
@@ -272,6 +274,26 @@ router.post("/forecast", async (req, res) => {
   const label = getConditionsLabel(region);
   const defaultPort = region === "nt" ? "Darwin" : region === "nq" ? "Karumba" : "Broome";
 
+  // Pull live CrocGuard intelligence — synchronous in-memory call, no latency
+  let crocLine = "";
+  try {
+    const snap = getStatus();
+    let alertCount = 0;
+    try { alertCount = getAlertStats().count24h; } catch { /* CrocGuard DB optional */ }
+    const riskMap: Record<string, string> = {
+      red:    "🔴 ACTIVE ALERT — crocodile confirmed, high confidence",
+      orange: "🟠 CAUTION — movement detected, crocodile likely nearby",
+      green:  "🟢 Clear — no active detection (saltwater crocs still always present)",
+    };
+    crocLine = `\n- CrocGuard Live Status: ${riskMap[snap.status] ?? snap.status}` +
+      (alertCount > 0 ? ` (${alertCount} alert${alertCount > 1 ? "s" : ""} in last 24h)` : "") +
+      (snap.status === "red"
+        ? " — INCLUDE a safety note in every spot's ramp advice: DO NOT WADE, stay in vessel."
+        : snap.status === "orange"
+        ? " — mention croc caution near water edges in ramp advice."
+        : "");
+  } catch { /* non-fatal */ }
+
   const conditionsSummary = `
 Current Conditions — ${label} Fishing Forecast Request:
 - Location/Port: ${port || defaultPort}
@@ -280,7 +302,7 @@ Current Conditions — ${label} Fishing Forecast Request:
 - Season: ${season || "Unknown"}
 - Month: ${month ? new Date(2000, month - 1).toLocaleString("en-AU", { month: "long" }) : "Unknown"}
 - Next Tide: ${nextTide ? `${nextTide.type === "HW" ? "HIGH TIDE" : "LOW TIDE"} at ${nextTide.time} (${nextTide.minutesUntil > 0 ? `in ${nextTide.minutesUntil} mins` : `${Math.abs(nextTide.minutesUntil)} mins ago`}), height ${nextTide.height}m` : "Unknown"}
-- Water Temperature Range: ${waterTempRange || "Unknown"}
+- Water Temperature Range: ${waterTempRange || "Unknown"}${crocLine}
 
 Based on these exact conditions, give me the 3 best ${label} fishing spots right now with full tactical advice.
   `.trim();
