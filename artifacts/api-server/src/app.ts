@@ -33,7 +33,10 @@ app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
 app.use("/public", express.static(path.join(__dirname, "../public")));
 app.use("/api", router);
-// Compatibility alias: CrocGuard also reachable at /crocguard/* (matching task spec contract)
+// /api/crocguard/* — namespaced (for downstream apps)
+// /crocguard/*     — alias
+// /status /cameras /sonar /alerts — root-level aliases matching task spec contract
 app.use("/crocguard", crocguardRouter);
+app.use(crocguardRouter);
 
 export default app;

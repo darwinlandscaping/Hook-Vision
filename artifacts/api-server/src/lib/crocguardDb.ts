@@ -1,12 +1,3 @@
-/**
- * CrocGuard Database Layer — SQLite (better-sqlite3)
- * ────────────────────────────────────────────────────────────────────────────
- * Uses its own SQLite file (crocguard.db) — fully self-contained, no external
- * database server required. Designed to run on Raspberry Pi 4 or any Linux
- * device.  In-memory Maps provide <1 ms read access for hot-path camera and
- * sonar state; SQLite is used for writes and alert history only.
- */
-
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -214,7 +205,7 @@ export function listSonar(): SonarReading[] {
 // ─── Alert CRUD ───────────────────────────────────────────────────────────────
 
 export function createAlert(
-  source: string, severity: "orange" | "red",
+  source: string, severity: "green" | "orange" | "red",
   confidence: number, snapshot?: string, metadata?: object,
 ): AlertRow {
   const db = getDb();
