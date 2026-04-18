@@ -6,6 +6,8 @@ import { initBarraLibrary, refreshBarraLibrary } from "./lib/barraLibrary";
 import { initSonarBrain } from "./lib/sonarBrain";
 import { initCrocLibrary, refreshCrocLibrary } from "./lib/crocLibrary";
 import { initBirdLibrary, refreshBirdLibrary } from "./lib/birdLibrary";
+import { initCrocguardDb } from "./lib/crocguardDb";
+import { initCrocguardDetector } from "./lib/crocguardDetector";
 
 const rawPort = process.env["PORT"];
 
@@ -82,4 +84,11 @@ app.listen(port, (err) => {
       refreshBirdLibrary().catch(() => {});
     }, 24 * 60 * 60 * 1000);
   }, 6 * 60 * 60 * 1000);
+
+  // Initialise CrocGuard detection API:
+  // Creates DB tables, hydrates in-memory caches, starts camera sampling loop
+  // and sonar status fusion engine.
+  initCrocguardDb()
+    .then(() => initCrocguardDetector())
+    .catch((err) => logger.warn({ err }, "CrocGuard init failed — detection API will be limited"));
 });
