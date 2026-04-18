@@ -22,13 +22,18 @@ function normaliseAlert(row: AlertRow) {
   };
 }
 
+// Block loopback and cloud-metadata endpoints; LAN RFC1918 is allowed (edge/RPi product)
+const BLOCKED_HOST_RE = /^(127\.|::1$|0\.0\.0\.0|localhost|169\.254\.169\.254)/i;
+
 function validateStreamUrl(raw: unknown): string {
   if (!raw || typeof raw !== "string" || !raw.trim())
-    throw new Error("streamUrl must be a non-empty string");
+    throw new Error("stream_url must be a non-empty string");
   let parsed: URL;
-  try { parsed = new URL(raw.trim()); } catch { throw new Error("streamUrl is not a valid URL"); }
+  try { parsed = new URL(raw.trim()); } catch { throw new Error("stream_url is not a valid URL"); }
   if (!["http:", "https:", "rtsp:"].includes(parsed.protocol))
-    throw new Error("streamUrl must use http, https, or rtsp");
+    throw new Error("stream_url must use http, https, or rtsp");
+  if (BLOCKED_HOST_RE.test(parsed.hostname))
+    throw new Error(`stream_url host not allowed: ${parsed.hostname}`);
   return parsed.toString();
 }
 
@@ -48,12 +53,15 @@ router.get("/cameras", (_req, res) => {
 });
 
 router.post("/cameras", (req, res) => {
-  const { name, streamUrl, type } = req.body as Record<string, unknown>;
+  const body = req.body as Record<string, unknown>;
+  const { name, type } = body;
+  // Accept both snake_case and camelCase for stream URL
+  const rawUrl = body["stream_url"] ?? body["streamUrl"];
   if (!name || typeof name !== "string" || !name.trim()) {
     res.status(400).json({ ok: false, error: "name is required" }); return;
   }
   let safeUrl: string;
-  try { safeUrl = validateStreamUrl(streamUrl); }
+  try { safeUrl = validateStreamUrl(rawUrl); }
   catch (err) { res.status(400).json({ ok: false, error: (err as Error).message }); return; }
 
   const validTypes = ["mjpeg", "hls", "snapshot"];
