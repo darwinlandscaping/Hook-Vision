@@ -4,14 +4,19 @@ import { useEffect, useRef } from "react";
 import { Vibration } from "react-native";
 import type { TrafficLight } from "./useCrocGuardStatus";
 
-const BEEP_URL = "https://www.soundjay.com/button/sounds/beep-01a.mp3";
-const SIREN_URL = "https://www.soundjay.com/mechanical/sounds/alarm-01a.mp3";
+// Bundled local assets — guaranteed offline reliability at remote boat ramps
+const BEEP_LOCAL  = require("../assets/sounds/beep.wav") as number;
+const SIREN_LOCAL = require("../assets/sounds/siren.wav") as number;
+
+// Remote fallback (used only if local load fails)
+const BEEP_REMOTE  = "https://www.soundjay.com/button/sounds/beep-01a.mp3";
+const SIREN_REMOTE = "https://www.soundjay.com/mechanical/sounds/alarm-01a.mp3";
 
 const RED_VOICE = "Warning: crocodile detected at boat ramp. Do not enter the water.";
 
 let soundRef: Audio.Sound | null = null;
 
-async function playSound(url: string, volume = 1.0) {
+async function playSound(local: number, remote: string, volume = 1.0) {
   try {
     if (soundRef) {
       await soundRef.unloadAsync().catch(() => {});
@@ -21,16 +26,20 @@ async function playSound(url: string, volume = 1.0) {
       playsInSilentModeIOS: true,
       staysActiveInBackground: true,
     });
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: url },
-      { shouldPlay: true, volume }
-    );
+    let sound: Audio.Sound;
+    try {
+      // Try bundled local asset first
+      ({ sound } = await Audio.Sound.createAsync(local, { shouldPlay: true, volume }));
+    } catch {
+      // Fall back to remote URL
+      ({ sound } = await Audio.Sound.createAsync({ uri: remote }, { shouldPlay: true, volume }));
+    }
     soundRef = sound;
     sound.setOnPlaybackStatusUpdate((s) => {
       if (s.isLoaded && s.didJustFinish) sound.unloadAsync().catch(() => {});
     });
   } catch {
-    // Audio failed — vibration still fires
+    // Audio unavailable — vibration + TTS still fires below
   }
 }
 
@@ -72,11 +81,10 @@ export function useAudioAlert(
 
     if (currentStatus === "orange") {
       Vibration.vibrate([0, 200, 100, 200]);
-      playSound(BEEP_URL, 0.6);
+      playSound(BEEP_LOCAL, BEEP_REMOTE, 0.6);
     } else if (currentStatus === "red") {
       Vibration.vibrate([0, 400, 200, 400, 200, 400]);
-      playSound(SIREN_URL, 1.0);
-      // Slight delay so siren starts first, then voice
+      playSound(SIREN_LOCAL, SIREN_REMOTE, 1.0);
       setTimeout(speakWarning, 1500);
     }
   }, [currentStatus, prevStatus, audioEnabled]);
