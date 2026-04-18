@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/crocguard/"
+title = "CrocGuard"
+version = "1.0.0"
+id = "artifacts/crocguard"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/crocguard/" ]
+localPort = 25354
+
+[services.development]
+run = "pnpm --filter @workspace/crocguard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/crocguard", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/crocguard", "run", "serve" ]
+
+[services.env]
+PORT = "25354"
+BASE_PATH = "/crocguard"

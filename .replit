@@ -24,6 +24,10 @@ args = "artifacts/hookvision-nq: expo"
 task = "workflow.run"
 args = "artifacts/hookvision-nt: expo"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/crocguard: expo"
+
 [[workflows.workflow]]
 name = "artifacts/hookvision-nq: expo"
 author = "agent"
@@ -47,6 +51,18 @@ waitForPort = 25353
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "artifacts/crocguard: expo"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=3001 pnpm --filter @workspace/crocguard run dev"
+waitForPort = 3001
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
@@ -54,6 +70,10 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[[ports]]
+localPort = 3001
+externalPort = 5000
 
 [[ports]]
 localPort = 8080

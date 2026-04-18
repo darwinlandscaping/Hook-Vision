@@ -101,6 +101,29 @@ North Queensland / Gulf Country Edition of HookVision — a complete standalone 
 - Weather source line uses `qldTime.timeStr` (local Brisbane time) since API returns waLocalTime (WA time)
 - DailyConditions interface uses `waLocalTime: string` (API field name — the field is WA-named but only used for cache-busting, display uses local computed time)
 
+### CrocGuard (`artifacts/crocguard`)
+
+Standalone crocodile safety monitor phone app — Expo + React Native, dark green theme, minimal 4-tab design for at-a-glance danger status.
+
+- Port 3001, baseUrl /crocguard
+- Package: `@workspace/crocguard`; scheme `crocguard`; android package `com.hookvision.crocguard`
+- Workflow: `artifacts/crocguard: expo` (PORT=3001)
+
+**Screens (4 tabs):**
+- `app/(tabs)/index.tsx` — Full-screen traffic light status (green/orange/red) polling `/api/crocguard/status` every 2s; keep-awake; pulsing animation for danger states
+- `app/(tabs)/cameras.tsx` — Camera list from `/api/crocguard/cameras`; WebView MJPEG stream modal (native)
+- `app/(tabs)/alerts.tsx` — Detection log from `/api/crocguard/alerts`; 5s poll; severity-colour-coded rows
+- `app/(tabs)/settings.tsx` — AsyncStorage-persisted API URL + audio toggle
+
+**Hooks:**
+- `hooks/useCrocGuardStatus.ts` — 2s polling hook; tracks prevStatus for escalation detection
+- `hooks/useAudioAlert.ts` — Escalating alerts: Orange = short beep + vibration; Red = siren + vibration
+
+**Context:**
+- `contexts/SettingsContext.tsx` — AsyncStorage-backed apiBaseUrl + audioEnabled; defaults to REPLIT_DEV_DOMAIN
+
+**Design tokens:** dark forest (#0d1f0f) / green (#22c55e) / orange (#f97316) / red (#ef4444)
+
 ### API Server (`artifacts/api-server`)
 
 Express 5 API server.
@@ -164,11 +187,12 @@ Each edition needs three things aligned in its `metro.config.js` + `app.json`:
   (prepends `/<BASE>` to asset src/href, changes `lazy=true` → `lazy=false`)
 - `app.json`: `experiments.baseUrl = "/<BASE>"` so Metro injects `transform.baseUrl` into HTML
 
-| Edition | BASE          | Port  |
-|---------|---------------|-------|
-| WA      | /hookvision   | $PORT |
-| NQ      | /hookvision-nq| 25352 |
-| NT      | /hookvision-nt| 25353 |
+| Edition   | BASE          | Port  |
+|-----------|---------------|-------|
+| WA        | /hookvision   | $PORT |
+| NQ        | /hookvision-nq| 25352 |
+| NT        | /hookvision-nt| 25353 |
+| CrocGuard | /crocguard    | 3001  |
 
 ## Key Commands
 

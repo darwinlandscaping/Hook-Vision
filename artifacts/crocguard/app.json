@@ -1,0 +1,70 @@
+{
+  "expo": {
+    "name": "CrocGuard",
+    "slug": "crocguard",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "crocguard",
+    "description": "Real-time crocodile detection monitoring for boat ramps. Instant alerts, live camera feeds, and safety status powered by CrocGuard AI.",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0d1f0f"
+    },
+    "androidStatusBar": {
+      "style": "light",
+      "backgroundColor": "#00000000",
+      "translucent": true
+    },
+    "androidNavigationBar": {
+      "style": "dark",
+      "backgroundColor": "#0d1f0f"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "CrocGuard accesses camera feeds from connected buoy devices.",
+        "NSMicrophoneUsageDescription": "CrocGuard uses audio for crocodile detection alerts."
+      }
+    },
+    "android": {
+      "package": "com.crocguard.app",
+      "versionCode": 1,
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0d1f0f"
+      },
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png",
+      "backgroundColor": "#0d1f0f",
+      "themeColor": "#0d1f0f"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      "expo-av"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "baseUrl": "/crocguard"
+    }
+  }
+}
