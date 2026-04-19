@@ -18,6 +18,7 @@ const MIME = {
 
 const config = getDefaultConfig(projectRoot);
 
+
 config.resolver.unstable_enableSymlinks = true;
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),

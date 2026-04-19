@@ -52,7 +52,8 @@
         "android.permission.CHANGE_WIFI_STATE",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.CHANGE_NETWORK_STATE",
-        "android.permission.WAKE_LOCK"
+        "android.permission.WAKE_LOCK",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -98,6 +99,21 @@
       "typedRoutes": true,
       "reactCompiler": true,
       "baseUrl": "/hookvision-nq"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "abdc9511-af23-4c7e-9f21-8ad3067ab9ef"
+      }
+    },
+    "owner": "hookvision",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/abdc9511-af23-4c7e-9f21-8ad3067ab9ef",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
     }
   }
 }

@@ -7,6 +7,7 @@ const BASE = "/hookvision-nt";
 
 const config = getDefaultConfig(projectRoot);
 
+
 config.resolver.unstable_enableSymlinks = true;
 
 config.resolver.nodeModulesPaths = [

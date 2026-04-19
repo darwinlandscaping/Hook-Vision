@@ -7,6 +7,7 @@ const BASE = "/hookvision-nq";
 
 const config = getDefaultConfig(projectRoot);
 
+
 // Follow pnpm symlinks so Metro can resolve packages installed via
 // pnpm workspaces (e.g. @tensorflow/tfjs).
 config.resolver.unstable_enableSymlinks = true;

@@ -15,9 +15,6 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "ios": {
-        "simulator": false
       }
     },
     "production": {
@@ -26,8 +23,5 @@
   },
   "submit": {
     "production": {}
-  },
-  "update": {
-    "channel": "main"
   }
 }
