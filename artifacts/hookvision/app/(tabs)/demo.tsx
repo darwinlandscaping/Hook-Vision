@@ -14,14 +14,26 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { Asset } from "expo-asset";
+import * as FileSystem from "expo-file-system";
 
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 
+// ─── Local bundled sonar images (always available, no network needed) ──────────
+const DEMO_IMAGES = {
+  1: require("../../assets/sonar-demo-1.png"),
+  2: require("../../assets/sonar-demo-2.png"),
+  3: require("../../assets/sonar-demo-3.png"),
+  4: require("../../assets/sonar-demo-4.png"),
+  5: require("../../assets/images/sonar-sample.png"),
+} as const;
+type DemoNum = keyof typeof DEMO_IMAGES;
+
 const DEMOS = [
   {
-    num: 1,
+    num: 1 as DemoNum,
     brand: "Lowrance",
     model: "HDS Live",
     desc: "3 barramundi marks at 5.2m — classic barra arch signatures on a Lowrance HDS Live unit.",
@@ -29,7 +41,7 @@ const DEMOS = [
     accent: "#00d4aa",
   },
   {
-    num: 2,
+    num: 2 as DemoNum,
     brand: "Garmin",
     model: "ECHOMAP UHD",
     desc: "School of fish at 3.1m — mid-water column aggregation typical of threadfin bream on Garmin.",
@@ -37,7 +49,7 @@ const DEMOS = [
     accent: "#00a8ff",
   },
   {
-    num: 3,
+    num: 3 as DemoNum,
     brand: "Humminbird",
     model: "HELIX 10",
     desc: "Clean arch at 8m over hard rocky reef — classic fingermark (golden snapper) feeding posture above the rubble.",
@@ -45,7 +57,7 @@ const DEMOS = [
     accent: "#ffd700",
   },
   {
-    num: 4,
+    num: 4 as DemoNum,
     brand: "Simrad",
     model: "GO9 XSE",
     desc: "Dual-layer suspension at 7m — two distinct species at separate depths on a Simrad unit.",
@@ -53,7 +65,7 @@ const DEMOS = [
     accent: "#ff7043",
   },
   {
-    num: 5,
+    num: 5 as DemoNum,
     brand: "Lowrance",
     model: "Elite FS 9",
     desc: "Kakadu Jim Jim Billabong — dense barra school locked at 3-5m on a submerged rock shelf. Saratoga surface arches visible at 1m and Archer Fish scatter at 0.5m as an early-warning feeding signal.",
@@ -65,33 +77,49 @@ const DEMOS = [
 export default function DemoScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const [loadingNum, setLoadingNum] = useState<number | null>(null);
+  const [loadingNum, setLoadingNum] = useState<DemoNum | null>(null);
   useAutoNarrate(() => "Demo Sonar Scans. Five real sonar screenshots including Kakadu Jim Jim Billabong barra. Tap any card to run instant AI analysis.");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 
-  const loadAndAnalyze = useCallback(async (num: number) => {
+  const loadAndAnalyze = useCallback(async (num: DemoNum) => {
     try {
       setLoadingNum(num);
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
-      const baseUrl = domain ? `https://${domain}` : "";
-      const url = `${baseUrl}/api/demos/sonar-demo-${num}.png`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to load demo");
-      const blob = await response.blob();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
 
-      // Navigate to Analyze tab and pass demo image
-      // Store in a simple module-level ref so AnalyzeTab can pick it up
-      DemoStore.pendingUri = url;
+      let base64: string;
+      let pendingUri: string;
+
+      if (Platform.OS === "web") {
+        // Web: fetch from API (FileSystem not available on web)
+        const domain = process.env.EXPO_PUBLIC_DOMAIN;
+        const baseUrl = domain ? `https://${domain}` : "";
+        const url = `${baseUrl}/api/demos/sonar-demo-${num}.png`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Failed to load demo");
+        const blob = await response.blob();
+        base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        pendingUri = url;
+      } else {
+        // Native: read from bundled local asset — always works, no network needed
+        const asset = Asset.fromModule(DEMO_IMAGES[num]);
+        await asset.downloadAsync();
+        const localUri = asset.localUri;
+        if (!localUri) throw new Error("Asset unavailable");
+        base64 = await FileSystem.readAsStringAsync(localUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        pendingUri = localUri;
+      }
+
+      DemoStore.pendingUri = pendingUri;
       DemoStore.pendingBase64 = base64;
       router.navigate("/(tabs)/" as any);
     } catch {
@@ -119,9 +147,6 @@ export default function DemoScreen() {
       </Text>
 
       {DEMOS.map((d) => {
-        const domain = process.env.EXPO_PUBLIC_DOMAIN;
-        const baseUrl = domain ? `https://${domain}` : "";
-        const uri = `${baseUrl}/api/demos/sonar-demo-${d.num}.png`;
         const isLoading = loadingNum === d.num;
 
         return (
@@ -132,9 +157,13 @@ export default function DemoScreen() {
             {/* Coloured top strip */}
             <View style={[styles.strip, { backgroundColor: d.accent }]} />
 
-            {/* Image */}
+            {/* Image — loaded from local bundle, always visible */}
             <View style={styles.imageWrap}>
-              <Image source={{ uri }} style={styles.image} resizeMode="cover" />
+              <Image
+                source={DEMO_IMAGES[d.num]}
+                style={styles.image}
+                resizeMode="cover"
+              />
               {/* Brand badge */}
               <View style={[styles.brandBadge, { backgroundColor: colors.background + "ee" }]}>
                 <Text style={[styles.brandText, { color: d.accent }]}>{d.brand}</Text>
