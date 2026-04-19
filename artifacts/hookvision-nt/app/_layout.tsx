@@ -13,8 +13,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -50,13 +50,27 @@ export default function RootLayout() {
     Oswald_400Regular,
     Oswald_700Bold,
   });
+  const [timedOut, setTimedOut] = useState(false);
+
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    const t = setTimeout(() => setTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded || fontError || timedOut) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, timedOut]);
 
-  if (!fontsLoaded && !fontError) return <View style={{ flex: 1, backgroundColor: "#0a1628" }} />;
+  if (!fontsLoaded && !fontError && !timedOut) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#0a1628", alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator size="large" color="#00d4ff" />
+        <Text style={{ color: "#ffd700", marginTop: 16, fontSize: 14, letterSpacing: 2 }}>LOADING…</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
