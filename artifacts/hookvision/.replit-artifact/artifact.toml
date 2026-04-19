@@ -9,7 +9,6 @@ name = "expo"
 version = "1.0.0"
 
 [[services]]
-ensurePreviewReachable = "/status"
 name = "expo"
 paths = [ "/hookvision-wa" ]
 localPort = 25351
