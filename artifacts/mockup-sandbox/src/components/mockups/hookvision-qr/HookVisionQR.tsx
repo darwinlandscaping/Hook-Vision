@@ -1,4 +1,6 @@
-const EXPO_DEV_DOMAIN = "898f5a0e-eba6-4a78-b40d-d78f0539d56e-00-o6803yqna0ig.expo.spock.replit.dev";
+const EXPO_DEV_DOMAIN =
+  import.meta.env.VITE_EXPO_DEV_DOMAIN ||
+  `${import.meta.env.VITE_REPL_ID}-00-o6803yqna0ig.expo.spock.replit.dev`;
 
 const apps = [
   {
@@ -112,7 +114,7 @@ export default function HookVisionQR() {
       </div>
 
       <div style={{ color: "#3d5a73", fontSize: 11, marginTop: 28, textAlign: "center" }}>
-        Password: <span style={{ color: "#7a9ab5" }}>Pepper73</span> · Replit Expo Dev Server · Valid while workspace is open
+        Replit Expo Dev Server · Valid while workspace is open
       </div>
     </div>
   );
