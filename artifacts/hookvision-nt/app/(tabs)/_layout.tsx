@@ -16,7 +16,7 @@ import { Insta360Provider } from "@/contexts/Insta360Context";
 // insta360 is hidden from tab bar (accessed via Live tab chip) to keep Brain visible
 const TAB_ROUTES = [
   "live", "home", "buff", "tides", "species",
-  "barra", "zones", "forecast", "catchid", "history", "community", "smartlife", "cameras",
+  "barra", "zones", "forecast", "catchid", "demo", "history", "community", "smartlife", "cameras",
 ] as const;
 
 function tabPath(name: string) {
@@ -61,6 +61,10 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="catchid">
         <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
         <Label>Catch ID</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="demo">
+        <Icon sf={{ default: "photo.on.rectangle.angled", selected: "photo.on.rectangle.angled" }} />
+        <Label>Demo</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="history">
         <Icon sf={{ default: "clock", selected: "clock.fill" }} />
@@ -266,7 +270,18 @@ function ClassicTabLayout() {
             ),
         }}
       />
-      <Tabs.Screen name="demo" options={{ href: null }} />
+      <Tabs.Screen
+        name="demo"
+        options={{
+          title: "Demo",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="photo.on.rectangle.angled" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="image-multiple" size={22} color={color} />
+            ),
+        }}
+      />
       <Tabs.Screen
         name="history"
         options={{
