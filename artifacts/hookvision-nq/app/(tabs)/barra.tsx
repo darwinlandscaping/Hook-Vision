@@ -567,7 +567,9 @@ function BarraScreenInner() {
   useEffect(() => {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
-    fetch(`${baseUrl}/api/tides?port=karumba&days=2`)
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10_000);
+    fetch(`${baseUrl}/api/tides?port=karumba&days=2`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => {
         const all: TideEntry[] = [];
@@ -576,7 +578,8 @@ function BarraScreenInner() {
         const sorted = all.sort((a, b) => a.timestamp - b.timestamp);
         const next = sorted.find((t) => t.timestamp > nowMs - 30 * 60000) ?? null;
         setNextTide(next);
-      }).catch(() => {});
+      }).catch(() => {})
+      .finally(() => clearTimeout(timer));
   }, []);
 
   const predict = useCallback(async () => {

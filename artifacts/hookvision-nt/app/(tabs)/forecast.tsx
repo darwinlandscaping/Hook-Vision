@@ -618,10 +618,12 @@ export default function ForecastScreen() {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 10_000);
       try {
         const [brainRes, detRes] = await Promise.all([
-          fetch(`${baseUrl}/api/crocguard/brain-context`),
-          fetch(`${baseUrl}/api/crocguard/deterrent`),
+          fetch(`${baseUrl}/api/crocguard/brain-context`, { signal: ctrl.signal }),
+          fetch(`${baseUrl}/api/crocguard/deterrent`, { signal: ctrl.signal }),
         ]);
         const brain = await brainRes.json();
         const det   = await detRes.json();
@@ -629,7 +631,7 @@ export default function ForecastScreen() {
           if (brain.ok) setCrocGuard({ status: brain.status, confidence: brain.confidence, alerts24h: brain.alerts_24h ?? 0 });
           if (det.ok)   setDeterrent(det.deterrent);
         }
-      } catch {}
+      } catch {} finally { clearTimeout(t); }
     };
     load();
     const timer = setInterval(load, 15_000);
@@ -638,7 +640,9 @@ export default function ForecastScreen() {
 
   // Fetch today's tides on mount
   useEffect(() => {
-    fetch(`${baseUrl}/api/tides?port=darwin&days=2`)
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10_000);
+    fetch(`${baseUrl}/api/tides?port=darwin&days=2`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => {
         const allTides: TideEntry[] = [];
@@ -658,8 +662,8 @@ export default function ForecastScreen() {
         }
       })
       .catch(() => {})
-      .finally(() => setTidesLoading(false));
-  }, []);
+      .finally(() => { clearTimeout(timer); setTidesLoading(false); });
+  }, [baseUrl]);
 
   const getForecast = useCallback(async () => {
     setLoading(true);

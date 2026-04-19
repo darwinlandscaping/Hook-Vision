@@ -189,7 +189,27 @@ Based on these exact conditions and the depth zone database, tell me exactly whe
       const match = jsonStr.match(/\{[\s\S]*\}/);
       if (match) jsonStr = match[0];
     }
-    const parsed = JSON.parse(jsonStr);
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      req.log.error({ parseErr, jsonStr: jsonStr.slice(0, 200) }, "Barra JSON parse failed — returning fallback");
+      return res.json({
+        bigPictureRead: "AI data temporarily unavailable. Fish the tidal change on your nearest barra system — run-out into the main channel is always a safe bet.",
+        topDepth: "2–4m",
+        topTechnique: "Slow roll deep-diver along the bottom structure",
+        predictions: [
+          {
+            rank: 1, river: "Local estuary", spot: "River mouth channel",
+            targetDepth: "2–3m", why: "Tidal movement pushes barra to ambush points at river mouths",
+            lure: "Hard-body 80mm", rig: "60lb leader, 4/0 hook",
+            technique: "Cast across current, slow roll back along bottom",
+            confidence: "LOW", windowHours: 3,
+            windowNote: "Fish the 90 min either side of the tide change",
+          },
+        ],
+      });
+    }
     res.json(parsed);
   } catch (err) {
     req.log.error({ err }, "Barra prediction failed");

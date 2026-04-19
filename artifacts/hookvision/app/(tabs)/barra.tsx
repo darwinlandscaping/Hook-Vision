@@ -175,6 +175,100 @@ const BARRA_FACTS = [
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface TideEntry { time: string; type: "HW" | "LW"; height: number; timestamp: number; }
+
+// ─── Tide helpers & card ───────────────────────────────────────────────────────
+function getTidalPhase(
+  minutesUntil: number | null,
+  tideType: "HW" | "LW" | null,
+): { label: string; color: string; bg: string; emoji: string } {
+  if (minutesUntil === null || tideType === null) {
+    return { label: "LOADING", color: "#888", bg: "#88888818", emoji: "🌊" };
+  }
+  if (Math.abs(minutesUntil) <= 35) {
+    return { label: "SLACK TIDE", color: "#ff8c00", bg: "#ff8c0018", emoji: "⚖️" };
+  }
+  if (tideType === "HW") {
+    return { label: "INCOMING", color: "#00d4aa", bg: "#00d4aa18", emoji: "↗️" };
+  }
+  return { label: "OUTGOING", color: "#4a9eff", bg: "#4a9eff18", emoji: "↘️" };
+}
+
+function formatCountdown(absMinutes: number): string {
+  if (absMinutes < 60) return `${absMinutes} min`;
+  const h = Math.floor(absMinutes / 60);
+  const m = absMinutes % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function BroomeTideCard({
+  nextTide,
+  colors,
+}: {
+  nextTide: TideEntry | null;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  const minutesUntil = nextTide ? Math.round((nextTide.timestamp - nowMs) / 60000) : null;
+  const phase = getTidalPhase(minutesUntil, nextTide?.type ?? null);
+  const isHW = nextTide?.type === "HW";
+  const tideColor = isHW ? "#ff2200" : "#4a9eff";
+  const isPast = minutesUntil !== null && minutesUntil < 0;
+
+  return (
+    <LilyPadCard borderColor={`${phase.color}44`} borderLeftColor={phase.color} innerStyle={{ padding: 12, gap: 10 }}>
+      <View style={styles.tideCardHeader}>
+        <MaterialCommunityIcons name="waves" size={18} color={phase.color} />
+        <Text style={[styles.tideCardTitle, { color: colors.foreground }]}>BROOME TIDES</Text>
+        <View style={[styles.tidePhaseBadge, { backgroundColor: phase.bg, borderColor: `${phase.color}55` }]}>
+          <Text style={[styles.tidePhaseText, { color: phase.color }]}>{phase.emoji} {phase.label}</Text>
+        </View>
+      </View>
+
+      {nextTide && minutesUntil !== null ? (
+        <View style={styles.tideCardBody}>
+          <View style={styles.tideMainBlock}>
+            <Text style={[styles.tideTypeLabel, { color: colors.mutedForeground }]}>
+              {isPast ? "LAST" : "NEXT"} {isHW ? "HIGH" : "LOW"} TIDE
+            </Text>
+            <View style={styles.tideMainRow}>
+              <Text style={[styles.tideHeight, { color: tideColor }]}>{nextTide.height.toFixed(1)}m</Text>
+              <View style={[styles.tideTypePill, { backgroundColor: `${tideColor}22`, borderColor: `${tideColor}44` }]}>
+                <Text style={[styles.tideTypePillText, { color: tideColor }]}>{isHW ? "HIGH" : "LOW"}</Text>
+              </View>
+            </View>
+            <Text style={[styles.tideTime, { color: colors.foreground }]}>{nextTide.time}</Text>
+          </View>
+
+          <View style={[styles.tideCountdownBlock, { borderColor: colors.border }]}>
+            <Text style={[styles.tideCountdownLabel, { color: colors.mutedForeground }]}>
+              {isPast ? "AGO" : "IN"}
+            </Text>
+            <Text style={[styles.tideCountdownNum, { color: phase.color }]}>
+              {formatCountdown(Math.abs(minutesUntil))}
+            </Text>
+            <MaterialCommunityIcons
+              name={isHW ? "arrow-up-bold" : "arrow-down-bold"}
+              size={18}
+              color={tideColor}
+            />
+          </View>
+        </View>
+      ) : (
+        <View style={styles.tideLoadingRow}>
+          <ActivityIndicator size="small" color={phase.color} />
+          <Text style={[styles.tideLoadingText, { color: colors.mutedForeground }]}>
+            Fetching Broome tides...
+          </Text>
+        </View>
+      )}
+    </LilyPadCard>
+  );
+}
 interface BarraPrediction {
   rank: number; river: string; spot: string; targetDepth: string;
   why: string; lure: string; rig: string; technique: string;
@@ -466,7 +560,9 @@ function BarraScreenInner() {
   useEffect(() => {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
-    fetch(`${baseUrl}/api/tides?port=broome&days=2`)
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10_000);
+    fetch(`${baseUrl}/api/tides?port=broome&days=2`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => {
         const all: TideEntry[] = [];
@@ -474,7 +570,8 @@ function BarraScreenInner() {
         const nowMs = Date.now();
         const next = all.filter((t) => t.timestamp > nowMs - 30 * 60000).sort((a, b) => a.timestamp - b.timestamp)[0];
         if (next) setNextTide({ ...next, minutesUntil: Math.round((next.timestamp - nowMs) / 60000) });
-      }).catch(() => {});
+      }).catch(() => {})
+      .finally(() => clearTimeout(timer));
   }, []);
 
   const predict = useCallback(async () => {
@@ -541,6 +638,9 @@ function BarraScreenInner() {
 
       {/* ── MILLION DOLLAR FISH ── */}
       <MDFCard colors={colors} />
+
+      {/* ── BROOME TIDE CARD ── */}
+      <BroomeTideCard nextTide={nextTide} colors={colors} />
 
       {/* ── AI TROPHY PREDICTOR ── */}
       <SectionTitle emoji="🎯" label="AI TROPHY PREDICTOR" sub="70cm+ fish · powered by 40yr Kimberley river data" color="#ff2200" />
@@ -779,6 +879,25 @@ const styles = StyleSheet.create({
   factRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 12 },
   factEmoji: { fontSize: 18, marginTop: 1 },
   factText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+
+  // Tide card
+  tideCardHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tideCardTitle: { flex: 1, fontSize: 13, fontFamily: "Inter_700Bold", letterSpacing: 0.4 },
+  tidePhaseBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
+  tidePhaseText: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  tideCardBody: { flexDirection: "row", alignItems: "center", gap: 14 },
+  tideMainBlock: { flex: 1, gap: 3 },
+  tideTypeLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
+  tideMainRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tideHeight: { fontSize: 32, fontFamily: "Oswald_700Bold", lineHeight: 36 },
+  tideTypePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
+  tideTypePillText: { fontSize: 10, fontFamily: "Inter_700Bold" },
+  tideTime: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  tideCountdownBlock: { alignItems: "center", gap: 2, paddingLeft: 14, borderLeftWidth: 1 },
+  tideCountdownLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
+  tideCountdownNum: { fontSize: 20, fontFamily: "Oswald_700Bold" },
+  tideLoadingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tideLoadingText: { fontSize: 12, fontFamily: "Inter_400Regular" },
 });
 
 export default function BarraScreen() {

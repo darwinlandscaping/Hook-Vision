@@ -361,14 +361,17 @@ export default function ForecastScreen() {
     const baseUrl = domain ? `https://${domain}` : "";
     let cancelled = false;
     const load = () => {
-      fetch(`${baseUrl}/api/crocguard/brain-context`)
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 10_000);
+      fetch(`${baseUrl}/api/crocguard/brain-context`, { signal: ctrl.signal })
         .then(r => r.json())
         .then(d => {
           if (!cancelled && d.ok) {
             setCrocGuard({ status: d.status, confidence: d.confidence, alerts24h: d.alerts_24h ?? 0 });
           }
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => clearTimeout(t));
     };
     load();
     const timer = setInterval(load, 30_000);
@@ -379,7 +382,9 @@ export default function ForecastScreen() {
   useEffect(() => {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
-    fetch(`${baseUrl}/api/tides?port=karumba&days=2`)
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10_000);
+    fetch(`${baseUrl}/api/tides?port=karumba&days=2`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => {
         const allTides: TideEntry[] = [];
@@ -399,7 +404,7 @@ export default function ForecastScreen() {
         }
       })
       .catch(() => {})
-      .finally(() => setTidesLoading(false));
+      .finally(() => { clearTimeout(timer); setTidesLoading(false); });
   }, []);
 
   const getForecast = useCallback(async () => {
