@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, Component } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -418,7 +418,27 @@ function HotSpotsSection({ hotSpots, colors }: { hotSpots: HotSpot[]; colors: Re
 }
 
 // ─── Main screen ───────────────────────────────────────────────────────────────
-export default function BarraScreen() {
+class BarraErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(e: Error) { return { error: e.message }; }
+  componentDidCatch(e: Error) { console.error("BARRA CRASH:", e); }
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#0a1628", padding: 24 }}>
+          <Text style={{ color: "#ff2200", fontSize: 20, fontWeight: "bold", marginBottom: 12 }}>⚠️ BARRA ERROR</Text>
+          <Text style={{ color: "#ffd700", fontSize: 13, textAlign: "center", lineHeight: 20 }}>{this.state.error}</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function BarraScreenInner() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 0 : insets.top;
@@ -760,3 +780,11 @@ const styles = StyleSheet.create({
   factEmoji: { fontSize: 18, marginTop: 1 },
   factText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
 });
+
+export default function BarraScreen() {
+  return (
+    <BarraErrorBoundary>
+      <BarraScreenInner />
+    </BarraErrorBoundary>
+  );
+}
