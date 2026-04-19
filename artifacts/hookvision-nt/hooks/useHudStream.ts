@@ -15,7 +15,7 @@ import { Platform } from "react-native";
 
 const BASE_URL = Platform.OS === "web"
   ? (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}` : "")
-  : `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+  : (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
 
 export const HUD_PAGE_URL   = `${BASE_URL}/api/hud`;
 const        HUD_UPDATE_URL = `${BASE_URL}/api/hud/update`;
