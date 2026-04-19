@@ -575,6 +575,7 @@ function BarraScreenInner() {
   })();
 
   const [nextTide, setNextTide] = useState<(TideEntry & { minutesUntil: number }) | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
   const [tidesError, setTidesError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [result,   setResult]   = useState<BarraResult | null>(null);
@@ -595,12 +596,13 @@ function BarraScreenInner() {
     fetch(`${baseUrl}/api/tides?port=broome&days=2`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => {
+        setIsOffline(false);
         const all: TideEntry[] = [];
         if (d.data) for (const day of d.data) for (const t of day.tides) all.push(t);
         const nowMs = Date.now();
         const next = all.filter((t) => t.timestamp > nowMs - 30 * 60000).sort((a, b) => a.timestamp - b.timestamp)[0];
         if (next) setNextTide({ ...next, minutesUntil: Math.round((next.timestamp - nowMs) / 60000) });
-      }).catch(() => setTidesError(true))
+      }).catch((e: unknown) => { setTidesError(true); if (e instanceof TypeError) setIsOffline(true); })
       .finally(() => clearTimeout(timer));
   }, [retryCount]);
 
@@ -637,6 +639,13 @@ function BarraScreenInner() {
       showsVerticalScrollIndicator={false}
     >
       <HVHeader subtitle="Kimberley Barra Nation — WA Edition" />
+
+      {isOffline && (
+        <View style={{ backgroundColor: "#ff8c00", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 10, flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text style={{ fontSize: 15 }}>📶</Text>
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13, flex: 1 }}>No connection — live data unavailable. Connect to Wi-Fi or mobile data.</Text>
+        </View>
+      )}
 
       {/* Page title */}
       <View style={styles.header}>
