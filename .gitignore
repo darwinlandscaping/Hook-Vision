@@ -52,3 +52,8 @@ Thumbs.db
 *.db
 *.db-wal
 *.db-shm
+
+# SQLite WAL files
+*.db-shm
+*.db-wal
+*.db-journal

@@ -199,6 +199,21 @@ Each edition needs three things aligned in its `metro.config.js` + `app.json`:
 | NT        | /hookvision-nt| 25353 |
 | CrocGuard | /crocguard    | 3001  |
 
+## EAS Published Updates
+
+All 3 HookVision apps are registered on expo.dev under account **hookvision** (putterfacedarwin@gmail.com).
+EAS Token is stored in the `EXPO_TOKEN` Replit Secret.
+
+| App | EAS Project | EAS Update Dashboard |
+|-----|-------------|----------------------|
+| HookVision WA | ce1458b7-aa80-4d0a-a752-d436c9f8db4f | https://expo.dev/accounts/hookvision/projects/hookvision |
+| HookVision NQ | abdc9511-af23-4c7e-9f21-8ad3067ab9ef | https://expo.dev/accounts/hookvision/projects/hookvision-nq |
+| HookVision NT | c5eb71d4-1318-4b86-86b4-a758e86c0388 | https://expo.dev/accounts/hookvision/projects/hookvision-nt |
+
+To republish updates: `cd artifacts/hookvision && EXPO_TOKEN=$EXPO_TOKEN npx eas-cli@latest update --channel main --auto`
+
+> Note: EAS Update publishes OTA JS bundles. To create installable APKs, run `eas build --profile preview --platform android`.
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
