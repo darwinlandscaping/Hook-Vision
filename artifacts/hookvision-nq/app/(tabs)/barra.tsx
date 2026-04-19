@@ -600,7 +600,7 @@ function BarraScreenInner() {
     setLoading(true); setError(null); setResult(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 30_000);
+    const timer = setTimeout(() => ctrl.abort(), 10_000);
     try {
       const domain = process.env.EXPO_PUBLIC_DOMAIN;
       const baseUrl = domain ? `https://${domain}` : "";

@@ -610,6 +610,8 @@ export default function ForecastScreen() {
 
   const [tides, setTides] = useState<TideEntry[]>([]);
   const [tidesLoading, setTidesLoading] = useState(true);
+  const [tidesError, setTidesError] = useState(false);
+  const [tidesRetryCount, setTidesRetryCount] = useState(0);
   const [nextTide, setNextTide] = useState<(TideEntry & { minutesUntil: number }) | null>(null);
   const [forecast, setForecast] = useState<ForecastResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -646,6 +648,7 @@ export default function ForecastScreen() {
 
   // Fetch today's tides on mount
   useEffect(() => {
+    setTidesError(false);
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 10_000);
     fetch(`${baseUrl}/api/tides?port=darwin&days=2`, { signal: ctrl.signal })
@@ -667,9 +670,9 @@ export default function ForecastScreen() {
           setNextTide({ ...next, minutesUntil });
         }
       })
-      .catch(() => {})
+      .catch(() => setTidesError(true))
       .finally(() => { clearTimeout(timer); setTidesLoading(false); });
-  }, [baseUrl]);
+  }, [baseUrl, tidesRetryCount]);
 
   const getForecast = useCallback(async () => {
     setLoading(true);
@@ -677,7 +680,7 @@ export default function ForecastScreen() {
     setForecast(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 30_000);
+    const timer = setTimeout(() => ctrl.abort(), 10_000);
     try {
       const body = {
         moonPhase: moon.name,
@@ -777,6 +780,16 @@ export default function ForecastScreen() {
           colours={colors}
         />
       </View>
+      {tidesError && !nextTide && (
+        <TouchableOpacity
+          onPress={() => { setTidesError(false); setTidesRetryCount(c => c + 1); }}
+          style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 4, marginTop: -4, marginBottom: 4 }}
+          activeOpacity={0.7}
+        >
+          <Feather name="refresh-cw" size={11} color="#ff8c00" />
+          <Text style={{ color: "#ff8c00", fontSize: 11 }}>Retry tides</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Season impact box */}
       <View style={[styles.seasonBox, { backgroundColor: `${colors.accent}18`, borderColor: `${colors.accent}33` }]}>
