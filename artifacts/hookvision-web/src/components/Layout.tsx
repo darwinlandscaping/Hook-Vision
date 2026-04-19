@@ -1,11 +1,10 @@
-import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Waves, Fish, Target, Camera, CloudSun, Users, Menu, X } from "lucide-react";
+import { Waves, Fish, Target, Camera, CloudSun, Users } from "lucide-react";
 
 const navItems = [
-  { path: "/", label: "Dashboard", icon: CloudSun },
+  { path: "/", label: "Home", icon: CloudSun },
   { path: "/tides", label: "Tides", icon: Waves },
-  { path: "/barra", label: "Barra Predictor", icon: Target },
+  { path: "/barra", label: "Barra", icon: Target },
   { path: "/fishid", label: "Catch ID", icon: Camera },
   { path: "/forecast", label: "Forecast", icon: Fish },
   { path: "/community", label: "Community", icon: Users },
@@ -17,81 +16,92 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: "hsl(216 60% 10%)" }}>
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 flex flex-col transition-transform duration-200 md:relative md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
-        style={{ backgroundColor: "hsl(216 56% 7%)", borderRight: "1px solid hsl(216 56% 18%)" }}
+    <div
+      className="flex justify-center items-stretch min-h-screen"
+      style={{ backgroundColor: "hsl(216 60% 6%)" }}
+    >
+      <div
+        className="relative flex flex-col w-full"
+        style={{
+          maxWidth: 430,
+          minHeight: "100dvh",
+          backgroundColor: "hsl(216 60% 10%)",
+        }}
       >
-        <div className="flex items-center gap-3 px-6 py-5" style={{ borderBottom: "1px solid hsl(216 56% 18%)" }}>
-          <div className="w-8 h-8 rounded flex items-center justify-center" style={{ backgroundColor: "hsl(168 100% 42%)" }}>
-            <Fish size={18} style={{ color: "hsl(216 60% 10%)" }} />
-          </div>
-          <div>
-            <div className="text-sm font-bold tracking-widest uppercase" style={{ color: "hsl(168 100% 42%)", fontFamily: "'Oswald', sans-serif" }}>
-              HookVision
+        <header
+          className="flex items-center justify-between px-5 pt-12 pb-3 flex-shrink-0"
+          style={{ backgroundColor: "hsl(216 56% 7%)" }}
+        >
+          <div className="flex items-center gap-2">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: "hsl(168 100% 42%)" }}
+            >
+              <Fish size={15} style={{ color: "hsl(216 60% 10%)" }} />
             </div>
-            <div className="text-xs" style={{ color: "hsl(195 44% 60%)" }}>AI Fishing Intelligence</div>
+            <span
+              className="text-base font-bold tracking-widest uppercase"
+              style={{ color: "hsl(168 100% 42%)", fontFamily: "'Oswald', sans-serif" }}
+            >
+              HookVision
+            </span>
           </div>
-        </div>
+          <span
+            className="text-xs tracking-wider uppercase"
+            style={{ color: "hsl(195 44% 50%)" }}
+          >
+            WA · NQ · NT
+          </span>
+        </header>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <main
+          className="flex-1 overflow-y-auto px-4 py-4"
+          style={{ paddingBottom: 72 }}
+        >
+          {children}
+        </main>
+
+        <nav
+          className="fixed bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-around w-full z-50"
+          style={{
+            maxWidth: 430,
+            height: 64,
+            backgroundColor: "hsl(216 56% 7%)",
+            borderTop: "1px solid hsl(216 56% 18%)",
+            paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          }}
+        >
           {navItems.map(({ path, label, icon: Icon }) => {
             const isActive = path === "/" ? location === "/" : location.startsWith(path);
             return (
               <Link
                 key={path}
                 href={path}
-                onClick={() => setMobileOpen(false)}
-                data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
-                className="flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-colors"
-                style={{
-                  backgroundColor: isActive ? "hsl(168 100% 42% / 0.15)" : "transparent",
-                  color: isActive ? "hsl(168 100% 42%)" : "hsl(195 44% 75%)",
-                  borderLeft: isActive ? "2px solid hsl(168 100% 42%)" : "2px solid transparent",
-                }}
+                className="flex flex-col items-center justify-center gap-1 flex-1 h-full transition-opacity"
+                data-testid={`tab-${label.toLowerCase().replace(/\s+/g, "-")}`}
               >
-                <Icon size={16} />
-                {label}
+                <Icon
+                  size={22}
+                  style={{ color: isActive ? "hsl(168 100% 42%)" : "hsl(195 44% 45%)" }}
+                />
+                <span
+                  className="text-[10px] font-medium tracking-wide"
+                  style={{ color: isActive ? "hsl(168 100% 42%)" : "hsl(195 44% 45%)" }}
+                >
+                  {label}
+                </span>
+                {isActive && (
+                  <div
+                    className="absolute bottom-0 h-0.5 w-8 rounded-t-full"
+                    style={{ backgroundColor: "hsl(168 100% 42%)" }}
+                  />
+                )}
               </Link>
             );
           })}
         </nav>
-
-        <div className="px-6 py-4" style={{ borderTop: "1px solid hsl(216 56% 18%)" }}>
-          <div className="text-xs" style={{ color: "hsl(195 44% 50%)" }}>WA · NQ · NT</div>
-          <div className="text-xs mt-0.5" style={{ color: "hsl(195 44% 40%)" }}>Northern Australia</div>
-        </div>
-      </aside>
-
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      <div className="flex-1 flex flex-col min-w-0">
-        <header
-          className="md:hidden flex items-center justify-between px-4 py-3"
-          style={{ backgroundColor: "hsl(216 56% 7%)", borderBottom: "1px solid hsl(216 56% 18%)" }}
-        >
-          <span className="text-sm font-bold tracking-widest uppercase" style={{ color: "hsl(168 100% 42%)", fontFamily: "'Oswald', sans-serif" }}>
-            HookVision
-          </span>
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            style={{ color: "hsl(195 44% 75%)" }}
-            data-testid="button-mobile-menu"
-          >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </header>
-        <main className="flex-1 overflow-auto p-4 md:p-6">
-          {children}
-        </main>
       </div>
     </div>
   );

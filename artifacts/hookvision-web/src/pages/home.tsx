@@ -69,7 +69,7 @@ export default function Home() {
   const [selectedRegion, setSelectedRegion] = useState("wa");
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-1" style={{ color: "hsl(168 100% 42%)", fontFamily: "'Oswald', sans-serif", textTransform: "uppercase", letterSpacing: "0.05em" }}>
           HookVision
@@ -86,7 +86,7 @@ export default function Home() {
             Current Conditions
           </span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {REGIONS.map(r => <TideCard key={r.id} region={r} />)}
         </div>
       </div>
@@ -98,7 +98,7 @@ export default function Home() {
             Intelligence Tools
           </span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {features.map(({ path, label, desc, icon: Icon }) => (
             <Link
               key={path}
