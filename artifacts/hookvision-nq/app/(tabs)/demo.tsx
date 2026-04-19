@@ -68,8 +68,8 @@ const DEMOS = [
     num: 5 as DemoNum,
     brand: "Lowrance",
     model: "Elite FS 9",
-    desc: "Kakadu Jim Jim Billabong — dense barra school locked at 3-5m on a submerged rock shelf. Saratoga surface arches visible at 1m and Archer Fish scatter at 0.5m as an early-warning feeding signal.",
-    tags: ["Kakadu", "Barra school", "3-5m", "Saratoga"],
+    desc: "Gulf Country Mitchell River — dense barra school locked at 3-5m on a submerged rock ledge. Barramundi arches cluster strong at 4m, Mangrove Jack holding bottom at 6m, and surface scatter at 0.5m marks barra nosing into the current snag.",
+    tags: ["Gulf Country", "Barra school", "3-5m", "Mangrove Jack"],
     accent: "#aaff00",
   },
 ];
@@ -78,7 +78,7 @@ export default function DemoScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [loadingNum, setLoadingNum] = useState<DemoNum | null>(null);
-  useAutoNarrate(() => "Demo Sonar Scans. Five real sonar screenshots including Kakadu Jim Jim Billabong barra. Tap any card to run instant AI analysis.");
+  useAutoNarrate(() => "Demo Sonar Scans. Five real sonar screenshots including Gulf Country barra and Mangrove Jack. Tap any card to run instant AI analysis.");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
 
