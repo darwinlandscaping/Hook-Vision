@@ -214,9 +214,13 @@ function formatCountdown(absMinutes: number): string {
 
 function DarwinTideCard({
   nextTide,
+  tidesError,
+  onRetry,
   colors,
 }: {
   nextTide: TideEntry | null;
+  tidesError: boolean;
+  onRetry: () => void;
   colors: ReturnType<typeof useColors>;
 }) {
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -271,10 +275,17 @@ function DarwinTideCard({
           </View>
         </View>
       ) : (
-        <View style={styles.tideLoadingRow}>
-          <ActivityIndicator size="small" color={colors.mutedForeground} />
-          <Text style={[styles.tideLoadingText, { color: colors.mutedForeground }]}>Fetching Darwin tide data…</Text>
-        </View>
+        tidesError ? (
+          <TouchableOpacity style={styles.tideLoadingRow} onPress={onRetry} activeOpacity={0.7}>
+            <Feather name="refresh-cw" size={14} color="#ff8c00" />
+            <Text style={[styles.tideLoadingText, { color: "#ff8c00" }]}>Tides unavailable — tap to retry</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.tideLoadingRow}>
+            <ActivityIndicator size="small" color={colors.mutedForeground} />
+            <Text style={[styles.tideLoadingText, { color: colors.mutedForeground }]}>Fetching Darwin tide data…</Text>
+          </View>
+        )
       )}
 
       <Text style={[styles.tideSource, { color: colors.mutedForeground }]}>
@@ -550,6 +561,8 @@ function BarraScreenInner() {
   const localTime = now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Darwin" });
 
   const [nextTide, setNextTide] = useState<(TideEntry & { minutesUntil: number }) | null>(null);
+  const [tidesError, setTidesError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [result,   setResult]   = useState<BarraResult | null>(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
@@ -560,6 +573,7 @@ function BarraScreenInner() {
   });
 
   useEffect(() => {
+    setTidesError(false);
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
     const ctrl = new AbortController();
@@ -572,13 +586,15 @@ function BarraScreenInner() {
         const nowMs = Date.now();
         const next = all.filter((t) => t.timestamp > nowMs - 30 * 60000).sort((a, b) => a.timestamp - b.timestamp)[0];
         if (next) setNextTide({ ...next, minutesUntil: Math.round((next.timestamp - nowMs) / 60000) });
-      }).catch(() => {})
+      }).catch(() => setTidesError(true))
       .finally(() => clearTimeout(timer));
-  }, []);
+  }, [retryCount]);
 
   const predict = useCallback(async () => {
     setLoading(true); setError(null); setResult(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30_000);
     try {
       const domain = process.env.EXPO_PUBLIC_DOMAIN;
       const baseUrl = domain ? `https://${domain}` : "";
@@ -586,6 +602,7 @@ function BarraScreenInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ moonPhase: moon.name, moonDay: Math.round(moon.day), tideType: moon.tideType, season: season.name, month, waterTempRange: season.waterTemp, localTime, region: "nt", nextTide: nextTide ? { type: nextTide.type, height: nextTide.height, time: nextTide.time, minutesUntil: nextTide.minutesUntil } : null }),
+        signal: ctrl.signal,
       });
       if (!resp.ok) throw new Error("Prediction failed");
       setResult(await resp.json());
@@ -594,7 +611,9 @@ function BarraScreenInner() {
       setError("Couldn't run prediction. Check your connection and try again.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
-      setLoading(false); }
+      setLoading(false);
+      clearTimeout(timer);
+    }
   }, [moon, season, month, nextTide, localTime]);
 
   return (
@@ -642,7 +661,7 @@ function BarraScreenInner() {
       <MDFCard colors={colors} />
 
       {/* ── DARWIN TIDE CARD ── */}
-      <DarwinTideCard nextTide={nextTide} colors={colors} />
+      <DarwinTideCard nextTide={nextTide} tidesError={tidesError} onRetry={() => { setTidesError(false); setRetryCount(c => c + 1); }} colors={colors} />
 
       {/* ── AI TROPHY PREDICTOR ── */}
       <SectionTitle emoji="🎯" label="AI TROPHY PREDICTOR" sub="70cm+ fish · powered by 40yr NT data" color="#ff2200" />

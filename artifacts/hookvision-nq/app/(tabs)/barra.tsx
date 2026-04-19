@@ -205,9 +205,13 @@ function formatCountdown(absMinutes: number): string {
 // ─── Tide card component ────────────────────────────────────────────────────────
 function TideCard({
   nextTide,
+  tidesError,
+  onRetry,
   colors,
 }: {
   nextTide: TideEntry | null;
+  tidesError: boolean;
+  onRetry: () => void;
   colors: ReturnType<typeof useColors>;
 }) {
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -262,10 +266,17 @@ function TideCard({
           </View>
         </View>
       ) : (
-        <View style={styles.tideLoadingRow}>
-          <ActivityIndicator size="small" color={colors.mutedForeground} />
-          <Text style={[styles.tideLoadingText, { color: colors.mutedForeground }]}>Fetching Karumba tide data…</Text>
-        </View>
+        tidesError ? (
+          <TouchableOpacity style={styles.tideLoadingRow} onPress={onRetry} activeOpacity={0.7}>
+            <Feather name="refresh-cw" size={14} color="#ff8c00" />
+            <Text style={[styles.tideLoadingText, { color: "#ff8c00" }]}>Tides unavailable — tap to retry</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.tideLoadingRow}>
+            <ActivityIndicator size="small" color={colors.mutedForeground} />
+            <Text style={[styles.tideLoadingText, { color: colors.mutedForeground }]}>Fetching Karumba tide data…</Text>
+          </View>
+        )
       )}
 
       <Text style={[styles.tideSource, { color: colors.mutedForeground }]}>
@@ -555,6 +566,8 @@ function BarraScreenInner() {
   const localTime = now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Brisbane" });
 
   const [nextTide, setNextTide] = useState<TideEntry | null>(null);
+  const [tidesError, setTidesError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [result,   setResult]   = useState<BarraResult | null>(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
@@ -565,6 +578,7 @@ function BarraScreenInner() {
   });
 
   useEffect(() => {
+    setTidesError(false);
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
     const ctrl = new AbortController();
@@ -578,13 +592,15 @@ function BarraScreenInner() {
         const sorted = all.sort((a, b) => a.timestamp - b.timestamp);
         const next = sorted.find((t) => t.timestamp > nowMs - 30 * 60000) ?? null;
         setNextTide(next);
-      }).catch(() => {})
+      }).catch(() => setTidesError(true))
       .finally(() => clearTimeout(timer));
-  }, []);
+  }, [retryCount]);
 
   const predict = useCallback(async () => {
     setLoading(true); setError(null); setResult(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30_000);
     try {
       const domain = process.env.EXPO_PUBLIC_DOMAIN;
       const baseUrl = domain ? `https://${domain}` : "";
@@ -592,6 +608,7 @@ function BarraScreenInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ moonPhase: moon.name, moonDay: Math.round(moon.day), tideType: moon.tideType, season: season.name, month, waterTempRange: season.waterTemp, localTime, region: "nq", nextTide: nextTide ? { type: nextTide.type, height: nextTide.height, time: nextTide.time, minutesUntil: Math.round((nextTide.timestamp - Date.now()) / 60000) } : null }),
+        signal: ctrl.signal,
       });
       if (!resp.ok) throw new Error("Prediction failed");
       setResult(await resp.json());
@@ -600,7 +617,9 @@ function BarraScreenInner() {
       setError("Couldn't run prediction. Check your connection and try again.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
-      setLoading(false); }
+      setLoading(false);
+      clearTimeout(timer);
+    }
   }, [moon, season, month, nextTide, localTime]);
 
   return (
@@ -646,7 +665,7 @@ function BarraScreenInner() {
 
       {/* ── KARUMBA GULF TIDES ── */}
       <SectionTitle emoji="🌊" label="KARUMBA GULF TIDES" sub="Real-time · Gulf of Carpentaria" color="#4a9eff" />
-      <TideCard nextTide={nextTide} colors={colors} />
+      <TideCard nextTide={nextTide} tidesError={tidesError} onRetry={() => { setTidesError(false); setRetryCount(c => c + 1); }} colors={colors} />
 
       {/* ── KARUMBA BARRA CLASSIC ── */}
       <MDFCard colors={colors} />

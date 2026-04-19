@@ -157,16 +157,22 @@ function CrocGuardPanel({
 
   const post = async (endpoint: string, body?: object) => {
     setBusy(true);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10_000);
     try {
       const r = await fetch(`${baseUrl}/api/crocguard/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: body ? JSON.stringify(body) : undefined,
+        signal: ctrl.signal,
       });
       const d = await r.json();
       if (d.ok && d.deterrent) onUpdate(d.deterrent);
-    } catch {}
-    setBusy(false);
+    } catch {
+    } finally {
+      clearTimeout(timer);
+      setBusy(false);
+    }
   };
 
   const effectiveMode = det?.mode ?? "off";
@@ -670,7 +676,8 @@ export default function ForecastScreen() {
     setError(null);
     setForecast(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30_000);
     try {
       const body = {
         moonPhase: moon.name,
@@ -694,6 +701,7 @@ export default function ForecastScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: ctrl.signal,
       });
       if (!resp.ok) throw new Error("Forecast failed");
       const data: ForecastResult = await resp.json();
@@ -704,6 +712,7 @@ export default function ForecastScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setLoading(false);
+      clearTimeout(timer);
     }
   }, [moon, season, month, nextTide, localTime]);
 

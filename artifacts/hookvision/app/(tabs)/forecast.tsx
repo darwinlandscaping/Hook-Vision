@@ -412,7 +412,8 @@ export default function ForecastScreen() {
     setError(null);
     setForecast(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30_000);
     try {
       const domain = process.env.EXPO_PUBLIC_DOMAIN;
       const baseUrl = domain ? `https://${domain}` : "";
@@ -438,6 +439,7 @@ export default function ForecastScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: ctrl.signal,
       });
       if (!resp.ok) throw new Error("Forecast failed");
       const data: ForecastResult = await resp.json();
@@ -448,6 +450,7 @@ export default function ForecastScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setLoading(false);
+      clearTimeout(timer);
     }
   }, [moon, season, month, nextTide, localTime]);
 
