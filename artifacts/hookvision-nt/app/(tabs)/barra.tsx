@@ -525,19 +525,28 @@ function HotSpotsSection({ hotSpots, colors }: { hotSpots: HotSpot[]; colors: Re
 }
 
 // ─── Main screen ───────────────────────────────────────────────────────────────
-class BarraErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
+class BarraErrorBoundary extends Component<{ children: React.ReactNode }, { crashed: boolean; msg: string }> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { error: null };
+    this.state = { crashed: false, msg: "" };
   }
-  static getDerivedStateFromError(e: Error) { return { error: e.message }; }
-  componentDidCatch(e: Error) { console.error("BARRA CRASH:", e); }
+  static getDerivedStateFromError(e: unknown) {
+    const msg = (e instanceof Error) ? (e.message || e.toString() || "Unknown error") : String(e);
+    return { crashed: true, msg };
+  }
+  componentDidCatch(e: unknown) { console.error("BARRA CRASH:", e); }
   render() {
-    if (this.state.error) {
+    if (this.state.crashed) {
       return (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#0a1628", padding: 24 }}>
-          <Text style={{ color: "#ff2200", fontSize: 20, fontWeight: "bold", marginBottom: 12 }}>⚠️ BARRA ERROR</Text>
-          <Text style={{ color: "#ffd700", fontSize: 13, textAlign: "center", lineHeight: 20 }}>{this.state.error}</Text>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#0a1628", padding: 24, gap: 16 }}>
+          <Text style={{ color: "#ff2200", fontSize: 20, fontWeight: "bold" }}>⚠️ BARRA ERROR</Text>
+          <Text style={{ color: "#ffd700", fontSize: 12, textAlign: "center", lineHeight: 18 }}>{this.state.msg}</Text>
+          <TouchableOpacity
+            onPress={() => this.setState({ crashed: false, msg: "" })}
+            style={{ marginTop: 8, backgroundColor: "#ff220022", borderWidth: 1, borderColor: "#ff2200", borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }}
+          >
+            <Text style={{ color: "#ff2200", fontSize: 14, fontWeight: "700" }}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -554,12 +563,20 @@ function BarraScreenInner() {
   const month   = now.getMonth() + 1;
   const moon    = getMoonPhase(now);
   const season  = getNTSeason(month);
-  const _darwinRaw = parseInt(now.toLocaleString("en-AU", { hour: "numeric", hour12: false, timeZone: "Australia/Darwin" }), 10);
-  const darwinHour = isNaN(_darwinRaw) ? now.getHours() : _darwinRaw;
+  const darwinHour = (() => {
+    try {
+      const raw = parseInt(now.toLocaleString("en-AU", { hour: "numeric", hour12: false, timeZone: "Australia/Darwin" }), 10);
+      return isNaN(raw) ? now.getHours() : raw;
+    } catch { return now.getHours(); }
+  })();
   const isGoldHour = (darwinHour >= 5 && darwinHour <= 8) || (darwinHour >= 16 && darwinHour <= 20);
   const hotSpots = useMemo(() => calcHotSpots(moon, season, darwinHour), [moon.name, season.short, darwinHour]);
 
-  const localTime = now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Darwin" });
+  const localTime = (() => {
+    try {
+      return now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Darwin" });
+    } catch { return now.toLocaleTimeString(); }
+  })();
 
   const [nextTide, setNextTide] = useState<(TideEntry & { minutesUntil: number }) | null>(null);
   const [tidesError, setTidesError] = useState(false);
