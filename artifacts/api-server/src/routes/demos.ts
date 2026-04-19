@@ -11,13 +11,7 @@ router.get("/demos/:name", (req, res) => {
     return;
   }
 
-  const filePath = path.resolve(
-    __dirname,
-    "..",
-    "public",
-    "demos",
-    name
-  );
+  const filePath = path.join(process.cwd(), "public", "demos", name);
 
   if (!fs.existsSync(filePath)) {
     res.status(404).json({ error: "File not found", path: filePath });

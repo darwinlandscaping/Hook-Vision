@@ -554,7 +554,8 @@ function BarraScreenInner() {
   const month   = now.getMonth() + 1;
   const moon    = getMoonPhase(now);
   const season  = getNTSeason(month);
-  const darwinHour = parseInt(now.toLocaleString("en-AU", { hour: "numeric", hour12: false, timeZone: "Australia/Darwin" }), 10);
+  const _darwinRaw = parseInt(now.toLocaleString("en-AU", { hour: "numeric", hour12: false, timeZone: "Australia/Darwin" }), 10);
+  const darwinHour = isNaN(_darwinRaw) ? now.getHours() : _darwinRaw;
   const isGoldHour = (darwinHour >= 5 && darwinHour <= 8) || (darwinHour >= 16 && darwinHour <= 20);
   const hotSpots = useMemo(() => calcHotSpots(moon, season, darwinHour), [moon.name, season.short, darwinHour]);
 

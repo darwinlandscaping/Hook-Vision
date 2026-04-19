@@ -91,7 +91,7 @@ export function CrocTabBar({ state, descriptors, navigation }: BottomTabBarProps
   const routes  = state.routes;
 
   // Strip routes that are hidden from the tab bar (href: null in layout)
-  const HIDDEN = new Set(["fishy", "map", "demo", "insta360", "subscription", "web"]);
+  const HIDDEN = new Set(["fishy", "map", "cameras", "insta360", "subscription", "web"]);
   const visibleRoutes = routes.filter((r: any) => !HIDDEN.has(r.name));
 
   // Layout constants

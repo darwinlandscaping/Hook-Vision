@@ -11,7 +11,7 @@ export function OfflineBanner() {
   if (isOnline) return null;
 
   return (
-    <View style={[styles.banner, { paddingTop: top + 6 }]} pointerEvents="none">
+    <View style={[styles.banner, { paddingTop: top + 6, pointerEvents: "none" }]}>
       <Feather name="wifi-off" size={12} color="#fff" />
       <Text style={styles.text}>No internet connection</Text>
     </View>
