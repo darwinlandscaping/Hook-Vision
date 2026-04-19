@@ -180,7 +180,7 @@ interface BarraPrediction {
   why: string; lure: string; rig: string; technique: string;
   confidence: "HIGH" | "MEDIUM" | "LOW"; windowHours: number; windowNote: string;
 }
-interface BarraResult { predictions: BarraPrediction[]; bigPictureRead: string; topDepth: string; topTechnique: string; }
+interface BarraResult { predictions: BarraPrediction[]; bigPictureRead: string; topDepth: string; topTechnique: string; isFallback?: boolean; }
 
 const CONF = {
   HIGH:   { color: "#ff2200", label: "HIGH",   emoji: "🎯", bg: "#ff220018" },
@@ -697,6 +697,15 @@ function BarraScreenInner() {
             <Text style={styles.bigPicLabel}>TODAY'S READ</Text>
             <Text style={[styles.bigPicText, { color: colors.foreground }]}>{result.bigPictureRead}</Text>
           </View>
+          {result.isFallback && (
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, backgroundColor: "#ff8c0015", borderRadius: 8, borderColor: "#ff8c0050", borderWidth: 1 }}>
+              <Feather name="alert-triangle" size={14} color="#ff8c00" style={{ marginTop: 1 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#ff8c00", fontSize: 12, fontWeight: "600" }}>AI temporarily unavailable</Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 11, marginTop: 2 }}>These are general estimates — tap "Re-read conditions" to retry.</Text>
+              </View>
+            </View>
+          )}
           <View style={styles.topRow}>
             <View style={[styles.topCard, { backgroundColor: colors.card, borderColor: "#ff2200" }]}>
               <MaterialCommunityIcons name="arrow-down-bold" size={16} color="#ff2200" />

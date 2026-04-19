@@ -195,6 +195,7 @@ Based on these exact conditions and the depth zone database, tell me exactly whe
     } catch (parseErr) {
       req.log.error({ parseErr, jsonStr: jsonStr.slice(0, 200) }, "Barra JSON parse failed — returning fallback");
       return res.json({
+        isFallback: true,
         bigPictureRead: "AI data temporarily unavailable. Fish the tidal change on your nearest barra system — run-out into the main channel is always a safe bet.",
         topDepth: "2–4m",
         topTechnique: "Slow roll deep-diver along the bottom structure",
@@ -214,6 +215,7 @@ Based on these exact conditions and the depth zone database, tell me exactly whe
   } catch (err) {
     req.log.error({ err }, "Barra prediction failed — returning fallback");
     return res.json({
+      isFallback: true,
       bigPictureRead: "AI data temporarily unavailable. Fish the tidal change on your nearest barra system — run-out into the main channel is always a safe bet.",
       topDepth: "2–4m",
       topTechnique: "Slow roll deep-diver along the bottom structure",
