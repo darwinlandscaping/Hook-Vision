@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/hookvision-web/"
+title = "HookVision Web"
+version = "1.0.0"
+id = "artifacts/hookvision-web"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/hookvision-web/" ]
+localPort = 19706
+
+[services.development]
+run = "pnpm --filter @workspace/hookvision-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hookvision-web", "run", "build" ]
+publicDir = "artifacts/hookvision-web/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19706"
+BASE_PATH = "/hookvision-web/"
