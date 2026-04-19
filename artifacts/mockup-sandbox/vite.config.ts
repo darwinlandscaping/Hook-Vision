@@ -29,6 +29,9 @@ if (!basePath) {
 
 export default defineConfig({
   base: basePath,
+  define: {
+    __EXPO_DEV_DOMAIN__: JSON.stringify(process.env.REPLIT_EXPO_DEV_DOMAIN || ""),
+  },
   plugins: [
     mockupPreviewPlugin(),
     react(),

@@ -1,6 +1,6 @@
-const EXPO_DEV_DOMAIN =
-  import.meta.env.VITE_EXPO_DEV_DOMAIN ||
-  `${import.meta.env.VITE_REPL_ID}-00-o6803yqna0ig.expo.spock.replit.dev`;
+declare const __EXPO_DEV_DOMAIN__: string;
+
+const EXPO_DEV_DOMAIN = __EXPO_DEV_DOMAIN__;
 
 const apps = [
   {
@@ -101,7 +101,6 @@ export default function HookVisionQR() {
                   background: "#060e1a",
                   padding: "4px 8px",
                   borderRadius: 4,
-                  wordBreak: "break-all",
                   maxWidth: 190,
                   textAlign: "center",
                 }}
