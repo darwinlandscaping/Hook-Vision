@@ -1,0 +1,13 @@
+.cache
+node_modules/.cache
+dist
+*.log
+*.map
+.git
+.local
+# exclude other artifacts - only the target app is needed
+artifacts/api-server
+artifacts/crocguard
+artifacts/hookvision-web
+artifacts/mockup-sandbox
+# If building NT, exclude others; EAS picks the right one via the app dir

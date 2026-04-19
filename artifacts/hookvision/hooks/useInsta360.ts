@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Platform } from "react-native";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { polarFilter } from "@/utils/polarFilter";
 
 // ─── Default Insta360 / OSC API constants (overridable per discovered camera) ──

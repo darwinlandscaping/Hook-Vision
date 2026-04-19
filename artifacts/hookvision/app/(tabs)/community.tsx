@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { VideoView, useVideoPlayer } from "expo-video";

@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Asset } from "expo-asset";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";

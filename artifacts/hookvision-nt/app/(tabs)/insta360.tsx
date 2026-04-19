@@ -802,7 +802,7 @@ export default function Insta360Screen() {
           <View style={{ flexDirection: "row", gap: 8 }}>
             {/* Scan button */}
             <TouchableOpacity
-              onPress={scanner.scan}
+              onPress={() => scanner.scan()}
               disabled={scanner.scanning}
               activeOpacity={0.7}
               style={[{

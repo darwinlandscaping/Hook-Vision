@@ -1,0 +1,13 @@
+.cache
+dist
+*.log
+*.map
+__pycache__
+.git
+.local
+artifacts/api-server
+artifacts/crocguard
+artifacts/hookvision-web
+artifacts/hookvision-nq
+artifacts/hookvision
+artifacts/mockup-sandbox

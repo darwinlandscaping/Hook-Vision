@@ -286,6 +286,32 @@ function TideCard({
   );
 }
 
+// ─── Mini tidal table ───────────────────────────────────────────────────────────
+function TidalTable({ tides, colors }: { tides: TideEntry[]; colors: ReturnType<typeof useColors> }) {
+  if (tides.length === 0) return null;
+  return (
+    <LilyPadCard borderColor={`${colors.border}`} borderLeftColor="#4a9eff" innerStyle={{ padding: 10, gap: 0 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+        <MaterialCommunityIcons name="table-of-contents" size={14} color="#4a9eff" />
+        <Text style={{ color: "#4a9eff", fontSize: 11, fontWeight: "700", letterSpacing: 1 }}>UPCOMING TIDES</Text>
+      </View>
+      {tides.map((t, i) => {
+        const isHW = t.type === "HW";
+        const col = isHW ? "#ff2200" : "#4a9eff";
+        return (
+          <View key={i} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 6, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: colors.border }}>
+            <View style={[{ width: 38, height: 22, borderRadius: 5, alignItems: "center", justifyContent: "center", backgroundColor: col + "22", borderWidth: 1, borderColor: col + "44" }]}>
+              <Text style={{ color: col, fontSize: 10, fontWeight: "700" }}>{isHW ? "HI" : "LO"}</Text>
+            </View>
+            <Text style={{ flex: 1, color: colors.foreground, fontSize: 13, marginLeft: 10 }}>{t.time}</Text>
+            <Text style={{ color: col, fontSize: 14, fontWeight: "700" }}>{t.height.toFixed(1)}m</Text>
+          </View>
+        );
+      })}
+    </LilyPadCard>
+  );
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface BarraPrediction {
   rank: number; river: string; spot: string; targetDepth: string;
@@ -530,19 +556,28 @@ function HotSpotsSection({ hotSpots, colors }: { hotSpots: HotSpot[]; colors: Re
 }
 
 // ─── Main screen ───────────────────────────────────────────────────────────────
-class BarraErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
+class BarraErrorBoundary extends Component<{ children: React.ReactNode }, { crashed: boolean; msg: string }> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { error: null };
+    this.state = { crashed: false, msg: "" };
   }
-  static getDerivedStateFromError(e: Error) { return { error: e.message }; }
-  componentDidCatch(e: Error) { console.error("BARRA CRASH:", e); }
+  static getDerivedStateFromError(e: unknown) {
+    const msg = (e instanceof Error) ? (e.message || e.toString() || "Unknown error") : String(e);
+    return { crashed: true, msg };
+  }
+  componentDidCatch(e: unknown) { console.error("BARRA CRASH:", e); }
   render() {
-    if (this.state.error) {
+    if (this.state.crashed) {
       return (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#0a1628", padding: 24 }}>
-          <Text style={{ color: "#ff2200", fontSize: 20, fontWeight: "bold", marginBottom: 12 }}>⚠️ BARRA ERROR</Text>
-          <Text style={{ color: "#ffd700", fontSize: 13, textAlign: "center", lineHeight: 20 }}>{this.state.error}</Text>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#0a1628", padding: 24, gap: 16 }}>
+          <Text style={{ color: "#ff2200", fontSize: 20, fontWeight: "bold" }}>⚠️ BARRA ERROR</Text>
+          <Text style={{ color: "#ffd700", fontSize: 12, textAlign: "center", lineHeight: 18 }}>{this.state.msg}</Text>
+          <TouchableOpacity
+            onPress={() => this.setState({ crashed: false, msg: "" })}
+            style={{ marginTop: 8, backgroundColor: "#ff220022", borderWidth: 1, borderColor: "#ff2200", borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24 }}
+          >
+            <Text style={{ color: "#ff2200", fontSize: 14, fontWeight: "700" }}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -563,9 +598,14 @@ function BarraScreenInner() {
   const isGoldHour = (darwinHour >= 5 && darwinHour <= 8) || (darwinHour >= 16 && darwinHour <= 20);
   const hotSpots = useMemo(() => calcHotSpots(moon, season, darwinHour), [moon.name, season.short, darwinHour]);
 
-  const localTime = now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Brisbane" });
+  const localTime = (() => {
+    try {
+      return now.toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Australia/Brisbane" });
+    } catch { return now.toLocaleTimeString(); }
+  })();
 
   const [nextTide, setNextTide] = useState<TideEntry | null>(null);
+  const [upcomingTides, setUpcomingTides] = useState<TideEntry[]>([]);
   const [tidesError, setTidesError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [result,   setResult]   = useState<BarraResult | null>(null);
@@ -590,8 +630,10 @@ function BarraScreenInner() {
         if (d.data) for (const day of d.data) for (const t of day.tides) all.push(t);
         const nowMs = Date.now();
         const sorted = all.sort((a, b) => a.timestamp - b.timestamp);
-        const next = sorted.find((t) => t.timestamp > nowMs - 30 * 60000) ?? null;
+        const nextIdx = sorted.findIndex((t) => t.timestamp > nowMs - 30 * 60000);
+        const next = nextIdx >= 0 ? sorted[nextIdx] : null;
         setNextTide(next);
+        setUpcomingTides(nextIdx >= 0 ? sorted.slice(nextIdx + 1, nextIdx + 4) : []);
       }).catch(() => setTidesError(true))
       .finally(() => clearTimeout(timer));
   }, [retryCount]);
@@ -666,6 +708,7 @@ function BarraScreenInner() {
       {/* ── KARUMBA GULF TIDES ── */}
       <SectionTitle emoji="🌊" label="KARUMBA GULF TIDES" sub="Real-time · Gulf of Carpentaria" color="#4a9eff" />
       <TideCard nextTide={nextTide} tidesError={tidesError} onRetry={() => { setTidesError(false); setRetryCount(c => c + 1); }} colors={colors} />
+      <TidalTable tides={upcomingTides} colors={colors} />
 
       {/* ── KARUMBA BARRA CLASSIC ── */}
       <MDFCard colors={colors} />
