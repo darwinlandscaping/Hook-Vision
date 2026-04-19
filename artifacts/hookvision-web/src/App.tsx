@@ -10,6 +10,7 @@ import Barra from "@/pages/barra";
 import FishId from "@/pages/fishid";
 import Forecast from "@/pages/forecast";
 import Community from "@/pages/community";
+import Preview from "@/pages/preview";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,6 +28,7 @@ function Router() {
         <Route path="/fishid" component={FishId} />
         <Route path="/forecast" component={Forecast} />
         <Route path="/community" component={Community} />
+        <Route path="/preview" component={Preview} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

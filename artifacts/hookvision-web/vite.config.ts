@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { expoProxyPlugin } from "./expoProxyPlugin";
 
 const rawPort = process.env.PORT;
 
@@ -29,6 +30,7 @@ if (!basePath) {
 export default defineConfig({
   base: basePath,
   plugins: [
+    expoProxyPlugin(basePath),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
