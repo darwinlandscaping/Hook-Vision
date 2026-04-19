@@ -71,6 +71,7 @@
     "expo-intent-launcher": "~13.0.8",
     "expo-keep-awake": "~15.0.8",
     "expo-speech": "^14.0.8",
+    "expo-updates": "~29.0.16",
     "expo-video": "~3.0.16",
     "expo-video-thumbnails": "~10.0.8",
     "react-native-webview": "^13.15.0"
