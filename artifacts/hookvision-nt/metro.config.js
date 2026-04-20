@@ -59,12 +59,12 @@ config.server.enhanceMiddleware = (middleware) => {
     if (req.headers && req.headers.host && req.headers.host.includes(":")) {
       req.headers.host = req.headers.host.replace(/:\d+$/, "");
     }
-    // Normalize the Origin header: the Replit iframe sends an origin with the
-    // .expo. subdomain (e.g. abc.expo.spock.replit.dev) but the Host header
-    // (after port-stripping) has no .expo. — so CorsMiddleware rejects it.
-    // Strip .expo. from the origin so it matches the host.
-    if (req.headers && req.headers.origin) {
-      req.headers.origin = req.headers.origin.replace(/\.expo\./g, ".");
+    // CorsMiddleware checks: origin.host === req.headers.host
+    // The Replit iframe sends a .replit.dev origin but Metro's host is localhost.
+    // Replace any .replit.dev origin with http://localhost so CorsMiddleware
+    // treats it as same-origin (localhost is also in the isLocalhost allowlist).
+    if (req.headers && req.headers.origin && req.headers.origin.includes(".replit.dev")) {
+      req.headers.origin = "http://localhost";
     }
 
     const urlPath = (req.url || "").split("?")[0];
