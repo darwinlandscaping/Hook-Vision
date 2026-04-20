@@ -63,6 +63,19 @@ config.server.rewriteRequestUrl = (url) => {
 // while lazy route modules are still downloading).
 config.server.enhanceMiddleware = (middleware) => {
   return (req, res, next) => {
+    // Strip explicit port from the Host header so Expo's CorsMiddleware
+    // accepts requests routed via the Replit proxy.
+    if (req.headers && req.headers.host && req.headers.host.includes(":")) {
+      req.headers.host = req.headers.host.replace(/:\d+$/, "");
+    }
+    // Normalize the Origin header: the Replit iframe sends an origin with the
+    // .expo. subdomain (e.g. abc.expo.spock.replit.dev) but the Host header
+    // (after port-stripping) has no .expo. — so CorsMiddleware rejects it.
+    // Strip .expo. from the origin so it matches the host.
+    if (req.headers && req.headers.origin) {
+      req.headers.origin = req.headers.origin.replace(/\.expo\./g, ".");
+    }
+
     const urlPath = (req.url || "").split("?")[0];
     // Exclude Metro internal paths (/assets/, /_expo/, /hot, /symbolicate etc.)
     // even though they have no dots — they serve binary/JSON, not HTML.
