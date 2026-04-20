@@ -136,7 +136,7 @@ export default function WelcomeScreen() {
     });
   }, []);
 
-  const enter = () => router.replace("/(tabs)/barra" as any);
+  const enter = () => router.replace("/(tabs)/home");
 
   const flagRotate     = windAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: ["-2deg", "2.5deg", "-2deg"] });
   const flagScaleX     = windAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.88, 1] });
@@ -226,7 +226,7 @@ export default function WelcomeScreen() {
       <Animated.View style={[styles.btnWrap, { bottom: insets.bottom > 0 ? insets.bottom + 24 : 40, opacity: btnOpacity, transform: [{ scale: btnScale }] }]}>
         <Pressable style={({ pressed }) => [styles.enterBtn, pressed && styles.enterBtnPressed]} onPress={enter}>
           <LinearGradient colors={[TEAL, "#00a8d4"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.enterGradient}>
-            <Text style={styles.enterText}>🎣 BARRA PAGE →</Text>
+            <Text style={styles.enterText}>ENTER THE GULF</Text>
           </LinearGradient>
         </Pressable>
       </Animated.View>

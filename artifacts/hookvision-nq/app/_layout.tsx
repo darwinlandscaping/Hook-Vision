@@ -20,6 +20,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GoldenHourOverlay } from "@/components/GoldenHourOverlay";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { HistoryProvider } from "@/context/HistoryContext";
 import { NarratorProvider } from "@/context/NarratorContext";
 import { setBaseUrl } from "@workspace/api-client-react";
@@ -93,6 +94,7 @@ export default function RootLayout() {
 
             {/* Overlay renders after nav in DOM → always on top, no z-index battle */}
             <GoldenHourOverlay />
+            <OfflineBanner />
           </View>
         </QueryClientProvider>
       </ErrorBoundary>
