@@ -15,8 +15,8 @@ import { Insta360Provider } from "@/contexts/Insta360Context";
 // Ordered list of all tab route names (must match Tabs.Screen order below)
 // insta360 is hidden from tab bar (accessed via Live tab chip) to keep Brain visible
 const TAB_ROUTES = [
-  "live", "home", "buff", "tides", "species",
-  "barra", "zones", "forecast", "catchid", "demo", "history", "community", "smartlife", "cameras",
+  "live", "home", "barra", "buff", "tides", "species",
+  "zones", "forecast", "catchid", "demo", "history", "community", "smartlife", "cameras",
 ] as const;
 
 function tabPath(name: string) {
@@ -34,6 +34,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="barra">
+        <Icon sf={{ default: "target", selected: "target" }} />
+        <Label>Big Barra</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="buff">
         <Icon sf={{ default: "bag.fill", selected: "bag.fill" }} />
         <Label>Boof</Label>
@@ -45,10 +49,6 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="species">
         <Icon sf={{ default: "fish", selected: "fish.fill" }} />
         <Label>Species</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="barra">
-        <Icon sf={{ default: "target", selected: "target" }} />
-        <Label>Big Barra</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="zones">
         <Icon sf={{ default: "chart.bar.fill", selected: "chart.bar.fill" }} />
@@ -183,6 +183,18 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="barra"
+        options={{
+          title: "Barra",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="target" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="crosshairs-gps" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
         name="buff"
         options={{
           title: "Boof",
@@ -215,18 +227,6 @@ function ClassicTabLayout() {
               <SymbolView name="fish" tintColor={color} size={22} />
             ) : (
               <MaterialCommunityIcons name="fish" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="barra"
-        options={{
-          title: "Barra",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="target" tintColor={color} size={22} />
-            ) : (
-              <MaterialCommunityIcons name="crosshairs-gps" size={22} color={color} />
             ),
         }}
       />
