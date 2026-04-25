@@ -52,6 +52,19 @@ config.server.rewriteRequestUrl = (url) => {
 
 config.server.enhanceMiddleware = (middleware) => {
   return (req, res, next) => {
+    // Strip explicit port from the Host header so Expo's CorsMiddleware
+    // accepts requests routed via the Replit proxy.
+    if (req.headers && req.headers.host && req.headers.host.includes(":")) {
+      req.headers.host = req.headers.host.replace(/:\d+$/, "");
+    }
+    // CorsMiddleware checks: origin.host === req.headers.host
+    // The Replit iframe sends a .replit.dev origin but Metro's host is localhost.
+    // Replace any .replit.dev origin with http://localhost so CorsMiddleware
+    // treats it as same-origin (localhost is also in the isLocalhost allowlist).
+    if (req.headers && req.headers.origin && req.headers.origin.includes(".replit.dev")) {
+      req.headers.origin = "http://localhost";
+    }
+
     const urlPath = (req.url || "").split("?")[0];
 
     // ── Direct filesystem asset serving ────────────────────────────────────
