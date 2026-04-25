@@ -1,5 +1,5 @@
 kind = "mobile"
-previewPath = "/hookvision-wa/"
+previewPath = "/hookvision/"
 title = "HookVision WA"
 version = "1.0.0"
 id = "artifacts/hookvision"
@@ -10,7 +10,7 @@ version = "1.0.0"
 
 [[services]]
 name = "expo"
-paths = [ "/hookvision-wa" ]
+paths = [ "/hookvision" ]
 localPort = 25351
 
 [services.development]
@@ -22,4 +22,4 @@ run = [ "pnpm", "--filter", "@workspace/hookvision", "run", "serve" ]
 
 [services.env]
 PORT = "25351"
-BASE_PATH = "/hookvision-wa"
+BASE_PATH = "/hookvision"
