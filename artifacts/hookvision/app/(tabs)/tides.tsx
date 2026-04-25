@@ -47,6 +47,29 @@ interface TideResponse {
   refPort?: string;
 }
 
+interface DailyWeather {
+  tempC: number;
+  humidity: number;
+  windDir: string;
+  windSpeedKmh: number;
+  pressureHpa: number;
+  pressureTrend: string;
+  conditions: string;
+}
+
+async function fetchDailyWeather(): Promise<DailyWeather | null> {
+  try {
+    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const baseUrl = domain ? `https://${domain}` : "";
+    const res = await fetch(`${baseUrl}/api/daily-conditions`);
+    if (!res.ok) return null;
+    const d = await res.json();
+    return (d.weather as DailyWeather) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── API ───────────────────────────────────────────────────────────────────────
 async function fetchTidesForLocation(locationId: string): Promise<TideResponse> {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -108,9 +131,12 @@ function buildRegionNarratorText(region: TideRegion): string {
   return `${intro} ${tips}.`;
 }
 
-function buildTideNarratorText(loc: TideLocation, data: TideResponse): string {
+function buildTideNarratorText(loc: TideLocation, data: TideResponse, weather?: DailyWeather | null): string {
   const season = getWASeason();
   let text = `${loc.name} conditions. ${season.name} — ${season.fishing}. `;
+  if (weather) {
+    text += `Current conditions: ${weather.windDir} wind at ${weather.windSpeedKmh} kilometres per hour. Humidity ${weather.humidity} percent. Barometer ${weather.pressureHpa} hectopascals and ${weather.pressureTrend}. Air temperature ${weather.tempC} degrees. `;
+  }
   text += `Target species: ${loc.species.slice(0, 3).join(", ")}. Best lure: ${loc.lure}. Best time: ${loc.bestTide}. `;
   text += `Fishing tip: ${loc.tip} `;
   for (const day of data.data) {
@@ -151,11 +177,24 @@ function ConditionsStrip({
   const waterTemp = getWAWaterTemp(regionId);
   const tideStage = tideData ? getTideStage(tideData) : null;
 
+  const { data: weather } = useQuery<DailyWeather | null>({
+    queryKey: ["daily-weather"],
+    queryFn: fetchDailyWeather,
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+
   const pills = [
     { emoji: "🌡️", label: "Water Temp", value: waterTemp, color: "#ff7043" },
     { emoji: tideStage?.emoji ?? "🌊", label: "Tide Stage", value: tideStage?.label ?? "—", color: "#00d4aa" },
     { emoji: moon.emoji, label: "Moon", value: moon.name, color: "#7986cb" },
     { emoji: season.emoji, label: "Season", value: season.name, color: "#ffd700" },
+    ...(weather ? [
+      { emoji: "💨", label: "Wind", value: `${weather.windDir} ${weather.windSpeedKmh}km/h`, color: "#00d4aa" },
+      { emoji: "💧", label: "Humidity", value: `${weather.humidity}%`, color: "#00a8ff" },
+      { emoji: "📊", label: "Barometer", value: `${weather.pressureHpa}hPa ${weather.pressureTrend === "falling" ? "↓" : weather.pressureTrend === "rising" ? "↑" : "→"}`, color: weather.pressureTrend === "falling" ? "#00d4aa" : weather.pressureTrend === "rising" ? "#ff9800" : "#7986cb" },
+      { emoji: "🌡️", label: "Air Temp", value: `${weather.tempC}°C`, color: "#ff9800" },
+    ] : []),
   ];
 
   return (
@@ -351,8 +390,15 @@ function TideDetailView({ loc, region, onBack, colors, topPad, bottomPad }: {
   const { data, isLoading, error, refetch, isRefetching } = useQuery<TideResponse>({
     queryKey: ["tides-loc", loc.id],
     queryFn: () => fetchTidesForLocation(loc.id),
-    staleTime: 30 * 60 * 1000,  // BOM tide schedule: re-fetch if >30min old
-    refetchOnMount: "always",    // always check freshness when screen renders
+    staleTime: 30 * 60 * 1000,
+    refetchOnMount: "always",
+    retry: 1,
+  });
+
+  const { data: weather } = useQuery<DailyWeather | null>({
+    queryKey: ["daily-weather"],
+    queryFn: fetchDailyWeather,
+    staleTime: 10 * 60 * 1000,
     retry: 1,
   });
 
@@ -452,7 +498,7 @@ function TideDetailView({ loc, region, onBack, colors, topPad, bottomPad }: {
             </View>
           ))}
 
-          <NarratorButton pageType="tide predictions" content={buildTideNarratorText(loc, data)} />
+          <NarratorButton pageType="tide predictions" content={buildTideNarratorText(loc, data, weather)} />
 
           <View style={[styles.disclaimer, { backgroundColor: colors.secondary }]}>
             <Feather name="info" size={12} color={colors.mutedForeground} />
@@ -528,6 +574,8 @@ export default function TidesScreen() {
           </View>
           <NarratorButton compact pageType="tide region" content={buildRegionNarratorText(selectedRegion)} />
         </View>
+
+        <ConditionsStrip regionId={selectedRegion.id} tideData={undefined} colors={colors} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.locList, { paddingBottom: bottomPad }]}>
