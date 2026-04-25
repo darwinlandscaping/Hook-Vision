@@ -52,10 +52,10 @@ function getNQSeason(m: number): { name: string; waterTemp: string; short: strin
 interface ClassicSeason { year: string; start: Date; end: Date; prize1M: string; prize100K: string; prizes10K: number; url: string; }
 function getMDFStatus(): { season: ClassicSeason; active: boolean; daysUntil: number; daysLeft: number } {
   const seasons: ClassicSeason[] = [
-    { year: "2025/26", start: new Date("2025-10-01"), end: new Date("2026-03-31"),
+    { year: "2025", start: new Date("2025-08-01"), end: new Date("2025-08-31"),
       prize1M: "OPEN DIVISION", prize100K: "WOMEN'S", prizes10K: 10,
       url: "https://www.karumbafishingclub.com.au" },
-    { year: "2026/27", start: new Date("2026-10-01"), end: new Date("2027-03-31"),
+    { year: "2026", start: new Date("2026-08-01"), end: new Date("2026-08-31"),
       prize1M: "OPEN DIVISION", prize100K: "WOMEN'S", prizes10K: 10,
       url: "https://www.karumbafishingclub.com.au" },
   ];
@@ -458,7 +458,7 @@ function MDFCard({ colors }: { colors: ReturnType<typeof useColors> }) {
           <Text style={styles.mdfEmoji}>💰</Text>
           <View style={{ flex: 1 }}>
             <Text style={styles.mdfTitle}>KARUMBA BARRA CLASSIC</Text>
-            <Text style={styles.mdfHost}>QLD Fisheries · Gulf Season {season.year}</Text>
+            <Text style={styles.mdfHost}>Karumba Fishing Club · Norman River · {season.year}</Text>
           </View>
           <View style={[styles.mdfStatusBadge, { backgroundColor: active ? "#00d4aa22" : "#ff220022", borderColor: active ? "#00d4aa" : "#ff2200" }]}>
             <Text style={[styles.mdfStatusText, { color: active ? "#00d4aa" : "#ff2200" }]}>
@@ -474,9 +474,9 @@ function MDFCard({ colors }: { colors: ReturnType<typeof useColors> }) {
           </View>
         ) : (
           <View style={styles.mdfCountdown}>
-            <Text style={styles.mdfCountdownLabel}>NEXT SEASON STARTS IN</Text>
+            <Text style={styles.mdfCountdownLabel}>NEXT CLASSIC STARTS IN</Text>
             <Text style={styles.mdfCountdownNum}>{daysUntil} DAYS</Text>
-            <Text style={styles.mdfCountdownSub}>Oct 1, {season.start.getFullYear()}</Text>
+            <Text style={styles.mdfCountdownSub}>Aug 1, {season.start.getFullYear()}</Text>
           </View>
         )}
 
@@ -685,7 +685,7 @@ function BarraScreenInner() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.titleRed}>SAVAGE</Text>
+            <Text style={styles.titleRed}>GULF COUNTRY</Text>
             <Text style={styles.titleGold}>BARRA NATION</Text>
           </View>
           <NarratorSettingsTrigger />
