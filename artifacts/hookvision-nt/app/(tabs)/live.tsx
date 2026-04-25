@@ -766,7 +766,7 @@ export default function LiveScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* ── WiFi Cam 2 chip ──────────────────────────────────── */}
+              {/* ── SmartLife chip ────────────────────────────────────── */}
               <TouchableOpacity
                 style={[
                   styles.chip,
@@ -786,12 +786,12 @@ export default function LiveScreen() {
                   setSmartlifePanel(opening);
                   if (opening && !slScanner.scanning) {
                     slScanner.clear();
-                    slScanner.scan();
+                    slScanner.scan("SmartLife");
                   }
                 }}
               >
                 <MaterialCommunityIcons
-                  name="wifi-refresh"
+                  name="cctv"
                   size={14}
                   color={
                     cam2Connected && slConnectedCam ? "#00d4aa"
@@ -805,10 +805,10 @@ export default function LiveScreen() {
                     : "#ffffff88",
                 }]}>
                   {cam2Connected && slConnectedCam
-                    ? `Cam2 ✓ ${slConnectedCam.brand}`
+                    ? "SmartLife ✓"
                     : slScanner.scanning
                     ? "Scanning…"
-                    : "WiFi Cam 2"}
+                    : "SmartLife"}
                 </Text>
               </TouchableOpacity>
 
@@ -1236,9 +1236,9 @@ export default function LiveScreen() {
               {/* Header */}
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <MaterialCommunityIcons name="wifi-refresh" size={20} color="#00d4aa" />
+                  <MaterialCommunityIcons name="cctv" size={20} color="#00d4aa" />
                   <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, letterSpacing: 0.5 }}>
-                    WIFI CAM 2 — AUTO-CONNECT
+                    SMARTLIFE AUTO-CONNECT
                   </Text>
                 </View>
                 <TouchableOpacity onPress={() => setSmartlifePanel(false)}>
@@ -1251,23 +1251,23 @@ export default function LiveScreen() {
                 {cam2Connected && slConnectedCam ? (
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#00d4aa" }} />
                 ) : slScanner.scanning ? (
-                  <ActivityIndicator size="small" color="#ffd700" />
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#ffd700" }} />
                 ) : (
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#ffffff44" }} />
                 )}
                 <Text style={{ color: cam2Connected && slConnectedCam ? "#00d4aa" : slScanner.scanning ? "#ffd700" : "#ffffff88", fontWeight: "600", fontSize: 13, flex: 1 }}>
                   {cam2Connected && slConnectedCam
-                    ? `✓ ${slConnectedCam.brand} · ${slConnectedCam.ip}${slConnectedCam.snapshotPath}`
+                    ? `✓ Connected — ${slConnectedCam.ip}${slConnectedCam.snapshotPath}`
                     : slScanner.scanning
-                    ? "Scanning WiFi for cameras…"
-                    : slScanner.discovered.length > 0
-                    ? `Found ${slScanner.discovered.length} camera(s)`
-                    : "No cameras detected"}
+                    ? "Scanning WiFi for SmartLife cameras…"
+                    : slScanner.discovered.filter(c => c.brand === "SmartLife").length > 0
+                    ? `Found ${slScanner.discovered.filter(c => c.brand === "SmartLife").length} camera(s)`
+                    : "No SmartLife cameras detected"}
                 </Text>
               </View>
 
               {/* Discovered cameras list */}
-              {slScanner.discovered.map((cam) => (
+              {slScanner.discovered.filter(c => c.brand === "SmartLife").map((cam) => (
                 <View key={cam.id} style={{
                   backgroundColor: "#00d4aa0a",
                   borderRadius: 10, borderWidth: 1, borderColor: "#00d4aa33",
@@ -1309,7 +1309,7 @@ export default function LiveScreen() {
                   >
                     <MaterialCommunityIcons name="link-variant" size={16} color="#00d4aa" />
                     <Text style={{ color: "#00d4aa", fontWeight: "700", fontSize: 13 }}>
-                      {slConnecting ? "Connecting…" : "Use as Cam 2 (Boat Mode)"}
+                      {slConnecting ? "Connecting…" : "Auto-Connect to Live Tab"}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1317,7 +1317,7 @@ export default function LiveScreen() {
 
               {/* Rescan button */}
               <TouchableOpacity
-                onPress={() => { slScanner.clear(); slScanner.scan(); }}
+                onPress={() => { slScanner.clear(); slScanner.scan("SmartLife"); }}
                 disabled={slScanner.scanning}
                 style={{
                   flexDirection: "row", alignItems: "center", justifyContent: "center",
@@ -1381,15 +1381,13 @@ export default function LiveScreen() {
                   SETUP GUIDE
                 </Text>
                 <Text style={{ color: "#ffffffbb", fontSize: 12, lineHeight: 18 }}>
-                  Works with any WiFi camera on your local network:{"\n"}
-                  SmartLife · Swann · Reolink · Hikvision · ONVIF{"\n\n"}
-                  1. Connect phone to the same WiFi as your camera{"\n"}
-                  2. Tap Rescan — all discovered cameras appear above{"\n"}
-                  3. Tap "Use as Cam 2" — feed streams in the Live tab{"\n"}
-                  4. Cam 2 is automatically used for Boat Mode analysis{"\n\n"}
-                  Common snapshot paths:{"\n"}
-                  {"  "}/snapshot · /snapshot.jpg · /image.jpg{"\n"}
-                  {"  "}/cgi-bin/snapshot.cgi (Hikvision / Reolink)
+                  1. Open SmartLife app → tap your camera → Settings{"\n"}
+                  2. Enable "Local Recording" or note the camera IP{"\n"}
+                  3. Connect phone to the same WiFi as the camera{"\n"}
+                  4. Tap Rescan — discovered cameras appear above{"\n"}
+                  5. Tap "Auto-Connect" to stream in the Live tab{"\n\n"}
+                  Common SmartLife snapshot paths:{"\n"}
+                  {"  "}/snapshot.cgi · /cgi-bin/snapshot.cgi · /image.jpg
                 </Text>
               </View>
             </ScrollView>
@@ -1503,61 +1501,6 @@ export default function LiveScreen() {
                 )}
               </View>
             </ScrollView>
-          </View>
-        )}
-
-        {/* ── Cam 2 Boat Feed PiP strip ─────────────────────────────────────────
-            Visible when Cam 2 is connected (boat mode or manual cam2 use).
-            Shows the live snapshot so user can confirm the feed before scanning. */}
-        {cam2Connected && !cam2Panel && !smartlifePanel && !insta360Panel && (
-          <View
-            style={{
-              position: "absolute",
-              bottom: boatMode ? 210 : 160,
-              right: 12,
-              width: 130,
-              borderRadius: 10,
-              overflow: "hidden",
-              borderWidth: 1.5,
-              borderColor: boatMode ? "#aaff0066" : "#00a8ff66",
-              backgroundColor: "#0a1628cc",
-              zIndex: 40,
-            }}
-          >
-            <Image
-              source={{ uri: `http://${cam2.ip}${cam2.path}?t=${cam2.tick}` }}
-              style={{ width: "100%", aspectRatio: 16 / 9 }}
-              resizeMode="cover"
-              onLoad={cam2.onPreviewLoad}
-              onError={cam2.onPreviewError}
-            />
-            <View style={{
-              flexDirection: "row", alignItems: "center", gap: 4,
-              paddingHorizontal: 6, paddingVertical: 3,
-              backgroundColor: boatMode ? "#aaff0015" : "#00a8ff15",
-            }}>
-              <View style={{
-                width: 5, height: 5, borderRadius: 3,
-                backgroundColor: boatMode ? "#aaff00" : "#00a8ff",
-              }} />
-              <Text style={{
-                color: boatMode ? "#aaff00cc" : "#00a8ffcc",
-                fontSize: 9, fontWeight: "700", letterSpacing: 0.5, flex: 1,
-              }}>
-                {boatMode ? "🚤 BOAT CAM 2" : "📺 CAM 2 LIVE"}
-              </Text>
-              <Text style={{ color: "#ffffff44", fontSize: 8 }}>#{cam2.tick}</Text>
-            </View>
-            {boatMode && (
-              <View style={{
-                backgroundColor: "#aaff0012",
-                paddingHorizontal: 6, paddingVertical: 2,
-              }}>
-                <Text style={{ color: "#aaff00aa", fontSize: 8, textAlign: "center" }}>
-                  ● analysing every {AUTO_INTERVAL}s
-                </Text>
-              </View>
-            )}
           </View>
         )}
 
