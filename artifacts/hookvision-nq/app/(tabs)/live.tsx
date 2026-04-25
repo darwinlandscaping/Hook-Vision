@@ -759,10 +759,10 @@ export default function LiveScreen() {
                   ]}
                 >
                   {cam2.status === "connected"
-                    ? "📺 Cam 2"
+                    ? "📺 WiFi Cam 1"
                     : cam2.status === "searching"
                     ? "Searching…"
-                    : "Cam 2"}
+                    : "WiFi Cam 1"}
                 </Text>
               </TouchableOpacity>
 
@@ -786,7 +786,7 @@ export default function LiveScreen() {
                   setSmartlifePanel(opening);
                   if (opening && !slScanner.scanning) {
                     slScanner.clear();
-                    slScanner.scan("SmartLife");
+                    slScanner.scan();
                   }
                 }}
               >
@@ -805,10 +805,10 @@ export default function LiveScreen() {
                     : "#ffffff88",
                 }]}>
                   {cam2Connected && slConnectedCam
-                    ? "SmartLife ✓"
+                    ? "WiFi Cam 2 ✓"
                     : slScanner.scanning
                     ? "Scanning…"
-                    : "SmartLife"}
+                    : "WiFi Cam 2"}
                 </Text>
               </TouchableOpacity>
 
@@ -1238,7 +1238,7 @@ export default function LiveScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <MaterialCommunityIcons name="cctv" size={20} color="#00d4aa" />
                   <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, letterSpacing: 0.5 }}>
-                    SMARTLIFE AUTO-CONNECT
+                    ALL WIFI CAM 2 — AUTO-CONNECT
                   </Text>
                 </View>
                 <TouchableOpacity onPress={() => setSmartlifePanel(false)}>
@@ -1259,15 +1259,15 @@ export default function LiveScreen() {
                   {cam2Connected && slConnectedCam
                     ? `✓ Connected — ${slConnectedCam.ip}${slConnectedCam.snapshotPath}`
                     : slScanner.scanning
-                    ? "Scanning WiFi for SmartLife cameras…"
-                    : slScanner.discovered.filter(c => c.brand === "SmartLife").length > 0
-                    ? `Found ${slScanner.discovered.filter(c => c.brand === "SmartLife").length} camera(s)`
-                    : "No SmartLife cameras detected"}
+                    ? "Scanning WiFi for cameras…"
+                    : slScanner.discovered.length > 0
+                    ? `Found ${slScanner.discovered.length} camera(s)`
+                    : "No cameras detected"}
                 </Text>
               </View>
 
               {/* Discovered cameras list */}
-              {slScanner.discovered.filter(c => c.brand === "SmartLife").map((cam) => (
+              {slScanner.discovered.map((cam) => (
                 <View key={cam.id} style={{
                   backgroundColor: "#00d4aa0a",
                   borderRadius: 10, borderWidth: 1, borderColor: "#00d4aa33",
@@ -1317,7 +1317,7 @@ export default function LiveScreen() {
 
               {/* Rescan button */}
               <TouchableOpacity
-                onPress={() => { slScanner.clear(); slScanner.scan("SmartLife"); }}
+                onPress={() => { slScanner.clear(); slScanner.scan(); }}
                 disabled={slScanner.scanning}
                 style={{
                   flexDirection: "row", alignItems: "center", justifyContent: "center",
@@ -1381,13 +1381,14 @@ export default function LiveScreen() {
                   SETUP GUIDE
                 </Text>
                 <Text style={{ color: "#ffffffbb", fontSize: 12, lineHeight: 18 }}>
-                  1. Open SmartLife app → tap your camera → Settings{"\n"}
-                  2. Enable "Local Recording" or note the camera IP{"\n"}
-                  3. Connect phone to the same WiFi as the camera{"\n"}
-                  4. Tap Rescan — discovered cameras appear above{"\n"}
-                  5. Tap "Auto-Connect" to stream in the Live tab{"\n\n"}
-                  Common SmartLife snapshot paths:{"\n"}
-                  {"  "}/snapshot.cgi · /cgi-bin/snapshot.cgi · /image.jpg
+                  Works with any WiFi camera on your local network:{"\n"}
+                  SmartLife · Swann · Reolink · Hikvision · ONVIF{"\n\n"}
+                  1. Connect phone to same WiFi as your camera{"\n"}
+                  2. Tap Rescan — all discovered cameras appear above{"\n"}
+                  3. Tap "Auto-Connect" — feed streams in the Live tab{"\n\n"}
+                  Common snapshot paths:{"\n"}
+                  {"  "}/snapshot · /snapshot.jpg · /image.jpg{"\n"}
+                  {"  "}/cgi-bin/snapshot.cgi (Hikvision / Reolink)
                 </Text>
               </View>
             </ScrollView>
