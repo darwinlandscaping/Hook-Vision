@@ -194,7 +194,7 @@ function getTidalPhase(
   tideType: "HW" | "LW" | null,
 ): { label: string; color: string; bg: string; emoji: string } {
   if (minutesUntil === null || tideType === null) {
-    return { label: "LOADING", color: "#888", bg: "#88888818", emoji: "🌊" };
+    return { label: "LOADING", color: "#888888", bg: "#88888818", emoji: "🌊" };
   }
   if (Math.abs(minutesUntil) <= 35) {
     return { label: "SLACK TIDE", color: "#ff8c00", bg: "#ff8c0018", emoji: "⚖️" };
