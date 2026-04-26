@@ -416,9 +416,9 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
     [stop, playTTSWeb, playTTSNative]
   );
 
-  // ─── autoSpeak(): only fires when hands-free mode is on ────────────────────
+  // ─── autoSpeak(): always fires (hands-free toggle now controls repeat on refocus only) ─
   const autoSpeak = useCallback(
-    (text: string) => { if (handsFreeRef.current) speak(text); },
+    (text: string) => speak(text),
     [speak]
   );
 

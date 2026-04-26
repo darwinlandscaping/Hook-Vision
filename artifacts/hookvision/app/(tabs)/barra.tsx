@@ -661,6 +661,8 @@ function BarraScreenInner() {
         </Text>
       </View>
 
+      <NarratorButton compact pageType="barra nation" content={`Kimberley Barra Nation. ${season.name}, ${moon.name}. Top hot spot right now: ${hotSpots[0].name} on the ${hotSpots[0].river}. ${isGoldHour ? "Golden hour — get out there now!" : "Fish are feeding."}`} />
+
       {/* Conditions strip */}
       <View style={[styles.condBar, { backgroundColor: colors.card, borderColor: moon.tideType === "spring" ? "#ffd700" : colors.border }]}>
         {[
