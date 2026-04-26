@@ -160,8 +160,11 @@ interface NarratorCtx {
 const NarratorContext = createContext<NarratorCtx | null>(null);
 
 // ─── Native audio (expo-av Audio.Sound) ──────────────────────────────────────
-// Module-level so we can stop across renders without stale refs
+// Module-level so we can stop across renders without stale refs.
+// _speakGen is incremented each time speak() is called so that any in-flight
+// createAsync from a superseded speak is discarded when it resolves.
 let _avSound: any = null;
+let _speakGen = 0;
 
 async function stopAvSound(): Promise<void> {
   if (_avSound) {
@@ -175,12 +178,16 @@ async function stopAvSound(): Promise<void> {
 
 /**
  * Play TTS audio from URL using expo-av Audio.Sound.
- * Returns true on success, false if expo-av is unavailable.
+ * Returns true on success, false if expo-av is unavailable or superseded.
  */
 async function playUrlWithAv(url: string, onDone: () => void): Promise<boolean> {
   if (!_Audio) return false;
+  const gen = ++_speakGen;
   try {
     await stopAvSound();
+
+    // Bail out if a newer speak() was already queued while we were stopping
+    if (gen !== _speakGen) return true;
 
     // Configure audio session for playback (plays even in silent mode)
     await _Audio.setAudioModeAsync({
@@ -189,10 +196,19 @@ async function playUrlWithAv(url: string, onDone: () => void): Promise<boolean> 
       staysActiveInBackground: false,
     });
 
+    if (gen !== _speakGen) return true;
+
     const { sound } = await _Audio.Sound.createAsync(
       { uri: url },
       { shouldPlay: true, volume: 1.0 }
     );
+
+    // Discard if superseded while createAsync was awaiting
+    if (gen !== _speakGen) {
+      try { await sound.unloadAsync(); } catch {}
+      return true;
+    }
+
     _avSound = sound;
 
     sound.setOnPlaybackStatusUpdate((status: any) => {

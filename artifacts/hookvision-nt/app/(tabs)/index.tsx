@@ -723,6 +723,7 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [imageLayout, setImageLayout] = useState({ width: 360, height: 240 });
   const [scanSource, setScanSource] = useState<'manual' | 'live' | 'boat'>('manual');
+  const scanSourceRef = useRef<'manual' | 'live' | 'boat'>('manual');
   const [boatActive, setBoatActive] = useState(false);
   // Previous scan — shown below scanner while the next image is being analysed
   const [prevAnalysis, setPrevAnalysis] = useState<FishAnalysis | null>(null);
@@ -810,6 +811,7 @@ export default function HomeScreen() {
     const unsub = LiveScanStore.subscribe((payload) => {
       setBoatActive(LiveScanStore.boatActive);
       setScanSource(payload.source);
+      scanSourceRef.current = payload.source;
       // Snapshot the current result so the user can see it while the next scan runs
       setAnalysis((prev) => { if (prev) setPrevAnalysis(prev); return null; });
       setImageUri((prev) => { if (prev) setPrevImageUri(prev); return payload.uri; });
@@ -1135,11 +1137,14 @@ export default function HomeScreen() {
         }
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Hands-free: narrate the result summary
-      autoSpeak(
-        `Scan complete. ${data.fishCount} fish detected at ${data.depth}. ` +
-        `Species: ${data.species}. Confidence ${data.confidence} percent. ${data.suggestion}`
-      );
+      // Narrate the result summary for manual scans only;
+      // boat/live mode narrates via the dedicated useEffect below to avoid double-speak.
+      if (scanSourceRef.current === 'manual') {
+        autoSpeak(
+          `Scan complete. ${data.fishCount} fish detected at ${data.depth}. ` +
+          `Species: ${data.species}. Confidence ${data.confidence} percent. ${data.suggestion}`
+        );
+      }
       if (imageUri) {
         addEntry({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
