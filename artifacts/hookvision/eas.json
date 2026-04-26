@@ -16,6 +16,10 @@
       "channel": "preview",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "898f5a0e-eba6-4a78-b40d-d78f0539d56e-00-o6803yqna0ig.spock.replit.dev",
+        "EXPO_PUBLIC_REPL_ID": "898f5a0e-eba6-4a78-b40d-d78f0539d56e"
       }
     },
     "production": {
