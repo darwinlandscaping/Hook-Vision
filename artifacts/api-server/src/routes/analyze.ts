@@ -801,23 +801,13 @@ router.post("/analyze", async (req, res) => {
       { role: 'user'   as const, content },
     ];
 
-    // ── Dual-scan: fire BOTH calls simultaneously without blocking each other ──
-    // scan2 fires here but is NOT awaited — it runs in the background
-    // scan1 streams to the client immediately; by the time scan1 finishes streaming,
-    // scan2 should already be done (both started at the same time)
-    const scan2Promise = openai.chat.completions.create({
-      model: "gpt-4.1",
-      max_completion_tokens: 600,
-      temperature: 0.3,
-      seed: 2,
-      stream: false,
-      messages: sharedMessages,
-    });
-
-    // Open scan1 stream — first bytes arrive in ~1s after preprocessing
+    // ── Single streaming scan — no dual-scan overhead ────────────────────────
+    // First streaming bytes arrive ~1s after preprocessing; JSON is typically
+    // 350–380 tokens, so max_completion_tokens:450 gives a tight cap that ends
+    // the stream fast without risk of truncation.
     const stream = await openai.chat.completions.create({
       model: "gpt-4.1",
-      max_completion_tokens: 600,
+      max_completion_tokens: 450,
       temperature: 0,
       seed: 1,
       stream: true,
@@ -842,33 +832,9 @@ router.post("/analyze", async (req, res) => {
       res.write(`\n__CV__:${payload}`);
     }
 
-    // ── Append scan 2 consensus token ───────────────────────────────────────
-    // scan2 has been running in background the whole time scan1 was streaming;
-    // it should be done by now — await is near-instant at this point
-    try {
-      const scan2Result = await scan2Promise;
-      const raw2   = scan2Result.choices[0]?.message?.content ?? "{}";
-      const clean2 = raw2.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
-      const match2 = clean2.match(/\{[\s\S]*\}/);
-      if (match2) {
-        const p2 = JSON.parse(match2[0]) as { species?: string; confidence?: number; fishCount?: number };
-        // Parse scan 1 for comparison
-        const clean1 = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
-        const match1 = clean1.match(/\{[\s\S]*\}/);
-        const p1 = match1 ? JSON.parse(match1[0]) as { species?: string; confidence?: number; fishCount?: number } : null;
-        const agreed = p1?.species?.toLowerCase() === p2?.species?.toLowerCase();
-        res.write(`\n__SCAN2__:${JSON.stringify({
-          agreed,
-          species2:    p2.species    ?? null,
-          confidence2: p2.confidence ?? null,
-          fishCount2:  p2.fishCount  ?? null,
-        })}`);
-      }
-    } catch { /* non-fatal — scan 1 result still valid */ }
-
     res.end();
 
-    req.log.info({ chars: raw.length }, 'Dual-scan analysis complete');
+    req.log.info({ chars: raw.length }, 'Analysis complete');
   } catch (err) {
     req.log.error({ err }, 'OpenAI analyze request failed');
     res.status(500).json({ error: 'Analysis failed. Check your connection and try again.' });

@@ -946,35 +946,29 @@ export default function HomeScreen() {
     setFlashResult(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // ── Gate: quick sonar-screen check before spending a full analysis call ──
-    try {
-      const gDomain  = process.env.EXPO_PUBLIC_DOMAIN;
-      const gBaseUrl = gDomain ? `https://${gDomain}` : "";
-      const gAbort   = new AbortController();
-      const gTimer   = setTimeout(() => gAbort.abort(), 8000); // 8s timeout — fail open if slow
+    // ── Sonar validate fires concurrently with the main analyze call ──────────
+    // Both start simultaneously. If validate returns false BEFORE the main call's
+    // response headers arrive, we abort the main call immediately. If the main
+    // call's headers arrive first (streaming started) validate result is ignored.
+    const domain  = process.env.EXPO_PUBLIC_DOMAIN;
+    const baseUrl = domain ? `https://${domain}` : "";
+    const analyzeAbort = new AbortController();
+
+    const validatePromise: Promise<{ isSonar: boolean; reason?: string | null } | null> = (async () => {
       try {
-        const gRes = await fetch(`${gBaseUrl}/api/sonar-validate`, {
+        const r = await fetch(`${baseUrl}/api/sonar-validate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageBase64 }),
-          signal: gAbort.signal,
         });
-        if (gRes.ok) {
-          const gData = await gRes.json() as { isSonar: boolean; reason?: string | null };
-          if (!gData.isSonar) {
-            const why = gData.reason ?? "Please photograph your sonar / fish finder screen.";
-            setError(`Not a sonar image — ${why}`);
-            setLoading(false);
-            setSonarBarraLoading(false);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            return;
-          }
-        }
-      } finally {
-        clearTimeout(gTimer);
-      }
-      // If fetch fails or returns non-200 → fail open (allow the analysis through)
-    } catch { /* network error or timeout — fail open */ }
+        return r.ok ? (await r.json()) as { isSonar: boolean; reason?: string | null } : null;
+      } catch { return null; }
+    })();
+
+    // Race: if validate resolves with isSonar:false before main headers, abort main
+    validatePromise.then(v => {
+      if (v && !v.isSonar) analyzeAbort.abort();
+    });
 
     // ── Sonar Brain Stage-1: fire sonar-barra-check in parallel ──────────────
     // Resolves in ~600ms — shows BARRA ARCH verdict while full analysis streams
@@ -1000,11 +994,7 @@ export default function HomeScreen() {
       setSonarBarraLoading(false);
     }
 
-    const analyzeAbort = new AbortController();
-    const analyzeTimer = setTimeout(() => analyzeAbort.abort(), 90000); // 90s hard cap
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
-      const baseUrl = domain ? `https://${domain}` : "";
       let response: Response;
       try {
         response = await fetch(`${baseUrl}${liveSonarModeRef.current ? '/api/live-sonar-analyze' : '/api/analyze'}`, {
@@ -1014,7 +1004,17 @@ export default function HomeScreen() {
           signal: analyzeAbort.signal,
         });
       } catch (fetchErr: any) {
-        if (fetchErr?.name === "AbortError") throw new Error("Analysis timed out — please try again.");
+        if (fetchErr?.name === "AbortError") {
+          // Validate aborted the main call — show the rejection reason
+          const vResult = await validatePromise;
+          if (vResult && !vResult.isSonar) {
+            const why = vResult.reason ?? "Please photograph your sonar / fish finder screen.";
+            setError(`Not a sonar image — ${why}`);
+            setSonarBarraLoading(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          }
+          return;
+        }
         throw fetchErr;
       }
       if (!response.ok) {
@@ -1229,7 +1229,6 @@ export default function HomeScreen() {
       setError(msg);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
-      clearTimeout(analyzeTimer);
       setLoading(false);
       setStreaming(false);
     }

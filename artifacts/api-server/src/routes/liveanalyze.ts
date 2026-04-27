@@ -263,10 +263,6 @@ router.post("/live-sonar-analyze", async (req, res) => {
   const mimeType = detectMime(imageBase64);
 
   try {
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.setHeader("Transfer-Encoding", "chunked");
-    res.setHeader("X-Content-Type-Options", "nosniff");
-
     const analysisPrompt = `Analyse this live sonar image.${region ? ` Region focus: ${region}.` : ""}
 
 Follow the procedure in the system prompt exactly:
@@ -278,7 +274,10 @@ STEP E — Return the complete JSON response
 
 Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportions, acoustic shadow length/direction, and structure proximity.`;
 
-    // ── Flash scan (fast brand + mode detection, ~400ms) ─────────────────────
+    // ── Fire both API calls simultaneously ────────────────────────────────────
+    // Flash (~400ms) and deep stream both start at the same instant.
+    // We await flash first, emit it so the client sees brand/mode immediately,
+    // then drain the already-in-flight main stream.
     const flashPromise = openai.chat.completions.create({
       model: "gpt-4.1-mini",
       max_completion_tokens: 120,
@@ -296,10 +295,9 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
       ]
     });
 
-    // ── Deep analysis scan (streaming gpt-4.1) ────────────────────────────────
-    const stream = await openai.chat.completions.create({
+    const streamPromise = openai.chat.completions.create({
       model: "gpt-4.1",
-      max_completion_tokens: 700,
+      max_completion_tokens: 500,
       temperature: 0,
       seed: 1,
       stream: true,
@@ -315,16 +313,12 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
       ]
     });
 
-    let raw = "";
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content ?? "";
-      if (delta) {
-        raw += delta;
-        res.write(delta);
-      }
-    }
+    // Open streaming headers
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("X-Content-Type-Options", "nosniff");
 
-    // ── Append flash scan metadata ────────────────────────────────────────────
+    // ── Emit flash first — client sees brand/mode in ~400ms ──────────────────
     try {
       const flashResult = await flashPromise;
       const flashRaw = flashResult.choices[0]?.message?.content ?? "{}";
@@ -336,9 +330,20 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
       const matchFlash = cleanFlash.match(/\{[\s\S]*\}/);
       if (matchFlash) {
         const flashData = JSON.parse(matchFlash[0]);
-        res.write(`\n__FLASH__:${JSON.stringify(flashData)}`);
+        res.write(`__FLASH__:${JSON.stringify(flashData)}\n`);
       }
-    } catch { /* non-fatal */ }
+    } catch { /* non-fatal — main stream still delivers full result */ }
+
+    // ── Drain main stream (was already in-flight during flash await) ──────────
+    const stream = await streamPromise;
+    let raw = "";
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content ?? "";
+      if (delta) {
+        raw += delta;
+        res.write(delta);
+      }
+    }
 
     res.end();
     req.log.info({ chars: raw.length }, "Live sonar analysis complete");
