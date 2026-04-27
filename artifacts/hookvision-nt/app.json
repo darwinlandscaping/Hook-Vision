@@ -126,6 +126,9 @@
       "url": "https://u.expo.dev/c5eb71d4-1318-4b86-86b4-a758e86c0388",
       "enabled": true,
       "checkAutomatically": "ON_LOAD"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
