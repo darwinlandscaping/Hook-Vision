@@ -708,6 +708,15 @@ router.post("/analyze", async (req, res) => {
       }
     } catch { /* non-fatal — user still gets full scan */ }
 
+    // ── Keep-alive heartbeat ──────────────────────────────────────────────
+    // After the flash result, there's a gap of 5-15 seconds while preprocessing
+    // runs and then OpenAI processes the heavy multi-image input. Mobile HTTP
+    // clients (iOS/Android) drop connections that see silence for >30s.
+    // Send a \n every 4 seconds — harmless whitespace the mobile app strips out.
+    const heartbeat = setInterval(() => {
+      try { res.write("\n"); } catch { /* connection closed */ }
+    }, 4000);
+
     // ── Await preprocessing results ───────────────────────────────────────
     const [cvScan, zoomCrops, intelligenceCtx] = await preprocessPromise;
 
@@ -790,8 +799,9 @@ router.post("/analyze", async (req, res) => {
       // Half-crops at LOW detail — overview coverage, minimal tokens
       content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.leftHalf}`,  detail: 'low' } });
       content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.rightHalf}`, detail: 'low' } });
-      // Tight crop at HIGH detail — primary arch/blob detection surface
-      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.blobCrop}`,  detail: 'high' } });
+      // Tight crop at LOW detail — 85 tokens vs 765+ for high; the zoom crops
+      // already give excellent arch detail at 512px, saving 10-15s per call
+      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.blobCrop}`,  detail: 'low' } });
     }
     content.push({ type: 'text', text: analysisPrompt });
 
@@ -805,22 +815,27 @@ router.post("/analyze", async (req, res) => {
     // First streaming bytes arrive ~1s after preprocessing; JSON is typically
     // 350–380 tokens, so max_completion_tokens:450 gives a tight cap that ends
     // the stream fast without risk of truncation.
-    const stream = await openai.chat.completions.create({
-      model: "gpt-4.1",
-      max_completion_tokens: 450,
-      temperature: 0,
-      seed: 1,
-      stream: true,
-      messages: sharedMessages,
-    });
-
     let raw = '';
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content ?? '';
-      if (delta) {
-        raw += delta;
-        res.write(delta);
+    try {
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4.1",
+        max_completion_tokens: 450,
+        temperature: 0,
+        seed: 1,
+        stream: true,
+        messages: sharedMessages,
+      });
+      clearInterval(heartbeat);   // first token en-route — stop heartbeat
+
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content ?? '';
+        if (delta) {
+          raw += delta;
+          res.write(delta);
+        }
       }
+    } finally {
+      clearInterval(heartbeat);
     }
 
     // Append CV blob positions so the app can overlay exact marker dots
