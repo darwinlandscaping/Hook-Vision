@@ -496,15 +496,30 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
       }
     } catch { /* non-fatal — main stream still delivers full result */ }
 
+    // ── Keep-alive heartbeat ──────────────────────────────────────────────────
+    // Mobile HTTP clients (iOS/Android) will drop the TCP connection if they see
+    // silence for ~30-60s. With the enriched reference package, OpenAI can take
+    // 8–15s to process before the first token arrives. Send a newline every 4s
+    // to keep the connection alive. The mobile app strips leading/trailing
+    // whitespace so these characters are harmless.
+    const heartbeat = setInterval(() => {
+      try { res.write("\n"); } catch { /* connection may have already closed */ }
+    }, 4000);
+
     // ── Drain main stream (was already in-flight during flash await) ──────────
-    const stream = await streamPromise;
     let raw = "";
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content ?? "";
-      if (delta) {
-        raw += delta;
-        res.write(delta);
+    try {
+      const stream = await streamPromise;
+      clearInterval(heartbeat);   // first token arrived — stop heartbeat
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content ?? "";
+        if (delta) {
+          raw += delta;
+          res.write(delta);
+        }
       }
+    } finally {
+      clearInterval(heartbeat);
     }
 
     res.end();

@@ -1032,25 +1032,33 @@ export default function HomeScreen() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         setStreaming(true);
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          accumulated += chunk;
-          setStreamChars(accumulated.length);
-          // Parse flash result the moment it arrives — show instant banner
-          if (!flashParsed && accumulated.includes("__FLASH__:")) {
-            const fm = accumulated.match(/__FLASH__:(\{[^\n]+\})/);
-            if (fm) {
-              try {
-                const fd = JSON.parse(fm[1]);
-                if (fd.species) setFlashResult(fd);
-              } catch { /* silent */ }
-              flashParsed = true;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            accumulated += chunk;
+            setStreamChars(accumulated.length);
+            // Parse flash result the moment it arrives — show instant banner
+            if (!flashParsed && accumulated.includes("__FLASH__:")) {
+              const fm = accumulated.match(/__FLASH__:(\{[^\n]+\})/);
+              if (fm) {
+                try {
+                  const fd = JSON.parse(fm[1]);
+                  if (fd.species) setFlashResult(fd);
+                } catch { /* silent */ }
+                flashParsed = true;
+              }
             }
           }
+        } catch (streamErr: any) {
+          if (accumulated.length < 20) {
+            throw new Error("Connection dropped — please try again.");
+          }
+        } finally {
+          try { reader.cancel(); } catch { /* ignore */ }
+          setStreaming(false);
         }
-        setStreaming(false);
       } else {
         // Fallback for environments without ReadableStream
         accumulated = await response.text();
