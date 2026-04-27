@@ -61,6 +61,16 @@ interface FishAnalysis {
   crocAlert?: boolean;
   crocWarning?: string | null;
   archReasoning?: string;
+  // Live sonar specialist fields
+  liveBrand?: string;
+  liveMode?: string;
+  targetShape?: string;
+  shadowAnalysis?: string;
+  targetSeparation?: string;
+  bodyRatio?: string;
+  structureProximity?: string;
+  targetBoostActive?: boolean;
+  paletteDetected?: string;
 }
 
 const H_PAD = 14;
@@ -762,6 +772,8 @@ export default function HomeScreen() {
     agreed: boolean; species2: string | null; confidence2: number | null;
   } | null>(null);
   const autoAnalyzeRef = useRef(false);
+  const [liveSonarMode, setLiveSonarMode] = useState(false);
+  const liveSonarModeRef = useRef(false);
 
   // ── On-device vision engine ────────────────────────────────────────────────
   const [cvReady, setCvReady] = useState(false);
@@ -966,7 +978,8 @@ export default function HomeScreen() {
 
     // ── Sonar Brain Stage-1: fire sonar-barra-check in parallel ──────────────
     // Resolves in ~600ms — shows BARRA ARCH verdict while full analysis streams
-    {
+    // Skipped for live sonar mode — arch detection doesn't apply to real-time imaging
+    if (!liveSonarModeRef.current) {
       const brDomain  = process.env.EXPO_PUBLIC_DOMAIN;
       const brBaseUrl = brDomain ? `https://${brDomain}` : "";
       fetch(`${brBaseUrl}/api/sonar-barra-check`, {
@@ -983,6 +996,8 @@ export default function HomeScreen() {
         })
         .catch(() => {/* non-fatal — full analysis still runs */})
         .finally(() => setSonarBarraLoading(false));
+    } else {
+      setSonarBarraLoading(false);
     }
 
     const analyzeAbort = new AbortController();
@@ -992,7 +1007,7 @@ export default function HomeScreen() {
       const baseUrl = domain ? `https://${domain}` : "";
       let response: Response;
       try {
-        response = await fetch(`${baseUrl}/api/analyze`, {
+        response = await fetch(`${baseUrl}${liveSonarModeRef.current ? '/api/live-sonar-analyze' : '/api/analyze'}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageBase64 }),
@@ -1347,9 +1362,22 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* ── Live Sonar mode badge (visible when active) ── */}
+        {liveSonarMode && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#ff9a0012", borderWidth: 1, borderColor: "#ff9a0038", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 }}>
+            <Text style={{ fontSize: 15 }}>⚡</Text>
+            <Text style={{ color: "#ff9a00", fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 0.5, flex: 1 }}>LIVE SONAR MODE</Text>
+            {!loading && (
+              <TouchableOpacity onPress={() => { setLiveSonarMode(false); liveSonarModeRef.current = false; }} activeOpacity={0.7}>
+                <Text style={{ color: "#ff9a0070", fontSize: 11, fontFamily: "Inter_500Medium" }}>Switch to 2D</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* ── Sonar image + AI interpretation overlay ── */}
         <View
-          style={[styles.imageContainer, { borderColor: loading ? colors.primary + "88" : analysis?.crocAlert ? "#ff1744" : colors.border }]}
+          style={[styles.imageContainer, { borderColor: loading ? colors.primary + "88" : analysis?.crocAlert ? "#ff1744" : liveSonarMode ? "#ff9a0055" : colors.border }]}
           onLayout={(e) => {
             const { width, height } = e.nativeEvent.layout;
             setImageLayout({ width, height });
@@ -1663,6 +1691,56 @@ export default function HomeScreen() {
 
         {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} cvRegions={cvRegions} />}
 
+        {/* ── Live Sonar Detail Card ── */}
+        {analysis && liveSonarMode && analysis.liveBrand && analysis.liveBrand !== "not-live-sonar" && (
+          <View style={{ borderRadius: 14, borderWidth: 1.5, borderColor: "#ff9a0030", backgroundColor: "#070b04", overflow: "hidden" }}>
+            <View style={{ height: 3, backgroundColor: "#ff9a00" }} />
+            <View style={{ padding: 14, gap: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={{ color: "#ff9a00", fontSize: 13, fontFamily: "Oswald_700Bold", letterSpacing: 1.5, flex: 1 }}>⚡ LIVE SONAR ANALYSIS</Text>
+                {analysis.liveBrand && (
+                  <View style={{ backgroundColor: "#ff9a0018", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                    <Text style={{ color: "#ff9a00", fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 }}>
+                      {analysis.liveBrand === "humminbird-mega-live-2" ? "MEGA LIVE 2"
+                       : analysis.liveBrand === "garmin-livescope-plus" ? "LIVESCOPE+"
+                       : analysis.liveBrand === "lowrance-activetarget-2" ? "ACTIVETARGET 2"
+                       : analysis.liveBrand === "simrad-activetarget" ? "SIMRAD AT2"
+                       : "LIVE SONAR"}
+                    </Text>
+                  </View>
+                )}
+                {analysis.liveMode && (
+                  <View style={{ backgroundColor: "#ffffff0a", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                    <Text style={{ color: "#9ca3af", fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, textTransform: "uppercase" }}>{analysis.liveMode}</Text>
+                  </View>
+                )}
+              </View>
+              {[
+                { icon: "⬭", label: "TARGET SHAPE", value: analysis.targetShape },
+                { icon: "◐", label: "ACOUSTIC SHADOW", value: analysis.shadowAnalysis },
+                { icon: "🏗", label: "STRUCTURE", value: analysis.structureProximity },
+              ].filter(r => r.value).map(row => (
+                <View key={row.label} style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+                  <Text style={{ fontSize: 14, width: 22, textAlign: "center", marginTop: 1 }}>{row.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "#4b5563", fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, marginBottom: 2 }}>{row.label}</Text>
+                    <Text style={{ color: "#d1d5db", fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 }}>{row.value}</Text>
+                  </View>
+                </View>
+              ))}
+              {analysis.targetBoostActive && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#ff9a0010", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: "#ff9a0025", alignSelf: "flex-start" }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#ff9a00" }} />
+                  <Text style={{ color: "#ff9a00", fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 }}>TargetBoost™ Active</Text>
+                </View>
+              )}
+              <View style={{ paddingTop: 6, borderTopWidth: 1, borderTopColor: "#ffffff08" }}>
+                <Text style={{ color: "#374151", fontSize: 10, fontFamily: "Inter_400Regular" }}>Identified by shape silhouette + acoustic shadow — no arch analysis</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* ── 10-scan summary card ── */}
         {summaryText && (
           <View style={{
@@ -1865,6 +1943,25 @@ export default function HomeScreen() {
             Photo or pick a saved sonar screenshot — AI instantly identifies fish species, depth,
             bottom structure, lure advice and croc alerts.
           </Text>
+
+          {/* ── Live Sonar Mode toggle ── */}
+          <View style={{ flexDirection: "row", borderRadius: 12, borderWidth: 1, borderColor: "#ffffff14", backgroundColor: "#0a1628", overflow: "hidden" }}>
+            <TouchableOpacity
+              onPress={() => { setLiveSonarMode(false); liveSonarModeRef.current = false; }}
+              activeOpacity={0.8}
+              style={[{ flex: 1, paddingVertical: 10, alignItems: "center", justifyContent: "center" }, !liveSonarMode && { backgroundColor: "#00d4aa22" }]}
+            >
+              <Text style={{ color: liveSonarMode ? "#ffffff30" : "#00d4aa", fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1 }}>2D SONAR</Text>
+            </TouchableOpacity>
+            <View style={{ width: 1, backgroundColor: "#ffffff10" }} />
+            <TouchableOpacity
+              onPress={() => { setLiveSonarMode(true); liveSonarModeRef.current = true; }}
+              activeOpacity={0.8}
+              style={[{ flex: 1, paddingVertical: 10, alignItems: "center", justifyContent: "center" }, liveSonarMode && { backgroundColor: "#ff9a0020" }]}
+            >
+              <Text style={{ color: liveSonarMode ? "#ff9a00" : "#ffffff30", fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1 }}>⚡ LIVE SONAR</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Camera + Gallery buttons */}
           <View style={styles.heroBtnRow}>
