@@ -42,11 +42,13 @@ let lastCacheTime = 0;
 const CACHE_TTL   = 4 * 60 * 60 * 1000;   // 4 hours
 
 // ─── Demo indices to use for sonar brain ─────────────────────────────────────
-// Demo 1: Lowrance — confirmed 3 BARRA ON STRUCTURE (positive)
-// Demo 5: Humminbird — confirmed 5-6 BARRA MID-COLUMN with shadow voids (positive)
-// Demo 2: Garmin — THREADFIN (negative contrast — most confused with barra)
-const POSITIVE_DEMO_NUMS = [1, 5];
-const NEGATIVE_DEMO_NUMS = [2];
+// Demo 1: Lowrance HDS Live   — confirmed 3 BARRA ON STRUCTURE              (positive)
+// Demo 4: Simrad GO9 XSE      — confirmed BARRA in lower layer + baitfish   (positive — multi-species)
+// Demo 5: Humminbird split    — confirmed 5-6 BARRA MID-COLUMN shadow voids  (positive)
+// Demo 2: Garmin Echomap UHD  — THREADFIN school (most confused with barra)  (negative)
+// Demo 3: Humminbird HELIX 10 — LONE FINGERMARK arch above rocky reef        (negative — lone arch contrast)
+const POSITIVE_DEMO_NUMS = [1, 4, 5];
+const NEGATIVE_DEMO_NUMS = [2, 3];
 
 // ─── Build reference from a DemoRef — use compressed thumbnail ───────────────
 // thumbBase64 is a 512px JPEG (~30–50KB) vs the full PNG (1.4–2.3MB).
@@ -111,11 +113,14 @@ export async function initSonarBrain(): Promise<void> {
  * Return few-shot reference images for injection into a sonar analysis call.
  * Always returns demo-based refs first (highest quality), then community.
  *
- * Default layout:
- *   [0] Demo 1  — Lowrance confirmed BARRA (positive)
- *   [1] Demo 5  — Humminbird confirmed BARRA with shadow void (positive)
- *   [2] Demo 2  — Garmin THREADFIN (negative contrast)
- *   [3] Community confirmed barra arch (if available)
+ * Layout:
+ *   [0] Demo 1  — Lowrance HDS Live — 3 BARRA ON STRUCTURE          (positive)
+ *   [1] Demo 4  — Simrad GO9 XSE   — BARRA lower layer + baitfish   (positive)
+ *   [2] Demo 5  — Humminbird split  — 5-6 BARRA shadow voids         (positive)
+ *   [3] Demo 2  — Garmin Echomap   — THREADFIN school                (negative)
+ *   [4] Demo 3  — Humminbird HELIX — LONE FINGERMARK arch (not barra)(negative)
+ *   [5] Community barra arch #1    (if available)
+ *   [6] Community barra arch #2    (if available, different from #1)
  */
 export function getSonarFewShotRefs(): SonarFewShotRef[] {
   const demos = getDemoRefs();
@@ -135,10 +140,17 @@ export function getSonarFewShotRefs(): SonarFewShotRef[] {
     rebuildCommunityCache().catch(() => {});
   }
 
-  // Add up to 1 community ref (highest confirmed count)
+  // Add up to 2 community refs (highest confirmed count) — randomised from top 5
   if (communityCache.length > 0) {
-    const pick = communityCache[Math.floor(Math.random() * Math.min(3, communityCache.length))];
-    if (pick) refs.push(pick);
+    const pool    = communityCache.slice(0, Math.min(5, communityCache.length));
+    const pickIdx = Math.floor(Math.random() * pool.length);
+    refs.push(pool[pickIdx]!);
+
+    // Second community ref — different from the first
+    if (pool.length > 1) {
+      const secondIdx = (pickIdx + 1) % pool.length;
+      refs.push(pool[secondIdx]!);
+    }
   }
 
   return refs;
@@ -195,7 +207,7 @@ export async function getSonarBrainStats(): Promise<{
     demosLoaded: demos.length,
     community,
     totalRefs:   demos.length + community,
-    refsPerCall: POSITIVE_DEMO_NUMS.length + NEGATIVE_DEMO_NUMS.length + (communityCache.length > 0 ? 1 : 0),
+    refsPerCall: POSITIVE_DEMO_NUMS.length + NEGATIVE_DEMO_NUMS.length + Math.min(2, communityCache.length),
     brands:      [...new Set(demos.map(d => d.brand))],
   };
 }
