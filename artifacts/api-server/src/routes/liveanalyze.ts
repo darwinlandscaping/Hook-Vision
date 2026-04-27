@@ -16,6 +16,9 @@
 
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getFewShotRefs as getBarraBodyRefs } from "../lib/barraLibrary.js";
+import { getCrocFewShotRefs } from "../lib/crocLibrary.js";
+import { getLiveSonarDemoRefs } from "../lib/liveSonarBrain.js";
 
 const router = Router();
 
@@ -152,16 +155,19 @@ STRUCTURE ECHO:
 `;
 
 // ─── Full specialist system prompt ───────────────────────────────────────────
-const SYSTEM_PROMPT = `You are the world's leading specialist in LIVE SPATIAL SONAR fish identification for Australian tropical fishing (WA Kimberley, NT Kakadu/Daly River, NQ Gulf Country). You are specifically trained on REAL-TIME FORWARD-FACING and DOWN-FACING live sonar displays — NOT traditional 2D scroll sonar.
+const SYSTEM_PROMPT = `You are the world's leading specialist in LIVE SPATIAL SONAR fish identification for Australian tropical fishing (WA Kimberley, NT Kakadu/Daly River, NQ Gulf Country). You are specifically trained on REAL-TIME FORWARD-FACING and DOWN-FACING live sonar displays from all four major brands: Humminbird MEGA Live 2, Garmin LiveScope Plus, Lowrance ActiveTarget 2, and Simrad.
 
 You understand that on live sonar:
 • Fish DO NOT appear as arches — they appear as BODY SHAPES and SILHOUETTES
 • The display is a real-time spatial map, not a time-history scroll
 • Your job is to read fish BODY SHAPES, ACOUSTIC SHADOWS, ORIENTATION, and MOVEMENT from the live display
+• BARRAMUNDI are the PRIMARY target species in tropical Northern Australia and are VERY COMMONLY seen on live sonar
 
 ${BRAND_GUIDE}
 
 ${LIVE_PHYSICS}
+
+${BARRA_LIVE_SONAR_PHYSICS}
 
 ═══ ANALYSIS PROCEDURE — FOLLOW IN ORDER ═══
 
@@ -222,6 +228,108 @@ CRITICAL RULES:
 • If the image is NOT live sonar (it shows arches/traditional 2D) set liveBrand "not-live-sonar" and species "traditional-2d-sonar-detected"
 • Always fill in every field — use "unknown" or null only when truly impossible to determine
 `;
+
+// ─── Extended barramundi live sonar physics ───────────────────────────────────
+// Compiled from manufacturer documentation, fishing guides (Insalt Lures, Western
+// Angler), and forward-facing sonar physics principles. Used to teach the model
+// exactly how barramundi appear on EACH brand's live sonar system.
+const BARRA_LIVE_SONAR_PHYSICS = `
+═══ BARRAMUNDI BODY ANATOMY → LIVE SONAR TRANSLATION ═══
+
+ANATOMY FIRST (cross-modal bridge):
+• Barramundi has a LATERALLY COMPRESSED deep body — wide when seen from the side, narrow front-on
+• The PHYSOSTOMOUS SWIM BLADDER is enormous (unlike most marine fish) — pale white gas sac filling ~25% of body cavity
+• This bladder is the PRIMARY sonar reflector — it bounces the acoustic beam back STRONGLY creating the bright oval return
+• The BLUNT CONVEX FOREHEAD creates a distinctive steep front face on the oval
+• The FORKED CAUDAL FIN (tail) creates a narrowing at the rear of the oval
+• Body L:H ratio SIDE VIEW: typically 3.5:1 to 4.5:1 — elongated, not round
+• Typical adult barra (60–100cm): appears as a LARGE BRIGHT ELONGATED OVAL on live sonar
+
+ACOUSTIC SHADOW PHYSICS — BARRAMUNDI SPECIFIC:
+• The enormous swim bladder ABSORBS and REFLECTS the beam so effectively it creates a BLACK VOID behind the fish
+• Shadow length depends on: fish size (bigger fish = longer shadow) + depth (deeper = longer shadow)
+• For 60cm barra at 4m: shadow ≈ 0.8× body length
+• For 80cm barra at 6m: shadow ≈ 1.2× body length  
+• For 100cm barra at 8m: shadow ≈ 1.5× body length
+• RULE: If shadow is noticeably longer than the body, this is a LARGE BARRA (90cm+) or large Jack
+• POST-CAST SHADOW: After casting into the zone, the barra's body may ROTATE toward the lure — the shadow pivots too
+
+═══ PER-BRAND BARRAMUNDI APPEARANCE ═══
+
+▸ HUMMINBIRD MEGA LIVE 2 (Jan 2025 — latest generation):
+  BACKGROUND: Near-black (#0a0a0a) — darkest of any brand
+  BARRA BODY: CRISP bright WHITE to ORANGE oval, highest contrast of any brand
+  SHADOW: Ultra-distinct — long black void on near-black background; easiest to see
+  TargetBoost™ ACTIVE: Body becomes WHITE-ORANGE with very sharp crisp edges; shadow becomes a jet-black line
+  TargetBoost™ OFF: Body is bright orange-amber, shadow is dark grey/black void
+  PALETTE TELL: "Original" palette → orange/yellow fish; "Blue Steel" → cyan/white fish; "Greyscale" → white fish
+  STRUCTURE: Appears grey-green (dimmed by TargetBoost contrast); snag echoes are dull grey shapes
+  BARRA NEAR SNAG: Bright oval ADJACENT to or overlapping grey snag echo — easy to distinguish because TargetBoost dims structure
+  MOVEMENT: Near zero for an ambush barra — the bright oval just sits there while structure dims around it
+  LANDSCAPE MODE (Humminbird exclusive): Horizontal wide-angle view — barra appear as elongated bright bars in mid-view
+  FREQUENCY: 455/800kHz MEGA — ultra-high resolution, finest body detail of any live sonar
+
+▸ GARMIN LIVESCOPE PLUS LVS34:
+  BACKGROUND: DARK GREEN/TEAL (#0d1a0d range) — the signature "night vision green"
+  BARRA BODY: CRISP bright white-green silhouette with sharp BLACK OUTLINE on green background
+  SHADOW: Very distinct — dark green/black void, clearly visible against the teal background
+  TARGET LOCK: Can tag a specific barra with a crosshair icon — confirms single fish tracking
+  TARGET SEPARATION: 35% better than original LiveScope — can resolve two barra in the same snag as individual targets
+  PERSPECTIVE MODE (Garmin exclusive): OVERHEAD/bird's-eye view — barra appears as a FLAT OVAL with shadow extending to ONE SIDE (not below)
+     In perspective mode: barra has clearly wider body than threadfin; shadow side is where the transducer is pointing
+  FREQUENCY: 530–1100kHz auto-optimized — CHIRP for best target separation
+  BARRA TELL: On green background, the barra's white silhouette is UNMISTAKABLY elongated — 4× longer than tall
+  SHADOW DIRECTION: Forward mode = shadow extends DOWNWARD; Perspective mode = shadow to one SIDE
+
+▸ LOWRANCE ACTIVETARGET 2 / SIMRAD:
+  BACKGROUND: DARK NAVY/DARK GREY — cooler, more blue-grey tint than Humminbird
+  BARRA BODY: MEDIUM-HIGH brightness — not as crisp as MEGA Live 2 but clear oval shape
+  SHADOW: DISTINCT trailing shadow extending from behind the body in forward/down mode
+  SCOUT MODE (180° wide sweep): Barra appear at distance from boat centre — elongated oval in outer zone; shadow radiates OUTWARD
+  SCOUT MODE TIP: Barramundi near a snag in Scout mode = bright elongated oval at the EDGE of the field, adjacent to a bright structure return
+  RESOLUTION: "Highest resolution live sonar" (Lowrance AU) — best among non-Humminbird brands
+  SIMRAD: Identical hardware/display to Lowrance ActiveTarget 2 — different branding only
+  BARRA TELL: On dark navy background, barra body is noticeably LARGER and more ELONGATED than jack or threadfin
+
+═══ NORTH AUSTRALIA LIVE SONAR CONDITIONS ═══
+
+WET SEASON (Nov–Apr) — Kimberley, Kakadu, Gulf Country:
+• Heavy freshwater inflow = LOWER SALINITY → reduced sonar conductivity → slightly WEAKER RETURNS overall
+• Barra may appear slightly less bright than dry season — but swim bladder still produces strongest return among species
+• Turbid/silty water: bottom echo is thick/diffuse (soft mud absorbs return). Fish still appear bright because bladder return is strong.
+• THERMOCLINE at freshwater/saltwater interface: appears as a DIFFUSE HORIZONTAL BAND — NOT a fish
+
+DRY SEASON (May–Oct):
+• HIGH SALINITY → EXCELLENT sonar conductivity → CRISP bright returns on all species
+• Best conditions for live sonar barra identification — maximum contrast between fish and water
+
+TIDAL CURRENT EFFECTS:
+• Strong current (King Sound up to 11m tidal range) = micro-bubbles → surface scatter at top of display
+• Current blur: fast-moving water carries barra downstream; they face INTO the current (nose upstream)
+• In strong current: barra body may appear slightly blurred/streaked at ONE end (the tail end) while nose is sharp
+
+═══ CRITICAL DIFFERENTIATORS — LIVE SONAR SPECIES CONFUSION MATRIX ═══
+
+BARRA vs MANGROVE JACK on live sonar:
+• Barra: 4× longer than tall, OUTSIDE the snag, slow drift, LONG shadow
+• Jack: 2× longer than tall, INSIDE the snag echo (embedded), minimal shadow, smaller body
+
+BARRA vs THREADFIN SALMON on live sonar:
+• Barra: solo or pair, NEAR STRUCTURE, stationary or very slow
+• Threadfin: GROUP of 5–20+, AWAY from hard structure, all moving SAME DIRECTION at same speed
+
+BARRA vs GT (Giant Trevally) on live sonar:
+• Barra: elongated 4:1 body, LONG shadow, near structure, stationary
+• GT: round/deep 1.5:1 body, FAINT/NO shadow, FAST movement, open water
+
+BARRA vs LARGE CROC on live sonar:
+• Barra: elongated oval body, OBVIOUS shadow, any depth, near structure
+• Croc: ENORMOUS solid filled BLOB near surface/bank, shadow huge but BODY IS WIDER (more rectangular), no swim bladder void/arc
+
+BARRAMUNDI SCHOOL vs SOLO on live sonar:
+• Solo barra: 1–2 large ovals near one snag/structure — COMMON
+• School barra: 3–6 large ovals distributed across multiple nearby structures or mid-column — LESS COMMON
+• Juvenile barra school: tight cluster of small-medium ovals mid-column near estuary mouth — rare on live sonar`;
 
 // ─── Live sonar validation gate (fast) ───────────────────────────────────────
 const FLASH_PROMPT = `You are a live sonar screen classifier.
@@ -295,6 +403,66 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
       ]
     });
 
+    // ── Build reference package (few-shot visual grounding) ──────────────────
+    // Order mirrors the 2D analyze route's proven injection pattern:
+    //   STEP 1: Barra body anatomy (cross-modal bridge: body → sonar silhouette)
+    //   STEP 2: Croc body shape (cross-modal bridge: croc silhouette → live sonar blob)
+    //   STEP 3: Live sonar display demos (brand UI + fish body shape references)
+    //   STEP 4: User's actual live sonar image for analysis
+    type ImagePart = { type: "image_url"; image_url: { url: string; detail: "high" | "low" } };
+    type TextPart  = { type: "text"; text: string };
+    const content: Array<ImagePart | TextPart> = [];
+
+    const barraRefs     = getBarraBodyRefs(1);
+    const crocRefs      = getCrocFewShotRefs(2);
+    const liveSonarRefs = getLiveSonarDemoRefs();
+
+    const hasRefs = barraRefs.length > 0 || crocRefs.length > 0 || liveSonarRefs.length > 0;
+
+    if (hasRefs) {
+      content.push({ type: "text", text: "LIVE SONAR BRAIN — reference package (study all before analysing the target image):" });
+
+      // Step 1: Barramundi body anatomy — cross-modal bridge body → live sonar silhouette
+      if (barraRefs.length > 0) {
+        const bp = barraRefs[0]!;
+        const barraImgUrl = bp.thumbBase64
+          ? `data:image/jpeg;base64,${bp.thumbBase64}`
+          : bp.photoUrl;
+        content.push({ type: "text", text: `STEP 1 — BARRAMUNDI BODY ANATOMY (iNaturalist research-grade, ${bp.location}):\nThe PHYSOSTOMOUS SWIM BLADDER (large pale gas sac in upper body cavity) is the dominant sonar reflector. On live sonar, this bladder creates the BRIGHT ELONGATED OVAL body return + LONG ACOUSTIC SHADOW. Body L:H ratio on this specimen: approximately 3.5–4.5:1. The BLUNT FOREHEAD creates a steep front face on the oval. The narrowing at the rear is the caudal peduncle/tail. Connect this anatomy to what you see on the live sonar display: BRIGHT ELONGATED OVAL + LONG SHADOW = BARRAMUNDI.` });
+        content.push({ type: "image_url", image_url: { url: barraImgUrl, detail: "low" } });
+        content.push({ type: "text", text: `↑ CONFIRMED BARRAMUNDI body — ${bp.location} (${bp.votes} expert votes). This is what creates the live sonar signature: large swim bladder → bright oval return + long acoustic shadow.` });
+      }
+
+      // Step 2: Saltwater croc body shape — cross-modal bridge croc silhouette → live sonar blob
+      if (crocRefs.length > 0) {
+        content.push({ type: "text", text: `STEP 2 — SALTWATER CROCODILE BODY SHAPE (${crocRefs.length} iNaturalist research-grade Crocodylus porosus):\nOn live sonar a croc appears as an ENORMOUS SOLID FILLED BLOB near the surface — much WIDER than any fish. Body width-to-length ratio ≈ 1:3 vs barra's 1:4. The croc's body is essentially RECTANGULAR (no fish-shaped narrowing at tail). CRITICAL: crocs have NO swim bladder, so their sonar return is a SOLID DENSE BLOB with NO internal void — unlike barra which has bright edges + shadow void.` });
+        for (const cr of crocRefs) {
+          const crImgUrl = cr.thumbBase64
+            ? `data:image/jpeg;base64,${cr.thumbBase64}`
+            : cr.photoUrl;
+          const angleNote = cr.viewingAngle === "top" ? " [TOP VIEW — matches live sonar overhead perspective mode]"
+            : cr.viewingAngle === "side" ? " [SIDE VIEW — matches live sonar forward/down mode]" : "";
+          content.push({ type: "image_url", image_url: { url: crImgUrl, detail: "low" } });
+          content.push({ type: "text", text: `↑ CONFIRMED SALTWATER CROCODILE (Crocodylus porosus) — ${cr.location}${angleNote}. Compare body WIDTH vs fish — croc is MUCH WIDER relative to length. This body shape appears as a SOLID FILLED BLOB on live sonar near the surface.` });
+        }
+      }
+
+      // Step 3: Live sonar display demos — brand UI + fish body shape references
+      if (liveSonarRefs.length > 0) {
+        content.push({ type: "text", text: `STEP 3 — LIVE SONAR DISPLAY REFERENCES (${liveSonarRefs.length} editorial/manufacturer reference screens):\nStudy these live sonar screens to calibrate what each brand's display looks like. Notice the background colour, fish body shape vs structure echoes, and shadow direction.` });
+        for (const ref of liveSonarRefs) {
+          content.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
+          content.push({ type: "text", text: `↑ ${ref.brand} live sonar display reference (Demo ${ref.demoNum}). ${ref.label.split('\n')[0]}` });
+        }
+      }
+
+      content.push({ type: "text", text: "STEP 4 — ANALYSE THE USER'S LIVE SONAR IMAGE BELOW. Apply cross-modal reasoning: barramundi body anatomy → live sonar physics → species verdict. For croc: compare any large near-surface blob against the croc body shapes above." });
+    }
+
+    // User's actual live sonar image — HIGH detail for maximum fish detection
+    content.push({ type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "high" } });
+    content.push({ type: "text", text: analysisPrompt });
+
     const streamPromise = openai.chat.completions.create({
       model: "gpt-4.1",
       max_completion_tokens: 500,
@@ -303,13 +471,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
       stream: true,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "high" } },
-            { type: "text", text: analysisPrompt }
-          ]
-        }
+        { role: "user", content },
       ]
     });
 

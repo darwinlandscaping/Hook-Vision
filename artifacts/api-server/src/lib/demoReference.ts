@@ -31,7 +31,7 @@ export interface DemoRef {
 let _demoRefs: DemoRef[] = [];
 
 /** Detailed visual ground-truth labels for each demo image */
-const DEMO_LABELS: Record<number, { brand: string; model: string; label: string }> = {
+const DEMO_LABELS: Record<number, { brand: string; model: string; label: string; mimeType?: string }> = {
   1: {
     brand: "Lowrance",
     model: "HDS Live",
@@ -144,14 +144,125 @@ SPECIES CONFIRMATION: Barramundi (Lates calcarifer) — 5 to 6 fish at 5–28ft 
   },
 };
 
+// ─── Live sonar demo labels (demos 6–9) ───────────────────────────────────────
+// These are editorial/manufacturer published images of live sonar displays,
+// used as visual grounding references for the live sonar analysis route.
+// They show the display UI and fish body shapes on live sonar screens.
+Object.assign(DEMO_LABELS, {
+  6: {
+    brand: "Humminbird MEGA Live 2",
+    model: "MEGA Live 2",
+    mimeType: "image/jpeg",
+    label: `LIVE SONAR DEMO 6 — HUMMINBIRD MEGA LIVE 2 — DISPLAY REFERENCE.
+
+WHAT THIS IMAGE SHOWS:
+• MEGA Live 2 live sonar display — real-time forward-facing or down-mode view
+• UI chrome: dark almost-black background; ORANGE/AMBER accent colour bars/icons typical of Humminbird
+• Fish appear as BRIGHT OVAL or ELLIPTICAL bodies — NOT U-shaped arches
+• TargetBoost™: when active, target fish appear with crisp bright white-orange edges against dimmed structure
+• Acoustic shadow: look for a DARK VOID extending BELOW or BEHIND each fish body
+• Structure echoes: dimmer, irregular shapes compared to crisp fish bodies
+• Depth scale: orange/amber digits on right side
+
+BARRAMUNDI IDENTIFICATION ON MEGA LIVE 2:
+• Large elongated oval body — L:H ratio typically 3.5:1 to 5:1 (much more elongated than GT or jack)
+• VERY DISTINCT long acoustic shadow — often equal to or longer than the body itself
+• Positioned near or touching structure (snag, submerged timber, rock)
+• Minimal movement — barramundi are ambush predators, often stationary
+• In TargetBoost mode: bright white-orange crisp target with shadow line clearly visible
+• Body brightness: TIER 1 (brightest) due to enormous physostomous swim bladder
+
+THIS IS A LIVE SONAR IMAGE — no arches, only body shapes. Fish identified by silhouette + shadow.`,
+  },
+  7: {
+    brand: "Lowrance ActiveTarget",
+    model: "ActiveTarget / HDS Live",
+    mimeType: "image/jpeg",
+    label: `LIVE SONAR DEMO 7 — LOWRANCE ACTIVETARGET — STREAMING DISPLAY REFERENCE.
+
+WHAT THIS IMAGE SHOWS:
+• Lowrance live sonar streaming display — real-time fish visualization
+• UI chrome: DARK NAVY / DARK GREY background; "ACTIVE TARGET" text label typical of Lowrance
+• Background tint is blue-grey, cooler than Humminbird's warm dark
+• Fish appear as medium-brightness oval blobs with distinct trailing acoustic shadows
+• Scout mode shows 180° wide forward sweep — very wide field, both sides of boat visible simultaneously
+
+BARRAMUNDI IDENTIFICATION ON ACTIVETARGET:
+• Large elongated oval body — L:H ratio 3.5:1 to 4.5:1
+• Acoustic shadow extends behind or below the fish body
+• Near structure (snags, mangrove roots, rocky ledges)
+• Scout mode: barramundi appear at outer edges near structure
+• Forward/Down mode: elongated bright blob near bottom structure with clear shadow trailing downward
+
+THIS IS A LIVE SONAR IMAGE — no arches, only real-time body shapes. UI colour palette key: Lowrance = dark navy/grey background.`,
+  },
+  8: {
+    brand: "Lowrance ActiveTarget",
+    model: "ActiveTarget Live Sonar",
+    mimeType: "image/jpeg",
+    label: `LIVE SONAR DEMO 8 — LOWRANCE ACTIVETARGET — FISH DISPLAY REFERENCE.
+
+WHAT THIS IMAGE SHOWS:
+• Lowrance ActiveTarget live sonar display showing fish body shapes in real-time
+• Dark navy/grey background — Lowrance Navico platform visual style
+• Fish visible as distinct OVAL BODIES with acoustic shadows
+• Forward mode: fish at various depths in front of the boat
+• Shadow direction: downward in forward mode, lateral in scout mode
+
+FISH SHAPE COMPARISON ON THIS DISPLAY:
+• Large elongated ovals near structure = BARRAMUNDI (L:H > 3:1, long shadow, stationary, near snag)
+• Tall/compact round body, fast movement = Giant Trevally (no shadow, open water)
+• Multiple slim bodies in group, mid-column = Threadfin Salmon (school behaviour, shorter shadow)
+• Very large solid filled blob near surface = CROCODILE (no swim bladder void, enormous width vs length)
+• Small bright dots = baitfish or small species
+
+LIVE SONAR KEY RULE: Identify by BODY SHAPE + SHADOW PHYSICS, not by arch patterns (arches don't exist on live sonar).`,
+  },
+  9: {
+    brand: "Lowrance ActiveTarget",
+    model: "ActiveTarget Live Sonar",
+    mimeType: "image/jpeg",
+    label: `LIVE SONAR DEMO 9 — LOWRANCE ACTIVETARGET — CLOSE-UP FISH BODY REFERENCE.
+
+WHAT THIS IMAGE SHOWS:
+• Lowrance ActiveTarget close-up view of fish body shapes on live sonar
+• Shows how fish appear at different scales/depths on the display
+• Close proximity targets: individual fish bodies clearly distinguishable
+• Shadow quality visible: distinct shadow voids behind each target
+
+BARRAMUNDI-SPECIFIC BODY SHAPE CUES ON ACTIVETARGET:
+• Horizontal elongation: barramundi body is 4× longer than it is tall — sausage or torpedo shape
+• Post-cast shadow: when you have cast into the area, watch for the fish body to ORIENT toward your lure
+• Stationary ambush pose: barra often sit perfectly still — a motionless large oval near structure = HIGH CONFIDENCE barra
+• Shadow length: long shadow (≥ body length) = large swim bladder = high swim bladder efficiency = BARRAMUNDI or large jack
+• Near-surface large blob with EVEN longer shadow = large GT or school barra; EXTREME width + minimal shadow = CROC
+
+THIS IS A LIVE SONAR IMAGE — species identified purely by body shape proportion, shadow physics, movement pattern, and structure proximity.`,
+  },
+});
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-/** Load all demo images from disk, store full PNG base64 + compressed thumbnail */
+/** Load all demo images from disk, store full base64 + compressed thumbnail */
 export async function loadDemoReferences(): Promise<void> {
   const demosDir = path.join(process.cwd(), "public", "demos");
 
-  for (let i = 1; i <= 5; i++) {
-    const filePath = path.join(demosDir, `sonar-demo-${i}.png`);
+  // Demos 1–5 are PNG; demos 6–9 are JPEG (live sonar references)
+  const demoFiles: Record<number, string> = {
+    1: "sonar-demo-1.png",
+    2: "sonar-demo-2.png",
+    3: "sonar-demo-3.png",
+    4: "sonar-demo-4.png",
+    5: "sonar-demo-5.png",
+    6: "sonar-demo-6.jpg",
+    7: "sonar-demo-7.jpg",
+    8: "sonar-demo-8.jpg",
+    9: "sonar-demo-9.jpg",
+  };
+
+  for (const [numStr, fileName] of Object.entries(demoFiles)) {
+    const i = Number(numStr);
+    const filePath = path.join(demosDir, fileName);
     try {
       const buf       = fs.readFileSync(filePath);
       const base64    = buf.toString("base64");

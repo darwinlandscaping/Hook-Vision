@@ -36,11 +36,21 @@ export function downscaleRGBA(
   return { data: dst, width: dstW, height: dstH };
 }
 
-/** Compress a PNG Buffer to a small JPEG base64 thumbnail */
-export async function makeThumbnailFromBuf(pngBuf: Buffer, maxDim = 512, quality = 65): Promise<string> {
-  const { PNG }    = await import("pngjs") as any;
+/** Compress a PNG or JPEG Buffer to a small JPEG base64 thumbnail */
+export async function makeThumbnailFromBuf(buf: Buffer, maxDim = 512, quality = 65): Promise<string> {
   const jpegModule = await import("jpeg-js");
-  const png        = PNG.sync.read(pngBuf);
+
+  // JPEG input (magic bytes FF D8)
+  if (buf[0] === 0xff && buf[1] === 0xd8) {
+    const decoded = jpegModule.default.decode(buf, { useTArray: true, formatAsRGBA: true });
+    const { data, width, height } = downscaleRGBA(decoded.data, decoded.width, decoded.height, maxDim);
+    const encoded = jpegModule.default.encode({ data, width, height }, quality);
+    return Buffer.from(encoded.data).toString("base64");
+  }
+
+  // PNG input (magic bytes 89 50)
+  const { PNG } = await import("pngjs") as any;
+  const png     = PNG.sync.read(buf);
   const { data, width, height } = downscaleRGBA(png.data, png.width, png.height, maxDim);
   const encoded = jpegModule.default.encode({ data, width, height }, quality);
   return Buffer.from(encoded.data).toString("base64");
