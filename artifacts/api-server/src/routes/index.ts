@@ -24,6 +24,7 @@ import insta360brainRouter from "./insta360brain";
 import polarFilterRouter from "./polarfilter";
 import hudRouter from "./hud";
 import crocguardRouter from "./crocguard";
+import liveanalyzeRouter from "./liveanalyze";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(insta360brainRouter);
 router.use(polarFilterRouter);
 router.use(hudRouter);
 router.use("/crocguard", crocguardRouter); // mounts at /api/crocguard/*
+router.use(liveanalyzeRouter);            // POST /api/live-sonar-analyze
 
 export default router;
