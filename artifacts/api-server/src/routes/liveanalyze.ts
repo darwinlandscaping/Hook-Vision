@@ -510,10 +510,18 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     let raw = "";
     try {
       const stream = await streamPromise;
-      clearInterval(heartbeat);   // first token arrived — stop heartbeat
+      // DO NOT clearInterval here — keep heartbeating until the first real
+      // content token arrives. Stream creation ≠ first token; the model may
+      // take 20-60s to start generating after the connection is established.
+
+      let firstContent = false;
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content ?? "";
         if (delta) {
+          if (!firstContent) {
+            clearInterval(heartbeat); // First real token — phone is receiving content now
+            firstContent = true;
+          }
           raw += delta;
           res.write(delta);
         }

@@ -825,11 +825,20 @@ router.post("/analyze", async (req, res) => {
         stream: true,
         messages: sharedMessages,
       });
-      clearInterval(heartbeat);   // first token en-route — stop heartbeat
+      // DO NOT clearInterval here — with 10+ images and a large system prompt,
+      // the model can take 20-60s to emit the first content token AFTER the
+      // HTTP connection is established. Stopping the heartbeat here leaves the
+      // phone in silence and causes it to drop the connection at ~25s.
+      // Keep heartbeating until the first real content delta arrives.
 
+      let firstContent = false;
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content ?? '';
         if (delta) {
+          if (!firstContent) {
+            clearInterval(heartbeat); // First real token — phone is receiving content now
+            firstContent = true;
+          }
           raw += delta;
           res.write(delta);
         }
