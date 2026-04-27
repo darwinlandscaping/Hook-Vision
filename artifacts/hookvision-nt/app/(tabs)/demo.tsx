@@ -21,15 +21,15 @@ import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 
-// ─── Local bundled sonar images (always available, no network needed) ──────────
-const DEMO_IMAGES = {
+// ─── Local bundled sonar images (demos 1–5, always available, no network) ─────
+const LOCAL_DEMO_IMAGES: Partial<Record<number, any>> = {
   1: require("../../assets/sonar-demo-1.png"),
   2: require("../../assets/sonar-demo-2.png"),
   3: require("../../assets/sonar-demo-3.png"),
   4: require("../../assets/sonar-demo-4.png"),
   5: require("../../assets/images/sonar-sample.png"),
-} as const;
-type DemoNum = keyof typeof DEMO_IMAGES;
+};
+type DemoNum = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 const DEMOS = [
   {
@@ -72,15 +72,51 @@ const DEMOS = [
     tags: ["Kakadu", "Barra school", "3-5m", "Saratoga"],
     accent: "#aaff00",
   },
+  {
+    num: 6 as DemoNum,
+    brand: "Humminbird",
+    model: "MEGA Live 2",
+    desc: "Live sonar reference — Humminbird MEGA Live 2. Fish appear as bright oval bodies with dark acoustic shadows. TargetBoost highlights targets with crisp white-orange edges against dimmed structure.",
+    tags: ["Live Sonar", "MEGA Live 2", "Body shapes", "Shadow"],
+    accent: "#ff8800",
+  },
+  {
+    num: 7 as DemoNum,
+    brand: "Lowrance",
+    model: "ActiveTarget",
+    desc: "Lowrance ActiveTarget streaming display — fish visible as oval blobs with trailing acoustic shadows on dark navy background. Scout mode shows 180° wide forward sweep.",
+    tags: ["Live Sonar", "ActiveTarget", "Scout mode", "Shadow"],
+    accent: "#00a8ff",
+  },
+  {
+    num: 8 as DemoNum,
+    brand: "Lowrance",
+    model: "ActiveTarget",
+    desc: "ActiveTarget live sonar — body shape comparison. Large elongated ovals near structure = barra. Multiple slim bodies mid-column = threadfin. Very large blob near surface = croc.",
+    tags: ["Live Sonar", "Barra", "Threadfin", "Croc"],
+    accent: "#00d4aa",
+  },
+  {
+    num: 9 as DemoNum,
+    brand: "Lowrance",
+    model: "ActiveTarget Close-up",
+    desc: "ActiveTarget close-up — individual fish bodies and shadow voids. Barramundi: torpedo shape 4× length vs height, long shadow equal to body length, stationary near structure.",
+    tags: ["Live Sonar", "Close-up", "Shadow void", "Barra shape"],
+    accent: "#7c5cfc",
+  },
 ];
 
 export default function DemoScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [loadingNum, setLoadingNum] = useState<DemoNum | null>(null);
-  useAutoNarrate(() => "Demo Sonar Scans. Five real sonar screenshots including Kakadu Jim Jim Billabong barra. Tap any card to run instant AI analysis.");
+  useAutoNarrate(() => "Demo Sonar Scans. Nine sonar screenshots including Kakadu Jim Jim Billabong barra and live sonar references. Tap any card to run instant AI analysis.");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
+
+  // Base URL for API-served demo images (demos 6–9 are JPEG, served from API)
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  const apiBase = domain ? `https://${domain}` : "";
 
   const loadAndAnalyze = useCallback(async (num: DemoNum) => {
     try {
@@ -92,12 +128,13 @@ export default function DemoScreen() {
       let base64: string;
       let pendingUri: string;
 
+      const isApiDemo = num >= 6;
+      const ext = isApiDemo ? "jpg" : "png";
+      const apiUrl = `${apiBase}/api/demos/sonar-demo-${num}.${ext}`;
+
       if (Platform.OS === "web") {
-        // Web: fetch from API (FileSystem not available on web)
-        const domain = process.env.EXPO_PUBLIC_DOMAIN;
-        const baseUrl = domain ? `https://${domain}` : "";
-        const url = `${baseUrl}/api/demos/sonar-demo-${num}.png`;
-        const response = await fetch(url);
+        // Web: always fetch from API (FileSystem not available on web)
+        const response = await fetch(apiUrl);
         if (!response.ok) throw new Error("Failed to load demo");
         const blob = await response.blob();
         base64 = await new Promise<string>((resolve, reject) => {
@@ -106,10 +143,10 @@ export default function DemoScreen() {
           reader.onerror = reject;
           reader.readAsDataURL(blob);
         });
-        pendingUri = url;
-      } else {
-        // Native: read from bundled local asset — always works, no network needed
-        const asset = Asset.fromModule(DEMO_IMAGES[num]);
+        pendingUri = apiUrl;
+      } else if (!isApiDemo) {
+        // Native demos 1–5: read from bundled local asset — no network needed
+        const asset = Asset.fromModule(LOCAL_DEMO_IMAGES[num]!);
         await asset.downloadAsync();
         const localUri = asset.localUri;
         if (!localUri) throw new Error("Asset unavailable");
@@ -117,6 +154,15 @@ export default function DemoScreen() {
           encoding: FileSystem.EncodingType.Base64,
         });
         pendingUri = localUri;
+      } else {
+        // Native demos 6–9: download JPEG from API to device cache
+        const cacheUri = `${FileSystem.cacheDirectory}demo-${num}.${ext}`;
+        const dl = await FileSystem.downloadAsync(apiUrl, cacheUri);
+        if (dl.status !== 200) throw new Error("Download failed");
+        base64 = await FileSystem.readAsStringAsync(dl.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        pendingUri = dl.uri;
       }
 
       DemoStore.pendingUri = pendingUri;
@@ -127,7 +173,7 @@ export default function DemoScreen() {
     } finally {
       setLoadingNum(null);
     }
-  }, []);
+  }, [apiBase]);
 
   return (
     <ScrollView
@@ -157,10 +203,14 @@ export default function DemoScreen() {
             {/* Coloured top strip */}
             <View style={[styles.strip, { backgroundColor: d.accent }]} />
 
-            {/* Image — loaded from local bundle, always visible */}
+            {/* Image — local bundle for demos 1–5, API URI for demos 6–9 */}
             <View style={styles.imageWrap}>
               <Image
-                source={DEMO_IMAGES[d.num]}
+                source={
+                  d.num <= 5
+                    ? LOCAL_DEMO_IMAGES[d.num]
+                    : { uri: `${apiBase}/api/demos/sonar-demo-${d.num}.jpg` }
+                }
                 style={styles.image}
                 resizeMode="cover"
               />
