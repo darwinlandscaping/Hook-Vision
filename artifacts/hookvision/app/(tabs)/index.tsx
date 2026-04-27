@@ -1045,7 +1045,15 @@ export default function HomeScreen() {
               if (fm) {
                 try {
                   const fd = JSON.parse(fm[1]);
-                  if (fd.species) setFlashResult(fd);
+                  if (fd.species) {
+                    setFlashResult(fd);
+                    // Urgent double-haptic for high-confidence barramundi — tell the angler NOW
+                    const isBarra = (fd.species as string).toLowerCase().includes("barramundi");
+                    if (isBarra && (fd.confidence ?? 0) >= 0.55) {
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 350);
+                    }
+                  }
                 } catch { /* silent */ }
                 flashParsed = true;
               }
@@ -1095,7 +1103,24 @@ export default function HomeScreen() {
 
       const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No response from AI — please try again.");
+      if (!jsonMatch) {
+        // Fallback: if flash gave us a confident species, show it rather than a blank error
+        const fr = flashResult;
+        if (fr?.species && (fr.confidence ?? 0) >= 0.40) {
+          setCvRegions([]);
+          setAnalysis({
+            species:    fr.species,
+            confidence: Math.round((fr.confidence ?? 0) * 100),
+            fishCount:  fr.fishCount ?? 0,
+            depth:      "—",
+            distance:   "—",
+            suggestion: fr.quickRead ?? "Re-scan for full lure advice — connection was unstable.",
+          } as FishAnalysis);
+          setFlashResult(null);
+          return;
+        }
+        throw new Error("No response from AI — please try again.");
+      }
       let data: FishAnalysis;
       try {
         data = JSON.parse(jsonMatch[0]);
@@ -1468,22 +1493,42 @@ export default function HomeScreen() {
             </View>
 
             {/* ⚡ Flash instant read — appears ~1s before full analysis */}
-            {flashResult && (
-              <View style={styles.flashBanner}>
-                <Text style={styles.flashBadge}>⚡ INSTANT READ</Text>
-                <Text style={styles.flashSpecies}>{flashResult.species}</Text>
-                <View style={styles.flashRow}>
-                  {flashResult.fishCount > 0 && (
-                    <Text style={styles.flashChip}>{flashResult.fishCount} fish</Text>
+            {flashResult && (() => {
+              const isBigBarra = !!flashResult.species?.toLowerCase().includes("barramundi")
+                && (flashResult.confidence ?? 0) >= 0.55;
+              return (
+                <View style={[styles.flashBanner, isBigBarra ? styles.flashBannerHot : undefined]}>
+                  {isBigBarra ? (
+                    <>
+                      <Text style={styles.flashHotBadge}>🎣 BARRAMUNDI DETECTED</Text>
+                      <Text style={styles.flashHotSpecies}>{Math.round((flashResult.confidence ?? 0) * 100)}% CONFIDENT</Text>
+                      {flashResult.fishCount > 0 && (
+                        <Text style={styles.flashHotCount}>{flashResult.fishCount} fish on screen</Text>
+                      )}
+                      {!!flashResult.quickRead && (
+                        <Text style={styles.flashQuick}>{flashResult.quickRead}</Text>
+                      )}
+                      <Text style={styles.flashHotAction}>GET READY TO CAST — full analysis coming…</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.flashBadge}>⚡ INSTANT READ</Text>
+                      <Text style={styles.flashSpecies}>{flashResult.species}</Text>
+                      <View style={styles.flashRow}>
+                        {flashResult.fishCount > 0 && (
+                          <Text style={styles.flashChip}>{flashResult.fishCount} fish</Text>
+                        )}
+                        <Text style={styles.flashChip}>{Math.round((flashResult.confidence ?? 0) * 100)}% conf</Text>
+                      </View>
+                      {!!flashResult.quickRead && (
+                        <Text style={styles.flashQuick}>{flashResult.quickRead}</Text>
+                      )}
+                      <Text style={styles.flashSub}>Full analysis arriving…</Text>
+                    </>
                   )}
-                  <Text style={styles.flashChip}>{Math.round(flashResult.confidence * 100)}% conf</Text>
                 </View>
-                {!!flashResult.quickRead && (
-                  <Text style={styles.flashQuick}>{flashResult.quickRead}</Text>
-                )}
-                <Text style={styles.flashSub}>Full analysis arriving…</Text>
-              </View>
-            )}
+              );
+            })()}
 
             {/* Progress bar */}
             <View style={[styles.progressTrack, { backgroundColor: colors.secondary }]}>
@@ -2106,12 +2151,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffd70014", borderWidth: 1, borderColor: "#ffd70055",
     borderRadius: 12, padding: 12, gap: 6,
   },
-  flashBadge:   { fontSize: 10, fontFamily: "Inter_700Bold", color: "#ffd700", letterSpacing: 1.5 },
-  flashSpecies: { fontSize: 15, fontFamily: "Oswald_700Bold", color: "#ffd700", letterSpacing: 1 },
-  flashRow:     { flexDirection: "row", gap: 8 },
-  flashChip:    { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#ffd700", backgroundColor: "#ffd70022", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
-  flashQuick:   { fontSize: 12, fontFamily: "Inter_400Regular", color: "#ffffffcc", lineHeight: 18 },
-  flashSub:     { fontSize: 10, fontFamily: "Inter_400Regular", color: "#ffffff44" },
+  flashBannerHot: {
+    backgroundColor: "#00d4aa1a", borderWidth: 2, borderColor: "#00d4aa",
+    borderRadius: 12, padding: 14, gap: 8,
+  },
+  flashBadge:      { fontSize: 10, fontFamily: "Inter_700Bold", color: "#ffd700", letterSpacing: 1.5 },
+  flashSpecies:    { fontSize: 15, fontFamily: "Oswald_700Bold", color: "#ffd700", letterSpacing: 1 },
+  flashRow:        { flexDirection: "row", gap: 8 },
+  flashChip:       { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#ffd700", backgroundColor: "#ffd70022", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+  flashQuick:      { fontSize: 12, fontFamily: "Inter_400Regular", color: "#ffffffcc", lineHeight: 18 },
+  flashSub:        { fontSize: 10, fontFamily: "Inter_400Regular", color: "#ffffff44" },
+  flashHotBadge:   { fontSize: 11, fontFamily: "Inter_700Bold", color: "#00d4aa", letterSpacing: 2 },
+  flashHotSpecies: { fontSize: 26, fontFamily: "Oswald_700Bold", color: "#00d4aa", letterSpacing: 1.5 },
+  flashHotCount:   { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#00d4aacc" },
+  flashHotAction:  { fontSize: 12, fontFamily: "Inter_700Bold", color: "#00d4aa", textAlign: "center" as const },
 
   /* Sonar Brain Stage-1 verdict card */
   sonarBrainCard: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 10 },
