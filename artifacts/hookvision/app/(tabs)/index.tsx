@@ -938,24 +938,31 @@ export default function HomeScreen() {
     try {
       const gDomain  = process.env.EXPO_PUBLIC_DOMAIN;
       const gBaseUrl = gDomain ? `https://${gDomain}` : "";
-      const gRes = await fetch(`${gBaseUrl}/api/sonar-validate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64 }),
-      });
-      if (gRes.ok) {
-        const gData = await gRes.json() as { isSonar: boolean; reason?: string | null };
-        if (!gData.isSonar) {
-          const why = gData.reason ?? "Please photograph your sonar / fish finder screen.";
-          setError(`Not a sonar image — ${why}`);
-          setLoading(false);
-          setSonarBarraLoading(false);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          return;
+      const gAbort   = new AbortController();
+      const gTimer   = setTimeout(() => gAbort.abort(), 8000); // 8s timeout — fail open if slow
+      try {
+        const gRes = await fetch(`${gBaseUrl}/api/sonar-validate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64 }),
+          signal: gAbort.signal,
+        });
+        if (gRes.ok) {
+          const gData = await gRes.json() as { isSonar: boolean; reason?: string | null };
+          if (!gData.isSonar) {
+            const why = gData.reason ?? "Please photograph your sonar / fish finder screen.";
+            setError(`Not a sonar image — ${why}`);
+            setLoading(false);
+            setSonarBarraLoading(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            return;
+          }
         }
+      } finally {
+        clearTimeout(gTimer);
       }
       // If fetch fails or returns non-200 → fail open (allow the analysis through)
-    } catch { /* network error — fail open */ }
+    } catch { /* network error or timeout — fail open */ }
 
     // ── Sonar Brain Stage-1: fire sonar-barra-check in parallel ──────────────
     // Resolves in ~600ms — shows BARRA ARCH verdict while full analysis streams
@@ -978,14 +985,23 @@ export default function HomeScreen() {
         .finally(() => setSonarBarraLoading(false));
     }
 
+    const analyzeAbort = new AbortController();
+    const analyzeTimer = setTimeout(() => analyzeAbort.abort(), 90000); // 90s hard cap
     try {
       const domain = process.env.EXPO_PUBLIC_DOMAIN;
       const baseUrl = domain ? `https://${domain}` : "";
-      const response = await fetch(`${baseUrl}/api/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64 }),
-      });
+      let response: Response;
+      try {
+        response = await fetch(`${baseUrl}/api/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64 }),
+          signal: analyzeAbort.signal,
+        });
+      } catch (fetchErr: any) {
+        if (fetchErr?.name === "AbortError") throw new Error("Analysis timed out — please try again.");
+        throw fetchErr;
+      }
       if (!response.ok) {
         let errMsg = "Analysis failed. Please try again.";
         try { const b = await response.json(); if (b?.error) errMsg = b.error; } catch { /* noop */ }
@@ -1198,6 +1214,7 @@ export default function HomeScreen() {
       setError(msg);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
+      clearTimeout(analyzeTimer);
       setLoading(false);
       setStreaming(false);
     }
