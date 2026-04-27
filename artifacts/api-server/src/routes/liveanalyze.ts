@@ -459,12 +459,13 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
       content.push({ type: "text", text: "STEP 4 — ANALYSE THE USER'S LIVE SONAR IMAGE BELOW. Apply cross-modal reasoning: barramundi body anatomy → live sonar physics → species verdict. For croc: compare any large near-surface blob against the croc body shapes above." });
     }
 
-    // User's actual live sonar image — HIGH detail for maximum fish detection
-    content.push({ type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "high" } });
+    // User's actual live sonar image — LOW detail (85 tokens vs ~2,500+ for high;
+    // gpt-4.1-mini resolves fish body shapes well at 512px which is sufficient)
+    content.push({ type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "low" } });
     content.push({ type: "text", text: analysisPrompt });
 
     const streamPromise = openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-4.1-mini",
       max_completion_tokens: 500,
       temperature: 0,
       seed: 1,

@@ -818,18 +818,16 @@ router.post("/analyze", async (req, res) => {
     let raw = '';
     try {
       const stream = await openai.chat.completions.create({
-        model: "gpt-4.1",
+        model: "gpt-4.1-mini",
         max_completion_tokens: 450,
         temperature: 0,
         seed: 1,
         stream: true,
         messages: sharedMessages,
       });
-      // DO NOT clearInterval here — with 10+ images and a large system prompt,
-      // the model can take 20-60s to emit the first content token AFTER the
-      // HTTP connection is established. Stopping the heartbeat here leaves the
-      // phone in silence and causes it to drop the connection at ~25s.
-      // Keep heartbeating until the first real content delta arrives.
+      // DO NOT clearInterval here — keep heartbeating until the first real
+      // content token arrives. With gpt-4.1-mini TTFT is ~3-5s, but the
+      // heartbeat ensures mobile connections don't drop during that gap.
 
       let firstContent = false;
       for await (const chunk of stream) {
