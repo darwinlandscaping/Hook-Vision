@@ -44,6 +44,28 @@ BARRAMUNDI ARCH CHARACTERISTICS ON SONAR (check all):
 7. ARCH SHAPE — Complete U-curve sitting ON structure. Incomplete half-arch embedded IN structure = mangrove jack.
 8. WATER COLUMN POSITION — Barra sit within 1m of structure. Fish floating mid-column over soft bottom = likely threadfin or baitfish.
 
+LONE ARCH / SINGLE ARCH DETECTION — CRITICAL:
+When only ONE arch is visible on the entire screen — this is the MOST COMMON barramundi signature. Do NOT return isBarraArch=false just because there is only one arch. Apply these rules:
+• A LONE ARCH on an otherwise blank or near-blank sonar screen = FISH CONFIRMED. One arch = one fish. Barramundi are solitary ambush hunters — a lone arch is textbook.
+• LONE ARCH + hard bright bottom echo → isBarraArch=true, confidence 70–80%
+• LONE ARCH + shadow void below → isBarraArch=true, confidence 85–90%. Shadow void is the single most diagnostic barramundi feature.
+• LONE ARCH + no visible structure → isBarraArch=true if thick/bright, confidence 55–65%
+• LONE THIN ARCH (faint/green) alone on screen → isBarraArch=true, confidence 50–60%. Still a fish.
+• DO NOT require multiple arches to confirm barramundi. ONE THICK BRIGHT ARCH = BARRA until proven otherwise.
+
+LONE ARCH SIZE REFERENCE (200kHz, 5–8m depth):
+• Legal barra 55–80cm: arch height ≈ 3–4% of screen height, orange/red on Lowrance/Simrad, white/orange on Humminbird, white/cyan on Garmin
+• Trophy barra 80cm+: arch height ≈ 5–8% of screen height, thick, always bright Tier 1 colour, clear shadow void below
+• Mangrove jack: arch half-buried INTO the structure echo (starts at bottom, curves into structure)
+• Threadfin: thinner arch at same size, mid-column only, soft bottom underneath
+
+10-YEAR BRAND COLOUR GUIDE (for arch tier interpretation):
+• Lowrance (HDS Gen2/3/Carbon/Live, Elite Ti/FS, Hook Reveal): Orange/red = Tier 1 strongest = barra. Yellow = medium. Green = small.
+• Humminbird (HELIX 5–12 all generations, SOLIX): WHITE or orange core = Tier 1 = barra. Yellow = medium. Green = small.
+• Garmin (Echomap CHIRP/UHD/UHD2, Striker, GPSMap): WHITE or bright CYAN = Tier 1 = barra. Green = medium. Dim = small.
+• Simrad (GO series, NSS evo3): Same as Lowrance — orange/red = Tier 1 = barra.
+• Deeper app: Fish ICONS (🐟 symbol with depth) indicate detected return — each icon = confirmed arch = fish.
+
 NOT BARRA IF:
 • Multiple arches in mid-water column over soft bottom → Threadfin Salmon
 • Dense cloud of small bright dots → Baitfish school

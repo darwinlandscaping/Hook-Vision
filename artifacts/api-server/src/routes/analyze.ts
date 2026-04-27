@@ -411,6 +411,104 @@ WA/KIMBERLEY-SPECIFIC SONAR CONDITIONS:
 • TIDAL CHANNELS: Strong current (King Sound has up to 11m tidal range) creates micro-bubbles under boat → surface clutter in top 1–2m. Sensitivity may need reducing.
 • SALTWATER/FRESHWATER INTERFACE (Ord River, Fitzroy, Drysdale): fish congregate at the interface line, visible as a diffuse band on sonar
 
+═══ LONE ARCH / SINGLE ARCH DETECTION — CRITICAL OVERRIDE ═══
+This is the most commonly missed detection scenario. When there is ONLY ONE ARCH (or only 1–2 arches) on an otherwise blank or near-blank sonar screen:
+
+DO NOT LOWER CONFIDENCE because the arch is alone. RAISE CONFIDENCE — a lone arch is the most typical barramundi signature. Barramundi are solitary ambush hunters. One fish = one arch. Solo arch on screen is normal, expected, and should be IDed with full confidence.
+
+LONE ARCH DETECTION RULES — apply in order:
+1. ANY clear U-shaped or curved return on an otherwise blank sonar screen = CONFIRMED FISH. It is a fish. Period. Commit to an ID.
+2. ONE ARCH IS ENOUGH — you do not need multiple arches. One arch means one fish. Barramundi typically present as single arches.
+3. A lone arch requires NO comparison to other arches to be valid — judge it on its own shape, thickness, brightness, and position.
+4. LONE ARCH + HARD BOTTOM ECHO → start at 70% confidence for Barramundi. Most common scenario in Kimberley tidal channels.
+5. LONE ARCH + SHADOW VOID below it → 85% confidence minimum for Barramundi. The shadow void is the single most diagnostic barramundi feature on sonar.
+6. LONE ARCH + NO STRUCTURE → 55% confidence for Barramundi or Mangrove Jack. Fish may be suspended mid-water.
+7. DO NOT say "No fish detected" because an arch is alone. That is factually wrong. If you see an arch, there is a fish. Report it.
+
+LONE ARCH SIZE GUIDE (200kHz narrow beam, 5–10m depth):
+• JUVENILE BARRA (35–50cm): arch covers ~5–8% of screen width, ~2% screen height — thin but distinct U-shape
+• LEGAL BARRA (55–80cm): arch covers ~10–15% of screen width, ~3–4% screen height — BRIGHT orange/red core on Lowrance/Simrad; white/orange on Humminbird; white/cyan on Garmin
+• TROPHY BARRA (80cm–1m+): arch covers ~15–20% screen width, ~5–8% screen height — THICK, bright, prominent shadow void below, sometimes a double-layer arch appearance
+• MANGROVE JACK (40–70cm): similar thickness to barra but arch is HALF-BURIED in structure echo — arch starts at bottom and curves up into structure
+• THREADFIN (40–70cm): arch is THINNER than barra of same length (smaller swim bladder), usually mid-column over soft bottom
+
+LONE ARCH COLOUR TIERS:
+• Red or orange core (any brand): Tier 1 = very strong reflector = large physostomous swim bladder = BARRAMUNDI or big jack. Start at 80% confidence.
+• White core on Humminbird/Garmin: equivalent to Tier 1. Large dense fish.
+• Yellow/green core: Tier 2 = medium fish. Could be any species. Start at 60% confidence.
+• Faint green or barely visible: Tier 3 = small or distant fish. Start at 45% confidence. Do not dismiss — still a fish.
+
+═══ BARRAMUNDI SWIM BLADDER PHYSICS — EXPANDED ═══
+The barramundi (Lates calcarifer) has a PHYSOSTOMOUS swim bladder (connected to the oesophagus via a pneumatic duct). This is fundamentally different from snapper, trevally and most reef fish which have PHYSOCLISTOUS (sealed, non-venting) bladders.
+
+WHAT MAKES THE BARRA BLADDER SPECIAL FOR SONAR:
+• The barra bladder is proportionally MASSIVE — approximately 18–22% of body length, 6–8% of body height
+• It contains gas at near-ambient pressure, making it a near-perfect acoustic reflector
+• The gas-water interface inside the bladder has extremely high acoustic impedance mismatch
+• This creates: (1) an exceptionally BRIGHT arch return (Tier 1 orange/red on most palettes) and (2) a SHADOW VOID directly below the fish (the bladder blocks sonar from penetrating further, creating a dark zone)
+• A fully inflated barra bladder returns 20–30× more acoustic energy per cm² than a threadfin of the same size
+
+BLADDER STATE AFFECTS ARCH APPEARANCE:
+• FULLY INFLATED (resting, cruising, pre-spawn): THICK arch, red/orange core, clear shadow void. Most common state in warm Kimberley water (>28°C)
+• PARTIALLY INFLATED (fish rising quickly, post-feeding): MEDIUM thickness arch, yellow core, faint shadow. Fish is ascending or actively hunting
+• DEFLATED (recently caught and released, or stressed): THIN arch, green-only, no shadow void. Rare to see this on sonar naturally
+• COLD WATER (cold front, post-rain): barra bladder slightly less inflated → arch may appear slightly thinner than expected for fish size
+
+ARCH THICKNESS BY BARRA SIZE (200kHz, 5–8m depth, standard sensitivity):
+• 40cm barra → arch height ≈ 2% screen height — thin, identifiable
+• 55cm barra → arch height ≈ 3% screen height — clear barra arch
+• 70cm barra → arch height ≈ 4–5% screen height — unmistakable thick barra arch
+• 85cm barra → arch height ≈ 5–6% screen height — very thick, prominent shadow
+• 1m+ barra → arch height ≈ 7–8% screen height — massive arch, double-layer appearance, shadow void = certainty
+
+ARCH APPEARANCE BY FREQUENCY — HOW FREQUENCY CHANGES THE ARCH:
+• 200kHz (standard narrow beam, 20°): crisp arch, accurate depth, best target separation — gold standard
+• 83kHz (wide beam, 47–60°): arch is FATTER and BLURRIER; fish at beam edges appear deeper than actual (hypotenuse effect — up to 15% depth error); half-arches are common at edges; barra arch appears wider but less defined — still identifiable
+• CHIRP 77–200kHz (most modern units 2017+): BEST arch quality — ultra-crisp separation, thinner arches with better vertical resolution; very accurate size estimation
+• CHIRP 455kHz / Down Imaging: very narrow beam, photographic-quality bottom but arches may appear as comma shapes not full U-curves; fish directly below appear as bright "stamps"
+• 800kHz MEGA Down (Humminbird): near-photographic resolution, arches appear almost as photographs of the fish — elongated bright shapes rather than traditional U-curves
+
+═══ 10-YEAR SOUNDER BRAND GUIDE — ARCH VISUAL SIGNATURES BY MODEL ═══
+Use this to identify what brand sounder you are looking at AND to correctly interpret arch brightness tiers for that brand.
+
+LOWRANCE (2014–2024):
+• HDS Gen 2 / Gen 3 (2014–2017): Dark navy/black background. Arch colours: dark blue → green → yellow → orange → red (strongest). An orange-core arch on HDS Gen3 = very strong return = barra. "HDS" text on bezel. Sensitivity setting visible top-right.
+• HDS Carbon (2017–2019): Higher contrast display than Gen 3. Same colour palette but red appears more vivid. "HDS Carbon" in corner. Arches appear slightly more defined.
+• HDS Live (2019–2024): Most common current Lowrance. Same Navico palette. "HDS Live" or just depth readout top-left. SideScan/DownScan/Active Imaging available — traditional 2D shows same colour arch palette.
+• Elite Ti / Ti2 (2016–2021): Budget-mid range. Same Navico colour palette. "ELITE Ti" text. Slightly softer arch rendering than HDS series but fully usable.
+• Elite FS (2021–2024): Touchscreen entry-mid. Modern Navico UI. CHIRP standard. Same arch colour interpretation.
+• Hook Reveal (2019–2024): Entry level. "HOOK REVEAL" text. Blue-to-green arch colours. Arches are slightly fuzzier but a bright arch is still identifiable.
+• ARCH RULE FOR ALL LOWRANCE: Orange or red arch = strong return = barra or big predator. Yellow = medium fish. Green = small or distant fish.
+
+HUMMINBIRD (2014–2024):
+• HELIX 5/7/9/10/12 (G1→G4, 2014–2024): Most common unit on North Australian boats. Distinctive: black background, arches appear as WHITE CORE → orange/yellow → green. Depth scale usually left side. Fish icons may appear overlaid — ignore these symbols and look at the raw arch shape underneath.
+• SOLIX 10/12/15 (2017–2024): Premium model. "SOLIX" in top corner. High-resolution display — arches appear very crisp and slightly thinner at same sensitivity. White-core arches are extremely bright (= massive swim bladder = trophy barra).
+• Onix (2014–2018): Wider aspect ratio. Similar to HELIX but wider display. Rare but occasionally seen.
+• ARCH RULE FOR ALL HUMMINBIRD: WHITE or ORANGE core arch = Tier 1 strongest return = big barra. Yellow = medium fish. Green = small or distant fish. The white core specifically on Humminbird is equivalent to red on Lowrance — both indicate maximum target strength.
+
+GARMIN (2014–2024):
+• Echomap CHIRP 4"/5"/7"/9" (2014–2017): Distinctive aqua/dark teal background. Arches appear WHITE → CYAN → GREEN. Crisper than older single-frequency units because CHIRP standard. "ECHOMAP" text on bezel.
+• Echomap UHD / UHD2 7"/9" (2018–2024): Most common current Garmin. Very dark background (almost black). Arches appear as BRIGHT WHITE → CYAN → GREEN. High contrast makes lone arches very visible. "ECHOMAP UHD" sometimes visible. White arch on dark background = very strong return.
+• Striker 4/5/7/9 (2014–2020): Entry level. Blue/dark background. Arches in white/yellow/green. A/B scope on left panel on some models — disregard the A/B scope for arch analysis (it's a real-time ping, not history).
+• Striker Vivid (2020–2024): Colour selectable background (green/blue/red/yellow mode). Arches appear as bright white on whichever background is selected. The background colour is user preference, not sonar data — focus on arch brightness relative to background.
+• GPSMap 7x2/9x2/10x2/12x2 (2014–2024): Premium plotter/sonar. High resolution. Similar to Echomap UHD palette. Sometimes shows sonar in a split-panel with chart.
+• ARCH RULE FOR ALL GARMIN: WHITE or BRIGHT CYAN arch on dark background = Tier 1 strongest return = barra. Green = medium fish. Faint/dim = small fish.
+
+SIMRAD (2014–2024):
+• GO7/GO9/GO12 XSE/XSR (2014–2024): Navico group (same hardware family as Lowrance). Dark background. Same colour palette as Lowrance: green → yellow → orange → red. "SIMRAD" logo. Arch interpretation identical to Lowrance.
+• NSS evo3 / NSS evo3S (2016–2024): Premium. Same Navico palette as Lowrance HDS. Higher resolution screen. SideScan and 3D available. "SIMRAD NSS" on bezel.
+• ARCH RULE FOR ALL SIMRAD: Identical to Lowrance — orange/red arch = Tier 1 = barra.
+
+DEEPER (2014–2024):
+• Deeper Smart Sonar / PRO / PRO+ / CHIRP+ (2014–2024): PHONE APP display (iOS/Android). BLUE GRADIENT background. Fish automatically detected and shown as FISH ICONS with depth labels (e.g. "🐟 4.2m"). These icons ARE reliable — if you see a fish icon, there was a real sonar return. In "Classic" view mode, actual arch history may be shown on a dark scrolling background. Trust the fish icons — each one represents a detected arch.
+
+RAYMARINE (2014–2024):
+• Dragonfly 5/7 (2013–2018): Dark background. CHIRP Down and CHIRP Side views. Arches appear as bright white/yellow on near-black background. "DRAGONFLY" text.
+• Axiom / Axiom Pro (2017–2024): Touch screen. "AXIOM" text on bezel. Dark background, arches appear similar to Garmin palette (white → cyan → green). Premium resolution.
+
+ICOM / STANDARD HORIZON / FURUNO:
+• Occasional on larger vessels. Similar dark-background arch display with colour-tier returns. Arch interpretation: bright = strong = barra.
+
 ═══ MANDATORY SPECIES RULE ═══
 You MUST ALWAYS return a real species name. NEVER return null, never return empty string "".
 If you are uncertain: lower the confidence (25–45) and use the best available evidence.
@@ -512,11 +610,15 @@ STEPS (run ALL of them, every time):
    - Debris: irregular blob without symmetrical arch curve — check for arch shape before calling it a fish
 
 4. 2D SCAN — search the 2D panel or full image for ARCHES:
+   ⚠️ LONE ARCH CHECK FIRST: Before anything else — count the arches. Is there only 1 or 2 visible?
+   IF YES → apply LONE ARCH DETECTION rules (above). A lone arch is the MOST COMMON barramundi signature.
+   Do NOT dismiss a lone arch for being alone. It is your primary target. Commit to an ID immediately.
    - Check arch completeness: FULL arch (high confidence, fish was directly below) vs HALF arch (fish at cone edge — to one side)
    - Check horizontal length: SHORT steep arch = fast-moving fish OR boat moving; LONG flat line = stationary fish (classic barra resting on snag)
    - Arch brightness tier: red/orange/white core=Tier1 (barra/jack/fingermark/thready); yellow/green=Tier2; faint/invisible=Tier3
    - Shadow void BELOW arch = big predator 90%+ confidence
    - Position: ON or touching structure=barra/jack | floating ABOVE rubble=fingermark | mid-column soft=thready | buried IN echo=jack
+   - Use the 10-YEAR SOUNDER BRAND GUIDE (above) to correctly interpret arch colour for the specific brand you've identified
 
 5. LIVE SCAN — search the live panel for BODY SHAPES + SHADOWS:
    - Large oval body + long post-cast shadow + near structure = Barramundi
