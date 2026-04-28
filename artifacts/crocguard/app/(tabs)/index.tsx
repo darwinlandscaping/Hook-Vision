@@ -94,6 +94,7 @@ export default function StatusScreen() {
         <View style={styles.header}>
           <Text style={styles.appTitle}>🐊 CrocGuard</Text>
           <Text style={styles.subtitle}>Boat Ramp Safety Monitor</Text>
+          <Text style={styles.buildTag}>BUILD 28 APR</Text>
         </View>
 
         <View style={styles.lightContainer}>
@@ -152,6 +153,7 @@ const styles = StyleSheet.create({
   header: { paddingTop: 12, alignItems: "center" },
   appTitle: { fontSize: 28, fontWeight: "800", color: "#fff", letterSpacing: 1 },
   subtitle: { fontSize: 13, color: "#86efac", marginTop: 2 },
+  buildTag: { fontSize: 8, color: "#86efac44", letterSpacing: 1.5, marginTop: 2 },
   lightContainer: { alignItems: "center", justifyContent: "center", flex: 1 },
   lightOuter: {
     width: 240,
