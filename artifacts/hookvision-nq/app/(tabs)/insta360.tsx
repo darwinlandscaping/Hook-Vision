@@ -337,6 +337,8 @@ export default function Insta360Screen() {
   const [slTick,          setSlTick]          = useState(0);
   const [slStreamOk,      setSlStreamOk]      = useState(false);
   const [slEndpointIdx,   setSlEndpointIdx]   = useState(0);
+  const [i360Tick,        setI360Tick]        = useState(0);
+  const [i360PreviewOk,   setI360PreviewOk]   = useState(false);
 
   const baseUrl = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -429,6 +431,37 @@ export default function Insta360Screen() {
     const t = setInterval(() => setSlTick((n) => n + 1), 1500);
     return () => clearInterval(t);
   }, [isConnected, camType]);
+
+  // ── Insta360 live preview — start OSC preview mode + poll frames ───────────
+  useEffect(() => {
+    if (!isConnected || camType !== "insta360") {
+      setI360Tick(0);
+      setI360PreviewOk(false);
+      return;
+    }
+    const ip = activeBaseUrl
+      ? activeBaseUrl.replace(/^https?:\/\//, "").replace(/\/$/, "").split(":")[0]
+      : "192.168.42.1";
+    fetch(`http://${ip}/osc/commands/execute`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "camera._startPreview",
+        parameters: { previewFormat: { resolution: "480p", framerate: 10 } },
+      }),
+      signal: AbortSignal.timeout(5000),
+    }).catch(() => {});
+    const t = setInterval(() => setI360Tick((n) => n + 1), 800);
+    return () => clearInterval(t);
+  }, [isConnected, camType, activeBaseUrl]);
+
+  // ── Insta360 IP + preview URL ─────────────────────────────────────────────
+  const i360Ip = activeBaseUrl
+    ? activeBaseUrl.replace(/^https?:\/\//, "").replace(/\/$/, "").split(":")[0]
+    : "192.168.42.1";
+  const i360PreviewUrl = isConnected && camType === "insta360"
+    ? `http://${i360Ip}:20000/preview.jpg?_t=${i360Tick}`
+    : null;
 
   // ── SmartLife IP (strip http:// prefix for PTZ commands) ───────────────────
   const slIp = activeBaseUrl
@@ -1082,8 +1115,72 @@ export default function Insta360Screen() {
           </View>
         )}
 
-        {/* ── Snapshot preview ─────────────────────────────────────────────── */}
-        {isConnected && camType !== "smartlife" && (
+        {/* ── Insta360 Live Preview ─────────────────────────────────────────── */}
+        {isConnected && camType === "insta360" && (
+          <View style={[styles.card, { gap: 12, borderColor: C.teal + "55", borderWidth: 1.5 }]}>
+            <View style={styles.cardRow}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <MaterialCommunityIcons name="rotate-360" size={16} color={C.teal} />
+                <Text style={styles.cardLabel}>LIVE PREVIEW</Text>
+              </View>
+              <TouchableOpacity
+                onPress={doSnapshot}
+                disabled={snapping || snappingManual}
+                style={[styles.miniBtn, (snapping || snappingManual) && { opacity: 0.4 }]}
+              >
+                <MaterialCommunityIcons name="camera" size={14} color={C.teal} />
+                <Text style={[styles.miniBtnText, { color: C.teal }]}>
+                  {snapping || snappingManual ? "Capturing…" : "Full Shot"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ borderRadius: 12, backgroundColor: "#000", overflow: "hidden", aspectRatio: 16 / 9 }}>
+              {i360PreviewUrl && (
+                <Image
+                  source={{ uri: i360PreviewUrl }}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="cover"
+                  onLoad={() => setI360PreviewOk(true)}
+                  onError={() => {}}
+                />
+              )}
+              {!i360PreviewOk && (
+                <View style={{
+                  position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+                  alignItems: "center", justifyContent: "center", gap: 8,
+                }}>
+                  <MaterialCommunityIcons name="rotate-360" size={40} color={C.teal + "66"} />
+                  <Text style={{ color: C.mute, fontSize: 12, fontWeight: "700" }}>
+                    {i360Tick < 4 ? "Starting preview…" : "Waiting for Insta360 feed…"}
+                  </Text>
+                  <Text style={{ color: C.mute, fontSize: 10, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" }}>
+                    {i360Ip}:20000/preview.jpg
+                  </Text>
+                  {i360Tick >= 8 && (
+                    <Text style={{ color: C.dim, fontSize: 11, textAlign: "center", paddingHorizontal: 16 }}>
+                      Use "Full Shot" below to capture a still, or check your Insta360 is in WiFi hotspot mode.
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {previewUri && (
+              <View style={{ gap: 6 }}>
+                <Text style={{ color: C.mute, fontSize: 10, fontWeight: "700", letterSpacing: 0.8 }}>FULL SHOT</Text>
+                <Image
+                  source={{ uri: previewUri }}
+                  style={[styles.previewImg, { borderRadius: 10 }]}
+                  resizeMode="cover"
+                />
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ── Snapshot preview (non-SmartLife, non-Insta360) ───────────────── */}
+        {isConnected && camType !== "smartlife" && camType !== "insta360" && (
           <View style={styles.card}>
             <View style={styles.cardRow}>
               <Text style={styles.cardLabel}>LIVE SNAPSHOT</Text>
