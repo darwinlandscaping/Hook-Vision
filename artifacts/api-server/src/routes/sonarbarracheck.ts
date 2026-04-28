@@ -34,24 +34,39 @@ CROSS-MODAL REFERENCE SYSTEM — you will receive images in this order:
 
 You will first be shown REFERENCE sonar images with confirmed species labels, then the sonar image to evaluate.
 
-BARRAMUNDI ARCH CHARACTERISTICS ON SONAR (check all):
+STEP ONE — SCORE EACH ARCH INDIVIDUALLY FIRST (do this before counting):
+For EVERY arch visible, evaluate it against these 5 criteria and assign it a quality tier:
 1. ARCH POSITION — Sits ON or touching hard structure echo (snag, rock, pylon, riprap). Barra are ambush hunters and hold structure.
 2. ARCH THICKNESS — Tall/thick vertical height → large swim bladder → big fish. Barra 55cm+ produce noticeably thick arches.
 3. ARCH BRIGHTNESS — Orange/red on Lowrance/Simrad/Humminbird palette = strong return = dense physostomous swim bladder = barra.
 4. ACOUSTIC SHADOW — Dark void DIRECTLY BELOW each arch (Humminbird especially) — barra's massive swim bladder absorbs & blocks sonar below the fish. This shadow is a barra signature.
 5. BOTTOM TYPE — Hard, thick, bright bottom echo = rocky/riprap structure = BARRA habitat. Thin, dim bottom = soft mud = threadfin habitat.
-6. FISH COUNT — Barra are solo or in pairs. 3+ tight arches at same depth = school = NOT barra (threadfin or baitfish).
-7. ARCH SHAPE — Complete U-curve sitting ON structure. Incomplete half-arch embedded IN structure = mangrove jack.
-8. WATER COLUMN POSITION — Barra sit within 1m of structure. Fish floating mid-column over soft bottom = likely threadfin or baitfish.
+6. ARCH SHAPE — Complete U-curve sitting ON structure. Incomplete half-arch embedded IN structure = mangrove jack.
+7. WATER COLUMN POSITION — Barra sit within 1m of structure. Fish floating mid-column over soft bottom = likely threadfin or baitfish.
 
-LONE ARCH / SINGLE ARCH DETECTION — CRITICAL:
-When only ONE arch is visible on the entire screen — this is the MOST COMMON barramundi signature. Do NOT return isBarraArch=false just because there is only one arch. Apply these rules:
-• A LONE ARCH on an otherwise blank or near-blank sonar screen = FISH CONFIRMED. One arch = one fish. Barramundi are solitary ambush hunters — a lone arch is textbook.
+QUALITY TIER (assign per arch):
+• BARRA-QUALITY ARCH: thick + Tier 1 bright colour + on/near structure. Each one individually matches the barra profile.
+• THREADFIN-QUALITY ARCH: thin + mid-column + soft bottom underneath. Multiple of these = schooling species.
+
+STEP TWO — CONFIDENCE FROM ARCH COUNT AND QUALITY:
+
+LONE ARCH / SINGLE ARCH:
+When only ONE arch is visible — the MOST COMMON barramundi signature. Do NOT return isBarraArch=false because there is only one arch.
 • LONE ARCH + hard bright bottom echo → isBarraArch=true, confidence 70–80%
 • LONE ARCH + shadow void below → isBarraArch=true, confidence 85–90%. Shadow void is the single most diagnostic barramundi feature.
 • LONE ARCH + no visible structure → isBarraArch=true if thick/bright, confidence 55–65%
 • LONE THIN ARCH (faint/green) alone on screen → isBarraArch=true, confidence 50–60%. Still a fish.
-• DO NOT require multiple arches to confirm barramundi. ONE THICK BRIGHT ARCH = BARRA until proven otherwise.
+
+MULTIPLE BARRA-QUALITY ARCHES — CRITICAL:
+If the screen shows 2 or more arches that EACH individually qualify as BARRA-QUALITY (thick, Tier 1 bright, on structure, correct depth) — these are aggregating or staging barramundi (pre-wet-season aggregation, snag schools, tidal feeding groups). MORE qualifying arches = HIGHER confidence, not lower.
+• 2 BARRA-QUALITY ARCHES on structure → isBarraArch=true, confidence 80–88%
+• 3–4 BARRA-QUALITY ARCHES on structure → isBarraArch=true, confidence 88–95%. Multiple individually-qualifying arches = strong barra confirmation.
+• 5–8 BARRA-QUALITY ARCHES on hard structure → isBarraArch=true, confidence 90–97%. Staging school over a snag or rock bar — classic wet-season aggregation.
+• KEY RULE: Do NOT penalise count if each arch individually meets the barra profile. The count only lowers confidence when arches are THREADFIN-QUALITY (thin, mid-column, soft bottom).
+
+THREADFIN/BAITFISH SCHOOL (different from barra aggregation):
+• Thin arches at same depth, mid-water column, soft muddy bottom → NOT barra. Lower confidence.
+• Dense cloud of small dots → baitfish. NOT barra.
 
 LONE ARCH SIZE REFERENCE (200kHz, 5–8m depth):
 • Legal barra 55–80cm: arch height ≈ 3–4% of screen height, orange/red on Lowrance/Simrad, white/orange on Humminbird, white/cyan on Garmin
@@ -66,11 +81,12 @@ LONE ARCH SIZE REFERENCE (200kHz, 5–8m depth):
 • Simrad (GO series, NSS evo3): Same as Lowrance — orange/red = Tier 1 = barra.
 • Deeper app: Fish ICONS (🐟 symbol with depth) indicate detected return — each icon = confirmed arch = fish.
 
-NOT BARRA IF:
-• Multiple arches in mid-water column over soft bottom → Threadfin Salmon
+NOT BARRA IF (all signs must match — do NOT flag just because arch count is high):
+• Multiple THIN arches in mid-water column over SOFT BOTTOM → Threadfin Salmon. Threadfin arches are thin, dim, floating mid-column over mud.
 • Dense cloud of small bright dots → Baitfish school
 • Half-arch embedded in/inside bottom echo → Mangrove Jack
-• Multiple fish at identical depth in open water → Schooling species (threadfin, queenfish)
+• Multiple fish at identical depth in OPEN WATER over soft mud → Schooling species (threadfin, queenfish)
+• IMPORTANT: Multiple THICK BRIGHT arches ON HARD STRUCTURE are NOT threadfin. Do not apply this NOT BARRA rule to arches that individually qualify as BARRA-QUALITY.
 
 LIVE SONAR FORWARD-VIEW (LiveScope/ActiveTarget/MEGA Live) — barra signature:
 • Elongated body silhouette (3:1 to 4:1 ratio), high brightness, PROMINENT dark shadow below
