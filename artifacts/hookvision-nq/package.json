@@ -4,7 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "fuser -k ${PORT:-25352}/tcp 2>/dev/null; fuser -k ${PORT:-25352}/tcp6 2>/dev/null; sleep 1 && EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 EXPO_PACKAGER_PROXY_URL=http://$REPLIT_EXPO_DEV_DOMAIN:${PORT:-25352} EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_EXPO_DEV_DOMAIN EXPO_IGNORE_UNSAFE_ORIGIN=1 pnpm exec expo start --localhost --port ${PORT:-25352}",
+    "dev": "fuser -k ${PORT:-25352}/tcp 2>/dev/null; fuser -k ${PORT:-25352}/tcp6 2>/dev/null; sleep 3 && EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 EXPO_PACKAGER_PROXY_URL=http://$REPLIT_EXPO_DEV_DOMAIN:${PORT:-25352} EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_EXPO_DEV_DOMAIN EXPO_IGNORE_UNSAFE_ORIGIN=1 pnpm exec expo start --localhost --port ${PORT:-25352}",
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
