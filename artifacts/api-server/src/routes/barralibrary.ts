@@ -27,13 +27,23 @@ router.get("/barra-library/status", async (_req, res) => {
 });
 
 router.post("/barra-library/confirm", async (req, res) => {
-  const { photoUrl, location } = req.body as { photoUrl?: string; location?: string };
-  if (!photoUrl) {
-    res.status(400).json({ error: "photoUrl required" });
+  const { photoUrl, location, base64Thumb, viewingAngle } = req.body as {
+    photoUrl?:     string;
+    location?:     string;
+    base64Thumb?:  string;
+    viewingAngle?: "top" | "side" | "angled";
+  };
+  if (!base64Thumb && !photoUrl) {
+    res.status(400).json({ error: "base64Thumb or photoUrl required" });
     return;
   }
   try {
-    await addCommunityReference(photoUrl, location);
+    await addCommunityReference({
+      base64Thumb:  base64Thumb ?? "",
+      photoUrl:     photoUrl ?? "community",
+      location:     location ?? "Australia",
+      viewingAngle,
+    });
     res.json({ ok: true, message: "Photo added to barra reference library — the brain just got smarter!" });
   } catch (err) {
     res.status(500).json({ error: String(err) });

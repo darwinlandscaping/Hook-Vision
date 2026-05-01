@@ -68,29 +68,38 @@ function largeUrl(medUrl: string): string {
 }
 
 // ─── Fetch from iNaturalist ───────────────────────────────────────────────────
-async function fetchInat(page = 1, perPage = 200): Promise<InatObservation[]> {
+async function fetchInat(
+  page = 1,
+  perPage = 200,
+  taxonName = "Lates calcarifer",
+  placeId?: string,
+): Promise<InatObservation[]> {
   const params = new URLSearchParams({
-    taxon_name:    "Lates calcarifer",
-    quality_grade: "research",
-    photos:        "true",
-    per_page:      String(perPage),
-    page:          String(page),
-    order:         "votes",
-    order_by:      "votes",
-    place_id:      "6744",   // Australia
+    taxon_name: taxonName,
+    photos:     "true",
+    per_page:   String(perPage),
+    page:       String(page),
+    order:      "votes",
+    order_by:   "votes",
   });
+  // No quality_grade filter — collect research + needs_id + casual for maximum volume
+  // No place_id filter by default — collect globally
+  if (placeId) params.set("place_id", placeId);
   const url = `https://api.inaturalist.org/v1/observations?${params}`;
   const resp = await fetch(url, {
     headers: { "User-Agent": "HookVision/1.0 (fishing app; WA Australia)" },
     signal: AbortSignal.timeout(15_000),
   });
   if (!resp.ok) throw new Error(`iNat API ${resp.status}`);
-  const data: InatResponse = await resp.json();
+  const data = await resp.json() as InatResponse;
   return data.results;
 }
 
 // ─── Upsert a batch of observations into DB ───────────────────────────────────
-async function upsertObservations(obs: InatObservation[]): Promise<number> {
+async function upsertObservations(
+  obs: InatObservation[],
+  source = "inat",
+): Promise<number> {
   let added = 0;
   for (const o of obs) {
     for (const photo of o.photos) {
@@ -114,11 +123,11 @@ async function upsertObservations(obs: InatObservation[]): Promise<number> {
           .where(eq(barraReferences.observationId, obsId));
       } else {
         await db.insert(barraReferences).values({
-          source:        "inat",
+          source,
           photoUrl:      large,
           thumbUrl:      thumb,
           observationId: obsId,
-          location:      o.place_guess ?? "Australia",
+          location:      o.place_guess ?? "Global",
           qualityGrade:  o.quality_grade,
           description:   o.description ? o.description.slice(0, 500) : null,
           votes:         o.faves_count,
@@ -296,45 +305,244 @@ async function classifyAngles(): Promise<void> {
   }
 }
 
+// ─── Wikimedia Commons fetcher ────────────────────────────────────────────────
+// Fetches photo URLs from Wikimedia Commons categories for Lates species.
+// Free, no API key, CC-licensed — good complement to iNaturalist.
+
+interface WikiPage {
+  title: string;
+  ns:    number;
+}
+interface WikiCatResponse {
+  continue?: { cmcontinue: string };
+  query: { categorymembers: WikiPage[] };
+}
+interface WikiImageInfo {
+  url:           string;
+  descriptionurl: string;
+  width:         number;
+  height:        number;
+}
+interface WikiImageInfoResponse {
+  query: { pages: Record<string, { title: string; imageinfo?: WikiImageInfo[] }> };
+}
+
+async function fetchWikimediaCategory(
+  category: string,
+  maxItems = 500,
+): Promise<string[]> {
+  const titles: string[] = [];
+  let cmcontinue: string | undefined;
+
+  do {
+    const params = new URLSearchParams({
+      action:  "query",
+      list:    "categorymembers",
+      cmtitle: `Category:${category}`,
+      cmtype:  "file",
+      cmlimit: "500",
+      format:  "json",
+      origin:  "*",
+    });
+    if (cmcontinue) params.set("cmcontinue", cmcontinue);
+
+    const resp = await fetch(
+      `https://commons.wikimedia.org/w/api.php?${params}`,
+      { signal: AbortSignal.timeout(12_000) },
+    );
+    if (!resp.ok) break;
+    const data = await resp.json() as WikiCatResponse;
+    for (const m of data.query.categorymembers) titles.push(m.title);
+    cmcontinue = data.continue?.cmcontinue;
+  } while (cmcontinue && titles.length < maxItems);
+
+  return titles.slice(0, maxItems);
+}
+
+async function wikimediaTitlesToUrls(titles: string[]): Promise<Array<{ url: string; title: string }>> {
+  const results: Array<{ url: string; title: string }> = [];
+  // Batch: 50 titles per request (Wikimedia API limit)
+  for (let i = 0; i < titles.length; i += 50) {
+    const batch = titles.slice(i, i + 50);
+    try {
+      const params = new URLSearchParams({
+        action:    "query",
+        titles:    batch.join("|"),
+        prop:      "imageinfo",
+        iiprop:    "url|dimensions",
+        iiurlwidth:"800",
+        format:    "json",
+        origin:    "*",
+      });
+      const resp = await fetch(
+        `https://commons.wikimedia.org/w/api.php?${params}`,
+        { signal: AbortSignal.timeout(12_000) },
+      );
+      if (!resp.ok) continue;
+      const data = await resp.json() as WikiImageInfoResponse;
+      for (const page of Object.values(data.query.pages)) {
+        const info = page.imageinfo?.[0];
+        if (info?.url && (info.url.endsWith(".jpg") || info.url.endsWith(".jpeg") || info.url.endsWith(".png"))) {
+          results.push({ url: info.url, title: page.title });
+        }
+      }
+    } catch {
+      /* skip batch on error */
+    }
+    await new Promise(r => setTimeout(r, 300)); // polite rate limit
+  }
+  return results;
+}
+
+async function upsertWikimediaPhotos(
+  photos: Array<{ url: string; title: string }>,
+  species: string,
+  location: string,
+): Promise<number> {
+  let added = 0;
+  for (const { url, title } of photos) {
+    // Use title as a stable dedup key via observationId field
+    const obsId = `wikimedia:${title}`;
+    const existing = await db
+      .select({ id: barraReferences.id })
+      .from(barraReferences)
+      .where(eq(barraReferences.observationId, obsId))
+      .limit(1);
+    if (existing.length > 0) continue;
+    try {
+      await db.insert(barraReferences).values({
+        source:        `wikimedia_${species}`,
+        photoUrl:      url,
+        thumbUrl:      url,   // same URL — Wikimedia auto-resizes via ?width=
+        observationId: obsId,
+        location,
+        qualityGrade:  "research",  // Wikimedia commons = curated
+        description:   title.replace(/^File:/, ""),
+        votes:         3,
+        active:        true,
+      });
+      added++;
+    } catch { /* ignore duplicate */ }
+  }
+  return added;
+}
+
+/**
+ * Run all Wikimedia Commons collection for Lates species.
+ * Designed to run as a background job after server startup.
+ */
+export async function collectWikimediaLates(): Promise<void> {
+  logger.info("Wikimedia Lates collector: starting…");
+  let total = 0;
+
+  // Barramundi / Lates calcarifer — multiple categories
+  const barraCats = [
+    "Lates_calcarifer",
+    "Barramundi",
+  ];
+  for (const cat of barraCats) {
+    try {
+      const titles = await fetchWikimediaCategory(cat, 300);
+      logger.info({ cat, found: titles.length }, "Wikimedia category fetched");
+      const photos = await wikimediaTitlesToUrls(titles);
+      const added = await upsertWikimediaPhotos(photos, "calcarifer", "Wikimedia Commons");
+      total += added;
+      logger.info({ cat, photos: photos.length, added }, "Wikimedia barra photos stored");
+    } catch (err) {
+      logger.warn({ cat, err: String(err) }, "Wikimedia barra cat failed");
+    }
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  // Nile Perch / Lates niloticus — multiple categories
+  const nileCats = [
+    "Lates_niloticus",
+    "Nile_perch",
+  ];
+  for (const cat of nileCats) {
+    try {
+      const titles = await fetchWikimediaCategory(cat, 300);
+      logger.info({ cat, found: titles.length }, "Wikimedia category fetched");
+      const photos = await wikimediaTitlesToUrls(titles);
+      const added = await upsertWikimediaPhotos(photos, "niloticus", "Africa (Wikimedia)");
+      total += added;
+      logger.info({ cat, photos: photos.length, added }, "Wikimedia Nile perch photos stored");
+    } catch (err) {
+      logger.warn({ cat, err: String(err) }, "Wikimedia Nile perch cat failed");
+    }
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  logger.info({ total }, "Wikimedia Lates collection complete");
+}
+
 // ─── Main public API ─────────────────────────────────────────────────────────
 
 /**
  * Initialise library on server startup.
- * - Fetches multiple pages from iNaturalist (up to ~600 photos)
- * - Stores all new research-grade observations in DB
- * - Rebuilds the in-memory cache
+ * - Fetches ALL available Lates calcarifer globally (all quality, ~700 max)
+ * - Fetches ALL available Lates niloticus globally (~100 max)
+ * - Stores new observations in DB; rebuilds the in-memory cache
+ * - Wikimedia collection runs separately via collectWikimediaLates()
  */
 export async function initBarraLibrary(): Promise<void> {
-  logger.info("Barra reference library: starting iNaturalist sync…");
+  logger.info("Barra reference library: starting global multi-species iNaturalist sync…");
+
+  // ── Lates calcarifer (barramundi / Asian sea bass) — global, all quality ──
   try {
-    let totalAdded = 0;
-    // Fetch 3 pages (600 observations) at startup — spread the load
-    for (let page = 1; page <= 3; page++) {
+    let calcarifer = 0;
+    for (let page = 1; page <= 4; page++) {  // 4 × 200 covers all ~712 available
       try {
-        const obs = await fetchInat(page, 200);
+        const obs = await fetchInat(page, 200, "Lates calcarifer");
         if (obs.length === 0) break;
-        const added = await upsertObservations(obs);
-        totalAdded += added;
-        logger.info({ page, fetched: obs.length, added }, "iNat page synced");
+        const added = await upsertObservations(obs, "inat_calcarifer");
+        calcarifer += added;
+        logger.info({ page, fetched: obs.length, added }, "iNat Lates calcarifer page synced");
+        if (obs.length < 200) break;  // last page
+        await new Promise(r => setTimeout(r, 600));
       } catch (pageErr) {
-        logger.warn({ page, err: String(pageErr) }, "iNat page fetch failed, skipping");
+        logger.warn({ page, err: String(pageErr) }, "iNat calcarifer page failed");
       }
     }
-    logger.info({ totalAdded }, "iNaturalist sync complete");
+    logger.info({ calcarifer }, "iNat Lates calcarifer sync complete");
   } catch (err) {
-    logger.warn({ err: String(err) }, "iNat sync failed — will use DB cache only");
+    logger.warn({ err: String(err) }, "iNat calcarifer sync failed");
   }
+
+  // ── Lates niloticus (Nile perch) — global, all quality ──
+  try {
+    let niloticus = 0;
+    for (let page = 1; page <= 2; page++) {
+      try {
+        const obs = await fetchInat(page, 200, "Lates niloticus");
+        if (obs.length === 0) break;
+        const added = await upsertObservations(obs, "inat_niloticus");
+        niloticus += added;
+        logger.info({ page, fetched: obs.length, added }, "iNat Lates niloticus page synced");
+        if (obs.length < 200) break;
+        await new Promise(r => setTimeout(r, 600));
+      } catch (pageErr) {
+        logger.warn({ page, err: String(pageErr) }, "iNat niloticus page failed");
+      }
+    }
+    logger.info({ niloticus }, "iNat Lates niloticus sync complete");
+  } catch (err) {
+    logger.warn({ err: String(err) }, "iNat niloticus sync failed");
+  }
+
   await rebuildCache();
 }
 
 /**
  * Scheduled daily refresh — call this once per day.
- * Only fetches the first page (newest/highest voted) and upserts.
+ * Refreshes page 1 of both species and any new Wikimedia additions.
  */
 export async function refreshBarraLibrary(): Promise<void> {
   try {
-    const obs = await fetchInat(1, 200);
-    await upsertObservations(obs);
+    const calcObs = await fetchInat(1, 200, "Lates calcarifer");
+    await upsertObservations(calcObs, "inat_calcarifer");
+    const nileObs = await fetchInat(1, 200, "Lates niloticus");
+    await upsertObservations(nileObs, "inat_niloticus");
     await rebuildCache();
   } catch (err) {
     logger.warn({ err: String(err) }, "Daily barra library refresh failed");

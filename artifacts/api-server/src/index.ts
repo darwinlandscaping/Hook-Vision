@@ -3,7 +3,7 @@ import { logger } from "./lib/logger";
 import { initModels } from "./lib/models";
 import { refreshDailyConditions } from "./lib/dailyBriefing";
 import { loadDemoReferences } from "./lib/demoReference";
-import { initBarraLibrary, refreshBarraLibrary } from "./lib/barraLibrary";
+import { initBarraLibrary, refreshBarraLibrary, collectWikimediaLates } from "./lib/barraLibrary";
 import { initSonarBrain } from "./lib/sonarBrain";
 import { initCrocLibrary, refreshCrocLibrary } from "./lib/crocLibrary";
 import { initBirdLibrary, refreshBirdLibrary } from "./lib/birdLibrary";
@@ -55,12 +55,20 @@ app.listen(port, (err) => {
     logger.error({ err }, "Initial daily conditions refresh failed")
   );
 
-  // Initialise the barra reference library:
-  // fetches research-grade iNaturalist photos → stores in DB → caches in memory.
-  // Subsequent barra-check calls inject 3 reference photos for few-shot prompting.
-  initBarraLibrary().catch((err) =>
-    logger.warn({ err }, "Barra library init failed — detection will use text-only prompt")
-  );
+  // Initialise the Lates reference library:
+  // Fetches ALL available Lates calcarifer (barramundi/Asian sea bass, ~700 globally) +
+  // Lates niloticus (Nile perch, ~100 globally) from iNaturalist — all quality grades,
+  // no region restriction. After iNat sync completes, Wikimedia Commons collection runs
+  // as a chained background job (adds curated CC-licensed photos for both species).
+  initBarraLibrary()
+    .then(() =>
+      collectWikimediaLates().catch((err) =>
+        logger.warn({ err }, "Wikimedia Lates collection failed — iNat photos still active")
+      )
+    )
+    .catch((err) =>
+      logger.warn({ err }, "Barra library init failed — detection will use text-only prompt")
+    );
 
   // Initialise the croc reference library:
   // fetches up to 1,000 research-grade iNaturalist photos (Crocodylus porosus +
