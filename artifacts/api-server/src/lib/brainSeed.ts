@@ -14,7 +14,7 @@ import { db, communityReports, brainVideos } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { logger } from "./logger.js";
 
-const SEED_MARKER_TITLE = "__brain_seed_v3__";
+const SEED_MARKER_TITLE = "__brain_seed_v4__";
 
 // ─── Expert knowledge entries ─────────────────────────────────────────────────
 
@@ -260,6 +260,237 @@ const EXPERT_BRAIN_VIDEOS = [
   },
 ];
 
+// ─── Species Knowledge Base ───────────────────────────────────────────────────
+// Comprehensive biology, sizes, ages, legal limits, and fishing intelligence
+// for all target species across Australia, Asia, and the Nile perch system.
+
+const SPECIES_KNOWLEDGE_ENTRIES = [
+
+  // ── BARRAMUNDI / LATES CALCARIFER ──────────────────────────────────────────
+  {
+    title: "Species Intel — Barramundi (Lates calcarifer) Biology & Size Data",
+    description: "Barramundi / Asian Sea Bass. Scientific name: Lates calcarifer (Bloch 1790). Family Latidae. Protandrous hermaphrodite — ALL fish born male, transition to female at 50-70cm TL (typically 3-5 years old). Maximum recorded: 1.8m / 60kg. Common target range: 50-120cm, 3-15kg. Lifespan: up to 20 years. Physostomous swim bladder — produces the brightest sonar arch signature of any tropical fish (90-95% of acoustic backscatter from bladder). Dark shadow void beneath arch is diagnostic. LEGAL SIZE BY STATE: QLD minimum 58cm, max possession 120cm (slot limit). NT minimum 55cm. WA: varies by zone — inland rivers 55cm minimum, coastal 50cm. BAG LIMITS: QLD 5/day (only 1 over 120cm). NT 5/day. WA 5/day. SPAWN: Oct-Mar (wet season). Males aggregate near river mouths, females release eggs on spring tide run-outs. Eggs and larvae transported upstream with flood waters. Post-spawn: fish return to freshwater/estuarine habitat. GROWTH RATE: 40cm in year 1, 55-65cm by year 2, 70-85cm year 3, 90cm+ by year 5. All fish >80cm are FEMALE.",
+    brainInsight: "Barramundi are protandrous hermaphrodites — all big fish (>80cm) are female. Physostomous swim bladder creates the brightest, most distinctive sonar arch. QLD slot limit: 58-120cm. NT/WA minimum 55cm. Peak spawn Oct-Mar on spring tide run-outs at river mouths.",
+    detectedSpecies: ["Barramundi", "Lates calcarifer", "Asian Sea Bass", "Giant Sea Perch"],
+    depthRanges: ["0-2m surface at spawn", "3-8m holding structure", "1-4m feeding flat"],
+    aiTips: [
+      "All barra >80cm are female — handle carefully and consider catch-and-release for trophy fish",
+      "QLD slot limit: keep 58-120cm only — fish over 120cm must be released",
+      "Physostomous swim bladder = brightest sonar arch + dark shadow void beneath = diagnostic",
+      "Spawn runs Oct-Mar: barra aggregate at river mouths on spring tide run-outs",
+      "Year 2 fish are ~60cm, year 5 are ~90cm — consider age when deciding to keep",
+    ],
+  },
+
+  // ── NILE PERCH / LATES NILOTICUS ───────────────────────────────────────────
+  {
+    title: "Species Intel — Nile Perch (Lates niloticus) Global Data",
+    description: "Nile Perch: Lates niloticus. Same family as barramundi (Latidae) — close cousin. Distribution: Nile River basin (Egypt, Sudan, Ethiopia, Uganda, Kenya, Tanzania), Lake Victoria, Lake Tanganyika, Lake Albert, Lake Turkana, Lake Chad, Congo River. INTRODUCED to Lake Victoria 1954 — now largest population globally. Maximum size: 2m / 200kg (Lake Nasser record). Common target: 60-150cm, 10-50kg. Lake Victoria commercial fishing: primary target 40-80cm for fillet export. ACOUSTIC SIGNATURE: similar to barramundi — physostomous swim bladder produces strong sonar arch, typically larger and denser than barra arch due to larger body mass. FISHING: Lake Victoria — trolling deep-diving minnows at 8-15m along thermocline. Lake Nasser (Egypt) — jigging near dam structures 20-40m. White Nile (Uganda) — surface lures and live bait near rapids. ECOLOGY: apex predator, highly territorial, responsible for extinction of 200+ Lake Victoria cichlid species. Can be detected on sonar as very large single arches at 8-25m depth.",
+    brainInsight: "Nile perch (Lates niloticus): close cousin to barramundi. Up to 2m/200kg in Lake Victoria. Physostomous bladder = strong sonar arch like barra but larger. Lake Victoria troll 8-15m for 10-50kg fish. Lake Nasser: jig 20-40m near dam structures. Apex predator — introduced 1954 to Lake Victoria.",
+    detectedSpecies: ["Nile Perch", "Lates niloticus"],
+    depthRanges: ["8-15m thermocline (Lake Victoria)", "20-40m deep (Lake Nasser)", "2-8m rapids zone (White Nile)"],
+    aiTips: [
+      "Nile perch on Lake Victoria: troll deep-diving minnows at 8-15m along thermocline for 10-50kg fish",
+      "Lake Nasser (Egypt): heavy jigging (80-120g metals) near dam walls at 20-40m produces giants",
+      "Nile perch sonar signature: very large physostomous arch at 8-25m, similar to barra but denser",
+      "White Nile in Uganda: surface lures and live bait near rapids produce aggressive strikes",
+      "Lake Victoria night fishing: Nile perch come shallow (2-5m) to feed after dark",
+    ],
+  },
+
+  // ── ASIAN SEA BASS — INTERNATIONAL GROUNDS ─────────────────────────────────
+  {
+    title: "Species Intel — Asian Sea Bass International Distribution & Fishing",
+    description: "Lates calcarifer (barramundi/siakap) global range: India (Kerala, Karnataka, Goa, Andhra Pradesh — kelongs and coastal estuaries); Bangladesh (Sundarbans mangroves, tidal rivers); Myanmar (Irrawaddy delta); Thailand (Gulf of Thailand kelongs, Mekong tributaries, river systems); Vietnam (Mekong Delta, Perfume River, Con Dao); Malaysia (Johor Bahru kelongs, Sarawak rivers, Sabah estuaries); Singapore (reservoir barramundi, kelong fishing, Johor Strait); Indonesia (Kalimantan rivers, Papua estuaries, Sumatra coastal); Philippines (Manila Bay, Pampanga River); PNG (Fly River, Sepik River). SINGAPORE TECHNIQUE: kelong barramundi (siakap) use live bait and large pilchards under the kelong lights at night — fish aggregate under artificial light to feed on attracted bait. MALAYSIA: Sarawak kelongs and Sabah mangrove rivers produce large wild siakap on 5-7inch soft plastics. THAILAND: Mekong barramundi on live bait and large minnows — trophy fish to 120cm in deep river pools. INDIA: Kerala backwaters — siakap on spinning lures and live prawn near mangrove systems.",
+    brainInsight: "Barramundi/siakap distribution: India to PNG, including all SE Asian nations. Singapore kelong technique: live bait under lights at night. Malaysia (Sarawak/Sabah): 5-7 inch soft plastics in mangrove rivers. Thailand: large minnows/live bait in deep Mekong pools. Same species as Australian barra — identical biology, identical sonar signature.",
+    detectedSpecies: ["Asian Sea Bass", "Lates calcarifer", "Siakap", "Barramundi"],
+    depthRanges: ["0-3m kelong shallows (Singapore)", "3-8m river channel (Thailand/Vietnam)", "5-15m estuary deep (Malaysia)"],
+    aiTips: [
+      "Singapore kelong barramundi: live bait (pilchards, small fish) under kelong lights at night — very effective",
+      "Malaysia Sarawak: 5-7 inch soft plastics in mangrove channels, morning and evening tides",
+      "Thailand Mekong pools: large bibless minnows or live bait drifted through deep (8-15m) pools",
+      "India Kerala backwaters: live prawn on float rig near mangrove root systems at dusk",
+      "Identical biology to Australian barra — sonar arch signature is the same globally",
+    ],
+  },
+
+  // ── CORAL TROUT ────────────────────────────────────────────────────────────
+  {
+    title: "Species Intel — Coral Trout (Plectropomus leopardus & spp.)",
+    description: "Coral Trout / Leopard Coral Trout: Plectropomus leopardus. Primary target species on Australian reefs. Maximum size: 120cm / 25kg. Common target: 35-70cm, 1-5kg. Lifespan: 16+ years. LEGAL SIZE: QLD 38cm minimum, bag limit 7/day. WA: 38cm minimum, bag limit 4/day. NT: 38cm minimum, bag limit 5/day. Great Barrier Reef coral trout spawning aggregations: November to January. HABITAT: Coral reef structures, ledges, and bommies at 5-40m depth. Ambush predator — holds at reef edge and ambushes passing fish. SONAR SIGNATURE: holds tight to reef structure — often appears as single arch just above reef bottom signal. TECHNIQUE: Slow pitch jigging with 40-80g knife jigs most effective. Vertical jigging over known reef structures. Bottom fishing with whole pilchards on 4/0 circle hook. COLOUR: blue/red dots on body (leopard pattern). Often confused with common trout but distinguishable by blue-rimmed black spots. Barred-tail variant (Plectropomus maculatus) also common in NQ — same fishing techniques.",
+    brainInsight: "Coral trout: 38cm minimum in all states. Slow pitch jig 40-80g over reef structure at 10-40m. Ambush predator holds tight to reef edge — sonar shows single arch just above bottom return. Great Barrier Reef spawning Nov-Jan. Bag limits: QLD 7, WA 4, NT 5 per day.",
+    detectedSpecies: ["Coral Trout", "Plectropomus leopardus", "Leopard Coral Trout", "Barred-tail Coral Trout"],
+    depthRanges: ["10-20m shallow reef", "20-40m mid reef", "40-60m deep reef (large fish)"],
+    aiTips: [
+      "Coral trout: slow pitch jig (40-80g knife jig) over reef structure is most productive technique",
+      "Minimum 38cm in QLD/WA/NT — measure carefully before keeping, bag limits are strict",
+      "Sonar: single arch sitting tight to reef bottom structure = likely coral trout holding position",
+      "Spawning aggregations on Great Barrier Reef Nov-Jan — consider catch-and-release in these months",
+      "Two species: Plectropomus leopardus (leopard pattern) and P. maculatus (barred tail) — same fishing",
+    ],
+  },
+
+  // ── QUEENFISH ──────────────────────────────────────────────────────────────
+  {
+    title: "Species Intel — Queenfish (Scomberoides commersonnianus & spp.)",
+    description: "Queenfish (Giant Queenfish): Scomberoides commersonnianus. Maximum size: 120cm / 14kg. Common target: 60-90cm, 2-8kg. Also: Needlescaled Queenfish (S. tol) and Doublespotted Queenfish (S. lysan) — both smaller but more abundant. No minimum size or bag limit in most Australian states — catch and release encouraged for large fish. DISTRIBUTION: Northern Australia coast, Indo-Pacific from Red Sea to PNG. HABITAT: Open coastal waters, estuaries, reef edges, tidal flats. Pelagic schooling fish — often visible as surface commotion chasing bait schools. SONAR SIGNATURE: School appears as dense cloud of arches at surface layer 0-5m, individual fish show as fast-moving arches. High swim bladder reflectivity. TECHNIQUE: Metal slugs (30-60g) cast into surface commotion and retrieved fast. Surface poppers. Any fast-moving lure works — queenfish are aggressive, not selective. FIGHTING QUALITY: spectacular jumpers, multiple aerial leaps — excellent sportfish on light tackle.",
+    brainInsight: "Queenfish: three species (Giant/Needlescaled/Doublespotted). No bag limit in most states. Metal slugs 30-60g or surface poppers — retrieve FAST. School on surface shows as dense arch cloud at 0-5m on sonar. Spectacular aerial fighters — excellent light tackle sportfish. Indo-Pacific distribution.",
+    detectedSpecies: ["Queenfish", "Giant Queenfish", "Scomberoides commersonnianus"],
+    depthRanges: ["0-5m surface school", "5-15m deeper scatter", "0-2m tidal flat"],
+    aiTips: [
+      "Queenfish: no size or bag limit in most states — but release large breeders",
+      "Metal slugs 30-60g are the #1 lure — cast into the school and retrieve as fast as possible",
+      "Sonar: dense arch cloud at 0-5m = queenfish school — they are always near the surface",
+      "Spectacular aerial fighters — use light 6-10lb gear for maximum sport",
+      "Look for birds diving over bait schools — queenfish pushing bait up are almost always underneath",
+    ],
+  },
+
+  // ── GIANT TREVALLY ─────────────────────────────────────────────────────────
+  {
+    title: "Species Intel — Giant Trevally (Caranx ignobilis)",
+    description: "Giant Trevally (GT): Caranx ignobilis. The apex predator of tropical reef systems. Maximum recorded: 170cm / 80kg. Common target: 60-120cm, 10-35kg. Lifespan: 24+ years. No minimum size limit, bag limit 5/day in most Australian states. DISTRIBUTION: Red Sea, Indo-Pacific, Hawaiian Islands, Northern Australia. HABITAT: Reef edges, channel entrances, pinnacles, lagoon channels. SONAR SIGNATURE: Large single arch or small group of arches near reef structure or surface. Extremely bright sonar return due to large swim bladder mass. TECHNIQUE: Large surface poppers (130-170mm, 40-80g) and stickbaits are the primary technique. Cast to visible GT or to known GT territory (reef edges, pinnacles). Fast, erratic surface presentation. Heavy gear required — GT run to reef immediately on strike: 80lb+ braid, PE 6-8. BEHAVIOUR: Often seen patrolling reef edges in pairs or small groups. Will charge surface at speed — 'GTs don't eat, they attack'. Moon phases: full and new moon = peak surface activity at dawn/dusk.",
+    brainInsight: "Giant Trevally: up to 170cm/80kg. Large surface poppers (130-170mm) and stickbaits with 80lb+ braid essential. GT run to reef immediately — use heavy tackle. Full/new moon at dawn/dusk = peak surface activity. Large bright sonar arch near reef edge. No size limit, bag limit 5/day.",
+    detectedSpecies: ["Giant Trevally", "GT", "Caranx ignobilis"],
+    depthRanges: ["0-5m surface strike zone", "5-20m reef edge patrol", "20-40m deep reef pinnacle"],
+    aiTips: [
+      "GT requires heavy tackle: PE 6-8 braid (80lb+), short heavy leader — they run to reef immediately",
+      "Large surface poppers 130-170mm at 40-80g: cast to GT territory and retrieve erratically at speed",
+      "Full and new moon peak activity windows at dawn and dusk — plan GT sessions around moon phases",
+      "Sonar: single large bright arch near reef edge at 5-20m = likely GT on patrol",
+      "GT are sight hunters — cast 5m ahead of the fish and retrieve before it loses interest",
+    ],
+  },
+
+  // ── THREADFIN SALMON ───────────────────────────────────────────────────────
+  {
+    title: "Species Intel — Threadfin Salmon (Polydactylus sheridani & P. macrochir)",
+    description: "King Threadfin Salmon: Polydactylus macrochir. Blue Threadfin: Polydactylus sheridani. Maximum size (King Threadfin): 180cm / 45kg. Common target: 80-130cm, 5-20kg. Blue threadfin maximum: 100cm / 8kg. LEGAL SIZE: QLD minimum 60cm (King), 40cm (Blue). NT minimum 60cm. WA minimum 60cm. BAG LIMIT: QLD 5/day, NT 5/day. DISTRIBUTION: Northern Australia coast, Gulf of Carpentaria, WA coast. Tidal estuaries, river mouths, sandy tidal flats. SONAR SIGNATURE: School appears as scattered oval arches at 2-6m depth over tidal flats. Individual fish show distinctive elongated arch. Very bright sonar return. TECHNIQUE: Large gold/silver spinnerbaits (3/4 oz+), vibes, and metal slugs. Cast into schools on tidal flats at 2-5m depth. Threadfin respond to fast, aggressive retrieves. SEASONAL: Wet season aggregations (Nov-Apr) at river mouths — massive schools. FEATURE: Four free-hanging pectoral ray filaments — diagnostic. Often found schooling with barra in tidal rivers.",
+    brainInsight: "King Threadfin: up to 180cm/45kg. QLD/NT/WA minimum 60cm, bag limit 5/day. Gold/silver spinnerbaits cast into tidal flat schools at 2-5m. Sonar: scattered oval arches at 2-6m over flat. Wet season (Nov-Apr) river mouth aggregations = best fishing. Four free-hanging pectoral filaments = diagnostic.",
+    detectedSpecies: ["Threadfin Salmon", "King Threadfin", "Polydactylus macrochir", "Blue Threadfin"],
+    depthRanges: ["2-5m tidal flat school", "3-7m river mouth", "1-3m shallow run-out"],
+    aiTips: [
+      "King threadfin minimum 60cm in QLD/NT/WA — blue threadfin 40cm in QLD",
+      "Gold spinnerbaits (3/4oz) cast into tidal flat schools — threadfin hit aggressively",
+      "Wet season (Nov-Apr): massive threadfin schools at river mouths — best of year",
+      "Sonar shows scattered oval arches at 2-6m over sandy flat = threadfin school signature",
+      "Often mixed with barra in tidal rivers — if you catch threadfin, target barra in the same area",
+    ],
+  },
+
+  // ── MANGROVE JACK ──────────────────────────────────────────────────────────
+  {
+    title: "Species Intel — Mangrove Jack (Lutjanus argentimaculatus)",
+    description: "Mangrove Jack (Jack, Red Bream): Lutjanus argentimaculatus. Maximum size: 120cm / 20kg. Common target: 30-60cm, 1-5kg. Lifespan: 30+ years. LEGAL SIZE: QLD minimum 35cm. NT minimum 35cm. WA minimum 28cm. BAG LIMIT: QLD 7/day. NT 5/day. WA 10/day. DISTRIBUTION: Red Sea to Samoa — Northern Australia coast, SE Asia, India. HABITAT: Mangrove root systems, submerged timber, reef structures. Juvenile fish in freshwater/estuarine mangroves; adults move to offshore reef. SONAR SIGNATURE: Single arch positioned very close to structure — jack hold in snags and rarely move into open water. Moderate sonar return. TECHNIQUE: Suspending or slow-sinking minnows (80-120mm) cast into the timber — within 30cm of the root system. Jack attack from the structure; lure must be in the strike zone. BEHAVIOUR: Extremely aggressive — will smash any lure that enters territory. But EXTREMELY structure-oriented — rarely move >1m to take a lure. Strong initial run into timber. Monofilament leader 30-40lb recommended.",
+    brainInsight: "Mangrove jack: minimum 35cm in QLD/NT, 28cm WA. Suspending minnow MUST land within 30cm of mangrove roots — jack won't move to it. Single arch tight to structure on sonar. 30-40lb leader essential — they run straight into timber on strike. Lifespan 30+ years — large fish are old breeders.",
+    detectedSpecies: ["Mangrove Jack", "Lutjanus argentimaculatus", "Red Bream"],
+    depthRanges: ["2-6m mangrove fringe", "4-8m submerged timber", "10-25m adult reef (large fish)"],
+    aiTips: [
+      "Mangrove jack lure MUST land within 30cm of root system — fish won't move more than 1m to strike",
+      "Minimum 35cm (QLD/NT) — large jack >60cm are 10+ year old breeders, consider release",
+      "30-40lb fluorocarbon leader: jack run straight to timber on hook-up — lighter leaders get cut",
+      "Suspending minnows that pause motionless in the strike zone are 3x more effective than sinking",
+      "Low-light periods (dawn/dusk) and tide changes trigger the most aggressive jack strikes",
+    ],
+  },
+
+  // ── SARATOGA ───────────────────────────────────────────────────────────────
+  {
+    title: "Species Intel — Saratoga (Scleropages jardinii & S. leichardtii)",
+    description: "Northern Saratoga: Scleropages jardinii (NQ, NT, WA Kimberley). Southern Saratoga / Spotted Barramundi: Scleropages leichardtii (SE QLD). Closely related to Asian Arowana (S. formosus) — same family, ancient lineage (300 million year old family). Maximum size: Northern 90cm / 7kg. Southern 60cm / 4kg. Lifespan: 15+ years. LEGAL SIZE: QLD minimum 38cm (saratoga). NT: no minimum size. HABITAT: Freshwater lakes, rivers, lily pad systems, billabongs. ABOVE: Saratoga are the ONLY species that breathe air and are regularly seen at the surface — this is a key identification feature. Mouthbrooder — female holds eggs and juveniles in mouth. SONAR SIGNATURE: Surface/near-surface arch (0-2m). Very bright return due to large abdominal air space. TECHNIQUE: Surface lures and weedless frog presentations over lily pads. Silent approach (electric motor). Cast to lily pad edge, pause 3-5 seconds. Wait for second strike. DISTRIBUTION: Northern Saratoga extends into Papua New Guinea, Java, Borneo, Southeast Asia.",
+    brainInsight: "Northern Saratoga: NQ/NT/WA Kimberley rivers and billabongs. Minimum 38cm (QLD). Ancient lineage (same family as Asian Arowana). Surface/near-surface on sonar (0-2m), bright arch. Surface lures and weedless frogs over lily pads — pause 3-5 sec. WAIT for second strike before hook-set. Mouthbrooder.",
+    detectedSpecies: ["Saratoga", "Scleropages jardinii", "Northern Saratoga", "Spotted Barramundi"],
+    depthRanges: ["0-2m surface and lily pads", "1-3m open water", "under vegetation"],
+    aiTips: [
+      "Saratoga minimum 38cm QLD — ancient species (300 million year lineage), handle with care",
+      "Wait for the SECOND strike before setting the hook — saratoga often miss first bite",
+      "Surface lures work best: pause 3-5 seconds at lily pad edge, then gentle twitch",
+      "Sonar: very bright arch at 0-2m = saratoga (or barramundi at surface — check habitat for ID)",
+      "Asian Arowana (S. formosus) is close relative — same tactics work in SE Asian rivers",
+    ],
+  },
+
+  // ── JUNGLE PERCH ───────────────────────────────────────────────────────────
+  {
+    title: "Species Intel — Jungle Perch (Kuhlia rupestris) & Freshwater Species",
+    description: "Jungle Perch: Kuhlia rupestris (Rock Flagtail). Australia's fastest freshwater fish in terms of strike speed. Maximum size: 40cm / 1.5kg. Common target: 20-35cm. DISTRIBUTION: NQ rainforest streams (Mossman, Daintree, Tully, Atherton Tablelands, Cape York), NT freshwater streams, northern WA, Indonesia, PNG, Pacific Islands. HABITAT: Crystal-clear fast-flowing rainforest streams and rivers, above tidal influence, rocky pools and runs. SONAR: Poor sonar signature in turbulent, rocky streams — visible as small single arch in pools. Best located visually. TECHNIQUE: Ultralight gear (2-4lb), small surface lures (30-50mm poppers), soft plastics and small streamers in pools and runs. STEALTH: Approach upstream, cast downstream. Jungle perch are ultra-wary in clear water — any noise or shadow spooks them. SEASON: Best in dry season when water is clearest. No closed season. LEGAL SIZE: QLD no minimum, NT no minimum. CONSERVATION: Declining species in some systems — catch and release recommended. Also in this family: Five-spot Archerfish (Toxotes chatareus) — shoots insects from branches, edible, found in same habitat as jungle perch.",
+    brainInsight: "Jungle perch: NQ/NT rainforest streams, clear water above tidal limit. Ultralight 2-4lb gear, small 30-50mm surface lures. Ultra-wary — approach silently upstream. Rocky pools in dry season = best. Declining in some systems — practice C&R. Also present: Archerfish (Toxotes chatareus) in same habitat.",
+    detectedSpecies: ["Jungle Perch", "Kuhlia rupestris", "Rock Flagtail", "Archerfish"],
+    depthRanges: ["0.5-2m rocky pool", "fast water run (0-1m)", "pool tail-out"],
+    aiTips: [
+      "Jungle perch: approach silently from UPSTREAM and cast downstream — any disturbance spooks them",
+      "Ultralight 2-4lb gear with small 30-50mm surface poppers in rocky pools",
+      "Clear water species — no berley, no noise, minimise silhouette over the water",
+      "Dry season is best — water is clearest and fish are most concentrated in pools",
+      "Catch and release: jungle perch are declining in some NQ streams — important to release",
+    ],
+  },
+
+  // ── FINGERMARK / GOLDEN SNAPPER ────────────────────────────────────────────
+  {
+    title: "Species Intel — Fingermark / Golden Snapper (Lutjanus johnii)",
+    description: "Fingermark / Golden Snapper: Lutjanus johnii. Maximum size: 80cm / 8kg. Common target: 35-60cm, 1-4kg. Lifespan: 26+ years. LEGAL SIZE: QLD minimum 35cm. NT minimum 35cm. WA minimum 28cm. BAG LIMIT: QLD 7/day. NT 5/day. WA 10/day (combined snapper). DISTRIBUTION: Northern Australia coast, Indo-Pacific. HABITAT: Reef structures, rocky outcrops, deeper tidal channels. More pelagic than mangrove jack — found on reef at 10-30m. SONAR SIGNATURE: Moderate-bright arch at 8-25m near reef or rocky structure. Schools of smaller fish show as multiple arches. TECHNIQUE: Pilchards or whole prawns on 3/0 circle hook at 10-20m depth. Slow jigging (30-50g metals) over reef. Fingermark respond to berley — crushed pilchards in berley pot. COLOUR: Bronze/golden flanks, diagnostic black spot above lateral line on juveniles. Adult fish lose spot — sometimes confused with other Lutjanus species. COOKING: Considered the finest table fish in northern Australia — firm white flesh.",
+    brainInsight: "Fingermark/Golden Snapper: minimum 35cm QLD/NT, 28cm WA. Reef structure at 10-30m. Pilchards on 3/0 circle hook with berley most effective. Sonar: moderate-bright arch at 8-25m near rock/reef. 26+ year lifespan — release large fish. Finest table fish in northern Australia.",
+    detectedSpecies: ["Fingermark", "Golden Snapper", "Lutjanus johnii"],
+    depthRanges: ["10-20m reef structure", "20-30m deeper reef", "5-10m tidal channel"],
+    aiTips: [
+      "Fingermark minimum 35cm QLD/NT — 26 year lifespan means big fish are very old",
+      "Berley with crushed pilchards activates fingermark — drift pilchard whole on 3/0 circle hook",
+      "Sonar: moderate-bright arch at 10-25m near rocky structure = likely fingermark",
+      "Schools of sub-legal fish show as multiple arches — move to find legal fish",
+      "Outstanding table fish — but please release fish over 60cm (these are 15+ year breeders)",
+    ],
+  },
+
+  // ── SPANISH MACKEREL ───────────────────────────────────────────────────────
+  {
+    title: "Species Intel — Spanish Mackerel (Scomberomorus commerson)",
+    description: "Spanish Mackerel (Spotted Mackerel, Narrow-barred Spanish Mackerel): Scomberomorus commerson. Maximum size: 240cm / 70kg. Common target: 80-140cm, 5-20kg. Lifespan: 12+ years. LEGAL SIZE: QLD minimum 75cm. NT minimum 75cm. WA minimum 75cm. BAG LIMIT: QLD 5/day. NT 10/day. WA 5/day. DISTRIBUTION: Northern Australia, Red Sea to Philippines. HABITAT: Pelagic — open water, near bait schools, reef edges. SONAR: Fast-moving elongated arches or dense schools of elongated targets at 5-30m near bait marks. Very high sonar return. TECHNIQUE: Trolling at 6-9 knots with high-speed lures (Halco Laser Pro 160, Rapala X-Rap 16). WIRE TRACE MANDATORY — 49-strand 60lb wire. Spanish mackerel teeth sever monofilament instantly. Live bait trolling (garfish, yellowtail scad) very effective. SEASON: Broome (WA) Jul-Sep. NQ coast: all year, peak May-Sep. NT: April-October. SPEED: Key — mackerel are attracted to fast-moving prey. Trolling speed below 6 knots often results in no strikes.",
+    brainInsight: "Spanish mackerel: minimum 75cm all states, bag limit 5-10/day. 49-strand 60lb wire trace MANDATORY — teeth sever mono instantly. Troll 6-9 knots with Halco Laser Pro 160 or X-Rap 16. Pelagic — sonar shows fast elongated arches near bait schools at 5-30m. WA peak Jul-Sep, NQ all year, NT Apr-Oct.",
+    detectedSpecies: ["Spanish Mackerel", "Scomberomorus commerson", "Mackerel"],
+    depthRanges: ["5-15m near bait schools", "15-30m deep run", "surface strike zone"],
+    aiTips: [
+      "Spanish mackerel: 49-strand 60lb wire trace is NON-NEGOTIABLE — mono is cut on first contact",
+      "Minimum 75cm all states — measure before keeping, penalties are significant",
+      "Troll at 6-9 knots: below 6 knots the lure action is wrong and mackerel lose interest",
+      "Sonar: fast-moving elongated arch or dense school at 5-30m near bait = mackerel",
+      "Peak season varies by region: WA (Broome) Jul-Sep, NQ all year, NT Apr-Oct",
+    ],
+  },
+
+  // ── SONAR BRAND KNOWLEDGE ──────────────────────────────────────────────────
+  {
+    title: "Sonar Brand Intelligence — Lowrance, Garmin, Humminbird, Simrad, Deeper",
+    description: "SONAR BRAND VISUAL SIGNATURES for AI identification: LOWRANCE (HDS Live, Ghost, Elite Ti2): Warm red/orange palette. Arches appear brown-red on orange background. Strong contrast. SideScan CHIRP shows very defined arch separation. GARMIN (Echomap Plus, Ultra, Livescope): Cool blue/purple palette. Crisp arch definition. Livescope (live sonar) shows near-real-time arch movement — fish appear as small moving dots. Blue-green background with bright white arches. HUMMINBIRD (Helix, Solix, Apex): Teal-green background. MEGA Live and MEGA Imaging — ultra-high definition. Arches appear as small dense bright dots on teal. Split-screen mode common. SIMRAD (GO9, NSS, NSX): Similar to Garmin (both Navico group). Blue/grey palette, clean arch definition. DEEPER Smart Sonar (Bluetooth): Mobile-first, semicircular display, colour bands, less arch definition — suited for freshwater fish finding rather than arch analysis. RAYMARINE (Axiom, Dragonfly): Dark blue palette, good arch definition. IMPORTANT: Colour palette is the fastest sonar brand ID feature. Warm red = Lowrance; cool blue = Garmin/Simrad; teal-green = Humminbird.",
+    brainInsight: "Sonar brand ID: warm red/orange = Lowrance; cool blue/purple = Garmin/Simrad; teal-green = Humminbird. Deeper (mobile) = semicircular display. Livescope (Garmin) shows near-real-time moving fish dots. MEGA Imaging (Humminbird) = ultra-high definition teal. All brands show physostomous fish (barra, GT, jack) as bright arches with shadow void beneath.",
+    detectedSpecies: ["Sonar Reference", "Lowrance", "Garmin", "Humminbird", "Simrad"],
+    depthRanges: ["all depth ranges — brand ID based on colour palette not depth"],
+    aiTips: [
+      "Warm red/orange sonar palette = Lowrance (HDS Live, Elite Ti, Ghost series)",
+      "Cool blue/purple palette = Garmin (Echomap, Ultra, Livescope) or Simrad",
+      "Teal-green background = Humminbird (Helix, Solix, Apex, MEGA Live)",
+      "Semicircular fan-shaped display = Deeper Smart Sonar (Bluetooth, mobile)",
+      "Garmin Livescope / Humminbird MEGA Live = live sonar — fish appear as moving dots, not arches",
+    ],
+  },
+
+  // ── COBIA ──────────────────────────────────────────────────────────────────
+  {
+    title: "Species Intel — Cobia (Rachycentron canadum)",
+    description: "Cobia (Sergeant Fish, Black Kingfish, Prodigal Son): Rachycentron canadum. Maximum size: 200cm / 68kg. Common target: 80-130cm, 10-30kg. Lifespan: 12+ years. NO MINIMUM SIZE in most Australian states. BAG LIMIT: QLD 5/day. WA 5/day. NT 5/day. DISTRIBUTION: Circumtropical — Red Sea, Indo-Pacific, Atlantic, Northern Australia. HABITAT: Associated with large floating objects, sharks, rays, whale sharks, buoys, channel markers. SONAR SIGNATURE: Large single arch or paired arches. Cobia lack a physostomous swim bladder — LOWER sonar return than barra. Often seen swimming beside rays on sonar (distinctive paired arch pattern). TECHNIQUE: Pitch bait (live or dead mullet, squid, pilchard) to visible cobia — they follow sharks and rays to surface. Cast poppers and large soft plastics. BEHAVIOUR: Curious and approachable — often circles boats before striking. Commonly caught near surface following whale sharks in WA (Ningaloo). COOK: Exceptional eating — firm white flesh, sashimi grade.",
+    brainInsight: "Cobia: no minimum size most states, bag limit 5/day. Associate with sharks, rays, buoys, channel markers. Lower sonar return than barra (no physostomous bladder). Often follow rays — paired arch pattern on sonar. Pitch live bait or large soft plastic to visible fish. Excellent eating — sashimi quality.",
+    detectedSpecies: ["Cobia", "Rachycentron canadum", "Black Kingfish", "Sergeant Fish"],
+    depthRanges: ["0-10m (follows rays in shallow water)", "surface (near floating objects)", "20-40m (deep channels)"],
+    aiTips: [
+      "Cobia associate with rays, sharks and floating objects — target these to find cobia",
+      "Lower sonar return than barra (no physostomous bladder) — fainter arch",
+      "Cast live bait or large soft plastic to visible cobia — they are curious and will investigate",
+      "Ningaloo WA: cobia follow whale sharks to surface, Apr-Jul season",
+      "Outstanding eating fish — sashimi quality flesh, no bag restrictions in most states",
+    ],
+  },
+];
+
 // ─── Seeding function ─────────────────────────────────────────────────────────
 
 export async function seedBrainKnowledge(): Promise<void> {
@@ -314,8 +545,9 @@ export async function seedBrainKnowledge(): Promise<void> {
     }
   }
 
-  // Seed expert brain videos (intelligence entries)
-  for (const v of EXPERT_BRAIN_VIDEOS) {
+  // Seed expert brain videos (regional intelligence entries)
+  const allVideoEntries = [...EXPERT_BRAIN_VIDEOS, ...SPECIES_KNOWLEDGE_ENTRIES];
+  for (const v of allVideoEntries) {
     try {
       await db.insert(brainVideos).values({
         title:           v.title,
@@ -340,7 +572,7 @@ export async function seedBrainKnowledge(): Promise<void> {
   try {
     await db.insert(brainVideos).values({
       title:        SEED_MARKER_TITLE,
-      description:  `Seed v3 completed: ${reportsAdded} expert reports + ${videosAdded} brain intel entries`,
+      description:  `Seed v4 completed: ${reportsAdded} expert reports + ${videosAdded} brain intel entries (regional + species knowledge)`,
       status:       "done" as const,
       frameCount:   0,
       processedAt:  new Date(),
@@ -349,6 +581,6 @@ export async function seedBrainKnowledge(): Promise<void> {
 
   logger.info(
     { reportsAdded, videosAdded },
-    `Brain knowledge seed complete: ${reportsAdded} expert reports + ${videosAdded} regional intelligence entries added`
+    `Brain knowledge seed v4 complete: ${reportsAdded} expert reports + ${videosAdded} knowledge entries (regional + species + Nile perch + Asian grounds + sonar brands)`
   );
 }

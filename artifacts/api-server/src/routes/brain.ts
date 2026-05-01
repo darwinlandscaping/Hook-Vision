@@ -23,6 +23,7 @@ import { logger } from "../lib/logger.js";
 import { getSonarBrainStats } from "../lib/sonarBrain.js";
 import { getCrocLibraryStats } from "../lib/crocLibrary.js";
 import { getLibraryStats as getBarraStats } from "../lib/barraLibrary.js";
+import { getBirdLibraryStats } from "../lib/birdLibrary.js";
 import { getAlertStats } from "../lib/crocguardDb.js";
 import { getModel } from "../lib/models.js";
 
@@ -34,10 +35,11 @@ const router = Router();
 
 router.get("/brain/stats", async (_req, res) => {
   try {
-    const [sonar, croc, barra, reportsRow, videosRow] = await Promise.allSettled([
+    const [sonar, croc, barra, bird, reportsRow, videosRow] = await Promise.allSettled([
       getSonarBrainStats(),
       getCrocLibraryStats(),
       getBarraStats(),
+      getBirdLibraryStats(),
       db.select({ total: count() }).from(communityReports),
       db.select({ total: count() }).from(brainVideos),
     ]);
@@ -45,13 +47,14 @@ router.get("/brain/stats", async (_req, res) => {
     const sonarRefs      = sonar.status      === "fulfilled" ? sonar.value.totalRefs        : 0;
     const crocPhotos     = croc.status       === "fulfilled" ? croc.value.total              : 0;
     const barraPhotos    = barra.status      === "fulfilled" ? barra.value.total             : 0;
+    const birdPhotos     = bird.status       === "fulfilled" ? bird.value.total              : 0;
     const communityTotal = reportsRow.status === "fulfilled" ? (reportsRow.value[0]?.total ?? 0) : 0;
     const videoScans     = videosRow.status  === "fulfilled" ? (videosRow.value[0]?.total ?? 0) : 0;
 
     let crocguardAlerts = 0;
     try { crocguardAlerts = getAlertStats().total; } catch { /* CrocGuard DB optional on non-edge builds */ }
 
-    const totalDataPoints = sonarRefs + crocPhotos + barraPhotos + communityTotal + videoScans + crocguardAlerts;
+    const totalDataPoints = sonarRefs + crocPhotos + barraPhotos + birdPhotos + communityTotal + videoScans + crocguardAlerts;
 
     res.json({
       ok: true,
@@ -60,6 +63,7 @@ router.get("/brain/stats", async (_req, res) => {
         sonarScans:       sonarRefs,
         crocPhotos,
         barraPhotos,
+        birdPhotos,
         communityReports: communityTotal,
         videoScans,
         crocguardAlerts,
