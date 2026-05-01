@@ -290,7 +290,7 @@ function TotalBrainAnalyser({
           <View style={BT.masterInner}>
             <MaterialCommunityIcons name="chip" size={22} color="#7c5cfc" />
             <View style={{ flex: 1 }}>
-              <Text style={[BT.masterLabel, { color: "#7c5cfc" }]}>GPT-5  MASTER ANALYSIS</Text>
+              <Text style={[BT.masterLabel, { color: "#7c5cfc" }]}>GPT-4.1  MASTER ANALYSIS</Text>
               <Text style={BT.masterSub}>Full sonar intelligence · 20% weight</Text>
             </View>
             <Text style={[BT.masterScore, { color: gptSignal ? "#ffffff" : "#555" }]}>
@@ -389,7 +389,7 @@ function TotalBrainAnalyser({
         </View>
         <View style={BT.verdictRow}>
           <View style={[BT.verdictDot, { backgroundColor: gptSignal ? "#7c5cfc" : "#555" }]} />
-          <Text style={BT.verdictSys}>GPT-5</Text>
+          <Text style={BT.verdictSys}>GPT-4.1</Text>
           <Text style={[BT.verdictVal, { color: gptSignal ? "#7c5cfc" : "#666" }]}>
             {gptSignal
               ? `✓ ${analysis.fishCount} FISH @ ${analysis.depth}`
@@ -1492,7 +1492,7 @@ export default function HomeScreen() {
             <View style={styles.analysingHeader}>
               <Animated.View style={[styles.analysingDot, dotStyle]} />
               <Text style={styles.analysingTitle}>ANALYSING</Text>
-              <Text style={[styles.analysingEngine, { color: colors.mutedForeground }]}>GPT-5 Vision</Text>
+              <Text style={[styles.analysingEngine, { color: colors.mutedForeground }]}>GPT-4.1 Vision</Text>
             </View>
 
             {/* Stage steps */}
@@ -1512,7 +1512,7 @@ export default function HomeScreen() {
               <View style={styles.analysingStageRow}>
                 <Animated.View style={[styles.stageDot, dotStyle, { backgroundColor: streaming ? "#00d4aa" : "#ff8800" }]} />
                 <Text style={[styles.stageLabel, { color: streaming ? "#00d4aa" : "#ff8800" }]}>
-                  {streaming ? `AI reading sonar… ${Math.min(99, Math.round((streamChars / 680) * 100))}%` : "GPT-5 reading sonar…"}
+                  {streaming ? `AI reading sonar… ${Math.min(99, Math.round((streamChars / 680) * 100))}%` : "GPT-4.1 reading sonar…"}
                 </Text>
               </View>
               <View style={[styles.analysingStageRow, { opacity: streaming ? 0.4 : 0.25 }]}>
@@ -2018,7 +2018,7 @@ export default function HomeScreen() {
                   <Text style={styles.heroAiTagText}>AI</Text>
                 </View>
               </View>
-              <Text style={[styles.heroSubtitle, { color: "#00d4aa" }]}>GPT-5 Vision Analysis</Text>
+              <Text style={[styles.heroSubtitle, { color: "#00d4aa" }]}>GPT-4.1 Vision Analysis</Text>
             </View>
           </View>
 
