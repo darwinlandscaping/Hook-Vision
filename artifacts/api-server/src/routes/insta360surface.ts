@@ -81,9 +81,8 @@ router.post("/insta360/surface-detect", async (req, res) => {
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      max_tokens: 350,
-      temperature: 0.15,
+      model: "gpt-5-mini",
+      max_completion_tokens: 350,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM },

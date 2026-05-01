@@ -110,9 +110,8 @@ router.post("/insta360/croc-vision", async (req, res) => {
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      max_tokens: 400,
-      temperature: 0.1,
+      model: "gpt-5-mini",
+      max_completion_tokens: 400,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM },

@@ -387,9 +387,8 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     // We await flash first, emit it so the client sees brand/mode immediately,
     // then drain the already-in-flight main stream.
     const flashPromise = openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-5-mini",
       max_completion_tokens: 120,
-      temperature: 0,
       stream: false,
       messages: [
         { role: "system", content: FLASH_PROMPT },
@@ -465,10 +464,8 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     content.push({ type: "text", text: analysisPrompt });
 
     const streamPromise = openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-5-mini",
       max_completion_tokens: 500,
-      temperature: 0,
-      seed: 1,
       stream: true,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },

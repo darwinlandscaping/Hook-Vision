@@ -91,10 +91,8 @@ router.post("/fish-id", async (req, res) => {
   try {
     const mimeType = detectMimeType(imageBase64);
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-5-mini",
       max_completion_tokens: 400,
-      temperature: 0,
-      seed: 42,
       stream: false,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },

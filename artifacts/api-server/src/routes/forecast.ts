@@ -309,7 +309,7 @@ Based on these exact conditions, give me the 3 best ${label} fishing spots right
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-5.4",
       max_completion_tokens: 1000,
       messages: [
         { role: "system", content: getPrompt(region) },

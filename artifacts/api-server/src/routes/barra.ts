@@ -174,7 +174,7 @@ Based on these exact conditions and the depth zone database, tell me exactly whe
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-5.4",
       max_completion_tokens: 1200,
       messages: [
         { role: "system", content: getBarraPrompt(region) },

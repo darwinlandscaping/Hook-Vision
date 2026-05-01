@@ -10,7 +10,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
-const MODEL = "gpt-4.1-nano";
+const MODEL = "gpt-5-nano";
 
 // Ultra-compact prompt — every word costs time
 const SYSTEM = `WA fishing AI. Respond ONLY with this JSON (no fences):
@@ -57,8 +57,7 @@ router.post("/insta360/brain/stream", async (req, res) => {
     const content = buildContent(imageBase64, query, sonarContext);
     const stream  = await openai.chat.completions.create({
       model:       MODEL,
-      max_tokens:  200,
-      temperature: 0,
+      max_completion_tokens:  200,
       stream:      true,
       messages: [
         { role: "system", content: SYSTEM },
@@ -116,8 +115,7 @@ router.post("/insta360/brain", async (req, res) => {
     const content    = buildContent(imageBase64, query, sonarContext);
     const completion = await openai.chat.completions.create({
       model:       MODEL,
-      max_tokens:  200,
-      temperature: 0,
+      max_completion_tokens:  200,
       messages: [
         { role: "system", content: SYSTEM },
         { role: "user",   content },

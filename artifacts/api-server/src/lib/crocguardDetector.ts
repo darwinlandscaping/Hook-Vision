@@ -194,8 +194,8 @@ async function enrichWithVision(camId: number, buf: Buffer) {
       image_url: { url: `data:image/jpeg;base64,${r.thumbBase64}`, detail: "low" as const },
     }));
     const resp = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_tokens: 60,
+      model: "gpt-5-mini",
+      max_completion_tokens: 60,
       messages: [{
         role: "user",
         content: [

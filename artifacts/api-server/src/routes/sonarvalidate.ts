@@ -54,9 +54,8 @@ router.post("/sonar-validate", async (req, res) => {
   try {
     const mime = detectMime(imageBase64);
     const completion = await openai.chat.completions.create({
-      model:                 "gpt-4.1-mini",
+      model:                 "gpt-5-mini",
       max_completion_tokens: 60,
-      temperature:           0,
       messages: [
         { role: "system", content: SYSTEM },
         {

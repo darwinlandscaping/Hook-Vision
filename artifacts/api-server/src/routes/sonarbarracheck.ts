@@ -241,7 +241,7 @@ router.post("/sonar-barra-check", async (req, res) => {
     ];
 
     const callOpts = {
-      model:                "gpt-4.1-mini" as const,
+      model:                "gpt-5-mini" as const,
       max_completion_tokens: 200,
       stream:               false as const,
       messages: [
@@ -250,10 +250,10 @@ router.post("/sonar-barra-check", async (req, res) => {
       ],
     };
 
-    // ── Dual-scan consensus: 2 parallel calls with different seeds ────────
+    // ── Dual-scan consensus: 2 independent parallel calls ────────────────
     const [res1, res2] = await Promise.all([
-      openai.chat.completions.create({ ...callOpts, temperature: 0,   seed: 1 }),
-      openai.chat.completions.create({ ...callOpts, temperature: 0.3, seed: 2 }),
+      openai.chat.completions.create(callOpts),
+      openai.chat.completions.create(callOpts),
     ]);
 
     function parseResult(r: typeof res1): Record<string, unknown> {

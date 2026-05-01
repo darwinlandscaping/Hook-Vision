@@ -379,7 +379,7 @@ ${weather ? `- Broome weather: ${weather.tempC}°C, ${weather.conditions}, wind 
 Write 2–3 punchy sentences covering: what conditions are doing to fish behaviour, where to focus (structure, depth, tide phase), and one specific lure/technique recommendation. Use WA/Kimberley fishing slang. Sound like a knowledgeable local guide, not a textbook. Max 60 words.`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       max_completion_tokens: 120,
       messages: [{ role: "user", content: prompt }],
     });

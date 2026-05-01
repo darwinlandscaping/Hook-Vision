@@ -767,9 +767,8 @@ router.post("/analyze", async (req, res) => {
     // gpt-4.1-mini + raw image only → first result in ~0.8–1.5 s, well before
     // the heavy preprocessing + reference-image dual-scan completes (~3–5 s).
     const flashPromise = openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-5-mini",
       max_completion_tokens: 90,
-      temperature: 0,
       stream: false,
       messages: [
         {
@@ -920,10 +919,8 @@ router.post("/analyze", async (req, res) => {
     let raw = '';
     try {
       const stream = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
+        model: "gpt-5-mini",
         max_completion_tokens: 450,
-        temperature: 0,
-        seed: 1,
         stream: true,
         messages: sharedMessages,
       });
