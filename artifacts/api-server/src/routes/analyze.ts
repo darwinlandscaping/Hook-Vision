@@ -52,29 +52,32 @@ router.post("/analyze", async (req, res) => {
 
   try {
     const mime = detectMimeType(imageBase64);
-    const imgMsg = { type: "image_url" as const, image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low" as const } };
+    // Flash uses low detail (fast, cheap — just a quick read)
+    const imgLow  = { type: "image_url" as const, image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low"  as const } };
+    // Turbo uses high detail so small fish arches are visible in the tile grid
+    const imgHigh = { type: "image_url" as const, image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "high" as const } };
 
     // ── FIRE BOTH SIMULTANEOUSLY — flash and turbo start at time 0 ────────
-    // Flash: nano, 60 tokens, non-streaming.  Arrives ~400-600ms.
+    // Flash: nano + low detail, 60 tokens, non-streaming.  Arrives ~400-600ms.
     const flashPromise = openai.chat.completions.create({
       model: getModel("fast"),
       max_completion_tokens: 60,
       stream: false,
       messages: [
         { role: "system", content: 'Sonar detector. JSON only: {"species":"string","fishCount":int,"confidence":float 0-1,"quickRead":"≤10 words"}' },
-        { role: "user", content: [imgMsg, { type: "text", text: "Quick read." }] },
+        { role: "user", content: [imgLow, { type: "text", text: "Quick read." }] },
       ],
     });
 
-    // Turbo: nano, streaming, starts opening connection immediately.
-    // Promise resolves when the stream connection is established (before first token).
+    // Turbo: mini + high detail — drives the master confidence score.
+    // High detail lets the model see fish arch shapes, brightness tiers, and shadow voids clearly.
     const turboPromise = openai.chat.completions.create({
-      model: getModel("fast"),
-      max_completion_tokens: 520,
+      model: getModel("mid"),
+      max_completion_tokens: 600,
       stream: true,
       messages: [
         { role: "system", content: SYS },
-        { role: "user", content: [imgMsg, { type: "text", text: OUT }] },
+        { role: "user", content: [imgHigh, { type: "text", text: OUT }] },
       ],
     });
 
