@@ -4,39 +4,39 @@ import { getModel } from "../lib/models.js";
 
 const router = Router();
 
-// ─── SYSTEM PROMPT ────────────────────────────────────────────────────────────
+// ─── SYSTEM PROMPT (~200 tokens) ─────────────────────────────────────────────
 const SYS = `Expert sonar fish-ID AI. Rules in strict order:
 
-STEP 0 — DETECT SONAR TYPE FIRST:
-LIVE SONAR: Humminbird MEGA Live (orange UI), Garmin LiveScope (dark green bg), Lowrance ActiveTarget (dark navy), Simrad ActiveTarget. KEY TELLS: fish appear as BODY SHAPES/SILHOUETTES with ACOUSTIC SHADOWS — NOT arches. Display is a real-time spatial map, NOT scrolling time. If you see body shapes with shadows → set liveBrand, skip arch rules.
-TRADITIONAL 2D: Scrolling time display, fish appear as U-shaped ARCHES. → apply arch rules below, set liveBrand:"not-live-sonar".
+TOP-VIEW: No time axis, fish as ovals/dots, shadow to side → top-view mode. Large oval+wings+side-shadow=Barra. Skip arch steps.
 
-LIVE SONAR RULES (only when live sonar detected):
-• Fish = bright oval/blob bodies with acoustic shadow extending below/behind
-• Long distinct shadow = large swim bladder = Barra/Jack/Fingermark (confidence 85%+)
-• Short faint shadow = GT/Mackerel/Queenfish
-• No shadow = very small fish or near-surface
-• Body ON structure = Barra/Jack ambush position
-• School of blobs = Threadfin/baitfish
-• TargetBoost active (Humminbird) = crisp bright white ovals with very clean shadow lines
-• Set targetShape (describe body shape seen), shadowAnalysis (describe shadow), structureProximity (relationship to structure echoes), paletteDetected (colour scheme seen)
+ARCH BRIGHTNESS:
+• Tier1 red/orange/white = Barra, Fingermark, Jack, Threadfin, Jewfish (big swim bladder)
+• Tier2 yellow/green = Coral Trout, Queenfish
+• Tier3 faint = GT, Mackerel, Flathead
+Faint arch ≠ barra. Bright arch ≠ GT/mackerel.
 
-TRADITIONAL 2D ARCH RULES:
-TOP-VIEW exception: No time axis, fish as ovals/dots → top-view mode. Large oval+wings=Barra. Skip arch steps.
-ARCH BRIGHTNESS: Tier1 red/orange/white=Barra/Fingermark/Jack/Threadfin/Jewfish; Tier2 yellow/green=Coral Trout/Queenfish; Tier3 faint=GT/Mackerel/Flathead. Faint arch≠barra.
 SHADOW VOID: Dark void directly BELOW arch = large bladder = Barra/big predator. Confidence 85%+.
-ARCH POSITION: ON hard structure=Barra/Jack; INSIDE structure=Jack; 1-4m above rubble school=Fingermark; Mid-column soft bottom school=Threadfin; Deep tidal channel lone=Jewfish.
-LONE ARCH: 1-2 arches → RAISE confidence. Barra are solitary. Lone+shadow=85%+.
 
-CROC: crocAlert=true ONLY if filled horizontal torpedo blob 0-3m, max brightness, wider than any fish.
+ARCH POSITION:
+• ON hard structure = Barra or Jack
+• INSIDE structure echo = Jack
+• 1-4m above rubble, school = Fingermark
+• Mid-column soft bottom school = Threadfin
+• Deep tidal channel lone = Jewfish
+
+LONE ARCH: 1-2 arches = RAISE confidence. Barra are solitary. Lone+hard bottom=70%, lone+shadow=85%+.
+
+CROC: crocAlert=true ONLY if filled horizontal torpedo blob 0-3m, max brightness, wider than any fish. Never confuse bright barra arch for croc.
+
 DEPTH: 0-5m=Barra/Jack/GT/Threadfin; 5-12m=Barra/Fingermark/Jack; 12-25m=Fingermark/Jewfish; 25m+=Fingermark/Red Emperor.
+
 MANDATORY: species always required. If no fish: species="No fish detected",fishCount=0,confidence=0.`;
 
-// ─── OUTPUT SPEC ──────────────────────────────────────────────────────────────
+// ─── OUTPUT SPEC (~160 tokens — only fields the app reads) ────────────────
 const OUT = `Return ONLY a single valid JSON object, no markdown, nothing outside braces.
 
 Fields (all required):
-species(string) confidence(0-100 int) fishCount(int) depth(string e.g."6.5m") bottomType(string) sonarBrand(string) sonarModel(string) sonarMode(one of:traditional-2d|live-scope|split-screen-both|live-spatial|mega-live|mega-360|perspective-top-view|side-imaging) bladderShape(string) fishMovement(string) lure(specific name+size) lureType(one of:surface_popper|hardbody|bibless_minnow|soft_plastic|stickbait|metal_slug|slow_jig|frog|live_bait) technique(string) rig(string) suggestion(2 sentences: where to cast + lure action) crocAlert(bool) crocWarning(string|null) archType(string) archReasoning(what you saw + why this ID) liveBrand(one of:humminbird-mega-live-2|garmin-livescope-plus|lowrance-activetarget-2|simrad-activetarget|not-live-sonar) liveMode(string|null — forward/down/perspective/scout/landscape) targetShape(string|null) shadowAnalysis(string|null) structureProximity(string|null) targetBoostActive(bool) paletteDetected(string|null)`;
+species(string) confidence(0-100 int) fishCount(int) depth(string e.g."6.5m") bottomType(string) sonarBrand(string) sonarModel(string) sonarMode(one of:traditional-2d|live-scope|split-screen-both|live-spatial|mega-live|mega-360|perspective-top-view|side-imaging) bladderShape(string) fishMovement(string) lure(specific name+size) lureType(one of:surface_popper|hardbody|bibless_minnow|soft_plastic|stickbait|metal_slug|slow_jig|frog|live_bait) technique(string) rig(string) suggestion(2 sentences: where to cast + lure action) crocAlert(bool) crocWarning(string|null) archType(string) archReasoning(what you saw + why this ID)`;
 
 function detectMimeType(b64: string): "image/jpeg" | "image/png" | "image/webp" {
   const p = b64.slice(0, 8);
@@ -70,7 +70,7 @@ router.post("/analyze", async (req, res) => {
     // Promise resolves when the stream connection is established (before first token).
     const turboPromise = openai.chat.completions.create({
       model: getModel("fast"),
-      max_completion_tokens: 700,
+      max_completion_tokens: 520,
       stream: true,
       messages: [
         { role: "system", content: SYS },
