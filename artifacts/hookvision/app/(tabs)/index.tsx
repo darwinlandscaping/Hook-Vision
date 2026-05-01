@@ -118,15 +118,22 @@ function TotalBrainAnalyser({
   const cvSignal = cvScore != null && cvScore >= 65;
 
   // ── System 2 · ARCH DETECT (15%) ──────────────────────────────────────
+  // Primary driver: archCount from the fast sonar check.
+  // Fallback: analysis.fishCount if the fast check returned 0 arches but
+  // the full GPT-4.1 call found fish (older sonars often confuse the fast model).
+  // Scale: 1 arch → 72%, 2 → 83%, 3 → 90%, 4-5 → 94%, 6+ → 97%.
   const archScore: number | null = sonarBarra
     ? (() => {
-        if (!sonarBarra.isBarraArch) {
-          return Math.min(35, (sonarBarra.archFeatures?.length ?? 0) * 12);
+        const sonarN  = sonarBarra.archCount ?? 0;
+        const fishN   = analysis.fishCount ?? 0;
+        const n       = sonarN > 0 ? sonarN : fishN; // prefer sonar count, fall back to fish count
+        if (n === 0) {
+          return sonarBarra.isBarraArch ? 38 : 0;
         }
-        const base       = Math.round(sonarBarra.confidence * 0.70);
-        const countBonus = Math.min(20, (sonarBarra.archCount ?? 0) * 6);
-        const featBonus  = Math.min(10, (sonarBarra.archFeatures?.length ?? 0) * 3);
-        return Math.min(100, base + countBonus + featBonus);
+        const base       = n >= 6 ? 97 : n >= 4 ? 94 : n === 3 ? 90 : n === 2 ? 83 : 72;
+        const featBonus  = Math.min(6, (sonarBarra.archFeatures?.length ?? 0) * 2);
+        const barraBonus = sonarBarra.isBarraArch ? 3 : 0;
+        return Math.min(100, base + featBonus + barraBonus);
       })()
     : null;
   const archSignal = archScore != null && archScore >= 60;
