@@ -586,6 +586,73 @@ export function AnalysisCard({ analysis, imageUri, autoSpeak = true, cvRegions }
           </View>
         </>
       )}
+
+      {/* ── DETECTION CONFIDENCE VERDICT ─────────────────────────────────── */}
+      {!analysis.crocAlert && analysis.confidence > 0 && (
+        <>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <View style={[styles.verdictPanel, {
+            backgroundColor: confidenceColor + "12",
+            borderColor: confidenceColor + "55",
+          }]}>
+            {/* Header row */}
+            <View style={styles.verdictHeaderRow}>
+              <MaterialCommunityIcons name="radar" size={13} color={confidenceColor} />
+              <Text style={[styles.verdictTitle, { color: confidenceColor }]}>DETECTION CONFIDENCE</Text>
+            </View>
+
+            {/* Score row — big % + label + bar */}
+            <View style={styles.verdictScoreRow}>
+              <Text style={[styles.verdictPct, { color: confidenceColor }]}>
+                {analysis.confidence}%
+              </Text>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={[styles.verdictArchLabel, { color: colors.mutedForeground }]}>
+                  ARCH DETECTION
+                </Text>
+                <Text style={[styles.verdictVerdict, { color: confidenceColor }]}>
+                  {analysis.confidence >= 85
+                    ? "HIGH CONFIDENCE"
+                    : analysis.confidence >= 70
+                    ? "MODERATE CONFIDENCE"
+                    : analysis.confidence >= 50
+                    ? "POSSIBLE — RE-SCAN"
+                    : "LOW — RE-POSITION"}
+                </Text>
+                {/* Horizontal progress bar */}
+                <View style={[styles.verdictBarTrack, { backgroundColor: colors.border }]}>
+                  <View style={[styles.verdictBarFill, {
+                    width: `${analysis.confidence}%` as any,
+                    backgroundColor: confidenceColor,
+                  }]} />
+                </View>
+              </View>
+            </View>
+
+            {/* Arch type chip */}
+            {analysis.archType && analysis.archType !== "none" && analysis.archType !== "" && (
+              <View style={[styles.verdictChip, {
+                borderColor: confidenceColor + "44",
+                backgroundColor: confidenceColor + "0e",
+              }]}>
+                <MaterialCommunityIcons name="sine-wave" size={11} color={confidenceColor} />
+                <Text style={[styles.verdictChipText, { color: confidenceColor }]}>
+                  {analysis.archType.replace(/_/g, " ").toUpperCase()}
+                </Text>
+              </View>
+            )}
+
+            {/* archReasoning — the AI's evidence trail */}
+            {analysis.archReasoning && (
+              <Text style={[styles.verdictReasoning, { color: colors.mutedForeground }]}>
+                {analysis.archReasoning.length > 200
+                  ? analysis.archReasoning.slice(0, 200) + "…"
+                  : analysis.archReasoning}
+              </Text>
+            )}
+          </View>
+        </>
+      )}
     </Animated.View>
   );
 }
@@ -874,6 +941,78 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: "#ff8888",
     lineHeight: 17,
+    marginTop: 2,
+  },
+
+  // ── Detection Confidence Verdict ──────────────────────────────────────────
+  verdictPanel: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    gap: 10,
+  },
+  verdictHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  verdictTitle: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  verdictScoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  verdictPct: {
+    fontSize: 44,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 48,
+    letterSpacing: -1,
+  },
+  verdictArchLabel: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  verdictVerdict: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
+  },
+  verdictBarTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: "hidden",
+    marginTop: 2,
+  },
+  verdictBarFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+  verdictChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  verdictChipText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.8,
+  },
+  verdictReasoning: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 16,
     marginTop: 2,
   },
 });
