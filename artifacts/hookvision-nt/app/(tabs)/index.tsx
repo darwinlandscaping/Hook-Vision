@@ -119,7 +119,15 @@ function TotalBrainAnalyser({
 
   // ── System 2 · ARCH DETECT (15%) ──────────────────────────────────────
   const archScore: number | null = sonarBarra
-    ? Math.min(100, (sonarBarra.archFeatures?.length ?? 0) * 30)
+    ? (() => {
+        if (!sonarBarra.isBarraArch) {
+          return Math.min(35, (sonarBarra.archFeatures?.length ?? 0) * 12);
+        }
+        const base       = Math.round(sonarBarra.confidence * 0.70);
+        const countBonus = Math.min(20, (sonarBarra.archCount ?? 0) * 6);
+        const featBonus  = Math.min(10, (sonarBarra.archFeatures?.length ?? 0) * 3);
+        return Math.min(100, base + countBonus + featBonus);
+      })()
     : null;
   const archSignal = archScore != null && archScore >= 60;
 
@@ -135,12 +143,14 @@ function TotalBrainAnalyser({
 
   // ── System 5 · HABITAT (10%) ──────────────────────────────────────────
   const habitatScore: number | null = sonarBarra
-    ? sonarBarra.bottomType?.includes("rock") ? 90
+    ? sonarBarra.bottomType === "hard"   ? 88
+      : sonarBarra.bottomType === "soft" ? 35
+      : sonarBarra.bottomType?.includes("rock") ? 90
       : sonarBarra.bottomType?.includes("reef") ? 85
       : sonarBarra.bottomType?.includes("weed") ? 75
       : sonarBarra.bottomType?.includes("sand") ? 55
-      : sonarBarra.bottomType?.includes("mud") ? 50
-      : 40
+      : sonarBarra.bottomType?.includes("mud") ? 35
+      : 45
     : null;
   const habitatSignal = habitatScore != null && habitatScore >= 70;
 
