@@ -263,6 +263,155 @@ function BoatResultCard({
   );
 }
 
+// ─── Live Tracking HUD (overlaid on top of camera feed) ──────────────────────
+function LiveTrackingHUD({
+  result, scanning, countdown, scanCount,
+  charInfo, speaking, autoSpeak,
+  onToggleVoice, onStop, onReplay, onClear,
+  topPad, botPad, autoInterval,
+}: {
+  result: FishAnalysis | null;
+  scanning: boolean;
+  countdown: number;
+  scanCount: number;
+  charInfo: { emoji: string; color: string };
+  speaking: boolean;
+  autoSpeak: boolean;
+  onToggleVoice: () => void;
+  onStop: () => void;
+  onReplay: () => void;
+  onClear: () => void;
+  topPad: number;
+  botPad: number;
+  autoInterval: number;
+}) {
+  const hasfish = result !== null && result.fishCount > 0;
+  const accent  = result === null ? "#aaff00" : hasfish ? "#aaff00" : "#ff4500";
+  const conf    = result?.confidence ?? 0;
+  const confColor = conf > 80 ? "#00ff88" : conf > 60 ? "#ffd700" : "#ff6622";
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+
+      {/* ── Top HUD bar ──────────────────────────────────────────────────── */}
+      <View style={{ position: "absolute", top: topPad + 8, left: 12, right: 12, flexDirection: "row", alignItems: "center", gap: 8 }} pointerEvents="box-none">
+        {/* Boat mode label + countdown */}
+        <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#00000088", borderRadius: 12, borderWidth: 1, borderColor: "#aaff0044", paddingHorizontal: 12, paddingVertical: 8 }}>
+          {scanning ? <SonarPulse size={9} active /> : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#aaff00" }} />}
+          <MaterialCommunityIcons name="anchor" size={13} color="#aaff00" />
+          <Text style={{ color: "#aaff00", fontWeight: "800", fontSize: 12, letterSpacing: 1, flex: 1 }}>
+            {scanning ? "SCANNING…" : `BOAT MODE · ${countdown}s`}
+          </Text>
+          {scanCount > 0 && (
+            <Text style={{ color: "#aaff0077", fontWeight: "700", fontSize: 11 }}>{scanCount}</Text>
+          )}
+        </View>
+
+        {/* Voice toggle */}
+        <TouchableOpacity
+          onPress={onToggleVoice}
+          style={{ backgroundColor: autoSpeak ? "#aaff0022" : "#00000077", borderRadius: 10, borderWidth: 1, borderColor: autoSpeak ? "#aaff0066" : "#ffffff33", paddingHorizontal: 10, paddingVertical: 8 }}
+        >
+          <Feather name={autoSpeak ? "volume-2" : "volume-x"} size={16} color={autoSpeak ? "#aaff00" : "#ffffff66"} />
+        </TouchableOpacity>
+
+        {/* Stop button */}
+        <TouchableOpacity
+          onPress={onStop}
+          style={{ backgroundColor: "#ff440022", borderRadius: 10, borderWidth: 1, borderColor: "#ff440066", paddingHorizontal: 10, paddingVertical: 8 }}
+        >
+          <Feather name="square" size={16} color="#ff4400" />
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Centre pulse while scanning ──────────────────────────────────── */}
+      {scanning && (
+        <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]} pointerEvents="none">
+          <View style={{ backgroundColor: "#00000099", borderRadius: 70, padding: 26, borderWidth: 1.5, borderColor: "#aaff0044" }}>
+            <SonarPulse size={72} active />
+          </View>
+          <Text style={{ color: "#ffd700", fontWeight: "800", fontSize: 15, letterSpacing: 3, marginTop: 18, textShadowColor: "#000", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}>
+            READING SONAR…
+          </Text>
+        </View>
+      )}
+
+      {/* ── Centre idle state (no result yet) ───────────────────────────── */}
+      {!scanning && result === null && (
+        <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]} pointerEvents="none">
+          <View style={{ backgroundColor: "#00000088", borderRadius: 18, borderWidth: 1, borderColor: "#aaff0033", paddingHorizontal: 30, paddingVertical: 24, alignItems: "center", gap: 12 }}>
+            <MaterialCommunityIcons name="radar" size={52} color="#aaff0033" />
+            <Text style={{ color: "#aaff00", fontWeight: "800", fontSize: 18, letterSpacing: 1, textAlign: "center" }}>AIM AT SONAR</Text>
+            <Text style={{ color: "#aaff0077", fontWeight: "600", fontSize: 12, textAlign: "center" }}>
+              {`Auto-scan every ${autoInterval}s`}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* ── Bottom result panel ──────────────────────────────────────────── */}
+      {!scanning && result !== null && (
+        <View style={{ position: "absolute", bottom: botPad + 8, left: 12, right: 12 }} pointerEvents="box-none">
+          <View style={{ backgroundColor: "#00000099", borderRadius: 20, borderWidth: 1.5, borderColor: accent + "55", paddingHorizontal: 18, paddingVertical: 16, gap: 10 }}>
+
+            {/* Species row */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <MaterialCommunityIcons name="fish" size={22} color={accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: accent, fontWeight: "900", fontSize: 20, lineHeight: 22 }} numberOfLines={1}>
+                  {result.fishCount === 0 ? "NO FISH" : result.species.toUpperCase()}
+                </Text>
+                <Text style={{ color: accent + "cc", fontWeight: "700", fontSize: 12, letterSpacing: 1 }}>
+                  {result.fishCount === 0 ? "Nothing on sonar" : `${result.fishCount} fish detected`}
+                </Text>
+              </View>
+              {/* Confidence badge */}
+              <View style={{ backgroundColor: confColor + "22", borderRadius: 10, borderWidth: 1, borderColor: confColor + "66", paddingHorizontal: 10, paddingVertical: 6, alignItems: "center" }}>
+                <Text style={{ color: confColor, fontWeight: "900", fontSize: 15 }}>{conf}%</Text>
+                <Text style={{ color: confColor + "99", fontWeight: "700", fontSize: 9, letterSpacing: 1 }}>CONF</Text>
+              </View>
+              {/* Clear */}
+              <TouchableOpacity onPress={onClear} style={{ padding: 6 }}>
+                <Feather name="x" size={16} color="#ffffff55" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Depth + distance badges */}
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#00a8ff22", borderRadius: 10, borderWidth: 1, borderColor: "#00a8ff44", paddingHorizontal: 12, paddingVertical: 7 }}>
+                <Feather name="anchor" size={12} color="#00a8ff" />
+                <Text style={{ color: "#00a8ff", fontWeight: "700", fontSize: 13 }}>{result.depth}</Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#ffd70022", borderRadius: 10, borderWidth: 1, borderColor: "#ffd70044", paddingHorizontal: 12, paddingVertical: 7 }}>
+                <MaterialCommunityIcons name="radar" size={12} color="#ffd700" />
+                <Text style={{ color: "#ffd700", fontWeight: "700", fontSize: 13 }}>{result.distance}</Text>
+              </View>
+            </View>
+
+            {/* Lure + voice row */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {result.lure ? (
+                <Text style={{ flex: 1, color: "#ffffffbb", fontSize: 12, fontWeight: "600" }} numberOfLines={1}>
+                  🎣 {result.lure}
+                </Text>
+              ) : <View style={{ flex: 1 }} />}
+              <TouchableOpacity
+                onPress={onReplay}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: charInfo.color + "22", borderRadius: 10, borderWidth: 1, borderColor: charInfo.color + "55", paddingHorizontal: 14, paddingVertical: 8 }}
+              >
+                <Feather name={speaking ? "volume-x" : "volume-2"} size={14} color={charInfo.color} />
+                <Text style={{ color: charInfo.color, fontWeight: "700", fontSize: 12 }}>
+                  {speaking ? "Stop" : `${charInfo.emoji} Read`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─── Boat Mode Dashboard ───────────────────────────────────────────────────────
 function BoatModeDashboard({
   result, scanning, countdown, scanCount,
@@ -566,9 +715,61 @@ export default function LiveScreen() {
         setPolarising(false);
       }
 
-      // Push image to Scan tab — analysis + streaming results all happen there
-      LiveScanStore.push(base64, uri, boatMode ? "boat" : "live");
-      router.navigate("/");   // go to Scan tab (no-op if already there)
+      if (boatMode) {
+        // ── Boat mode: analyze in-place, stay on camera, show live HUD ──────
+        const domain  = process.env.EXPO_PUBLIC_DOMAIN;
+        const apiBase = domain ? `https://${domain}` : "";
+        const resp = await fetch(`${apiBase}/api/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: base64 }),
+        });
+        if (resp.ok) {
+          const reader = resp.body?.getReader();
+          if (reader) {
+            const dec = new TextDecoder();
+            let txt = "";
+            for (;;) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              txt += dec.decode(value, { stream: true });
+            }
+            const m = txt.match(/\{[\s\S]*\}/);
+            if (m) {
+              try {
+                const d = JSON.parse(m[0]);
+                const parsed: FishAnalysis = {
+                  fishCount:  d.fishCount  ?? 0,
+                  depth:      d.depth      ?? "unknown",
+                  distance:   d.distance   ?? "unknown",
+                  species:    d.species    ?? "Unknown",
+                  confidence: d.confidence ?? 0,
+                  suggestion: d.suggestion ?? "",
+                  lure:       d.lure ?? d.recommendedLure ?? "",
+                  lureType:   d.lureType   ?? "",
+                  technique:  d.technique  ?? "",
+                };
+                setResult(parsed);
+                setScanCount((c) => c + 1);
+                if (autoSpeak) speakResult(parsed);
+                addEntry({
+                  id: `${Date.now()}`,
+                  timestamp: Date.now(),
+                  imageUri: uri,
+                  species: parsed.species,
+                  fishCount: parsed.fishCount,
+                  depth: parsed.depth,
+                  suggestion: parsed.suggestion,
+                });
+              } catch { /* ignore JSON parse errors */ }
+            }
+          }
+        }
+      } else {
+        // ── Regular mode: push to Scan tab for full streaming analysis ──────
+        LiveScanStore.push(base64, uri, "live");
+        router.navigate("/");   // go to Scan tab (no-op if already there)
+      }
 
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
@@ -580,7 +781,7 @@ export default function LiveScreen() {
       setPolarising(false);
       setScanning(false);
     }
-  }, [scanning, boatMode, polarOn, cam2Connected, cam2, insta360]);
+  }, [scanning, boatMode, polarOn, cam2Connected, cam2, insta360, autoSpeak, speakResult, addEntry]);
 
   // ── Pick from gallery & analyse ──────────────────────────────────────────
   const pickFromGallery = useCallback(async () => {
@@ -772,23 +973,7 @@ export default function LiveScreen() {
             </View>
           )}
 
-          {boatMode && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <View style={[styles.chip, { backgroundColor: "#aaff0022", borderColor: "#aaff0066" }]}>
-                <MaterialCommunityIcons name="anchor" size={13} color="#aaff00" />
-                <Text style={[styles.chipText, { color: "#aaff00" }]}>
-                  🚤 BOAT MODE — next scan in {countdown}s
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.chip, { backgroundColor: "#ff440022", borderColor: "#ff440066" }]}
-                onPress={() => setBoatMode(false)}
-              >
-                <Feather name="square" size={13} color="#ff4400" />
-                <Text style={[styles.chipText, { color: "#ff4400" }]}>STOP</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {/* Boat mode top bar handled by LiveTrackingHUD overlay — no chip here */}
 
           {speaking && (
             <TouchableOpacity
@@ -1672,17 +1857,6 @@ export default function LiveScreen() {
           )}
         </View>
 
-        {/* Boat mode big result card */}
-        {boatMode && result && !scanning && (
-          <BoatResultCard
-            result={result}
-            charInfo={charInfo}
-            speaking={speaking}
-            onReplay={() => { if (speaking) stopSpeaking(); else speakResult(result); }}
-            onClear={() => { setResult(null); stopSpeaking(); }}
-          />
-        )}
-
         {/* Standard result overlay (non-boat mode) */}
         {!boatMode && result && !scanning && (
           <View style={[styles.resultOverlay, { backgroundColor: `${colors.background}ee`, borderColor: colors.border }]}>
@@ -1727,8 +1901,8 @@ export default function LiveScreen() {
           </View>
         )}
 
-        {/* Bottom bar */}
-        <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
+        {/* Bottom bar — hidden in boat mode (LiveTrackingHUD handles all controls) */}
+        {!boatMode && <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
           {/* Scan row: [GALLERY] [● SCAN ●] [spacer] */}
           <View style={styles.scanRow}>
             {!boatMode ? (
@@ -1805,13 +1979,9 @@ export default function LiveScreen() {
           )}
 
           <Text style={[styles.hint, { color: cam2Connected ? "#00a8ff" : "#ffffffcc" }]}>
-            {boatMode
-              ? `Screen stays on · auto-scan every ${AUTO_INTERVAL}s · voice ON`
-              : cam2Connected
-                ? "📺 Cam 2 active — tap SCAN to analyse sonar"
-                : "Point at sonar — tap to scan"}
+            {cam2Connected ? "📺 Cam 2 active — tap SCAN to analyse sonar" : "Point at sonar — tap to scan"}
           </Text>
-        </View>
+        </View>}
 
         {/* ── AI VISUAL FEED full-screen overlay ─────────────────────────────── */}
         {feedView === "visual" && (
@@ -2068,29 +2238,28 @@ export default function LiveScreen() {
     return (
       <View style={[styles.container, { backgroundColor: "#000" }]}>
         {WebCameraView && <WebCameraView ref={webCamRef} onReady={() => setWebReady(true)} />}
-        {boatMode ? (
-          <BoatModeDashboard
-            result={result}
-            scanning={scanning}
-            countdown={countdown}
-            scanCount={scanCount}
-            charInfo={charInfo}
-            speaking={speaking}
-            autoSpeak={autoSpeak}
-            onToggleVoice={() => { setAutoSpeak((v) => !v); if (autoSpeak) stopSpeaking(); }}
-            onBack={() => { setBoatMode(false); setResult(null); }}
-            onReplay={() => { if (speaking) stopSpeaking(); else if (result) speakResult(result); }}
-            onClear={() => { setResult(null); stopSpeaking(); }}
-            topPad={topPad}
-            botPad={botPad}
-            autoInterval={AUTO_INTERVAL}
-          />
-        ) : (
-          <>
-            <BarraSketches opacity={0.7} />
-            {renderOverlays(false)}
-          </>
-        )}
+        <>
+          {!boatMode && <BarraSketches opacity={0.7} />}
+          {renderOverlays(false)}
+          {boatMode && (
+            <LiveTrackingHUD
+              result={result}
+              scanning={scanning}
+              countdown={countdown}
+              scanCount={scanCount}
+              charInfo={charInfo}
+              speaking={speaking}
+              autoSpeak={autoSpeak}
+              onToggleVoice={() => { setAutoSpeak((v) => !v); if (autoSpeak) stopSpeaking(); }}
+              onStop={() => { setBoatMode(false); setResult(null); stopSpeaking(); }}
+              onReplay={() => { if (speaking) stopSpeaking(); else if (result) speakResult(result); }}
+              onClear={() => { setResult(null); stopSpeaking(); }}
+              topPad={topPad}
+              botPad={botPad}
+              autoInterval={AUTO_INTERVAL}
+            />
+          )}
+        </>
       </View>
     );
   }
@@ -2154,45 +2323,45 @@ export default function LiveScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: "#000" }]}>
-      {/* ── Viewfinder — stays mounted in boat mode for silent auto-scan ─────── */}
+      {/* ── Viewfinder — always visible, even in boat mode ──────────────────── */}
       {cam2Connected ? (
         <Image
           source={{ uri: `http://${cam2.ip}${cam2.path}?t=${cam2.tick}` }}
-          style={[StyleSheet.absoluteFill, boatMode && { opacity: 0 }]}
+          style={StyleSheet.absoluteFill}
           resizeMode="cover"
           onLoad={cam2.onPreviewLoad}
           onError={cam2.onPreviewError}
         />
       ) : (
-        <CameraView ref={nativeCamRef} style={[StyleSheet.absoluteFill, boatMode && { opacity: 0 }]} facing="back" mode="picture" />
+        <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
       )}
       {cam2Connected && (
         <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" />
       )}
 
-      {boatMode ? (
-        <BoatModeDashboard
-          result={result}
-          scanning={scanning}
-          countdown={countdown}
-          scanCount={scanCount}
-          charInfo={charInfo}
-          speaking={speaking}
-          autoSpeak={autoSpeak}
-          onToggleVoice={() => { setAutoSpeak((v) => !v); if (autoSpeak) stopSpeaking(); }}
-          onBack={() => { setBoatMode(false); setResult(null); }}
-          onReplay={() => { if (speaking) stopSpeaking(); else if (result) speakResult(result); }}
-          onClear={() => { setResult(null); stopSpeaking(); }}
-          topPad={insets.top}
-          botPad={insets.bottom}
-          autoInterval={AUTO_INTERVAL}
-        />
-      ) : (
-        <>
-          <BarraSketches opacity={cam2Connected ? 0.25 : 0.7} />
-          {renderOverlays(true)}
-        </>
-      )}
+      {/* ── Overlays (same for boat mode and normal mode) ────────────────────── */}
+      <>
+        {!boatMode && <BarraSketches opacity={cam2Connected ? 0.25 : 0.7} />}
+        {renderOverlays(true)}
+        {boatMode && (
+          <LiveTrackingHUD
+            result={result}
+            scanning={scanning}
+            countdown={countdown}
+            scanCount={scanCount}
+            charInfo={charInfo}
+            speaking={speaking}
+            autoSpeak={autoSpeak}
+            onToggleVoice={() => { setAutoSpeak((v) => !v); if (autoSpeak) stopSpeaking(); }}
+            onStop={() => { setBoatMode(false); setResult(null); stopSpeaking(); }}
+            onReplay={() => { if (speaking) stopSpeaking(); else if (result) speakResult(result); }}
+            onClear={() => { setResult(null); stopSpeaking(); }}
+            topPad={insets.top}
+            botPad={insets.bottom + 16}
+            autoInterval={AUTO_INTERVAL}
+          />
+        )}
+      </>
     </View>
   );
 }
