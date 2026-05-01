@@ -16,6 +16,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { getFewShotRefs, addCommunityReference } from "../lib/barraLibrary.js";
 import { makeThumbnailFromBase64 } from "../lib/imageUtils.js";
 import { getModel } from "../lib/models.js";
+import { getAsianSeaBassContext } from "../lib/asianSeaBassKnowledge.js";
 
 const router = Router();
 
@@ -88,6 +89,8 @@ OUTPUT — ONLY this JSON, no markdown, no extra text:
   "slotWarning": null | "CHECK WA FISHERIES: confirm bag limit and size before keeping",
   "sizeHint": "~55cm" | null,
   "refMatchScore": 0-100
+
+${getAsianSeaBassContext(false)}
 }`;
 
 function detectMime(b64: string): string {

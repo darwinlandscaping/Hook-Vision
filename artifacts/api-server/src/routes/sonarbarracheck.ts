@@ -16,6 +16,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { getSonarFewShotRefs, addCommunityBarraArch } from "../lib/sonarBrain.js";
 import { getFewShotRefs } from "../lib/barraLibrary.js";
 import { getModel } from "../lib/models.js";
+import { getAsianSeaBassContext } from "../lib/asianSeaBassKnowledge.js";
 
 const router = Router();
 
@@ -125,6 +126,8 @@ OUTPUT — return ONLY this JSON, no markdown:
   "bottomType": "hard" | "soft" | "unknown",
   "refMatchScore": 0-100,
   "lureRecommendation": "brief lure tip if barra detected, else null"
+
+${getAsianSeaBassContext(false)}
 }`;
 
 function detectMime(b64: string): string {

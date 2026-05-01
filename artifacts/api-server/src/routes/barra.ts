@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getModel } from "../lib/models.js";
+import { ASIAN_SEA_BASS_KNOWLEDGE } from "../lib/asianSeaBassKnowledge.js";
 
 const router = Router();
 
@@ -61,6 +62,8 @@ const WA_BARRA_PROMPT = `You are Australia's most experienced trophy barramundi 
 6. **Cambridge Gulf** — Occasional monsters. Deep channel bends at 4–6m, live bait.
 7. **Prince Regent River** — Good size fish but remote. Junction pools at 3–6m, dawn run-in.
 
+${ASIAN_SEA_BASS_KNOWLEDGE}
+
 ${JSON_SCHEMA}`;
 
 const NT_BARRA_PROMPT = `You are the NT's most experienced trophy barramundi guide with 35 years on NT rivers including the Mary River, Adelaide River, Daly River, East Alligator, South Alligator, and Roper River. Your job is to predict exactly where and at what depth the biggest barramundi (targeting 70cm+, 8kg+) will be holding RIGHT NOW.
@@ -96,6 +99,8 @@ const NT_BARRA_PROMPT = `You are the NT's most experienced trophy barramundi gui
 6. **Daly River Mouth** — Surface walkers at dawn. Excellent year-round with tidal access.
 7. **Adelaide River Mouth** — Run-out tide. Rattling hard-bodies. Croc risk.
 
+${ASIAN_SEA_BASS_KNOWLEDGE}
+
 ${JSON_SCHEMA}`;
 
 const NQ_BARRA_PROMPT = `You are the Gulf Country's most experienced trophy barramundi guide with 30 years on NQ rivers including the Norman River, Flinders River, Gilbert River, Albert River, Mitchell River, and Cape York systems. Your job is to predict exactly where and at what depth the biggest barramundi (targeting 70cm+, 8kg+) will be holding RIGHT NOW.
@@ -130,6 +135,8 @@ const NQ_BARRA_PROMPT = `You are the Gulf Country's most experienced trophy barr
 5. **Mitchell River Mouth** — Big barra on the build-up rains pushing fresh water out. Surface walkers 120mm.
 6. **Flinders River Mouth** — Metal slices on run-out. Queenfish and barra stack at the bar on spring tides.
 7. **Gilbert River Mouth** — Surface walkers on build-up season. Remote but productive.
+
+${ASIAN_SEA_BASS_KNOWLEDGE}
 
 ${JSON_SCHEMA}`;
 

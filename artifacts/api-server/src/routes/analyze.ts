@@ -8,6 +8,7 @@ import { getSonarFewShotRefs } from "../lib/sonarBrain.js";
 import { getFewShotRefs as getBarraBodyRefs } from "../lib/barraLibrary.js";
 import { getCrocFewShotRefs } from "../lib/crocLibrary.js";
 import { getModel } from "../lib/models.js";
+import { getAsianSeaBassContext } from "../lib/asianSeaBassKnowledge.js";
 
 const router = Router();
 
@@ -635,7 +636,9 @@ STEPS (run ALL of them, every time):
 
 8. FINAL ID: COMMIT to a species name. Reduce confidence if unsure but NEVER leave species null or empty. Output ONLY the JSON object — no text before the { bracket.
 
-9. INTELLIGENCE CHECK: Cross-reference your ID against the BRAIN LIBRARY & COMMUNITY INTELLIGENCE block above. Hot species at this depth and region → boost confidence 5–10%. Unusual ID vs strong community evidence → note in archReasoning, reduce confidence 5–10% unless sonar evidence is very clear.`;
+9. INTELLIGENCE CHECK: Cross-reference your ID against the BRAIN LIBRARY & COMMUNITY INTELLIGENCE block above. Hot species at this depth and region → boost confidence 5–10%. Unusual ID vs strong community evidence → note in archReasoning, reduce confidence 5–10% unless sonar evidence is very clear.
+
+${getAsianSeaBassContext(false)}`;
 
 // ─── Brain library + community intelligence context ───────────────────────────
 // Fetched in parallel with the CV scan before every analysis. Gives GPT
