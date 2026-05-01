@@ -9,6 +9,18 @@ const router = Router();
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
+// ─── Depth bucketing helper ──────────────────────────────────────────────────
+function depthBucket(depthStr: string): string {
+  const match = depthStr.match(/(\d+(?:\.\d+)?)/);
+  if (!match) return "Unknown";
+  const d = parseFloat(match[1]);
+  if (d <= 2)  return "0-2m (shallow)";
+  if (d <= 5)  return "2-5m (mid-water)";
+  if (d <= 10) return "5-10m (deep)";
+  if (d <= 20) return "10-20m (reef)";
+  return "20m+ (deep reef)";
+}
+
 // ─── PRIVACY: strip all identifying fields before storage ───────────────────
 function sanitiseReport(body: Record<string, unknown>) {
   return {
@@ -112,7 +124,7 @@ router.get("/community/insights", async (req, res) => {
       .select()
       .from(communityReports)
       .orderBy(desc(communityReports.submittedAt))
-      .limit(200);
+      .limit(300);
 
     if (reports.length === 0) {
       res.json({
@@ -128,42 +140,76 @@ router.get("/community/insights", async (req, res) => {
       return;
     }
 
-    const dataBlob = reports.map((r) => ({
-      species:   r.species,
-      fishCount: r.fishCount,
-      depth:     r.depth,
-      location:  r.locationName,
-      lure:      r.lureSuggestion,
-      time:      r.submittedAt,
-    }));
+    // ── Pre-aggregate on the server to keep the prompt compact ────────────────
+    const speciesCounts: Record<string, number> = {};
+    const depthCounts:   Record<string, number> = {};
+    const locationSet:   Set<string>            = new Set();
+    const lureSnippets:  string[]               = [];
 
-    const prompt = `You are the HookVision community intelligence engine for Kimberley and WA Australia fishing.
-Analyze these ${reports.length} anonymous sonar scan reports from HookVision users across the Kimberley and WA coast.
+    for (const r of reports) {
+      if (r.species && r.species !== "No fish detected") {
+        const sp = r.species.toLowerCase().replace(/^\w/, c => c.toUpperCase());
+        speciesCounts[sp] = (speciesCounts[sp] ?? 0) + 1;
+      }
+      if (r.depth) {
+        const bucket = depthBucket(r.depth);
+        depthCounts[bucket] = (depthCounts[bucket] ?? 0) + 1;
+      }
+      if (r.locationName) locationSet.add(r.locationName);
+      if (r.lureSuggestion && lureSnippets.length < 20) {
+        lureSnippets.push(r.lureSuggestion.slice(0, 120));
+      }
+    }
 
-RAW DATA:
-${JSON.stringify(dataBlob, null, 2)}
+    const topSpecies = Object.entries(speciesCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([sp, count]) => `${sp} (${count} reports)`);
 
-Produce a JSON object with these exact fields:
-- hotSpecies: array of up to 5 objects { species: string, count: number, trend: "rising"|"stable"|"falling" }
-- hotDepths: array of up to 4 objects { range: string, count: number, notes: string }
-- hotTimes: array of up to 4 objects { period: string, activity: "high"|"medium"|"low", notes: string }
-- hotLocations: array of up to 5 strings (location names from reports)
-- tips: array of 4-6 actionable fishing tips derived from patterns in the data
-- summary: a 2-3 sentence plain-English summary of current WA/Kimberley fishing conditions
+    const topDepths = Object.entries(depthCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([range, count]) => `${range}: ${count} reports`);
+
+    const topLocations = [...locationSet].slice(0, 15);
+
+    const prompt = `You are the HookVision Brain — the AI intelligence engine for WA (Kimberley/Pilbara), NQ (Far North Queensland) and NT (Top End) fishing.
+
+Analyse this aggregated fishing intelligence from ${reports.length} HookVision community scans and expert knowledge entries:
+
+SPECIES ACTIVITY (most reported → least):
+${topSpecies.join(", ")}
+
+DEPTH PATTERNS:
+${topDepths.join(" | ")}
+
+ACTIVE LOCATIONS:
+${topLocations.join(", ")}
+
+SAMPLE LURE & TECHNIQUE INTELLIGENCE (first 20 entries):
+${lureSnippets.map((l, i) => `${i + 1}. ${l}`).join("\n")}
+
+Based on this intelligence, produce a JSON object:
+{
+  "hotSpecies": [up to 5 objects: { "species": string, "count": number, "trend": "rising"|"stable"|"falling" }],
+  "hotDepths": [up to 4 objects: { "range": string, "count": number, "notes": string }],
+  "hotTimes": [up to 3 objects: { "period": string, "activity": "high"|"medium"|"low", "notes": string }],
+  "hotLocations": [up to 6 strings — location names from the data above],
+  "tips": [5-6 specific, actionable fishing tips for WA/NQ/NT anglers],
+  "summary": "2-3 sentence plain-English summary of current fishing conditions across WA, NQ and NT"
+}
 
 Rules:
-- Base everything strictly on the data provided
-- For hotTimes, group by morning/midday/afternoon/evening/night from timestamps
-- For trend, compare first half vs second half of the dataset (newest = end)
-- Keep tips specific and WA-relevant (barramundi, coral trout, threadfin, queenfish, GT etc)
-- Respond ONLY with valid JSON, no markdown
-
-JSON:`;
+- hotSpecies counts come directly from the SPECIES ACTIVITY counts above
+- hotDepths use the DEPTH PATTERNS data above
+- hotLocations must be real names from ACTIVE LOCATIONS list
+- tips must be specific: name the species, location type, lure, and technique
+- Respond ONLY with valid JSON — no markdown, no explanation`;
 
     const completion = await openai.chat.completions.create({
-      model:  getModel("top"),
+      model:  getModel("mid"),
       messages: [{ role: "user", content: prompt }],
-      max_completion_tokens: 800,
+      max_completion_tokens: 1200,
       response_format: { type: "json_object" },
     });
 

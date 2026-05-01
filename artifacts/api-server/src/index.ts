@@ -9,6 +9,7 @@ import { initCrocLibrary, refreshCrocLibrary } from "./lib/crocLibrary";
 import { initBirdLibrary, refreshBirdLibrary } from "./lib/birdLibrary";
 import { initCrocguardDb } from "./lib/crocguardDb";
 import { initCrocguardDetector } from "./lib/crocguardDetector";
+import { seedBrainKnowledge } from "./lib/brainSeed";
 
 const rawPort = process.env["PORT"];
 
@@ -78,6 +79,12 @@ app.listen(port, (err) => {
   // as few-shot visual references so the model can ID species in real-world frames.
   initBirdLibrary().catch((err) =>
     logger.warn({ err }, "Bird library init failed — surface detection will use text-only prompt")
+  );
+
+  // Seed brain with expert regional fishing knowledge (WA/NQ/NT).
+  // Idempotent — checks for seed marker before inserting, so safe to call on every boot.
+  seedBrainKnowledge().catch((err) =>
+    logger.warn({ err }, "Brain knowledge seed failed — brain will rely on user-submitted data only")
   );
 
   // Daily library refresh — runs 6 hours after boot (offset from daily conditions)
