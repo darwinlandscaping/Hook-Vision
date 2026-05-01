@@ -19,6 +19,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { getFewShotRefs as getBarraBodyRefs } from "../lib/barraLibrary.js";
 import { getCrocFewShotRefs } from "../lib/crocLibrary.js";
 import { getLiveSonarDemoRefs } from "../lib/liveSonarBrain.js";
+import { getModel } from "../lib/models.js";
 
 const router = Router();
 
@@ -387,7 +388,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     // We await flash first, emit it so the client sees brand/mode immediately,
     // then drain the already-in-flight main stream.
     const flashPromise = openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getModel("mid"),
       max_completion_tokens: 120,
       stream: false,
       messages: [
@@ -464,7 +465,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     content.push({ type: "text", text: analysisPrompt });
 
     const streamPromise = openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getModel("mid"),
       max_completion_tokens: 500,
       stream: true,
       messages: [

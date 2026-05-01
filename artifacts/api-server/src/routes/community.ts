@@ -3,6 +3,7 @@ import { desc, sql } from "drizzle-orm";
 import { db, communityReports, communityInsights } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "../lib/logger.js";
+import { getModel } from "../lib/models.js";
 
 const router = Router();
 
@@ -160,7 +161,7 @@ Rules:
 JSON:`;
 
     const completion = await openai.chat.completions.create({
-      model:  "gpt-5.4",
+      model:  getModel("top"),
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 800,
       response_format: { type: "json_object" },
@@ -285,7 +286,7 @@ router.get("/community/compare", async (req, res) => {
   }
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: getModel("top"),
       max_completion_tokens: 250,
       messages: [
         {

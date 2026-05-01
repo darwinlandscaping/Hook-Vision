@@ -9,6 +9,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getBirdFewShotRefs } from "../lib/birdLibrary.js";
+import { getModel } from "../lib/models.js";
 
 const router = Router();
 
@@ -81,7 +82,7 @@ router.post("/insta360/surface-detect", async (req, res) => {
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getModel("mid"),
       max_completion_tokens: 350,
       response_format: { type: "json_object" },
       messages: [

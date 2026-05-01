@@ -35,6 +35,7 @@ import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { logger } from "./logger.js";
 import { makeThumbnailFromUrl } from "./imageUtils.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getModel } from "./models.js";
 
 // ─── iNaturalist API types ────────────────────────────────────────────────────
 interface InatPhoto {
@@ -249,7 +250,7 @@ async function classifyBatch(
   });
 
   const resp = await openai.chat.completions.create({
-    model:       "gpt-5-mini",
+    model:       getModel("mid"),
     max_completion_tokens:  100,
     messages:    [{ role: "user", content: content as Parameters<typeof openai.chat.completions.create>[0]["messages"][0]["content"] }],
   });

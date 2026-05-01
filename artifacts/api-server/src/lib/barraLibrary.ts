@@ -22,6 +22,7 @@ import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { logger } from "./logger.js";
 import { makeThumbnailFromUrl } from "./imageUtils.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getModel } from "./models.js";
 
 // ─── iNaturalist API types (minimal) ─────────────────────────────────────────
 interface InatPhoto {
@@ -247,7 +248,7 @@ async function classifyAngles(): Promise<void> {
 
   try {
     const resp = await openai.chat.completions.create({
-      model:       "gpt-5-mini",
+      model:       getModel("mid"),
       max_completion_tokens:  300,
       messages: [{ role: "user", content: content as Parameters<typeof openai.chat.completions.create>[0]["messages"][0]["content"] }],
     });

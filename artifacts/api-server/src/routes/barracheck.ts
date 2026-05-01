@@ -15,6 +15,7 @@ import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getFewShotRefs, addCommunityReference } from "../lib/barraLibrary.js";
 import { makeThumbnailFromBase64 } from "../lib/imageUtils.js";
+import { getModel } from "../lib/models.js";
 
 const router = Router();
 
@@ -168,7 +169,7 @@ router.post("/barra-check", async (req, res) => {
     ];
 
     const callOpts = {
-      model:                "gpt-5-mini" as const,
+      model:                getModel("mid"),
       max_completion_tokens: 200,
       stream:               false as const,
       messages: [

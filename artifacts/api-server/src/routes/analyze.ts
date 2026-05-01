@@ -7,6 +7,7 @@ import { analyzeSonarImage, formatCvContext, generateZoomCrops } from "../lib/vi
 import { getSonarFewShotRefs } from "../lib/sonarBrain.js";
 import { getFewShotRefs as getBarraBodyRefs } from "../lib/barraLibrary.js";
 import { getCrocFewShotRefs } from "../lib/crocLibrary.js";
+import { getModel } from "../lib/models.js";
 
 const router = Router();
 
@@ -767,7 +768,7 @@ router.post("/analyze", async (req, res) => {
     // gpt-4.1-mini + raw image only → first result in ~0.8–1.5 s, well before
     // the heavy preprocessing + reference-image dual-scan completes (~3–5 s).
     const flashPromise = openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getModel("mid"),
       max_completion_tokens: 90,
       stream: false,
       messages: [
@@ -919,7 +920,7 @@ router.post("/analyze", async (req, res) => {
     let raw = '';
     try {
       const stream = await openai.chat.completions.create({
-        model: "gpt-5-mini",
+        model: getModel("mid"),
         max_completion_tokens: 450,
         stream: true,
         messages: sharedMessages,

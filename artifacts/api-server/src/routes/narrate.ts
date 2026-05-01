@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getModel } from "../lib/models.js";
 
 const router = Router();
 
@@ -90,7 +91,7 @@ ${content}`;
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5-nano",
+      model: getModel("fast"),
       max_completion_tokens: 300,
       messages: [
         { role: "system", content: systemPrompt },

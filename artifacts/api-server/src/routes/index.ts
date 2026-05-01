@@ -25,6 +25,7 @@ import polarFilterRouter from "./polarfilter";
 import hudRouter from "./hud";
 import crocguardRouter from "./crocguard";
 import liveanalyzeRouter from "./liveanalyze";
+import modelsRouter from "./models";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(polarFilterRouter);
 router.use(hudRouter);
 router.use("/crocguard", crocguardRouter); // mounts at /api/crocguard/*
 router.use(liveanalyzeRouter);            // POST /api/live-sonar-analyze
+router.use(modelsRouter);                 // GET  /api/models
 
 export default router;

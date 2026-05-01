@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { initModels } from "./lib/models";
 import { refreshDailyConditions } from "./lib/dailyBriefing";
 import { loadDemoReferences } from "./lib/demoReference";
 import { initBarraLibrary, refreshBarraLibrary } from "./lib/barraLibrary";
@@ -30,6 +31,12 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Auto-detect the best available OpenAI models for each tier (top/mid/fast).
+  // Refreshes every 6 hours so new model releases are picked up automatically.
+  initModels().catch((err) =>
+    logger.warn({ err }, "Model auto-select failed — using hardcoded fallbacks")
+  );
 
   // Load + compress demo reference images (now async — thumbnails built at startup).
   // Chain sonar brain init AFTER so it can use the compressed thumbnails.

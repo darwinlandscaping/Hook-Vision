@@ -7,6 +7,7 @@ import { setCameraStatus, listCameras } from "./crocguardDb.js";
 import { pushVisualScore, startDecayTick } from "./crocguardStatus.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getCrocFewShotRefs } from "./crocLibrary.js";
+import { getModel } from "./models.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -194,7 +195,7 @@ async function enrichWithVision(camId: number, buf: Buffer) {
       image_url: { url: `data:image/jpeg;base64,${r.thumbBase64}`, detail: "low" as const },
     }));
     const resp = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getModel("mid"),
       max_completion_tokens: 60,
       messages: [{
         role: "user",

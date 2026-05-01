@@ -24,6 +24,7 @@ import { getSonarBrainStats } from "../lib/sonarBrain.js";
 import { getCrocLibraryStats } from "../lib/crocLibrary.js";
 import { getLibraryStats as getBarraStats } from "../lib/barraLibrary.js";
 import { getAlertStats } from "../lib/crocguardDb.js";
+import { getModel } from "../lib/models.js";
 
 const router = Router();
 
@@ -309,7 +310,7 @@ Rules:
 - Respond ONLY with valid JSON, no markdown`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-nano",
+      model: getModel("fast"),
       max_completion_tokens: 500,
       response_format: { type: "json_object" },
       messages: [{ role: "user", content: prompt }],

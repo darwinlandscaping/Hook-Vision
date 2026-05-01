@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getModel } from "../lib/models.js";
 
 const router = Router();
 
@@ -91,7 +92,7 @@ router.post("/fish-id", async (req, res) => {
   try {
     const mimeType = detectMimeType(imageBase64);
     const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: getModel("mid"),
       max_completion_tokens: 400,
       stream: false,
       messages: [

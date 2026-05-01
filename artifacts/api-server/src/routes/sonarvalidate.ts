@@ -9,6 +9,7 @@
  */
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getModel } from "../lib/models.js";
 
 const router = Router();
 
@@ -54,7 +55,7 @@ router.post("/sonar-validate", async (req, res) => {
   try {
     const mime = detectMime(imageBase64);
     const completion = await openai.chat.completions.create({
-      model:                 "gpt-5-mini",
+      model:                 getModel("mid"),
       max_completion_tokens: 60,
       messages: [
         { role: "system", content: SYSTEM },

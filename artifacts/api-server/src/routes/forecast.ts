@@ -2,6 +2,7 @@ import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getStatus } from "../lib/crocguardStatus.js";
 import { getAlertStats } from "../lib/crocguardDb.js";
+import { getModel } from "../lib/models.js";
 
 const router = Router();
 
@@ -309,7 +310,7 @@ Based on these exact conditions, give me the 3 best ${label} fishing spots right
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: getModel("top"),
       max_completion_tokens: 1000,
       messages: [
         { role: "system", content: getPrompt(region) },
