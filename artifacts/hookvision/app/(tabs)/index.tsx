@@ -120,7 +120,7 @@ function TotalBrainAnalyser({
   // ── System 2 · ARCH DETECT (15%) ──────────────────────────────────────
   // Primary driver: archCount from the fast sonar check.
   // Fallback: analysis.fishCount if the fast check returned 0 arches but
-  // the full GPT-4.1 call found fish (older sonars often confuse the fast model).
+  // the full GPT-5 call found fish (older sonars often confuse the fast model).
   // Scale: 1 arch → 72%, 2 → 83%, 3 → 90%, 4-5 → 94%, 6+ → 97%.
   const archScore: number | null = sonarBarra
     ? (() => {
@@ -169,7 +169,7 @@ function TotalBrainAnalyser({
     : null;
   const depthSignal = depthScore != null && depthScore >= 60;
 
-  // ── System 7 · GPT-4.1 (20%) ──────────────────────────────────────────
+  // ── System 7 · GPT-5 (20%) ──────────────────────────────────────────
   const gptScore  = analysis.confidence;
   const gptSignal = analysis.fishCount > 0;
 
@@ -281,20 +281,20 @@ function TotalBrainAnalyser({
         ))}
       </View>
 
-      {/* ── Funnel arrow into GPT-4.1 ────────────────────────────────────── */}
+      {/* ── Funnel arrow into GPT-5 ────────────────────────────────────── */}
       <View style={BT.funnelRow}>
         <View style={BT.funnelLine} />
         <MaterialCommunityIcons name="arrow-down-circle" size={20} color="#00d4aa30" />
         <View style={BT.funnelLine} />
       </View>
 
-      {/* ── GPT-4.1 master node (full-width) ─────────────────────────────── */}
+      {/* ── GPT-5 master node (full-width) ─────────────────────────────── */}
       <View style={BT.masterWrap}>
         <View style={[BT.masterNode, { borderColor: "#7c5cfc" }]}>
           <View style={BT.masterInner}>
             <MaterialCommunityIcons name="chip" size={22} color="#7c5cfc" />
             <View style={{ flex: 1 }}>
-              <Text style={[BT.masterLabel, { color: "#7c5cfc" }]}>GPT-4.1  MASTER ANALYSIS</Text>
+              <Text style={[BT.masterLabel, { color: "#7c5cfc" }]}>GPT-5  MASTER ANALYSIS</Text>
               <Text style={BT.masterSub}>Full sonar intelligence · 20% weight</Text>
             </View>
             <Text style={[BT.masterScore, { color: gptSignal ? "#ffffff" : "#555" }]}>
@@ -393,7 +393,7 @@ function TotalBrainAnalyser({
         </View>
         <View style={BT.verdictRow}>
           <View style={[BT.verdictDot, { backgroundColor: gptSignal ? "#7c5cfc" : "#555" }]} />
-          <Text style={BT.verdictSys}>GPT-4.1</Text>
+          <Text style={BT.verdictSys}>GPT-5</Text>
           <Text style={[BT.verdictVal, { color: gptSignal ? "#7c5cfc" : "#666" }]}>
             {gptSignal
               ? `✓ ${analysis.fishCount} FISH @ ${analysis.depth}`
@@ -524,7 +524,7 @@ const BT = StyleSheet.create({
     height:          1,
     backgroundColor: "#00d4aa18",
   },
-  // ── GPT-4.1 master node ───────────────────────────────────────────────
+  // ── GPT-5 master node ───────────────────────────────────────────────
   masterWrap: {
     paddingHorizontal: 12,
     paddingBottom:     12,
@@ -780,7 +780,7 @@ export default function HomeScreen() {
   // ── Sonar Brain — Stage-1 fast barra arch detector ────────────────────────
   const [sonarBarraResult, setSonarBarraResult] = useState<SonarBarraResult | null>(null);
   const [sonarBarraLoading, setSonarBarraLoading] = useState(false);
-  // ── Flash scan — gpt-4.1-mini instant first read (~0.8-1.5 s) ──────────────
+  // ── Flash scan — gpt-5-mini instant first read (~0.8-1.5 s) ──────────────
   const [flashResult, setFlashResult] = useState<{
     species: string; fishCount: number; confidence: number; quickRead: string;
   } | null>(null);
@@ -1041,8 +1041,8 @@ export default function HomeScreen() {
       }
 
       // ── Streaming read ────────────────────────────────────────────────────────
-      // __FLASH__ arrives in ~0.8-1.5s (gpt-4.1-mini, raw image only).
-      // Full dual-scan (gpt-4.1 with crops + refs) follows ~3-5s later.
+      // __FLASH__ arrives in ~0.8-1.5s (gpt-5-mini, raw image only).
+      // Full dual-scan (gpt-5.4 with crops + refs) follows ~3-5s later.
       let accumulated = "";
       let flashParsed = false;
       if (response.body) {
@@ -1178,7 +1178,7 @@ export default function HomeScreen() {
       }
 
       // ── Auto-teach Sonar Brain: high-confidence scans feed the collective ──
-      // Fires when GPT-4.1 is ≥75% confident AND at least 1 fish was detected.
+      // Fires when GPT-5 is ≥75% confident AND at least 1 fish was detected.
       // This is a fire-and-forget background call — never blocks the user.
       if ((data.confidence ?? 0) >= 75 && (data.fishCount ?? 0) > 0 && imageBase64) {
         const brainDomain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -1480,7 +1480,7 @@ export default function HomeScreen() {
             <View style={styles.analysingHeader}>
               <Animated.View style={[styles.analysingDot, dotStyle]} />
               <Text style={styles.analysingTitle}>ANALYSING</Text>
-              <Text style={[styles.analysingEngine, { color: colors.mutedForeground }]}>GPT-4.1 Vision</Text>
+              <Text style={[styles.analysingEngine, { color: colors.mutedForeground }]}>GPT-5 Vision</Text>
             </View>
 
             {/* Stage steps */}
@@ -1500,7 +1500,7 @@ export default function HomeScreen() {
               <View style={styles.analysingStageRow}>
                 <Animated.View style={[styles.stageDot, dotStyle, { backgroundColor: streaming ? "#00d4aa" : "#ff8800" }]} />
                 <Text style={[styles.stageLabel, { color: streaming ? "#00d4aa" : "#ff8800" }]}>
-                  {streaming ? `AI reading sonar… ${Math.min(99, Math.round((streamChars / 680) * 100))}%` : "GPT-4.1 reading sonar…"}
+                  {streaming ? `AI reading sonar… ${Math.min(99, Math.round((streamChars / 680) * 100))}%` : "GPT-5 reading sonar…"}
                 </Text>
               </View>
               <View style={[styles.analysingStageRow, { opacity: streaming ? 0.4 : 0.25 }]}>
@@ -2006,7 +2006,7 @@ export default function HomeScreen() {
                   <Text style={styles.heroAiTagText}>AI</Text>
                 </View>
               </View>
-              <Text style={[styles.heroSubtitle, { color: "#00d4aa" }]}>GPT-4.1 Vision Analysis</Text>
+              <Text style={[styles.heroSubtitle, { color: "#00d4aa" }]}>GPT-5 Vision Analysis</Text>
             </View>
           </View>
 
@@ -2163,7 +2163,7 @@ const styles = StyleSheet.create({
   progressFill:    { height: 4, borderRadius: 2, backgroundColor: "#00d4aa" },
   analysingHint:   { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 },
 
-  /* ⚡ Flash instant-read banner (gpt-4.1-mini, ~1 s) */
+  /* ⚡ Flash instant-read banner (gpt-5-mini, ~1 s) */
   flashBanner: {
     backgroundColor: "#ffd70014", borderWidth: 1, borderColor: "#ffd70055",
     borderRadius: 12, padding: 12, gap: 6,

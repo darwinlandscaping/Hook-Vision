@@ -1232,7 +1232,7 @@ export default function Insta360Screen() {
               </TouchableOpacity>
             </View>
             <Text style={styles.cardSubtitle}>
-              GPT-4.1 reads the camera frame: birds, surface busts, water colour, croc risk, tactics, cast zone.
+              GPT-5 reads the camera frame: birds, surface busts, water colour, croc risk, tactics, cast zone.
             </Text>
             {brainError && (
               <Text style={{ color: C.red, fontSize: 12, marginTop: 4 }}>{brainError}</Text>

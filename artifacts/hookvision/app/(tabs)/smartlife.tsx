@@ -511,7 +511,7 @@ export default function SmartCamScreen() {
               <View>
                 <Text style={[S.analyserTitle, { color: C.teal }]}>AI BRAIN ANALYSER</Text>
                 <Text style={[S.analyserSubtitle, { color: C.mute }]}>
-                  GPT-4.1 Vision · CAM1 {cam1 ? `(${cam1.brand})` : "(sim)"} + CAM2 {cam2 ? `(${cam2.brand})` : "(sim)"} · frame #{tick}
+                  GPT-5 Vision · CAM1 {cam1 ? `(${cam1.brand})` : "(sim)"} + CAM2 {cam2 ? `(${cam2.brand})` : "(sim)"} · frame #{tick}
                 </Text>
               </View>
             </View>

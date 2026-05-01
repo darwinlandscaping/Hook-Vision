@@ -1,9 +1,9 @@
 /**
  * Catch ID — Two-Stage AI Fish Identification
  *
- * Stage 1 (FAST — ~400 ms): gpt-4.1-mini barra detector
+ * Stage 1 (FAST — ~400 ms): gpt-5-mini barra detector
  *   → instant "BARRA CONFIRMED / NOT A BARRA" verdict + confidence
- * Stage 2 (FULL — ~2 s):   gpt-4.1 species analyser
+ * Stage 2 (FULL — ~2 s):   gpt-5.4 species analyser
  *   → species, QLD regulations, size estimate, handling advice
  *
  * Both calls fire simultaneously (Promise.race / Promise.all).
@@ -947,7 +947,7 @@ function CatchBrainAnalyser({
           <MaterialCommunityIcons name="chevron-right" size={13} color="#ffffff25" />
         </View>
 
-        {/* ── GPT-4.1 node ── */}
+        {/* ── GPT-5 node ── */}
         <View style={CB.nodeWrap}>
           <View style={[CB.node, {
             borderColor: fullResult ? "#7c5cfc" : stage2Loading ? "#00a8ff" : "#2a2a2a",
@@ -959,7 +959,7 @@ function CatchBrainAnalyser({
             />
             <Text style={[CB.nodeLabel, {
               color: fullResult ? "#7c5cfc" : stage2Loading ? "#00a8ff" : "#333",
-            }]}>GPT-4.1{"\n"}FULL ID</Text>
+            }]}>GPT-5{"\n"}FULL ID</Text>
 
             {stage2Loading && !fullResult ? (
               <NodeLoading color="#00a8ff" />
@@ -1023,13 +1023,13 @@ function CatchBrainAnalyser({
           )}
         </View>
 
-        {/* GPT-4.1 row */}
+        {/* GPT-5 row */}
         <View style={CB.verdictRow}>
           <View style={[CB.verdictDot, {
             backgroundColor: fullResult ? (gptSignal ? "#7c5cfc" : "#555")
               : stage2Loading ? "#00a8ff" : "#222",
           }]} />
-          <Text style={CB.verdictSys}>GPT-4.1</Text>
+          <Text style={CB.verdictSys}>GPT-5</Text>
           {fullResult ? (
             <>
               <Text style={[CB.verdictVal, { color: gptSignal ? "#7c5cfc" : "#666" }]}>

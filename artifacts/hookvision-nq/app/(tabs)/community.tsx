@@ -1150,7 +1150,7 @@ export default function CommunityScreen() {
                     <View style={styles.videoProcessing}>
                       <ActivityIndicator color="#ffd700" />
                       <Text style={[styles.videoProcessingText, { color: colors.mutedForeground }]}>
-                        TF.js + OpenCV analysing {v.frameCount} frames… GPT-4.1 synthesising intelligence…
+                        TF.js + OpenCV analysing {v.frameCount} frames… GPT-5 synthesising intelligence…
                       </Text>
                     </View>
                   )}

@@ -588,7 +588,7 @@ export default function CamerasScreen() {
             <Text style={{ fontSize: 16 }}>🧠</Text>
             <View style={{ flex: 1 }}>
               <Text style={[S.brainTitle, { color: C.teal }]}>AI BRAIN ANALYSER</Text>
-              <Text style={[S.brainSub, { color: C.mute }]}>gpt-4.1-nano · streaming SSE · detail:low · 200 token cap</Text>
+              <Text style={[S.brainSub, { color: C.mute }]}>gpt-5-nano · streaming SSE · detail:low · 200 token cap</Text>
             </View>
             {/* Turbo badge */}
             <View style={[S.turboBadge, { backgroundColor: C.purple + "22", borderColor: C.purple + "66" }]}>
@@ -617,7 +617,7 @@ export default function CamerasScreen() {
             <>
               {/* Speed stats */}
               <View style={[S.speedRow, { backgroundColor: C.purple + "12", borderColor: C.purple + "33" }]}>
-                <Text style={[S.speedText, { color: C.purple }]}>⚡ {totalMs}ms · {streamChars} chars · {streamSpeed} c/s · gpt-4.1-nano</Text>
+                <Text style={[S.speedText, { color: C.purple }]}>⚡ {totalMs}ms · {streamChars} chars · {streamSpeed} c/s · gpt-5-nano</Text>
               </View>
 
               {/* Summary */}
