@@ -14,14 +14,20 @@
  *   mid  — balanced speed/cost (-mini suffix)
  *   fast — fastest / cheapest  (-nano suffix)
  *
- * Falls back to hardcoded defaults if the OpenAI model list is unreachable.
+ * Falls back to hardcoded PROVEN_FALLBACK if the OpenAI model list is
+ * unreachable. PREFERENCES list is used only when the live API returns models.
+ * IMPORTANT: gpt-4.1 family is the proven working set on Replit's AI proxy.
+ * GPT-5 names (gpt-5-mini, gpt-5-nano, gpt-5.4) return empty responses —
+ * add them to PREFERENCES so live-API discovery can promote them automatically
+ * once the proxy supports them.
  */
 
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { logger } from "./logger.js";
 
-// ── Model preference lists (best first per tier) ──────────────────────────────
-// Update this list as new GPT generations are released.
+// ── Model preference lists — only used when live API is reachable ─────────────
+// The live /v1/models list is scored; highest scorer per tier wins.
+// gpt-5.x will auto-promote when the proxy starts serving them.
 
 const PREFERENCES: Record<Tier, string[]> = {
   top:  ["gpt-5.4", "gpt-5", "gpt-4.5", "gpt-4.1"],
@@ -29,12 +35,16 @@ const PREFERENCES: Record<Tier, string[]> = {
   fast: ["gpt-5-nano", "gpt-4.1-nano"],
 };
 
-// Derived fallback = first item in each preference list
-const FALLBACK: Record<Tier, string> = {
-  top:  PREFERENCES.top[0]!,
-  mid:  PREFERENCES.mid[0]!,
-  fast: PREFERENCES.fast[0]!,
+// ── Proven fallback — used when the live API is unreachable ───────────────────
+// gpt-4.1 family is confirmed to work on the Replit AI proxy.
+const PROVEN_FALLBACK: Record<Tier, string> = {
+  top:  "gpt-4.1",
+  mid:  "gpt-4.1-mini",
+  fast: "gpt-4.1-nano",
 };
+
+// Keep FALLBACK alias for backward compat
+const FALLBACK = PROVEN_FALLBACK;
 
 export type Tier = "top" | "mid" | "fast";
 
@@ -111,21 +121,15 @@ async function doRefresh(): Promise<void> {
       "[models] auto-selected from live API"
     );
   } catch (_err) {
-    // Live API unavailable (proxy limitation or network error).
-    // Resolve from PREFERENCES list — pick the highest-scoring model per tier.
-    const tiers: Tier[] = ["top", "mid", "fast"];
-    for (const tier of tiers) {
-      const best = PREFERENCES[tier]
-        .map((id) => ({ id, score: scoreModel(id) }))
-        .sort((a, b) => b.score - a.score)[0];
-      if (best) _selected[tier] = best.id;
-    }
-
-    _allChatModels = tiers.flatMap((t) => PREFERENCES[t]);
+    // Live API unavailable (proxy blocks /v1/models with 405).
+    // Use PROVEN_FALLBACK — gpt-4.1 family is confirmed working on Replit proxy.
+    // Do NOT use PREFERENCES here: gpt-5.x names return empty responses.
+    _selected = { ...PROVEN_FALLBACK };
+    _allChatModels = (["top", "mid", "fast"] as Tier[]).flatMap((t) => PREFERENCES[t]);
 
     logger.info(
       { top: _selected.top, mid: _selected.mid, fast: _selected.fast },
-      "[models] using preference list (live API unavailable)"
+      "[models] live API unavailable — using proven gpt-4.1 fallback"
     );
   } finally {
     _lastRefresh = Date.now();

@@ -959,7 +959,13 @@ router.post("/analyze", async (req, res) => {
     req.log.info({ chars: raw.length }, 'Analysis complete');
   } catch (err) {
     req.log.error({ err }, 'OpenAI analyze request failed');
-    res.status(500).json({ error: 'Analysis failed. Check your connection and try again.' });
+    if (res.headersSent) {
+      // Streaming already started — write an error sentinel the app can detect
+      try { res.write('\n__ERROR__:Analysis failed. Check your connection and try again.'); } catch { /* ignore */ }
+      res.end();
+    } else {
+      res.status(500).json({ error: 'Analysis failed. Check your connection and try again.' });
+    }
   }
 });
 
