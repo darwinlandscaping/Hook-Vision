@@ -1,6 +1,6 @@
 /**
  * Vision Service — Web stub
- * Metro uses vision.native.ts on Android; this file covers the web preview only.
+ * Metro uses vision.native.ts on Android/iOS; this file covers the web preview only.
  * All functions are no-ops that return null/false so the UI degrades gracefully.
  */
 
@@ -18,7 +18,7 @@ export async function getVision() {
   return { tf: null };
 }
 
-export async function quickScan(_jpegBase64: string): Promise<MobileSonarScan | null> {
+export async function quickScan(_imageUri: string): Promise<MobileSonarScan | null> {
   return null;
 }
 

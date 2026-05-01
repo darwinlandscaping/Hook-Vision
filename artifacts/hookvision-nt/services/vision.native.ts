@@ -1,102 +1,90 @@
 /**
- * Vision Service — TensorFlow.js + React Native
- * Wired into the Analyze screen for on-device sonar pre-scan.
+ * Vision Service — on-device sonar pre-scan
  *
- * Capabilities:
- *  • Pre-warms the TF.js RN backend in the background on screen mount
- *  • Decodes a JPEG base64 string → tensor via @tensorflow/tfjs-react-native
- *  • Runs brightness / colour / echo-strength analysis entirely on-device
- *  • COCO-SSD detection is available via getVision() when a GL context is ready
+ * Strategy (reliable on Expo Go, low memory):
+ *  1. Resize the sonar image to a 96 px thumbnail via expo-image-manipulator
+ *  2. Decode the tiny JPEG with @tensorflow/tfjs-react-native (jpeg-js, pure JS)
+ *  3. Compute brightness / colour / echo-strength stats from the small tensor
+ *
+ * Processing a 96 px thumbnail uses ~0.1 MB instead of ~25 MB for a full
+ * 1080 × 2400 photo — avoiding OOM errors and TF.js initialisation races.
  */
 
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import * as tf from "@tensorflow/tfjs";
 import "@tensorflow/tfjs-react-native";
 
-// ─── Lazy singleton ───────────────────────────────────────────────────────────
+// ─── Lazy TF.js singleton ──────────────────────────────────────────────────────
 
 let _ready = false;
 let _initPromise: Promise<void> | null = null;
 
-export interface VisionService {
-  tf: typeof tf;
-}
+export interface VisionService { tf: typeof tf; }
 
-/**
- * Pre-warm the TF.js React Native backend.
- * Call once on screen mount — safe to call multiple times (no-op after first).
- */
 export async function getVision(): Promise<VisionService> {
   if (_ready) return { tf };
-
-  if (_initPromise) {
-    await _initPromise;
-    return { tf };
-  }
-
+  if (_initPromise) { await _initPromise; return { tf }; }
   _initPromise = tf.ready().then(() => {
     _ready = true;
     console.log(`[vision] TF.js ready — backend: ${tf.getBackend()}`);
   });
-
   await _initPromise;
   return { tf };
 }
 
-// ─── On-device sonar pre-scan ─────────────────────────────────────────────────
+// ─── Exported interface ────────────────────────────────────────────────────────
 
 export interface MobileSonarScan {
-  meanBrightness: number;       // 0–255
-  brightPixelPct: number;       // % pixels strongly lit
+  meanBrightness: number;
+  brightPixelPct: number;
   dominantChannel: "R" | "G" | "B";
-  paletteCue: string;           // "warm-red" | "cool-blue" | "teal-green" | "neutral"
-  echoStrength: string;         // "strong" | "moderate" | "weak"
+  paletteCue: string;
+  echoStrength: string;
   tensorShape: [number, number, number];
   backendUsed: string;
 }
 
 /**
- * Decode a JPEG base64 string and run fast TF.js statistics on it.
- * Returns brightness, colour profile, and echo-strength cues.
- *
- * Used by the Analyze screen to display a "CV Pre-scan" panel while the
- * GPT-4.1 request is in flight.
+ * Analyse a sonar image URI and return brightness / colour cues.
+ * Accepts the file URI (not base64) so expo-image-manipulator can resize it.
+ * Typically completes in 200–500 ms on modern phones.
  */
-export async function quickScan(jpegBase64: string): Promise<MobileSonarScan | null> {
+export async function quickScan(imageUri: string): Promise<MobileSonarScan | null> {
   try {
-    const { tf: t } = await getVision();
+    // ── Step 1: resize to a tiny thumbnail ───────────────────────────────
+    const thumb = await manipulateAsync(
+      imageUri,
+      [{ resize: { width: 96 } }],
+      { format: SaveFormat.JPEG, base64: true, compress: 0.9 },
+    );
+    if (!thumb.base64) return null;
 
-    // ── Decode JPEG bytes → TF.js tensor ─────────────────────────────────
-    // @tensorflow/tfjs-react-native exports decodeJpeg which uses the
-    // platform's native image decoder (no GL context required).
+    // ── Step 2: decode thumbnail bytes → tensor ───────────────────────────
+    const { tf: t } = await getVision();
     const { decodeJpeg } = await import("@tensorflow/tfjs-react-native");
 
-    // Convert base64 → Uint8Array of raw JPEG bytes
-    const binaryStr = atob(jpegBase64);
+    const binaryStr = atob(thumb.base64);
     const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
 
-    // Decode JPEG → [H, W, 3] uint8 tensor
     const rawTensor = decodeJpeg(bytes, 3);
     const [height, width] = rawTensor.shape as [number, number, number];
 
-    // Normalise to [0,1] float32 for math operations
     const img = rawTensor.cast("float32").div(255) as tf.Tensor3D;
     rawTensor.dispose();
 
-    // ── Channel means ─────────────────────────────────────────────────────
+    // ── Step 3: channel means ─────────────────────────────────────────────
     const channelMeans = img.mean([0, 1]) as tf.Tensor1D;
     const [rMean, gMean, bMean] = Array.from(await channelMeans.data());
     channelMeans.dispose();
 
-    // ── Luminance ─────────────────────────────────────────────────────────
+    // ── Step 4: luminance + bright-pixel count ────────────────────────────
     const weights   = t.tensor1d([0.299, 0.587, 0.114]);
     const lumTensor = img.mul(weights).sum(2) as tf.Tensor2D;
     weights.dispose();
     img.dispose();
 
-    const meanLumArr  = await (lumTensor.mean() as tf.Scalar).data();
+    const meanLumArr = await (lumTensor.mean() as tf.Scalar).data();
     const meanBrightness = meanLumArr[0] * 255;
 
     const brightMask  = lumTensor.greater(t.scalar(0.78));
@@ -106,34 +94,31 @@ export async function quickScan(jpegBase64: string): Promise<MobileSonarScan | n
 
     const brightPixelPct = (brightCount[0] / (width * height)) * 100;
 
-    // ── Derived cues ──────────────────────────────────────────────────────
-    const channelMax = Math.max(rMean, gMean, bMean) || 1;
+    // ── Step 5: derived cues ──────────────────────────────────────────────
     let dominantChannel: "R" | "G" | "B" = "G";
-    if (rMean === channelMax) dominantChannel = "R";
-    else if (bMean === channelMax) dominantChannel = "B";
+    const chMax = Math.max(rMean, gMean, bMean) || 1;
+    if (rMean === chMax) dominantChannel = "R";
+    else if (bMean === chMax) dominantChannel = "B";
 
     const total = rMean + gMean + bMean || 1;
-    const rFrac = rMean / total;
-    const bFrac = bMean / total;
-
     let paletteCue: string;
-    if (rFrac > 0.38)       paletteCue = "warm-red";   // Lowrance
-    else if (bFrac > 0.38)  paletteCue = "cool-blue";  // Garmin / Deeper
-    else if (gMean > rMean * 1.1) paletteCue = "teal-green"; // Humminbird
-    else                    paletteCue = "neutral";
+    if (rMean / total > 0.38)         paletteCue = "warm-red";   // Lowrance
+    else if (bMean / total > 0.38)    paletteCue = "cool-blue";  // Garmin / Deeper
+    else if (gMean > rMean * 1.1)     paletteCue = "teal-green"; // Humminbird
+    else                              paletteCue = "neutral";
 
     const echoStrength =
       meanBrightness > 140 ? "strong" :
       meanBrightness > 90  ? "moderate" : "weak";
 
     return {
-      meanBrightness: +meanBrightness.toFixed(1),
-      brightPixelPct: +brightPixelPct.toFixed(2),
+      meanBrightness:  +meanBrightness.toFixed(1),
+      brightPixelPct:  +brightPixelPct.toFixed(2),
       dominantChannel,
       paletteCue,
       echoStrength,
-      tensorShape: [height, width, 3],
-      backendUsed: t.getBackend(),
+      tensorShape:     [height, width, 3],
+      backendUsed:     t.getBackend(),
     };
   } catch (err) {
     console.warn("[vision] quickScan failed:", err);
@@ -141,9 +126,6 @@ export async function quickScan(jpegBase64: string): Promise<MobileSonarScan | n
   }
 }
 
-/**
- * Returns a one-line status string — safe to call before tf.ready().
- */
 export function visionStatusSync(): string {
   if (!_ready) return "warming up…";
   return `TF.js ${tf.version} · ${tf.getBackend()}`;

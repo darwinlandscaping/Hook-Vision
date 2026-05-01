@@ -912,9 +912,11 @@ export default function HomeScreen() {
     // Kick off location grab in the background — runs while user taps "Analyze Sonar"
     locationPromiseRef.current = getNTLocationName(10_000);
     // Kick off on-device CV pre-scan in background while user reviews image
-    if (base64) {
+    // Pass the file URI so the scanner can resize to a tiny thumbnail first
+    // (avoids OOM from decoding a full-resolution 1080×2400 sonar photo).
+    if (uri) {
       setCvScanning(true);
-      quickScan(base64)
+      quickScan(uri)
         .then((scan) => setCvScan(scan))
         .catch(() => setCvScan(null))
         .finally(() => setCvScanning(false));
