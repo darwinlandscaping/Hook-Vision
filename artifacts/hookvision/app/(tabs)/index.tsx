@@ -1785,8 +1785,8 @@ export default function HomeScreen() {
 
         {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} cvRegions={cvRegions} />}
 
-        {/* ── Live Sonar Detail Card ── */}
-        {analysis && liveSonarMode && analysis.liveBrand && analysis.liveBrand !== "not-live-sonar" && (
+        {/* ── Live Sonar Detail Card — auto-shown when API detects live sonar ── */}
+        {analysis && analysis.liveBrand && analysis.liveBrand !== "not-live-sonar" && (
           <View style={{ borderRadius: 14, borderWidth: 1.5, borderColor: "#ff9a0030", backgroundColor: "#070b04", overflow: "hidden" }}>
             <View style={{ height: 3, backgroundColor: "#ff9a00" }} />
             <View style={{ padding: 14, gap: 10 }}>
