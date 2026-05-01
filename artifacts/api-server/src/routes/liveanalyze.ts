@@ -152,7 +152,7 @@ STRUCTURE ECHO:
   SHADOW: HUGE trailing shadow
   POSITION: Near SURFACE (top of display in forward mode) or near bank
   CONFIRM: Width-to-length ratio close to 1:3 vs fish 1:4; no swim bladder arch; near surface/bank
-  WARNING: If croc signature detected, ALWAYS set warning field.
+  WARNING: If croc signature detected, ALWAYS set crocAlert:true and fill crocWarning with a description.
 `;
 
 // ─── Full specialist system prompt ───────────────────────────────────────────
@@ -217,9 +217,13 @@ Return ONLY a single JSON object with ALL of these fields:
   "paletteDetected": colour palette name if identifiable e.g. "Original" | "Blue Steel" | "Green" | "unknown",
   "sonarMode": technical mode tag (one of: "live-scope-forward" | "live-scope-down" | "live-scope-perspective" | "mega-live-forward" | "mega-live-down" | "mega-live-landscape" | "activetarget-forward" | "activetarget-down" | "activetarget-scout" | "unknown-live"),
   "archReasoning": MUST be "LIVE SONAR — no arch analysis. Fish identified by shape silhouette and acoustic shadow physics." (string, always this exact phrase for live sonar),
+  "bottomType": brief description of what the bottom echo looks like e.g. "hard rocky bottom" | "soft mud" | "submerged timber" | "none visible" (string),
+  "sonarBrand": plain text brand name e.g. "Humminbird" | "Garmin" | "Lowrance" | "Simrad" (string),
+  "sonarModel": plain text model name e.g. "MEGA Live 2" | "LiveScope Plus" | "ActiveTarget 2" (string),
   "lure": specific lure + technique recommendation for the detected species and depth (string),
   "suggestion": 2–3 sentence fishing strategy based on what the live sonar shows (string),
-  "warning": crocodile warning if large near-surface blob detected, otherwise null (string or null)
+  "crocAlert": true if a crocodile signature (very large near-surface blob, wider than any fish) is detected, otherwise false (boolean),
+  "crocWarning": description of the croc sonar signature if crocAlert is true, otherwise null (string or null)
 }
 
 CRITICAL RULES:
