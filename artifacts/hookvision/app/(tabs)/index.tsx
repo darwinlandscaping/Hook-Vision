@@ -972,6 +972,13 @@ export default function HomeScreen() {
     const domain  = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
     const analyzeAbort = new AbortController();
+    // Hard 90-second timeout — mobile networks can silently drop long connections.
+    // If the AI hasn't responded in 90s, abort and show a clear retry message.
+    let analyzeTimedOut = false;
+    const analyzeHardTimeout = setTimeout(() => {
+      analyzeTimedOut = true;
+      analyzeAbort.abort();
+    }, 90_000);
 
     const validatePromise: Promise<{ isSonar: boolean; reason?: string | null } | null> = (async () => {
       try {
@@ -1022,8 +1029,17 @@ export default function HomeScreen() {
           body: JSON.stringify({ imageBase64 }),
           signal: analyzeAbort.signal,
         });
+        clearTimeout(analyzeHardTimeout);
       } catch (fetchErr: any) {
+        clearTimeout(analyzeHardTimeout);
         if (fetchErr?.name === "AbortError") {
+          if (analyzeTimedOut) {
+            // Hard 90s timeout fired — AI is taking too long on this connection
+            setError("Analysis timed out — AI is taking too long. Check your connection and try again.");
+            setSonarBarraLoading(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            return;
+          }
           // Validate aborted the main call — show the rejection reason
           const vResult = await validatePromise;
           if (vResult && !vResult.isSonar) {
