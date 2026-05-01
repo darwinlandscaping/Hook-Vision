@@ -965,40 +965,46 @@ export default function HomeScreen() {
     setFlashResult(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // ── Sonar validate fires concurrently with the main analyze call ──────────
-    // Both start simultaneously. If validate returns false BEFORE the main call's
-    // response headers arrive, we abort the main call immediately. If the main
-    // call's headers arrive first (streaming started) validate result is ignored.
+    // ── STEP 1: Sonar validate — classifies screen type, gates non-sonar ────────
+    // Runs sequentially first (~400ms) so we know which specialist endpoint to use.
     const domain  = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
     const analyzeAbort = new AbortController();
-    // Hard 90-second timeout — mobile networks can silently drop long connections.
     let analyzeTimedOut = false;
     const analyzeHardTimeout = setTimeout(() => {
       analyzeTimedOut = true;
       analyzeAbort.abort();
     }, 90_000);
 
-    const validatePromise: Promise<{ isSonar: boolean; reason?: string | null } | null> = (async () => {
-      try {
-        const r = await fetch(`${baseUrl}/api/sonar-validate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64 }),
-        });
-        return r.ok ? (await r.json()) as { isSonar: boolean; reason?: string | null } : null;
-      } catch { return null; }
-    })();
+    let sonarType = "arch-2d";
+    try {
+      const vr = await fetch(`${baseUrl}/api/sonar-validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64 }),
+      });
+      if (vr.ok) {
+        const vData = await vr.json() as { isSonar: boolean; sonarType?: string; reason?: string | null };
+        if (!vData.isSonar) {
+          const why = vData.reason ?? "Please photograph your sonar / fish finder screen.";
+          setError(`Not a sonar image — ${why}`);
+          setSonarBarraLoading(false);
+          setLoading(false);
+          clearTimeout(analyzeHardTimeout);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          return;
+        }
+        sonarType = vData.sonarType ?? "arch-2d";
+      }
+    } catch { /* fail open — proceed with arch-2d */ }
 
-    // Race: if validate resolves with isSonar:false before main headers, abort main
-    validatePromise.then(v => {
-      if (v && !v.isSonar) analyzeAbort.abort();
-    });
+    // Auto-route: update live sonar mode from detected screen type
+    const isLiveSonar = sonarType === "live-sonar";
+    setLiveSonarMode(isLiveSonar);
+    liveSonarModeRef.current = isLiveSonar;
 
-    // ── Sonar Brain Stage-1: fire sonar-barra-check in parallel ──────────────
-    // Resolves in ~600ms — shows BARRA ARCH verdict while full analysis streams
-    // Skipped for live sonar mode — arch detection doesn't apply to real-time imaging
-    if (!liveSonarModeRef.current) {
+    // ── STEP 2: Barra arch check — arch-2d only, fires while main call streams ─
+    if (!isLiveSonar) {
       const brDomain  = process.env.EXPO_PUBLIC_DOMAIN;
       const brBaseUrl = brDomain ? `https://${brDomain}` : "";
       fetch(`${brBaseUrl}/api/sonar-barra-check`, {
@@ -1022,7 +1028,10 @@ export default function HomeScreen() {
     try {
       let response: Response;
       try {
-        response = await fetch(`${baseUrl}${liveSonarModeRef.current ? '/api/live-sonar-analyze' : '/api/analyze'}`, {
+        // ── STEP 3: Route to the correct specialist endpoint ───────────────────
+        // live-sonar → /api/live-sonar-analyze (shape/shadow physics, brand detection)
+        // arch-2d / side-imaging / overhead → /api/analyze (arch brightness rules)
+        response = await fetch(`${baseUrl}${isLiveSonar ? '/api/live-sonar-analyze' : '/api/analyze'}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageBase64 }),
@@ -1037,14 +1046,6 @@ export default function HomeScreen() {
             setSonarBarraLoading(false);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             return;
-          }
-          // Validate aborted the main call — show the rejection reason
-          const vResult = await validatePromise;
-          if (vResult && !vResult.isSonar) {
-            const why = vResult.reason ?? "Please photograph your sonar / fish finder screen.";
-            setError(`Not a sonar image — ${why}`);
-            setSonarBarraLoading(false);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           }
           return;
         }
