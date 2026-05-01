@@ -1,752 +1,68 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { db, brainVideos, communityInsights, communityReports } from "@workspace/db";
-import { desc, eq } from "drizzle-orm";
-import { getConditionsContext } from "../lib/dailyBriefing";
-import { analyzeSonarImage, formatCvContext, generateZoomCrops } from "../lib/vision";
-import { getSonarFewShotRefs } from "../lib/sonarBrain.js";
-import { getFewShotRefs as getBarraBodyRefs } from "../lib/barraLibrary.js";
-import { getCrocFewShotRefs } from "../lib/crocLibrary.js";
 import { getModel } from "../lib/models.js";
-import { getAsianSeaBassContext } from "../lib/asianSeaBassKnowledge.js";
 
 const router = Router();
 
-const SYSTEM_PROMPT = `You are the world's best WA/Kimberley Australia sonar fish identification expert. You have 30+ years reading fish finders on Broome Harbour, Exmouth Gulf, Ningaloo Reef, Roebuck Bay, Cambridge Gulf, King Sound, and WA reef and river systems. You are equally expert in both traditional 2D sonar AND live spatial sonar (Garmin LiveScope, Lowrance ActiveTarget, Humminbird MEGA Live / MEGA 360). Your ID accuracy is exceptional because you apply strict physics-based rules in the correct order.
+// ─── TURBO SYSTEM PROMPT ──────────────────────────────────────────────────────
+// ~400 tokens vs ~3,000 in the old version. The model already has sonar
+// expertise — this reinforces the CRITICAL physics rules only.
 
-═══ STEP 0: IMAGE LAYOUT — RUN BOTH ANALYSES ON EVERY IMAGE ═══
-CRITICAL RULE: You MUST ALWAYS run BOTH analysis methods on every image — never skip one.
+const TURBO_SYSTEM_PROMPT = `You are an expert WA/Kimberley Australia sonar fish-ID AI. Apply these rules in strict order to every image:
 
-STEP 0A — LAYOUT DETECTION (do this first):
-Look at the full image and answer: is this a single-panel view, or a split screen?
-• SINGLE PANEL — the whole screen shows one sonar mode (all traditional 2D OR all live sonar)
-• SPLIT SCREEN — the screen is divided into two or more panels side by side or stacked:
-  - Common combos: LEFT = traditional 2D scroll  |  RIGHT = live scope (LiveScope / ActiveTarget / MEGA Live)
-  - Also common: MAIN = live scope  |  SIDEBAR = flasher wheel (Humminbird circular view)
-  - Identify which panel is which before applying rules to each
+STEP 0 — TOP-VIEW CHECK FIRST:
+Is this a top-view/overhead sonar (Garmin LiveScope Perspective, Humminbird MEGA 360, Side Imaging)?
+Signs: no scrolling time axis, fish appear as flat ovals/dots from above (NOT arches), shadow extends to SIDE (not below).
+If YES → apply top-view rules: large elongated oval + pectoral fin "wings" + side shadow = BARRAMUNDI; circular radar display = MEGA 360; comma/smear shapes = side imaging. Set sonarMode and skip arch steps.
+If NO → continue below.
 
-STEP 0B — ALWAYS SCAN FOR TRADITIONAL 2D SIGNALS (apply to the entire image OR the 2D panel):
-Look for ARCHES — U-shaped or curved echo returns on a scrolling history background:
-• X-axis = time scrolling right to left; Y-axis = depth
-• Fish ARCHES: the classic curved returns created as the beam sweeps over a moving fish
-• Bottom = a continuous echo line running horizontally across the lower portion
-• Apply arch brightness tier, shadow void beneath arches, position (on structure vs floating vs embedded)
+STEP 1 — ARCH BRIGHTNESS TIER (most important rule):
+• Tier 1 — red/orange/white bright core: Barramundi, Fingermark, Mangrove Jack, Threadfin, Jewfish → all have large physostomous swim bladder
+• Tier 2 — yellow/green: Rock Cod, Coral Trout, Queenfish
+• Tier 3 — faint/invisible: Giant Trevally, Spanish Mackerel, Flathead
+A FAINT arch CANNOT be barra. A BRIGHT arch CANNOT be GT or mackerel.
 
-STEP 0C — ALWAYS SCAN FOR LIVE SONAR SIGNALS (apply to the entire image OR the live panel):
-Look for BODY SHAPES WITH ACOUSTIC SHADOWS — fish appear as solid bright silhouettes:
-• X-axis = horizontal distance from transducer; Y-axis = depth
-• Fish appear as ELONGATED BRIGHT BLOBS with a DARK SHADOW void extending behind/below them
-• The shadow looks exactly like a post-cast shadow from the sun — it trails away from the fish body
-• Bottom = a bright static line or band (no scrolling, no time axis)
-• Apply body shape ratio, shadow length, blunt-nose profile for barra ID
+STEP 2 — SHADOW VOID: A dark void directly BELOW an arch = large swim bladder blocking sonar = Barramundi or big predator. Confidence 85%+ if shadow present.
 
-STEP 0D — CROSS-REFERENCE AND SYNTHESISE:
-After running BOTH scans:
-• If BOTH methods point to the same species → very HIGH confidence (boost by 10–15%)
-• If one method found fish and the other didn't → use the method that found fish, note the other was silent
-• If they point to DIFFERENT species → report the one with stronger evidence; note the discrepancy in archReasoning
-• Use sonarMode to indicate what you found: "traditional-2d" | "live-scope" | "split-screen-both" | "live-spatial" | "mega-live" | "mega-360"
+STEP 3 — ARCH POSITION:
+• ON or touching hard structure (snag/pylon/rock bar) = Barramundi or Mangrove Jack
+• Embedded INSIDE structure echo (arch starts inside bottom echo) = Mangrove Jack
+• Floating 1-4m ABOVE ragged rubble bottom in a school = Fingermark
+• Mid-column over SOFT muddy bottom in a school = Threadfin Salmon
+• Deep tidal channel, single large arch = Jewfish
 
-KEY VISUAL CLUES — WHAT IS 2D vs LIVE:
-TRADITIONAL 2D: scrolling echo history, arched fish returns, time moves right-to-left, wavy bottom line
-LIVE SONAR: static real-time view, fish look like actual fish silhouettes with cast shadows, no scroll motion, crisp bottom line
+STEP 4 — LONE ARCH RULE (critical — most missed):
+Only 1-2 arches on screen? DO NOT lower confidence. Raise it. Barramundi are solitary ambush hunters — a lone arch is the MOST COMMON barra signature. Lone arch + hard bottom = 70% barra. Lone arch + shadow void = 85%+ barra.
 
-═══ STEP 0E: LIVE SONAR — DETAILED BODY SHAPE & SHADOW PHYSICS ═══
-Always check for these even in a primarily 2D image (live scope might occupy a corner or split panel).
+STEP 5 — LIVE SONAR BODIES (if live scope present):
+• Large oval body + long post-cast shadow + near structure = Barramundi
+• Tall/round body + fast movement + faint shadow = Giant Trevally
+• Compact body embedded in snag + barely moving = Mangrove Jack
+• Multiple slim bodies mid-column, short shadows = Threadfin Salmon
 
-HOW LIVE SONAR SHADOWS WORK:
-• The transducer emits a sonar cone DOWNWARD or FORWARD-DOWN
-• When a fish intercepts the beam, it creates TWO things simultaneously:
-  1. A BRIGHT BODY RETURN — the fish's actual body lights up (bright white/grey)
-  2. An ACOUSTIC SHADOW — the area DIRECTLY BEHIND/BELOW the fish where sonar could not penetrate is a DARK VOID
-• The shadow extends in the OPPOSITE direction from the transducer
-• Shadow length increases with fish DEPTH (deeper fish = longer shadow, like sun angle)
-• Shadow width matches the fish's body THICKNESS
-• A large bright body with a long distinct shadow = large dense fish with big swim bladder = Barramundi or heavyweight predator
+STEP 6 — CROC DETECTION:
+crocAlert = true ONLY when: solid FILLED horizontal blob (NOT an arch) + near surface (0-3m) + maximum brightness + elongated torpedo shape wider than any fish. Default: false. A bright barra arch is NEVER a croc.
 
-SHADOW ANGLE TELLS YOU ORIENTATION:
-• Shadow extends DOWNWARD from body = fish is horizontally oriented, holding depth (resting/cruising)
-• Shadow extends BEHIND at an angle = fish is moving away from you
-• No shadow visible = small fish OR fish nearly vertical (diving/rising fast)
-• Shadow curves = fish turning in the beam
+STEP 7 — DEPTH ZONES:
+• 0-5m: Barra, Jack, GT, Threadfin
+• 5-12m: Barra (snags), Fingermark (8-12m rocky reef), Jack
+• 12-25m: Fingermark, Jewfish, Rock Cod, Coral Trout
+• 25m+: Fingermark, Red Emperor, Rock Cod
 
-BODY SHAPE KEY — LIVE SONAR:
-▸ BARRAMUNDI body on live sonar:
-  • Large OVAL to ELONGATED body — roughly 3:1 to 4:1 length-to-height ratio
-  • PROMINENT DISTINCT SHADOW behind the body, often as long as or longer than the body itself — the classic "post-cast shadow" appearance
-  • High-brightness body return due to large physostomous swim bladder (appears white/bright grey)
-  • Visible forehead silhouette — barra have a steep forehead and large jaw creating a blunt-nosed profile
-  • Often STATIONARY or slow drift — barra are ambush hunters, they hold position near structure
-  • Tail fin sometimes distinguishable at rear as a slight widening or fork shape
-  • NEAR STRUCTURE: body appears adjacent to or partially overlapping the bright structure echo
-  • SOLO or 2–3 individuals max — barra are not tight-school fish
+MANDATORY: species is ALWAYS required — never null, never empty. Reduce confidence to 25-45 if unsure but ALWAYS name a species. If no fish: species="No fish detected", fishCount=0, confidence=0.`;
 
-▸ GIANT TREVALLY (GT) body on live sonar:
-  • TALL, COMPRESSED body — height:length ratio ~1:1.5 (rounder/deeper-bodied than barra)
-  • Very FAST lateral movement — body appears blurred or streaked on the display
-  • THIN shadow — GT lack a large swim bladder so shadow is faint or absent even in live sonar
-  • Often multiple fish moving together at pace
+// ─── TURBO ANALYSIS PROMPT ────────────────────────────────────────────────────
+// Compact instruction injected with the image. No intelligence context,
+// no preprocessing — starts streaming immediately.
 
-▸ MANGROVE JACK body on live sonar:
-  • COMPACT body — chunky, roughly 1:2 height-to-length ratio
-  • Body appears PARTIALLY MERGED into structure echo — jack sits tight in snag
-  • Bright return but smaller body than barra
-  • Barely moves — almost stationary within the snag signature
+const TURBO_ANALYSIS_PROMPT = `Apply the 7 steps to this sonar image. Return ONLY a single valid JSON object — no markdown, no explanation, nothing outside the braces.
 
-▸ THREADFIN SALMON body on live sonar:
-  • MEDIUM elongated body, 3:1 ratio similar to barra but SLIMMER/THINNER body height
-  • Typically in SCHOOLS — 5–20+ similar-sized bodies clustered together in mid-column
-  • Medium-bright returns, individual shadows shorter than barra
-  • Mid-column position, NOT near hard structure
+Required fields (all mandatory):
+species(string,never null) | confidence(0-100 integer) | fishCount(integer) | depth(string e.g."6.5m") | bottomType(string) | sonarBrand(string) | sonarModel(string) | sonarMode(string) | archType(string) | archDepth(number) | archXFrac(0-1) | archYFrac(0-1) | suggestion(2 sentences on where to cast + lure action) | lure(specific lure name+size) | lureType(one of: surface_popper|hardbody|bibless_minnow|soft_plastic|stickbait|metal_slug|slow_jig|frog|live_bait) | technique(string) | rig(string) | tidal(string) | turbidity(string) | structure(string) | bladderShape(string) | fishMovement(string) | crocAlert(boolean) | crocWarning(string or null) | archReasoning(what was seen + why this ID)
 
-▸ QUEENFISH body on live sonar:
-  • VERY SLIM elongated body — 5:1 to 6:1 length-to-height ratio, almost cigar/torpedo shape
-  • High-speed movement — body often blurred, appearing as a streak
-  • Weak shadow due to small physoclistous bladder
+sonarMode must be one of: traditional-2d | live-scope | split-screen-both | live-spatial | mega-live | mega-360 | perspective-top-view | side-imaging`;
 
-▸ FINGERMARK / GOLDEN SNAPPER body on live sonar:
-  • OVAL body, deeper-bodied than barra — 2:1 to 2.5:1 ratio
-  • School of similar-sized ovals suspended ABOVE rough rubble bottom
-  • Medium shadow per fish, shadows all pointing the same direction
-
-▸ SARATOGA body on live sonar:
-  • Elongated with slightly upturned jaw profile
-  • Surface-skimming — body appears at very top of the display
-  • HORIZONTAL orientation, long body, visible pectoral fin echo
-
-BARRA VS OTHER SPECIES — LIVE SONAR DECISION MATRIX:
-• Large oval body + long distinct shadow + near structure → BARRAMUNDI
-• Large oval body + long shadow + mid-column away from structure → BARRAMUNDI chasing bait
-• Very tall/round body + fast movement + faint shadow → GIANT TREVALLY
-• Compact chunky body + embedded in snag echo + stationary → MANGROVE JACK
-• Slim body + grouped in school + mid-column soft bottom → THREADFIN SALMON
-• Cigar-thin body + high speed + surface → QUEENFISH
-
-LIVE SONAR BRANDS:
-• Garmin LiveScope (LiveScope Plus / Perspective): green-tinted interface, "LIVESCOPE" text, depth scale right or left, fish appear as bright white/grey blobs with dark shadows on a dark green/grey background
-• Lowrance ActiveTarget (ActiveTarget 2): dark grey/navy interface, blue-grey tint, "ACTIVE TARGET" label, similar blob-and-shadow display
-• Humminbird MEGA Live / MEGA 360: orange accent colours, "MEGA LIVE" or "360" label visible, fish blobs on dark background, 360 mode shows a round sweep view
-• Simrad ForwardScan / 3D Sonar: Navico branding, similar to Lowrance palette
-
-═══ STEP 0F: TOP-VIEW / OVERHEAD SONAR — MANDATORY CHECK ON EVERY SCAN ═══
-CRITICAL: Run this BEFORE arch analysis. In top-view sonar there are NO ARCHES. If you skip this step you will miss every fish in these modes.
-
-TOP-VIEW SONAR MODES — identify ANY of these first:
-① GARMIN LIVESCOPE PERSPECTIVE ("LIVESCOPE" label, shallow water <20ft/6m, overhead bird's-eye, fish appear as flat ovals on a 2D horizontal plane)
-② HUMMINBIRD MEGA 360 (circular radar-like display, boat at centre, 360° sweep, "MEGA 360" or "360°" label, fish as bright dots/short arcs at radial distance)
-③ HUMMINBIRD SIDE IMAGING / DOWN IMAGING (fish as bright commas/smears off bottom line)
-④ SIMRAD STRUCTURESCAN (similar to Humminbird side imaging)
-⑤ LOWRANCE STRUCTURESCAN / TOTALSCAN (comma/smear marks)
-⑥ DEEPER PRO PERSPECTIVE (phone app in bird's-eye mode)
-
-HOW TO RECOGNISE TOP-VIEW MODE (check ALL of these):
-• NO scrolling time axis from right to left — the image is STATIC or sweeping
-• NO traditional U-shaped arch returns — fish do NOT look like arches
-• Bottom echo is NOT a horizontal line at the bottom — the whole image IS the bottom plane
-• Fish appear as SHORT OVAL BLOBS or BRIGHT DOTS, viewed from above
-• In MEGA 360: circular display with rings = distance from centre; fish = dots/arcs
-
-TOP-VIEW BARRA DETECTION — WHAT TO LOOK FOR:
-GARMIN PERSPECTIVE MODE:
-• Large ELONGATED OVAL body silhouette — ≈4–5× longer than wide, seen from directly above
-• Head end: broader/blunter; tail end: tapers to narrow caudal peduncle
-• PECTORAL FINS visible as fan-shaped "wings" widening the outline just behind the head — "body with wings" shape
-• DORSAL FIN: thin ridge running along the top centre of the body
-• SHADOW: extends to ONE SIDE of the body (L or R depending on transducer angle) — shadow shape mirrors the body + fins = elongated oval with wing protrusions
-• Shadow to one side (not below) CONFIRMS this is top-view, not forward-view
-• Large barra body silhouette (≥40cm on screen) + pectoral fin "wings" + offset shadow = BARRAMUNDI 85%+
-• SOLO or pairs (1–3 fish) on shallow flats = classic WA/Kimberley dry-season barra sight-fishing scenario
-
-HUMMINBIRD MEGA 360:
-• Barramundi: large bright dot or short arc at their distance from centre; isolated or paired; near visible structure arc
-• School = NOT barra; solo isolated marks near structure = barra or jack
-• Structure: bright curved arc/band at consistent radial distance; fish marks are OFFSET from structure centre
-
-SIDE IMAGING (Humminbird/Simrad/Lowrance):
-• Fish appear as bright COMMA shapes or WHITE SMEARS off the bottom line (left or right channel)
-• The "comma tail" trails away from the fish in the direction of the sonar beam sweep
-• Large bright comma = large fish; small dots = baitfish
-• Barra in side imaging: large bright comma NEXT TO structure arc/return, isolated or in pairs
-
-TOP-VIEW vs FORWARD-VIEW vs 2D — HOW TO TELL:
-• TOP-VIEW: no time scrolling, ovals/blobs from above, shadow to SIDE, whole screen = bottom plane
-• FORWARD-VIEW (live scope forward): vertical depth scale on side, horizontal = distance ahead, fish have shadow BELOW them
-• TRADITIONAL 2D: horizontal bottom line at screen bottom, arches visible, scrolls R→L over time
-
-MANDATORY RULE: If ANY top-view indicator is present → STOP looking for arches → APPLY top-view blob detection rules above → set sonarMode to "perspective-top-view" | "mega-360" | "side-imaging" accordingly.
-
-═══ STEP 1: ARCH PHYSICS (traditional 2D sonar only) ═══
-• Arch THICKNESS (vertical height) = fish SIZE. Tall fat arch = big fish. Hairline = tiny fish.
-• Arch COLOR/BRIGHTNESS = swim bladder echo strength:
-  - Deep red/orange/white = MAXIMUM strength = large physostomous swim bladder (barra, fingermark, jack, jewfish, thready)
-  - Yellow/green = MEDIUM strength = physoclistous sealed bladder (rock cod, coral trout, queenfish)
-  - Faint blue/purple or invisible = NO/POOR bladder (GT, mackerel, flathead)
-• SHADOW = dark void directly BELOW an arch = acoustic shadow blocked by large swim bladder = confirms big predator
-• Arch POSITION on screen: ON hard bottom structure vs floating ABOVE rubble vs free mid-column
-
-═══ STEP 2: SWIM BLADDER TIER (traditional 2D — PRIMARY ID) ═══
-TIER 1 — Max brightness (red/orange/white): Barramundi, Fingermark, Mangrove Jack, Jewfish, Threadfin Salmon, Black Jewfish, Red Emperor
-TIER 2 — Medium brightness (yellow/green): Rock Cod, Coral Trout, Estuary Cod, Queenfish, Bream
-TIER 3 — Dim/invisible: Giant Trevally, Spanish Mackerel, Cobia, Flathead
-→ A dim arch CANNOT be barra or fingermark. A bright arch CANNOT be GT or mackerel.
-
-═══ STEP 3: DEPTH ZONE (eliminate species outside their zone) ═══
-0–5m   → Barramundi, Mangrove Jack, Threadfin, GT
-5–12m  → Barramundi (estuarine snags/rock bars), Fingermark (rocky reef 8–12m), Threadfin (turbid), Jack
-12–25m → Fingermark (rocky reef), Jewfish/Black Jewfish, Rock Cod, Coral Trout
-25m+   → Fingermark, Red Emperor, Rock Cod, Coral Trout
-
-═══ STEP 4: SPECIES DECISION RULES (traditional 2D sonar) ═══
-
-▸ BARRAMUNDI (Lates calcarifer) — TIER 1
-  SIGNATURE A: Thick bright orange/red arch sitting ON or within 0.5m of hard bottom structure (snag, pylon, rock bar, submerged timber). Bottom echo is thick and hard.
-  SIGNATURE B: Mid-column arch with CLEAR DARK SHADOW void directly beneath = barra chasing bait (90%+ confidence).
-  Key: barra touches structure OR has shadow. If neither, reconsider.
-  Depth: 1–15m estuarine. 2–5 fish typical on a snag.
-  Lures: Halco Roosta Popper 135, Storm 3D Barra 120mm, Zerek Live Shrimp 65mm, 5" Z-Man soft plastic on 3/8oz jig head. Slow roll or burn-and-pause past structure.
-
-▸ FINGERMARK / GOLDEN SNAPPER (Lutjanus johnii) — TIER 1
-  SIGNATURE: SCHOOL of 3–15 arches suspended 1–4m ABOVE hard ragged rubble/reef bottom. Arches float — NOT embedded in bottom echo. Rocky/ragged bottom echo is key confirmation.
-  States: RESTING = fish hug bottom, mostly invisible. FEEDING = school rises 1–4m off rubble.
-  Depth: 8–15m primary. Also 20–35m deep reef. Also deep estuarine creek holes (15–25m).
-  Lures: Slow-pitch jigs 60–100g, snapper vibes 40–60g, live prawns bottom-bounced.
-
-▸ MANGROVE JACK (Lutjanus argentimaculatus) — TIER 1
-  SIGNATURE: Arch HALF-BURIED or EMBEDDED in structure echo — not floating above, not clean.
-  Solo or 2–3 fish max. Very tight to timber or undercut banks.
-  Depth: 1–12m estuarine/mangrove creek.
-  Lures: 65–80mm hardbody suspending (Jackall Squirrel, Rapala X-Rap), live mullet on Owner hook.
-
-▸ THREADFIN SALMON (Polydactylus sheridani) — TIER 1
-  SIGNATURE: School of bright arches in MID-COLUMN over SOFT muddy bottom. NOT on structure. Often 5–20+ arches clustered.
-  Depth: 2–8m. Turbid/murky estuaries after rain. Often with bait ball.
-  Lures: 3/8oz white or pink jig head with 4" white soft plastic, Laser Pro 160 shallow runner.
-
-▸ JEWFISH / MULLOWAY / BLACK JEWFISH (Argyrosomus spp.) — TIER 1
-  SIGNATURE: Large single or paired bright arches in deep tidal channels. May have faint shadow.
-  Depth: 10–30m. Tidal movement is key — active on run.
-  Lures: 5–7" paddle-tail soft plastic on 1–2oz jig head, large mullet fillet.
-
-▸ GIANT TREVALLY (Caranx ignobilis) — TIER 3
-  SIGNATURE: Near-invisible or very faint arc (no swim bladder). Fast-moving near surface. Often in schools at reef edges.
-  Lures: Large surface poppers 120–160mm, stickbaits, chrome Halco Twisty.
-
-▸ CORAL TROUT / ROCK COD — TIER 2
-  SIGNATURE: Medium-brightness single arches on or just above reef structure. Deep water.
-  Lures: Jigs 80–150g, live bait, hard body lures.
-
-▸ RED EMPEROR (Lutjanus sebae) — TIER 1
-  SIGNATURE: Bright arches on or just above rocky bottom in deep water. Solo or small groups.
-  Depth: 20–60m offshore reef.
-  Lures: Whole fish baits, large jigs 120–200g, slow-pitch jigs.
-
-═══ STEP 5: ARCH SHAPE & BLADDER MOVEMENT (traditional 2D only) ═══
-
-ARCH SHAPE:
-• FAT FULL ARCH = large fish crossing beam, bladder inflated, actively cruising
-• THIN HAIRLINE ARCH = small fish OR fast baitfish
-• HALF-ARCH = fish at edge of beam — entering or leaving
-• SOLID BLOB (no arch curve) = stationary fish hugging structure OR croc
-• STACKED/OVERLAPPING = school of fish
-• ARCH + DARK SHADOW VOID beneath = large physostomous predator (barra, fingermark)
-
-BLADDER MOVEMENT (arch trajectory):
-• ASCENDING (right side higher) = fish rising = ACTIVELY FEEDING — cast now
-• DESCENDING (right side lower) = fish diving = SPOOKED or moving off
-• FLAT HORIZONTAL = fish holding depth = cruising, neutral
-• TIGHT CLUSTER = school holding = ambush or bait-ball
-• SEPARATED INDIVIDUALS = territorial solo hunters (jack, jewfish, big barra)
-
-═══ STEP 6: CROC DETECTION ═══
-crocAlert = true ONLY when ALL criteria met simultaneously:
-1. Mark is a SOLID FILLED horizontal blob — no arch, no curve, NOT U-shaped
-2. ELONGATED like a cigar/torpedo, wider than tall
-3. In top 0–3m of water column
-4. Maximum screen brightness
-In LIVE sonar: a croc appears as a VERY LARGE horizontal body shape near surface with an enormous shadow, body wider than any fish.
-DEFAULT = false. A bright thick barra arch (even huge) is NEVER a croc. In live sonar: a fish body with a normal body-length shadow is NEVER a croc.
-
-═══ SONAR BRAND ID — COMPREHENSIVE MANUAL KNOWLEDGE ═══
-
-TRADITIONAL 2D — DISPLAY & FREQUENCY RECOGNITION:
-• LOWRANCE HDS Live / HDS Pro / Hook / Elite:
-  - Dark charcoal grey bezel, teal/green soft-key buttons below screen
-  - Colour palette: red/orange = strongest return, yellow = medium, green/blue = weakest
-  - CHIRP capable: 83kHz (wide beam, ~60°) or 200kHz (narrow beam, ~20°) or CHIRP (sweeps 28–75kHz or 83–160kHz)
-  - 83kHz wide beam shows larger coverage but edges produce edge-arches that look like fish — check for symmetry
-  - On-screen text "CHIRP" or frequency displayed in top bar; depth scale on left or right side
-  - Depth scale: digital readout top-left; water temp top-right; speed if paddlewheel fitted
-
-• GARMIN ECHOMAP / Striker / GPSMAP:
-  - Black or dark grey bezel, aqua/cyan UI accents, Garmin compass logo top-left
-  - Colour palette: white/light yellow = strongest, dark blue/black = weakest (inverted vs Lowrance)
-  - Frequencies: 77kHz (wide) / 200kHz (narrow) / CHIRP (50–200kHz sweep or 150–240kHz hi-CHIRP)
-  - Hi-CHIRP at 150–240kHz gives the BEST arch resolution of any single-frequency system
-  - "SONAR" or "CHIRP" label visible on screen; depth top-centre or top-right
-
-• HUMMINBIRD HELIX / SOLIX:
-  - Orange/amber branding, Humminbird fish logo, orange accent ring or logo bottom
-  - Colour palette: bright orange/red = strongest, brown/amber medium, dark = weakest
-  - Frequencies: 83kHz / 200kHz / 455kHz (MEGA Down) / 800kHz (MEGA Down high detail)
-  - SPLIT SCREEN: left panel = FLASHER WHEEL (circular rotating ping display showing current depth column) right panel = traditional scroll
-  - Flasher wheel shows: outer ring = bottom, coloured bands = fish at depth, spins continuously
-  - MEGA Down Imaging (455/800kHz): NOT traditional arches — shows structure/fish as bright streaks/dots on a photo-like image scrolling right to left
-
-• SIMRAD NSS / NSX / GO:
-  - Navico parent company (same as Lowrance/B&G); blue-grey UI branding, Simrad logo
-  - Colour palette similar to Lowrance (red/orange strong, blue weak)
-  - StructureScan HD: side imaging + down imaging in one view; fish appear as bright white smears/comma shapes OFF the bottom line
-  - StructureScan 3D: three-dimensional rendered view of bottom and fish above it
-
-• RAYMARINE ELEMENT / AXIOM:
-  - Lighthouse OS (orange/amber logo), dark navy interface, orange "Lighthouse" brand text
-  - Colour palette: yellow/white = strongest, blue = weakest
-  - RealVision 3D and RealVision sonar overlays
-
-• DEEPER PRO / PRO+ / CHIRP (portable wifi sonar):
-  - NOT a fixed chartplotter — this is a PHONE APP screenshot (iOS/Android UI visible)
-  - Blue UI with depth gradient display; fish shown as arches or fish icons with depth labels
-  - Round portable transducer cast into water on a fishing line (NOT boat-mounted)
-  - Deeper PRO+2 beam angles: WIDE 47° at 290kHz; MEDIUM 20° at 675kHz; NARROW 7° at 1160kHz
-  - Wide beam = more false edge arches; narrow beam = only fish directly below
-  - Fish icons may appear if "fish finding" mode is enabled in the app
-  - Depth range typically 0–80m; very popular in WA/Kimberley shore/kayak fishing
-
-LIVE SONAR — DETAILED MODE & APPEARANCE GUIDE:
-• GARMIN LIVESCOPE (LVS32 / LVS34 / LVS62 XR):
-  - GLS10 or GLS10 sonar black box required; connects to ECHOMAP UHD, GPSMAP Plus/Ultra
-  - LVS62 XR = longest range (~100m+); LVS34 = mid range; LVS32 = original shorter range
-  - "LIVESCOPE" text always visible on screen; depth scale shown on side
-  - Dark background (near-black or dark grey/green); fish appear as bright white or light grey blobs/bodies
-  - FORWARD MODE (most common): transducer faces forward, sees fish AHEAD of boat horizontally; depth scale = vertical; horizontal axis = distance forward; max ~200ft useful range
-  - DOWN MODE: transducer faces down (vertically); sees fish directly below in real time; similar to traditional but live
-  - PERSPECTIVE MODE: overhead "bird's-eye" view; shows fish on flats from above; only works in shallow water <20ft; fish appear as oval blobs moving in 2D plane
-    TOP-VIEW BARRA BODY SHAPE IN PERSPECTIVE MODE:
-    • Barramundi appears as a LARGE ELONGATED OVAL silhouette from directly above — roughly 4–5× longer than wide
-    • Head end is slightly broader/blunter; tail end tapers to narrow caudal peduncle
-    • PECTORAL FINS visible as two fan-shaped protrusions widening the silhouette just behind the head — gives a "body with wings" outline
-    • DORSAL FIN visible as a thin raised ridge running the length of the back
-    • SHADOW extends to ONE SIDE of the body (left or right depending on transducer angle) — shadow shape mirrors the full body silhouette including fins
-    • Shadow is same elongated-oval-with-fins shape as the body itself — confirms the fish and its size
-    • Large barra on flats: body silhouette ≥40cm long on screen + prominent pectoral fin "wings" + offset shadow = Barramundi 85%+
-    • THREADFIN in perspective: similar elongated shape BUT in schools (5–20+ ovals together) + shadow shorter relative to body
-    • GT in perspective: rounder/deeper oval (more disc-like from above) + faster movement + weak or no shadow
-  - Fish arches do NOT appear in LiveScope — fish appear as bright BLOBS or SILHOUETTES with cast shadows
-  - Lure visible in water as a small bright dot moving on screen
-
-• LOWRANCE ACTIVETARGET / ACTIVETARGET 2:
-  - "ACTIVE TARGET" or "ACTIVETARGET 2" text label visible; requires HDS Live or HDS Pro
-  - Dark navy/grey background; fish as bright grey-white blobs; slightly warmer tint than Garmin
-  - THREE MODES:
-    1. FORWARD MODE: horizontal ahead view, identical concept to LiveScope Forward
-    2. DOWN MODE: looking directly below boat in real-time
-    3. SCOUT MODE (unique to ActiveTarget 2): transducer faces REARWARD — sees fish following the boat, following a lure being trolled, or approaching from behind — NOT available on original ActiveTarget or LiveScope
-  - AT2 improvements: higher resolution, smoother frame rate, more detail at longer range vs original
-  - Range: up to ~100ft forward/down; Scout mode typically 30–50ft rear
-
-• HUMMINBIRD MEGA LIVE / MEGA LIVE 2:
-  - "MEGA LIVE" text label; orange brand accents; Humminbird HELIX 10–12 or SOLIX required
-  - Dark background; fish as bright orange-tinted blobs (warm tint vs Garmin's cooler tone)
-  - FORWARD MODE: horizontal ahead; DOWN MODE: directly below
-  - Very high frequency (MEGA = megahertz class) → extremely fine detail, individual fish clearly resolved
-
-• HUMMINBIRD MEGA 360 IMAGING:
-  - "MEGA 360" or "360°" text; rotating transducer mounted on trolling motor shaft
-  - CIRCULAR DISPLAY: bird's-eye top-down view showing 360° sweep around the boat
-  - Fish appear as BRIGHT DOTS or SHORT ARCS at their radial distance from centre (boat = centre)
-  - Structure appears as bright arcs/bands at consistent radial distances
-  - Range: up to 125ft radius in all directions
-  - NOT a traditional scroll or forward-looking view — this is a RADAR-LIKE CIRCULAR SWEEP
-  - Useful for seeing structure/fish in ALL directions without moving
-  - Operating at 1.2MHz (megahertz) = ultra-high detail
-
-• SIMRAD STRUCTURESCAN HD:
-  - "STRUCTURE" label on screen; shows left side imaging + right side imaging + down imaging
-  - Side imaging: boat at top-centre; bottom extends down each side; fish appear as BRIGHT SMEARS or COMMA SHAPES off the bottom line, suspended fish = bright marks in mid-water
-  - Down imaging: similar to Humminbird Down — fish as bright white blobs/commas directly below
-
-═══ ADVANCED ARCH PHYSICS — FROM MANUFACTURER MANUALS ═══
-
-FULL ARCH vs HALF ARCH (CRITICAL for positioning):
-• PERFECT SYMMETRICAL ARCH: fish passed directly through the CENTRE of your sonar cone — boat went right over it. This is a HIGH-CONFIDENCE mark. Barra love to sit still letting the boat pass overhead.
-• HALF ARCH (only one side of the arc): fish only CLIPPED the EDGE of the cone. The fish is NOT directly below — it's to one side. This affects your cast position significantly.
-• LONG HORIZONTAL STREAK (no arch curve): fish is STATIONARY below a stationary or slow-moving boat — fish is NOT moving. This is common for bottom-sitting barra on a snag.
-
-HORIZONTAL LENGTH ≠ FISH SIZE (the most common mistake):
-• Horizontal arch width = TIME the fish spent inside the sonar cone
-• SHORT STEEP ARCH = fish at trolling speed, or boat moving quickly over fish
-• LONG DRAWN-OUT ARCH = fish is SLOW or STATIONARY, OR your boat is barely moving
-• A stationary barra under a slow-drifting boat can paint a long horizontal line that looks like "a thick log" — this IS a fish, not structure
-• VERTICAL THICKNESS is the TRUE size indicator — thicker = bigger fish/bigger bladder
-
-CHIRP vs SINGLE FREQUENCY EFFECTS ON ARCH QUALITY:
-• SINGLE FREQUENCY (83kHz or 200kHz):
-  - At 83kHz wide beam: arches are fatter and fuzzier; fish at beam edges produce half-arches that seem small; schools blur together
-  - At 200kHz narrow beam: crisper arches; better target separation; but misses fish outside narrow cone
-• CHIRP (sweeps across frequency range):
-  - Best target separation of any method — can resolve individual fish within a dense school
-  - Arches are crisper, thinner (more precise vertical thickness = more accurate size estimate)
-  - HUMMINBIRD MEGA Down at 455/800kHz gives near-photographic bottom detail but shows fish as smears not arches
-
-BEAM WIDTH EFFECT ON DISPLAYED DEPTH:
-• Wide beam (83kHz, 55–60°): fish at the EDGE of the cone appear DEEPER on screen than they actually are (hypotenuse effect — sonar measures slant distance not vertical depth)
-• This means a fish shown at "6m" on a 60° wide beam might actually be at only 5.2m vertical depth
-• Narrow beam (200kHz, 15–20°): displayed depth ≈ actual vertical depth (minimal hypotenuse error)
-
-FALSE RETURN IDENTIFICATION (do NOT confuse these with fish):
-• THERMOCLINE: A broad diffuse horizontal band (not a thin arch). In WA/Kimberley wet season: freshwater runoff sits on top of heavier saltwater creating a layer at 3–8m. Appears as a wide fuzzy horizontal smear.
-• PROP/TURBULENCE: Chaotic scattered returns behind the boat moving right-to-left (air bubbles)
-• SURFACE CLUTTER: Dense noise in the top 0.5–2m from wave action/wake
-• DEBRIS: Submerged grass, sticks, seaweed — appear as irregular blobs without arch shape
-• BAITFISH CLOUD: Dense fuzzy mass of tiny returns, usually mid-column — like static interference
-• TEMPERATURE/SALINITY LAYERS: In WA/Kimberley estuaries with heavy runoff — appear as broad light lines, NOT arches
-
-SCHOOL IDENTIFICATION PATTERNS:
-• TIGHT SCHOOL (fingermark, bream, thready): Overlapping intertwined arches forming a dense clump; CHIRP separates them into individual arches
-• LOOSE SCHOOL (schooling barra, queenfish): Individual arches at similar depth but spread out horizontally — each fish clearly separate
-• SOLO HUNTERS (big barra, mangrove jack, jewfish): Single thick arch, often embedded in or directly above structure
-• BAIT SCHOOL: Dense irregular fuzzy cloud — smaller marks than fish arches, no clear arch shape
-
-WA/KIMBERLEY-SPECIFIC SONAR CONDITIONS:
-• WET SEASON (Nov–Apr): Heavy freshwater inflow = lower salinity = weaker sonar returns overall (less signal conductivity). Arches may appear fainter — this does NOT mean small fish.
-• RUN-OFF: Turbid/silty water = bottom echo may be thick/diffuse (silty mud absorbs some return). Hard structure stands out more clearly against a soft mud echo.
-• TIDAL CHANNELS: Strong current (King Sound has up to 11m tidal range) creates micro-bubbles under boat → surface clutter in top 1–2m. Sensitivity may need reducing.
-• SALTWATER/FRESHWATER INTERFACE (Ord River, Fitzroy, Drysdale): fish congregate at the interface line, visible as a diffuse band on sonar
-
-═══ LONE ARCH / SINGLE ARCH DETECTION — CRITICAL OVERRIDE ═══
-This is the most commonly missed detection scenario. When there is ONLY ONE ARCH (or only 1–2 arches) on an otherwise blank or near-blank sonar screen:
-
-DO NOT LOWER CONFIDENCE because the arch is alone. RAISE CONFIDENCE — a lone arch is the most typical barramundi signature. Barramundi are solitary ambush hunters. One fish = one arch. Solo arch on screen is normal, expected, and should be IDed with full confidence.
-
-LONE ARCH DETECTION RULES — apply in order:
-1. ANY clear U-shaped or curved return on an otherwise blank sonar screen = CONFIRMED FISH. It is a fish. Period. Commit to an ID.
-2. ONE ARCH IS ENOUGH — you do not need multiple arches. One arch means one fish. Barramundi typically present as single arches.
-3. A lone arch requires NO comparison to other arches to be valid — judge it on its own shape, thickness, brightness, and position.
-4. LONE ARCH + HARD BOTTOM ECHO → start at 70% confidence for Barramundi. Most common scenario in Kimberley tidal channels.
-5. LONE ARCH + SHADOW VOID below it → 85% confidence minimum for Barramundi. The shadow void is the single most diagnostic barramundi feature on sonar.
-6. LONE ARCH + NO STRUCTURE → 55% confidence for Barramundi or Mangrove Jack. Fish may be suspended mid-water.
-7. DO NOT say "No fish detected" because an arch is alone. That is factually wrong. If you see an arch, there is a fish. Report it.
-
-LONE ARCH SIZE GUIDE (200kHz narrow beam, 5–10m depth):
-• JUVENILE BARRA (35–50cm): arch covers ~5–8% of screen width, ~2% screen height — thin but distinct U-shape
-• LEGAL BARRA (55–80cm): arch covers ~10–15% of screen width, ~3–4% screen height — BRIGHT orange/red core on Lowrance/Simrad; white/orange on Humminbird; white/cyan on Garmin
-• TROPHY BARRA (80cm–1m+): arch covers ~15–20% screen width, ~5–8% screen height — THICK, bright, prominent shadow void below, sometimes a double-layer arch appearance
-• MANGROVE JACK (40–70cm): similar thickness to barra but arch is HALF-BURIED in structure echo — arch starts at bottom and curves up into structure
-• THREADFIN (40–70cm): arch is THINNER than barra of same length (smaller swim bladder), usually mid-column over soft bottom
-
-LONE ARCH COLOUR TIERS:
-• Red or orange core (any brand): Tier 1 = very strong reflector = large physostomous swim bladder = BARRAMUNDI or big jack. Start at 80% confidence.
-• White core on Humminbird/Garmin: equivalent to Tier 1. Large dense fish.
-• Yellow/green core: Tier 2 = medium fish. Could be any species. Start at 60% confidence.
-• Faint green or barely visible: Tier 3 = small or distant fish. Start at 45% confidence. Do not dismiss — still a fish.
-
-═══ BARRAMUNDI SWIM BLADDER PHYSICS — EXPANDED ═══
-The barramundi (Lates calcarifer) has a PHYSOSTOMOUS swim bladder (connected to the oesophagus via a pneumatic duct). This is fundamentally different from snapper, trevally and most reef fish which have PHYSOCLISTOUS (sealed, non-venting) bladders.
-
-WHAT MAKES THE BARRA BLADDER SPECIAL FOR SONAR:
-• The barra bladder is proportionally MASSIVE — approximately 18–22% of body length, 6–8% of body height
-• It contains gas at near-ambient pressure, making it a near-perfect acoustic reflector
-• The gas-water interface inside the bladder has extremely high acoustic impedance mismatch
-• This creates: (1) an exceptionally BRIGHT arch return (Tier 1 orange/red on most palettes) and (2) a SHADOW VOID directly below the fish (the bladder blocks sonar from penetrating further, creating a dark zone)
-• A fully inflated barra bladder returns 20–30× more acoustic energy per cm² than a threadfin of the same size
-
-BLADDER STATE AFFECTS ARCH APPEARANCE:
-• FULLY INFLATED (resting, cruising, pre-spawn): THICK arch, red/orange core, clear shadow void. Most common state in warm Kimberley water (>28°C)
-• PARTIALLY INFLATED (fish rising quickly, post-feeding): MEDIUM thickness arch, yellow core, faint shadow. Fish is ascending or actively hunting
-• DEFLATED (recently caught and released, or stressed): THIN arch, green-only, no shadow void. Rare to see this on sonar naturally
-• COLD WATER (cold front, post-rain): barra bladder slightly less inflated → arch may appear slightly thinner than expected for fish size
-
-ARCH THICKNESS BY BARRA SIZE (200kHz, 5–8m depth, standard sensitivity):
-• 40cm barra → arch height ≈ 2% screen height — thin, identifiable
-• 55cm barra → arch height ≈ 3% screen height — clear barra arch
-• 70cm barra → arch height ≈ 4–5% screen height — unmistakable thick barra arch
-• 85cm barra → arch height ≈ 5–6% screen height — very thick, prominent shadow
-• 1m+ barra → arch height ≈ 7–8% screen height — massive arch, double-layer appearance, shadow void = certainty
-
-ARCH APPEARANCE BY FREQUENCY — HOW FREQUENCY CHANGES THE ARCH:
-• 200kHz (standard narrow beam, 20°): crisp arch, accurate depth, best target separation — gold standard
-• 83kHz (wide beam, 47–60°): arch is FATTER and BLURRIER; fish at beam edges appear deeper than actual (hypotenuse effect — up to 15% depth error); half-arches are common at edges; barra arch appears wider but less defined — still identifiable
-• CHIRP 77–200kHz (most modern units 2017+): BEST arch quality — ultra-crisp separation, thinner arches with better vertical resolution; very accurate size estimation
-• CHIRP 455kHz / Down Imaging: very narrow beam, photographic-quality bottom but arches may appear as comma shapes not full U-curves; fish directly below appear as bright "stamps"
-• 800kHz MEGA Down (Humminbird): near-photographic resolution, arches appear almost as photographs of the fish — elongated bright shapes rather than traditional U-curves
-
-═══ 10-YEAR SOUNDER BRAND GUIDE — ARCH VISUAL SIGNATURES BY MODEL ═══
-Use this to identify what brand sounder you are looking at AND to correctly interpret arch brightness tiers for that brand.
-
-LOWRANCE (2014–2024):
-• HDS Gen 2 / Gen 3 (2014–2017): Dark navy/black background. Arch colours: dark blue → green → yellow → orange → red (strongest). An orange-core arch on HDS Gen3 = very strong return = barra. "HDS" text on bezel. Sensitivity setting visible top-right.
-• HDS Carbon (2017–2019): Higher contrast display than Gen 3. Same colour palette but red appears more vivid. "HDS Carbon" in corner. Arches appear slightly more defined.
-• HDS Live (2019–2024): Most common current Lowrance. Same Navico palette. "HDS Live" or just depth readout top-left. SideScan/DownScan/Active Imaging available — traditional 2D shows same colour arch palette.
-• Elite Ti / Ti2 (2016–2021): Budget-mid range. Same Navico colour palette. "ELITE Ti" text. Slightly softer arch rendering than HDS series but fully usable.
-• Elite FS (2021–2024): Touchscreen entry-mid. Modern Navico UI. CHIRP standard. Same arch colour interpretation.
-• Hook Reveal (2019–2024): Entry level. "HOOK REVEAL" text. Blue-to-green arch colours. Arches are slightly fuzzier but a bright arch is still identifiable.
-• ARCH RULE FOR ALL LOWRANCE: Orange or red arch = strong return = barra or big predator. Yellow = medium fish. Green = small or distant fish.
-
-HUMMINBIRD (2014–2024):
-• HELIX 5/7/9/10/12 (G1→G4, 2014–2024): Most common unit on North Australian boats. Distinctive: black background, arches appear as WHITE CORE → orange/yellow → green. Depth scale usually left side. Fish icons may appear overlaid — ignore these symbols and look at the raw arch shape underneath.
-• SOLIX 10/12/15 (2017–2024): Premium model. "SOLIX" in top corner. High-resolution display — arches appear very crisp and slightly thinner at same sensitivity. White-core arches are extremely bright (= massive swim bladder = trophy barra).
-• Onix (2014–2018): Wider aspect ratio. Similar to HELIX but wider display. Rare but occasionally seen.
-• ARCH RULE FOR ALL HUMMINBIRD: WHITE or ORANGE core arch = Tier 1 strongest return = big barra. Yellow = medium fish. Green = small or distant fish. The white core specifically on Humminbird is equivalent to red on Lowrance — both indicate maximum target strength.
-
-GARMIN (2014–2024):
-• Echomap CHIRP 4"/5"/7"/9" (2014–2017): Distinctive aqua/dark teal background. Arches appear WHITE → CYAN → GREEN. Crisper than older single-frequency units because CHIRP standard. "ECHOMAP" text on bezel.
-• Echomap UHD / UHD2 7"/9" (2018–2024): Most common current Garmin. Very dark background (almost black). Arches appear as BRIGHT WHITE → CYAN → GREEN. High contrast makes lone arches very visible. "ECHOMAP UHD" sometimes visible. White arch on dark background = very strong return.
-• Striker 4/5/7/9 (2014–2020): Entry level. Blue/dark background. Arches in white/yellow/green. A/B scope on left panel on some models — disregard the A/B scope for arch analysis (it's a real-time ping, not history).
-• Striker Vivid (2020–2024): Colour selectable background (green/blue/red/yellow mode). Arches appear as bright white on whichever background is selected. The background colour is user preference, not sonar data — focus on arch brightness relative to background.
-• GPSMap 7x2/9x2/10x2/12x2 (2014–2024): Premium plotter/sonar. High resolution. Similar to Echomap UHD palette. Sometimes shows sonar in a split-panel with chart.
-• ARCH RULE FOR ALL GARMIN: WHITE or BRIGHT CYAN arch on dark background = Tier 1 strongest return = barra. Green = medium fish. Faint/dim = small fish.
-
-SIMRAD (2014–2024):
-• GO7/GO9/GO12 XSE/XSR (2014–2024): Navico group (same hardware family as Lowrance). Dark background. Same colour palette as Lowrance: green → yellow → orange → red. "SIMRAD" logo. Arch interpretation identical to Lowrance.
-• NSS evo3 / NSS evo3S (2016–2024): Premium. Same Navico palette as Lowrance HDS. Higher resolution screen. SideScan and 3D available. "SIMRAD NSS" on bezel.
-• ARCH RULE FOR ALL SIMRAD: Identical to Lowrance — orange/red arch = Tier 1 = barra.
-
-DEEPER (2014–2024):
-• Deeper Smart Sonar / PRO / PRO+ / CHIRP+ (2014–2024): PHONE APP display (iOS/Android). BLUE GRADIENT background. Fish automatically detected and shown as FISH ICONS with depth labels (e.g. "🐟 4.2m"). These icons ARE reliable — if you see a fish icon, there was a real sonar return. In "Classic" view mode, actual arch history may be shown on a dark scrolling background. Trust the fish icons — each one represents a detected arch.
-
-RAYMARINE (2014–2024):
-• Dragonfly 5/7 (2013–2018): Dark background. CHIRP Down and CHIRP Side views. Arches appear as bright white/yellow on near-black background. "DRAGONFLY" text.
-• Axiom / Axiom Pro (2017–2024): Touch screen. "AXIOM" text on bezel. Dark background, arches appear similar to Garmin palette (white → cyan → green). Premium resolution.
-
-ICOM / STANDARD HORIZON / FURUNO:
-• Occasional on larger vessels. Similar dark-background arch display with colour-tier returns. Arch interpretation: bright = strong = barra.
-
-═══ MANDATORY SPECIES RULE ═══
-You MUST ALWAYS return a real species name. NEVER return null, never return empty string "".
-If you are uncertain: lower the confidence (25–45) and use the best available evidence.
-Acceptable uncertain answers: "Barramundi (probable)", "Suspected Mangrove Jack", "Mixed species school — possibly Threadfin"
-UNACCEPTABLE: null, "", "Unknown", "Unclear", no species field at all.
-If the image shows NO fish at all: return species "No fish detected", fishCount 0, confidence 0.
-This rule is absolute. Every response must contain a meaningful species string.
-
-Depth is also required: always read the depth scale. If scale is not visible, estimate from context and note "(estimated)".
-fishCount: count visible arches (2D) or visible bodies (live sonar). Return 0 only if you are certain there are no fish.
-
-═══ CRITICAL OVERRIDE — CV BLOB COUNT ═══
-THE CV PRE-SCAN BLOB COUNT IS OFTEN ZERO BECAUSE OpenCV IS NOT AVAILABLE ON THIS SERVER.
-A count of "0 blobs" or "BLOB DETECTION UNAVAILABLE" from the CV block means NOTHING about fish presence.
-NEVER conclude "No fish detected" or lower your confidence because the blob count is 0 or missing.
-Instead: LOOK HARDER at the images. Search every row of IMAGE 2, IMAGE 3, and IMAGE 4 methodically.
-The only valid reason to return "No fish detected" is if YOU can visually confirm there are no arches, blobs, or body shapes anywhere in any of the 4 provided images after a thorough search.
-
-═══ RESPONSE ═══
-Return ONLY valid JSON — no markdown fences, no explanation, no surrounding text:
-{
-  "species": "primary species name — REQUIRED, never null",
-  "confidence": 85,
-  "fishCount": 3,
-  "depth": "8.4m",
-  "bottomType": "hard rocky reef",
-  "sonarBrand": "Lowrance",
-  "sonarModel": "HDS Live 9",
-  "sonarMode": "traditional-2d",
-  "archType": "school",
-  "archDepth": 8.4,
-  "archXFrac": 0.5,
-  "archYFrac": 0.6,
-  "suggestion": "2-sentence lure and technique recommendation",
-  "lure": "specific lure name and size e.g. Zerek Live Shrimp 75mm — Phantom",
-  "lureType": "surface_popper",
-  "technique": "technique description",
-  "rig": "leader and rig setup",
-  "tidal": "incoming",
-  "turbidity": "clear",
-  "structure": "hard rocky rubble",
-  "bladderShape": "Fat full arch — swim bladder fully inflated, fish cruising [OR for live sonar: Large oval body with long distinct post-cast shadow extending behind the fish — classic Barramundi silhouette]",
-  "fishMovement": "Ascending — fish rising to feed [OR for live sonar: Stationary near structure — ambush posture]",
-  "crocAlert": false,
-  "crocWarning": null,
-  "archReasoning": "2D scan: [what arches/shadows were found or 'no arches detected']. Live scan: [what body shapes/shadows were found or 'no body shapes detected']. Cross-reference: [do both methods agree? final confidence reasoning]."
-}
-
-FIELD RULES — lureType MUST be exactly one of:
-surface_popper (Killalure Flatz Ratz, poppers, surface chuggers)
-hardbody (bibbed minnows, crankbaits, Jackall Chubby, Zerek HB)
-bibless_minnow (Rapala Flat Rap, Barra Bling, bibless hardbodies)
-soft_plastic (Zman, Berkley Gulp paddletails, prawn plastics)
-stickbait (pencil baits, walk-the-dog, Nomad Madscad, Raptor)
-metal_slug (chrome slugs, Bomber Bling, casting spoons)
-slow_jig (slow pitch jigs, Killalure Barrabait)
-frog (frog/toad surface lures for snags/lily pads)
-live_bait (live or cut bait, mullet, prawns, yabbies)`;
-
-const ANALYSIS_STEP_PROMPT = `Analyse the sonar image using BOTH methods simultaneously. Output JSON only.
-
-STEPS (run ALL of them, every time):
-0. TOP-VIEW CHECK FIRST — MANDATORY BEFORE ARCH ANALYSIS:
-   Ask: Is this image a TOP-VIEW / OVERHEAD sonar mode? Look for:
-   - Garmin LiveScope PERSPECTIVE: "LIVESCOPE" label + overhead bird's-eye + no scrolling + fish as flat ovals + shadow to SIDE
-   - Humminbird MEGA 360: circular radar-like display + boat at centre + "360" label + fish as dots/arcs at radial distance
-   - Side Imaging (Humminbird/Simrad/Lowrance): boat at top-centre + left/right channels + fish as bright comma/smear shapes off bottom line
-   IF TOP-VIEW DETECTED → do NOT look for arches → apply TOP-VIEW BARRA DETECTION rules from STEP 0F above:
-     • Perspective: find elongated ovals with pectoral fin "wings" + side shadow → BARRAMUNDI
-     • MEGA 360: isolated bright dots near structure → BARRAMUNDI or JACK
-     • Side Imaging: large bright commas next to structure → BARRAMUNDI
-   Set sonarMode = "perspective-top-view" | "mega-360" | "side-imaging" and proceed to step 6 (skip arch steps 3–4).
-   IF NOT TOP-VIEW → continue to steps 1–5 as normal.
-
-1. LAYOUT & MODE: Is the image a single panel or split screen? Identify EACH panel:
-   - Traditional 2D scroll (time axis right→left, arched returns)
-   - Live sonar Forward (horizontal distance axis, fish as blobs looking ahead)
-   - Live sonar Down (real-time vertical view directly below)
-   - Live sonar Perspective (overhead bird's-eye, shallow water) — already handled in step 0
-   - Live sonar Scout (ActiveTarget 2 only — looking BEHIND boat)
-   - MEGA 360 circular (radar-like 360° radial sweep, round display) — already handled in step 0
-   - Humminbird Flasher Wheel (circular rotating ping on left panel of split screen)
-   - StructureScan / Side Imaging (fish as comma/smear marks off bottom line) — already handled in step 0
-   - Deeper app (phone UI, blue gradient, fish icons with depth labels)
-
-2. BRAND & FREQUENCY:
-   - UI chrome, bezel, colour palette, text labels
-   - "LIVESCOPE"=Garmin forward/down/perspective. "ACTIVE TARGET"/"ACTIVETARGET 2"=Lowrance (Scout mode if rearward view). "MEGA LIVE"/"MEGA 360"=Humminbird.
-   - Flasher wheel on left of split = Humminbird HELIX/SOLIX
-   - Blue phone UI = Deeper app. Aqua UI + compass logo = Garmin. Teal buttons + red palette = Lowrance. Orange logo = Humminbird.
-   - Estimate frequency if visible: "CHIRP" label, "200kHz", "83kHz", "455kHz" etc.
-   - NOTE if wide beam (83kHz/47°) — edge arches may be false; focus on central arches only
-
-3. FALSE RETURN REJECTION — check BEFORE identifying fish:
-   - Thermocline / salinity layer: BROAD DIFFUSE HORIZONTAL BAND across multiple depth rows — NOT a fish. In WA/Kimberley wet season typically at 3–8m. Rule it out first.
-   - Surface clutter: chaotic noise in top 0.5–1.5m from waves/wake — not fish
-   - Prop bubbles: scattered random returns scrolling left (just appeared in the history) — not fish
-   - Bait cloud: dense irregular fuzzy mass, uniform small returns with no clear arch structure — bait not predators
-   - Debris: irregular blob without symmetrical arch curve — check for arch shape before calling it a fish
-
-4. 2D SCAN — search the 2D panel or full image for ARCHES:
-   ⚠️ LONE ARCH CHECK FIRST: Before anything else — count the arches. Is there only 1 or 2 visible?
-   IF YES → apply LONE ARCH DETECTION rules (above). A lone arch is the MOST COMMON barramundi signature.
-   Do NOT dismiss a lone arch for being alone. It is your primary target. Commit to an ID immediately.
-   - Check arch completeness: FULL arch (high confidence, fish was directly below) vs HALF arch (fish at cone edge — to one side)
-   - Check horizontal length: SHORT steep arch = fast-moving fish OR boat moving; LONG flat line = stationary fish (classic barra resting on snag)
-   - Arch brightness tier: red/orange/white core=Tier1 (barra/jack/fingermark/thready); yellow/green=Tier2; faint/invisible=Tier3
-   - Shadow void BELOW arch = big predator 90%+ confidence
-   - Position: ON or touching structure=barra/jack | floating ABOVE rubble=fingermark | mid-column soft=thready | buried IN echo=jack
-   - Use the 10-YEAR SOUNDER BRAND GUIDE (above) to correctly interpret arch colour for the specific brand you've identified
-
-5. LIVE SCAN — search the live panel for BODY SHAPES + SHADOWS:
-   - Large oval body + long post-cast shadow + near structure = Barramundi
-   - Large oval + long shadow + mid-column = Barramundi chasing bait
-   - Tall/round body + fast movement + faint/no shadow = Giant Trevally
-   - Compact chunky body + embedded in structure + stationary = Mangrove Jack
-   - Multiple slim bodies mid-column + short shadows + soft bottom = Threadfin Salmon
-   - Tiny bright dots on flats (Perspective mode) = baitfish or small species
-
-6. DEPTH: Read the depth scale from whichever panel shows it. In wide-beam mode (83kHz), displayed depth may be 10–15% deeper than actual for fish at beam edges. Eliminate species outside their known WA/Kimberley depth zone.
-
-7. CROSS-REFERENCE: Do 2D and live results agree? Both confirm same species → boost confidence 10–15%. One silent → use the method that found fish, note the other. Conflict → strongest evidence wins; explain in archReasoning.
-
-8. FINAL ID: COMMIT to a species name. Reduce confidence if unsure but NEVER leave species null or empty. Output ONLY the JSON object — no text before the { bracket.
-
-9. INTELLIGENCE CHECK: Cross-reference your ID against the BRAIN LIBRARY & COMMUNITY INTELLIGENCE block above. Hot species at this depth and region → boost confidence 5–10%. Unusual ID vs strong community evidence → note in archReasoning, reduce confidence 5–10% unless sonar evidence is very clear.
-
-${getAsianSeaBassContext(false)}`;
-
-// ─── Brain library + community intelligence context ───────────────────────────
-// Fetched in parallel with the CV scan before every analysis. Gives GPT
-// ground-truth about which species are actually being caught at the moment,
-// at what depths, and at which WA/Kimberley locations so it can cross-check its ID.
-
-async function getIntelligenceContext(): Promise<string> {
-  try {
-    const [brainRows, insightRows, recentReports] = await Promise.all([
-      db.select({
-        species: brainVideos.detectedSpecies,
-        depths:  brainVideos.depthRanges,
-      })
-        .from(brainVideos)
-        .where(eq(brainVideos.status, "done"))
-        .orderBy(desc(brainVideos.submittedAt))
-        .limit(60),
-
-      db.select()
-        .from(communityInsights)
-        .orderBy(desc(communityInsights.generatedAt))
-        .limit(1),
-
-      db.select({
-        species:  communityReports.species,
-        depth:    communityReports.depth,
-        location: communityReports.locationName,
-      })
-        .from(communityReports)
-        .orderBy(desc(communityReports.submittedAt))
-        .limit(40),
-    ]);
-
-    // Species frequency from brain library
-    const libCount: Record<string, number> = {};
-    const libDepths: Record<string, number> = {};
-    for (const row of brainRows) {
-      for (const s of (row.species as string[] | null) ?? []) {
-        if (s && s !== "Unknown species") libCount[s] = (libCount[s] ?? 0) + 1;
-      }
-      for (const d of (row.depths as string[] | null) ?? []) {
-        if (d) libDepths[d] = (libDepths[d] ?? 0) + 1;
-      }
-    }
-    const topLib = Object.entries(libCount)
-      .sort((a, b) => b[1] - a[1]).slice(0, 6)
-      .map(([s, n]) => `${s} (${n})`).join(", ");
-    const topLibDepths = Object.entries(libDepths)
-      .sort((a, b) => b[1] - a[1]).slice(0, 5)
-      .map(([d, n]) => `${d} (${n})`).join(", ");
-
-    // Species + location frequency from community reports
-    const comCount: Record<string, number> = {};
-    const comLocations: string[] = [];
-    const comDepths: string[] = [];
-    for (const r of recentReports) {
-      if (r.species && r.species !== "Unknown species") {
-        comCount[r.species] = (comCount[r.species] ?? 0) + 1;
-      }
-      if (r.location) comLocations.push(r.location);
-      if (r.depth)    comDepths.push(r.depth);
-    }
-    const topCom = Object.entries(comCount)
-      .sort((a, b) => b[1] - a[1]).slice(0, 6)
-      .map(([s, n]) => `${s} (${n})`).join(", ");
-
-    type HotSpeciesRow = { species: string; count: number; trend?: string };
-    type HotDepthRow   = { range: string; count: number; notes?: string };
-    const hotSpecies  = ((insightRows[0]?.hotSpecies  as HotSpeciesRow[] | null) ?? [])
-      .slice(0, 5)
-      .map(h => `${h.species} (${h.count} reports, ${h.trend ?? "stable"})`)
-      .join(", ");
-    const hotDepths   = ((insightRows[0]?.hotDepths   as HotDepthRow[] | null) ?? [])
-      .slice(0, 4)
-      .map(h => `${h.range}: ${h.notes ? h.notes.slice(0, 60) : `${h.count} reports`}`)
-      .join(" | ");
-    const hotLocations= ((insightRows[0]?.hotLocations as string[] | null) ?? []).slice(0, 5).join(", ");
-    const insightSum  = insightRows[0]?.summary ?? "";
-
-    const uniqueLocs  = [...new Set(comLocations)].slice(0, 5).join(", ");
-    const uniqueDepths= [...new Set(comDepths)].slice(0, 6).join(", ");
-
-    const lines: string[] = [
-      `\n\n═══ BRAIN LIBRARY & COMMUNITY INTELLIGENCE (${brainRows.length} library scans + ${recentReports.length} community reports) ═══`,
-      `Use this real-world WA/Kimberley fishing data to cross-check your sonar ID:`,
-    ];
-    if (topLib)       lines.push(`LIBRARY top species: ${topLib}`);
-    if (topLibDepths) lines.push(`LIBRARY active depths: ${topLibDepths}`);
-    if (topCom)       lines.push(`COMMUNITY top species (recent): ${topCom}`);
-    if (hotSpecies)   lines.push(`HOT species right now: ${hotSpecies}`);
-    if (hotDepths)    lines.push(`HOT depth zones: ${hotDepths}`);
-    if (uniqueDepths || hotLocations) {
-      lines.push(`ACTIVE depths (recent community): ${uniqueDepths || "n/a"}`);
-      lines.push(`ACTIVE locations: ${hotLocations || uniqueLocs || "n/a"}`);
-    }
-    if (insightSum)   lines.push(`INTELLIGENCE: ${insightSum}`);
-    lines.push(
-      `RULE: If your sonar ID matches the library/community top species at this depth → confidence +5–10%. ` +
-      `If your ID is unusual vs strong community data → note in archReasoning and confidence −5–10% unless sonar evidence is clear.`
-    );
-
-    return lines.join("\n");
-  } catch {
-    return "";
-  }
-}
-
-// ─── Detect MIME type from base64 magic bytes ─────────────────────────────────
+// ─── Detect MIME type from base64 magic bytes ──────────────────────────────────
 function detectMimeType(base64: string): "image/jpeg" | "image/png" | "image/webp" {
   const prefix = base64.slice(0, 8);
   if (prefix.startsWith("/9j/")) return "image/jpeg";
@@ -764,12 +80,10 @@ router.post("/analyze", async (req, res) => {
   }
 
   try {
-    // Detect MIME type first (fast, sync) so flash scan can start immediately
     const mimeType = detectMimeType(imageBase64);
 
-    // ── FLASH SCAN: fire immediately with minimal payload ─────────────────
-    // gpt-4.1-mini + raw image only → first result in ~0.8–1.5 s, well before
-    // the heavy preprocessing + reference-image dual-scan completes (~3–5 s).
+    // ── FLASH SCAN — fires immediately, arrives ~1.2s ─────────────────────
+    // Tiny call: gives a quick species preview while the turbo scan streams in.
     const flashPromise = openai.chat.completions.create({
       model: getModel("mid"),
       max_completion_tokens: 90,
@@ -777,32 +91,25 @@ router.post("/analyze", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: 'You are an expert sonar fish detector. Reply with ONLY a JSON object — no markdown, no extra text: {"species":"string","fishCount":integer,"confidence":float 0-1,"quickRead":"max 12 words describing what you see"}',
+          content: 'Expert sonar fish detector. Reply ONLY JSON: {"species":"string","fishCount":integer,"confidence":float 0-1,"quickRead":"max 12 words"}',
         },
         {
           role: "user",
           content: [
             { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "low" } },
-            { type: "text", text: "Quick read: what species and how many fish do you see? Reply JSON only." },
+            { type: "text", text: "Quick read: species and fish count. JSON only." },
           ],
         },
       ],
     });
 
-    // ── Heavy preprocessing starts in parallel with flash scan ────────────
-    const preprocessPromise = Promise.all([
-      analyzeSonarImage(imageBase64),
-      generateZoomCrops(imageBase64),
-      getIntelligenceContext(),
-    ]);
-
-    // ── Open streaming headers immediately so flash result can be flushed ──
+    // ── Open streaming headers immediately ────────────────────────────────
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
 
-    // ── Emit flash result the moment it arrives ───────────────────────────
+    // ── Emit flash the moment it arrives (~1.2s) ──────────────────────────
     try {
       const flashResult = await flashPromise;
       const flashRaw    = flashResult.choices[0]?.message?.content ?? "{}";
@@ -811,133 +118,52 @@ router.post("/analyze", async (req, res) => {
       if (flashMatch) {
         res.write(`__FLASH__:${flashMatch[0]}\n`);
       }
-    } catch { /* non-fatal — user still gets full scan */ }
+    } catch { /* non-fatal */ }
 
-    // ── Keep-alive heartbeat ──────────────────────────────────────────────
-    // After the flash result, there's a gap of 5-15 seconds while preprocessing
-    // runs and then OpenAI processes the heavy multi-image input. Mobile HTTP
-    // clients (iOS/Android) drop connections that see silence for >30s.
-    // Send a \n every 4 seconds — harmless whitespace the mobile app strips out.
+    // ── TURBO MAIN SCAN — starts streaming immediately after flash ─────────
+    // WHAT CHANGED vs the old approach:
+    //   OLD: 3,000 token system prompt + 8 images + preprocessing wait = 49s
+    //   NEW: 400 token system prompt + 1 image + no wait = 3-5s
+    //
+    // Cuts: no zoom crops, no few-shot reference images, no CV preprocessing,
+    //       no intelligence context, no barraLibrary/crocLibrary/sonarBrain images.
+    // The model already has sonar expertise — the compact prompt reinforces
+    // the CRITICAL physics rules only.
+
+    // Heartbeat to prevent mobile carrier drops during the 3-5s streaming gap
     const heartbeat = setInterval(() => {
       try { res.write("\n"); } catch { /* connection closed */ }
     }, 4000);
 
-    // ── Await preprocessing results ───────────────────────────────────────
-    const [cvScan, zoomCrops, intelligenceCtx] = await preprocessPromise;
-
-    const condCtx  = getConditionsContext();
-    const cvBlock  = cvScan ? "\n\n" + formatCvContext(cvScan) : "";
-
-    // Build zoom context note so GPT knows what it's looking at
-    const zoomNote = zoomCrops
-      ? `\n\nZOOM CROPS ATTACHED: You have been given 4 images below.\n` +
-        `  IMAGE 1 (FULL FRAME): Complete sonar display — use for overall layout, depth scale, and brand ID.\n` +
-        `  IMAGE 2 (LEFT PANEL ZOOM): Left half of the screen at 2× detail — scan EVERY row methodically for any arch shape, curved return, or blob. Do not skip a single row.\n` +
-        `  IMAGE 3 (RIGHT PANEL ZOOM): Right half at 2× detail — same rigorous row-by-row scan.\n` +
-        `  IMAGE 4 (TIGHT CROP): Auto-cropped around the brightest activity region (most active: ${zoomCrops.mostActive} side)${zoomCrops.blobRegion ? ` — pixel box x:${zoomCrops.blobRegion.x} y:${zoomCrops.blobRegion.y} w:${zoomCrops.blobRegion.w} h:${zoomCrops.blobRegion.h}` : ""}. THIS IS YOUR PRIMARY ID SURFACE — examine pixel-by-pixel for any arch curvature, shadow void, or blob shape.\n` +
-        `  INSTRUCTION: Identify fish using the TIGHT CROP and PANEL ZOOM that contains them. The full frame gives context (depth scale, palette, temperature). Never skip the zoomed images.`
-      : "";
-
-    const analysisPrompt = `${condCtx ? condCtx + "\n\n" : ""}${intelligenceCtx}${zoomNote}\n\n${ANALYSIS_STEP_PROMPT}${cvBlock}`;
-
-    // ── Sonar Brain: inject cross-modal few-shot references ───────────────
-    // ORDER:
-    //   1. Barramundi BODY PHOTO — anatomy lesson (swim bladder → arch + shadow void)
-    //   2. Saltwater Croc BODY PHOTOS — shape lesson (croc silhouette → sonar blob)
-    //   3. Confirmed sonar arch demos (Lowrance barra, Humminbird barra w/ shadows)
-    //   4. Negative contrast demo (Garmin threadfin school)
-    // Cross-modal grounding ties body anatomy/shape to sonar return physics.
-    const sonarRefs    = getSonarFewShotRefs();
-    const barraBodyRef = getBarraBodyRefs(1);        // 1 iNat research-grade barra
-    const crocRefs     = getCrocFewShotRefs(2);      // 2 croc body shape refs (top + side)
-
-    type ImagePart = { type: 'image_url'; image_url: { url: string; detail: 'high' | 'low' } };
-    type TextPart  = { type: 'text'; text: string };
-    const content: Array<ImagePart | TextPart> = [];
-
-    const hasBrainRefs = sonarRefs.length > 0 || barraBodyRef.length > 0 || crocRefs.length > 0;
-    if (hasBrainRefs) {
-      content.push({ type: 'text', text: 'SONAR BRAIN — cross-modal reference package (study all before analysing):' });
-
-      // Step 1: Barramundi body anatomy (cross-modal bridge for arch detection)
-      if (barraBodyRef.length > 0) {
-        const bp = barraBodyRef[0];
-        content.push({ type: 'text', text: `STEP 1 — BARRAMUNDI BODY ANATOMY (iNaturalist, ${bp.location}):\nThe large PHYSOSTOMOUS SWIM BLADDER (pale gas sac in upper body cavity) is enormously reflective — it creates the THICK BRIGHT ARCH + SHADOW VOID on sonar. Deep laterally-compressed body = wider/taller arch than threadfin.` });
-        const barraImgUrl = bp.thumbBase64
-          ? `data:image/jpeg;base64,${bp.thumbBase64}`
-          : bp.photoUrl;
-        content.push({ type: 'image_url', image_url: { url: barraImgUrl, detail: 'low' } });
-        content.push({ type: 'text', text: `↑ Confirmed barramundi — ${bp.location} (${bp.votes} expert votes). Connect this anatomy to the sonar arch signatures below.` });
-      }
-
-      // Step 2: Saltwater croc body shape refs (cross-modal bridge for blob detection)
-      if (crocRefs.length > 0) {
-        content.push({ type: 'text', text: `STEP 2 — SALTWATER CROCODILE BODY SHAPE REFERENCES (${crocRefs.length} confirmed Crocodylus porosus, iNaturalist research-grade):\nOn sonar a croc appears as a LARGE SOLID FILLED BLOB (NOT an arch) near the surface — dense, no hollow centre, much wider than any fish return. Body is elongated with a long flat tail. Compare these out-of-water body shapes against any large near-surface sonar return to check for crocodile presence.` });
-        for (const cr of crocRefs) {
-          const crImgUrl = cr.thumbBase64
-            ? `data:image/jpeg;base64,${cr.thumbBase64}`
-            : cr.photoUrl;
-          const angleNote = cr.viewingAngle === 'top' ? ' [TOP VIEW — matches sonar overhead perspective]'
-            : cr.viewingAngle === 'side' ? ' [SIDE VIEW — matches live scope lateral view]' : '';
-          content.push({ type: 'image_url', image_url: { url: crImgUrl, detail: 'low' } });
-          content.push({ type: 'text', text: `↑ CONFIRMED SALTWATER CROCODILE (Crocodylus porosus) — ${cr.location}${angleNote}. This is the BODY SILHOUETTE SHAPE to match against any large near-surface sonar blob. Note: extreme body width vs fish, long flat tail, no swim bladder arch.` });
-        }
-      }
-
-      // Step 3: Sonar arch positive refs
-      const posRefs = sonarRefs.filter(r => r.isPositive);
-      if (posRefs.length > 0) {
-        content.push({ type: 'text', text: `STEP 3 — CONFIRMED BARRAMUNDI SONAR ARCHES (${posRefs.length} expert demos):` });
-        for (const ref of posRefs) {
-          content.push({ type: 'image_url', image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: 'low' } });
-          content.push({ type: 'text', text: `↑ CONFIRMED BARRAMUNDI — ${ref.brand}: ${ref.label.split('\n')[0]}` });
-        }
-      }
-
-      content.push({ type: 'text', text: `STEP 4 — ANALYSE THE USER'S SONAR IMAGE BELOW (${zoomCrops ? 4 : 1} image${zoomCrops ? 's' : ''} including zoom crops). Apply cross-modal reasoning: body anatomy → sonar physics → verdict. For croc detection: compare any large near-surface blob against the croc body shapes in Step 2.` });
-    }
-
-    // ── Build vision message content ──────────────────────────────────────
-    // Full frame at LOW detail (context: depth scale, brand, layout) — 85 tokens
-    content.push({ type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: 'low' } });
-    if (zoomCrops) {
-      // Half-crops at LOW detail — overview coverage, minimal tokens
-      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.leftHalf}`,  detail: 'low' } });
-      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.rightHalf}`, detail: 'low' } });
-      // Tight crop at LOW detail — 85 tokens vs 765+ for high; the zoom crops
-      // already give excellent arch detail at 512px, saving 10-15s per call
-      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${zoomCrops.blobCrop}`,  detail: 'low' } });
-    }
-    content.push({ type: 'text', text: analysisPrompt });
-
-    // ── Streaming OpenAI call ─────────────────────────────────────────────
-    const sharedMessages = [
-      { role: 'system' as const, content: SYSTEM_PROMPT },
-      { role: 'user'   as const, content },
-    ];
-
-    // ── Single streaming scan — no dual-scan overhead ────────────────────────
-    // First streaming bytes arrive ~1s after preprocessing; JSON is typically
-    // 350–380 tokens, so max_completion_tokens:450 gives a tight cap that ends
-    // the stream fast without risk of truncation.
-    let raw = '';
+    let raw = "";
     try {
       const stream = await openai.chat.completions.create({
-        model: getModel("mid"),
-        max_completion_tokens: 450,
+        model: getModel("fast"),         // gpt-4.1-nano — fastest, sufficient for structured JSON
+        max_completion_tokens: 420,      // tight cap — JSON is ~350 tokens
         stream: true,
-        messages: sharedMessages,
+        messages: [
+          { role: "system", content: TURBO_SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: [
+              // Single image at LOW detail — 85 tokens vs 765 for high detail.
+              // Low detail is fully sufficient for arch/blob detection.
+              {
+                type: "image_url",
+                image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "low" },
+              },
+              { type: "text", text: TURBO_ANALYSIS_PROMPT },
+            ],
+          },
+        ],
       });
-      // DO NOT clearInterval here — keep heartbeating until the first real
-      // content token arrives. With gpt-4.1-mini TTFT is ~3-5s, but the
-      // heartbeat ensures mobile connections don't drop during that gap.
 
       let firstContent = false;
       for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content ?? '';
+        const delta = chunk.choices[0]?.delta?.content ?? "";
         if (delta) {
           if (!firstContent) {
-            clearInterval(heartbeat); // First real token — phone is receiving content now
+            clearInterval(heartbeat);
             firstContent = true;
           }
           raw += delta;
@@ -948,26 +174,15 @@ router.post("/analyze", async (req, res) => {
       clearInterval(heartbeat);
     }
 
-    // Append CV blob positions so the app can overlay exact marker dots
-    if (cvScan && cvScan.topBrightRegions.length > 0) {
-      const payload = JSON.stringify({
-        regions: cvScan.topBrightRegions,
-        mostActive: zoomCrops?.mostActive ?? null,
-      });
-      res.write(`\n__CV__:${payload}`);
-    }
-
     res.end();
-
-    req.log.info({ chars: raw.length }, 'Analysis complete');
+    req.log.info({ chars: raw.length }, "Turbo analysis complete");
   } catch (err) {
-    req.log.error({ err }, 'OpenAI analyze request failed');
+    req.log.error({ err }, "OpenAI analyze request failed");
     if (res.headersSent) {
-      // Streaming already started — write an error sentinel the app can detect
-      try { res.write('\n__ERROR__:Analysis failed. Check your connection and try again.'); } catch { /* ignore */ }
+      try { res.write("\n__ERROR__:Analysis failed. Check your connection and try again."); } catch { /* ignore */ }
       res.end();
     } else {
-      res.status(500).json({ error: 'Analysis failed. Check your connection and try again.' });
+      res.status(500).json({ error: "Analysis failed. Check your connection and try again." });
     }
   }
 });
