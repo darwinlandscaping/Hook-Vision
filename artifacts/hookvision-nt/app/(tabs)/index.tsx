@@ -1062,6 +1062,7 @@ export default function HomeScreen() {
       // Full dual-scan (gpt-5.4 with crops + refs) follows ~3-5s later.
       let accumulated = "";
       let flashParsed = false;
+      let localFlash: { species: string; fishCount: number; confidence: number; quickRead: string } | null = null;
       if (response.body) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -1080,6 +1081,7 @@ export default function HomeScreen() {
                 try {
                   const fd = JSON.parse(fm[1]);
                   if (fd.species) {
+                    localFlash = fd;
                     setFlashResult(fd);
                     const isBarra = (fd.species as string).toLowerCase().includes("barramundi");
                     if (isBarra && (fd.confidence ?? 0) >= 0.55) {
@@ -1164,6 +1166,20 @@ export default function HomeScreen() {
       // Fallback species label so the card always renders
       if (!data.species) {
         data.species = "Unknown species";
+      }
+      // ── Flash wins: if flash read a confident fish but turbo came back lower, don't clobber it ──
+      {
+        const flashPct = Math.round((localFlash?.confidence ?? 0) * 100);
+        const flashHadFish = localFlash && (localFlash.fishCount ?? 0) > 0
+          && !!localFlash.species && !localFlash.species.toLowerCase().includes("unknown");
+        if (flashHadFish && flashPct > (data.confidence ?? 0)) {
+          data = {
+            ...data,
+            species:   data.confidence === 0 ? localFlash!.species : data.species,
+            confidence: flashPct,
+            fishCount:  data.fishCount === 0 ? (localFlash!.fishCount ?? 0) : data.fishCount,
+          };
+        }
       }
       setAnalysis(data);
       setFlashResult(null); // full analysis arrived — dismiss flash banner
