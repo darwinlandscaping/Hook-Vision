@@ -182,14 +182,14 @@ router.post("/sonar-barra-check", async (req, res) => {
         type: "text",
         text: `STEP 1 — BARRAMUNDI BODY ANATOMY (iNaturalist research-grade specimen — ${bp.location}):\nStudy the deep laterally-compressed body and locate where the large PHYSOSTOMOUS SWIM BLADDER sits (pale gas-filled sac in the upper body cavity). This organ is enormously reflective to sonar — it creates the THICK BRIGHT ARCH + SHADOW VOID you must look for. The wide body also produces a TALLER arch than threadfin (which has a smaller swim bladder and narrower body).`,
       });
-      // Use pre-compressed base64 thumb when available (avoids OpenAI → iNat URL fetch)
-      const barraImgUrl = bp.thumbBase64
-        ? `data:image/jpeg;base64,${bp.thumbBase64}`
-        : bp.photoUrl;
-      refBlocks.push({
-        type: "image_url",
-        image_url: { url: barraImgUrl, detail: "low" },
-      });
+      // Only send if we have base64 — never pass raw external URLs to OpenAI
+      // (Wikimedia/iNat URLs can be blocked and would cause a server-killing 400)
+      if (bp.thumbBase64) {
+        refBlocks.push({
+          type: "image_url",
+          image_url: { url: `data:image/jpeg;base64,${bp.thumbBase64}`, detail: "low" },
+        });
+      }
       refBlocks.push({
         type: "text",
         text: `↑ Confirmed barramundi — ${bp.location} (${bp.votes} expert votes). Connect this body shape to the sonar arch signatures below.`,

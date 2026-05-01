@@ -427,26 +427,26 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
       content.push({ type: "text", text: "LIVE SONAR BRAIN — reference package (study all before analysing the target image):" });
 
       // Step 1: Barramundi body anatomy — cross-modal bridge body → live sonar silhouette
+      // Only inject image if base64 thumbnail is available — never pass raw external URLs
+      // to OpenAI (Wikimedia/iNat URLs can be blocked and would cause a 400 crash)
       if (barraRefs.length > 0) {
         const bp = barraRefs[0]!;
-        const barraImgUrl = bp.thumbBase64
-          ? `data:image/jpeg;base64,${bp.thumbBase64}`
-          : bp.photoUrl;
         content.push({ type: "text", text: `STEP 1 — BARRAMUNDI BODY ANATOMY (iNaturalist research-grade, ${bp.location}):\nThe PHYSOSTOMOUS SWIM BLADDER (large pale gas sac in upper body cavity) is the dominant sonar reflector. On live sonar, this bladder creates the BRIGHT ELONGATED OVAL body return + LONG ACOUSTIC SHADOW. Body L:H ratio on this specimen: approximately 3.5–4.5:1. The BLUNT FOREHEAD creates a steep front face on the oval. The narrowing at the rear is the caudal peduncle/tail. Connect this anatomy to what you see on the live sonar display: BRIGHT ELONGATED OVAL + LONG SHADOW = BARRAMUNDI.` });
-        content.push({ type: "image_url", image_url: { url: barraImgUrl, detail: "low" } });
+        if (bp.thumbBase64) {
+          content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${bp.thumbBase64}`, detail: "low" } });
+        }
         content.push({ type: "text", text: `↑ CONFIRMED BARRAMUNDI body — ${bp.location} (${bp.votes} expert votes). This is what creates the live sonar signature: large swim bladder → bright oval return + long acoustic shadow.` });
       }
 
       // Step 2: Saltwater croc body shape — cross-modal bridge croc silhouette → live sonar blob
+      // Only inject images with base64 thumbnails — skip any that only have raw external URLs
       if (crocRefs.length > 0) {
         content.push({ type: "text", text: `STEP 2 — SALTWATER CROCODILE BODY SHAPE (${crocRefs.length} iNaturalist research-grade Crocodylus porosus):\nOn live sonar a croc appears as an ENORMOUS SOLID FILLED BLOB near the surface — much WIDER than any fish. Body width-to-length ratio ≈ 1:3 vs barra's 1:4. The croc's body is essentially RECTANGULAR (no fish-shaped narrowing at tail). CRITICAL: crocs have NO swim bladder, so their sonar return is a SOLID DENSE BLOB with NO internal void — unlike barra which has bright edges + shadow void.` });
         for (const cr of crocRefs) {
-          const crImgUrl = cr.thumbBase64
-            ? `data:image/jpeg;base64,${cr.thumbBase64}`
-            : cr.photoUrl;
+          if (!cr.thumbBase64) continue;
           const angleNote = cr.viewingAngle === "top" ? " [TOP VIEW — matches live sonar overhead perspective mode]"
             : cr.viewingAngle === "side" ? " [SIDE VIEW — matches live sonar forward/down mode]" : "";
-          content.push({ type: "image_url", image_url: { url: crImgUrl, detail: "low" } });
+          content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${cr.thumbBase64}`, detail: "low" } });
           content.push({ type: "text", text: `↑ CONFIRMED SALTWATER CROCODILE (Crocodylus porosus) — ${cr.location}${angleNote}. Compare body WIDTH vs fish — croc is MUCH WIDER relative to length. This body shape appears as a SOLID FILLED BLOB on live sonar near the surface.` });
         }
       }

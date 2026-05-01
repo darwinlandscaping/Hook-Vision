@@ -1,5 +1,16 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+
+// ── Safety net — prevent stray unhandled rejections from killing the process ──
+// Any async operation that lacks a .catch() (e.g. a bad OpenAI image URL that
+// fires after a request handler has already returned) would otherwise crash the
+// server instantly. Log the error and continue serving.
+process.on("unhandledRejection", (reason) => {
+  logger.error({ err: reason }, "[server] unhandledRejection caught — server continues");
+});
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "[server] uncaughtException caught — server continues");
+});
 import { initModels } from "./lib/models";
 import { refreshDailyConditions } from "./lib/dailyBriefing";
 import { loadDemoReferences } from "./lib/demoReference";
