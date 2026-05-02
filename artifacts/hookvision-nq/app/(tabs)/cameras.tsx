@@ -392,7 +392,7 @@ export default function CamerasScreen() {
         };
         // Remove undefined keys
         Object.keys(sonarContext).forEach(k => sonarContext[k] === undefined && delete sonarContext[k]);
-        if (s.species) queryParts = `Target species: ${s.species}. Depth: ${s.depth ?? "unknown"}. Fish arches: ${s.fishCount ?? 0}. BarraPct: ${s.barraPct ?? 0}%. ${s.crocAlert ? "CROC ALERT active. " : ""}${s.birdAlert ? "Bird activity detected. " : ""}Tide: ${t.phase ?? "unknown"}. Give precise cast zone, croc risk, and lure recommendation.`;
+        if (s.species) queryParts = `Target species: ${s.species}. Depth: ${s.depth ?? "unknown"}. Fish arches: ${s.fishCount !== undefined ? s.fishCount : "unknown"}. BarraPct: ${s.barraPct !== undefined && s.barraPct !== null ? s.barraPct : "unknown"}%. ${s.crocAlert ? "CROC ALERT active. " : ""}${s.birdAlert ? "Bird activity detected. " : ""}Tide: ${t.phase ?? "unknown"}. Give precise cast zone, croc risk, and lure recommendation.`;
       }
     } catch {}
 
@@ -678,9 +678,12 @@ export default function CamerasScreen() {
 
               {/* Confidence bar */}
               <View style={[S.confBar, { backgroundColor: C.border }]}>
-                <View style={[S.confFill, { width: `${brainResult.confidence ?? 80}%` as any, backgroundColor: (brainResult.confidence ?? 80) > 85 ? C.green : C.gold }]} />
+                <View style={[S.confFill, { width: `${brainResult.confidence ?? 80}%` as any, backgroundColor:
+                  brainResult.activityLevel === "none" ? C.mute :
+                  (brainResult.confidence ?? 80) > 85   ? C.green : C.gold
+                }]} />
               </View>
-              <Text style={[S.confLabel, { color: C.mute }]}>Confidence {brainResult.confidence ?? 80}% · {brainResult.activityLevel?.toUpperCase() ?? "?"} activity</Text>
+              <Text style={[S.confLabel, { color: C.mute }]}>Reading confidence {brainResult.confidence ?? 80}% · {brainResult.activityLevel === "none" ? "No activity" : (brainResult.activityLevel?.toUpperCase() ?? "?") + " activity"}</Text>
 
               {/* 9 result parameter rows */}
               <BrainRow icon="🐟" label="Activity"
