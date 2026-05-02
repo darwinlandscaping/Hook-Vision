@@ -345,13 +345,64 @@ export default function CamerasScreen() {
     const t0 = Date.now();
     let chars = 0;
 
+    // ── Fetch real HUD state so the brain gets live sonar data ──────────────
+    let sonarContext: Record<string, unknown> = {};
+    let queryParts = "Analyse current fishing conditions. Give best cast zone and croc risk.";
+    try {
+      const hudRes = await fetch(`${apiBase}/api/hud/data`);
+      if (hudRes.ok) {
+        const hud = await hudRes.json() as {
+          scan?: {
+            species?: string; fishCount?: number; depth?: string;
+            confidence?: number; suggestion?: string; lure?: string;
+            archCount?: number; barraPct?: number; waterTemp?: string;
+            bottomType?: string; crocAlert?: boolean; crocWarning?: string;
+            birdAlert?: boolean; region?: string;
+          };
+          brain?: {
+            species?: string; urgency?: string; confidence?: number;
+            depth?: string; lure?: string; castZone?: string;
+            technique?: string; reason?: string;
+          };
+          tide?: { phase?: string; description?: string };
+          env?: { waterColour?: string; waterClarity?: string };
+        };
+        const s = hud.scan ?? {};
+        const b = hud.brain ?? {};
+        const t = hud.tide ?? {};
+        const e = hud.env ?? {};
+        sonarContext = {
+          region:       s.region,
+          species:      s.species ?? b.species,
+          depth:        s.depth ?? b.depth,
+          fishCount:    s.fishCount,
+          archCount:    s.archCount,
+          barraPct:     s.barraPct,
+          waterTemp:    s.waterTemp,
+          bottomType:   s.bottomType,
+          crocAlert:    s.crocAlert,
+          crocWarning:  s.crocWarning,
+          birdAlert:    s.birdAlert,
+          lure:         s.lure ?? b.lure,
+          confidence:   s.confidence,
+          suggestion:   s.suggestion,
+          tidePhase:    t.phase,
+          waterColour:  e.waterColour,
+          waterClarity: e.waterClarity,
+        };
+        // Remove undefined keys
+        Object.keys(sonarContext).forEach(k => sonarContext[k] === undefined && delete sonarContext[k]);
+        if (s.species) queryParts = `Target species: ${s.species}. Depth: ${s.depth ?? "unknown"}. Fish arches: ${s.fishCount ?? 0}. BarraPct: ${s.barraPct ?? 0}%. ${s.crocAlert ? "CROC ALERT active. " : ""}${s.birdAlert ? "Bird activity detected. " : ""}Tide: ${t.phase ?? "unknown"}. Give precise cast zone, croc risk, and lure recommendation.`;
+      }
+    } catch {}
+
     try {
       const res = await fetch(`${apiBase}/api/insta360/brain/stream`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          query: "Analyse current fishing conditions. Give best cast zone and croc risk.",
-          sonarContext: { depth: "4.2m", fishCount: 2 },
+          query: queryParts,
+          sonarContext,
         }),
       });
 
@@ -631,31 +682,46 @@ export default function CamerasScreen() {
               </View>
               <Text style={[S.confLabel, { color: C.mute }]}>Confidence {brainResult.confidence ?? 80}% · {brainResult.activityLevel?.toUpperCase() ?? "?"} activity</Text>
 
-              {/* Result rows from real API */}
-              <BrainRow icon="🐟" label="Fish / Birds"
-                value={brainResult.birds?.detected
-                  ? `${brainResult.birds.species?.[0] ?? "Birds"} diving · ${brainResult.activityLevel} activity`
-                  : brainResult.activityLevel === "high" ? "HIGH activity — fish busting" : "Low visible activity"}
+              {/* 9 result parameter rows */}
+              <BrainRow icon="🐟" label="Activity"
+                value={
+                  brainResult.activityLevel === "high"   ? "HIGH — fish busting surface" :
+                  brainResult.activityLevel === "medium" ? "MEDIUM — subsurface movement" :
+                  brainResult.activityLevel === "low"    ? "LOW — deep / dormant" : "NONE detected"
+                }
                 color={brainResult.activityLevel === "high" ? C.gold : brainResult.activityLevel === "medium" ? C.orange : C.mute} />
+              <BrainRow icon="🐦" label="Birds"
+                value={brainResult.birds?.detected
+                  ? `${brainResult.birds.urgency?.toUpperCase() ?? "ACTIVE"} · ${brainResult.birds.description || (brainResult.birds.species?.[0] ?? "Birds") + " detected"}`
+                  : "No bird activity"}
+                color={brainResult.birds?.urgency === "high" ? C.gold : brainResult.birds?.detected ? C.orange : C.mute} />
+              <BrainRow icon="🌊" label="Surface"
+                value={
+                  brainResult.surface?.bustUp   ? `BUST UP · ${brainResult.surface.description || "fish at surface"}` :
+                  brainResult.surface?.baitBall ? `BAIT BALL · ${brainResult.surface.description || "bait schooling"}` :
+                  brainResult.surface?.description || "No surface activity"
+                }
+                color={brainResult.surface?.bustUp || brainResult.surface?.baitBall ? C.gold : C.mute} />
+              <BrainRow icon="💧" label="Water"
+                value={`${brainResult.water?.colour ?? "?"} · ${brainResult.water?.conditions ?? "?"} · ${brainResult.water?.visibility ?? "?"} vis`}
+                color={C.blue} />
               <BrainRow icon="⚠️" label="Croc Risk"
                 value={brainResult.crocDetail || brainResult.crocRisk?.toUpperCase() || "CLEAR"}
                 color={crocColor} />
               <BrainRow icon="🎣" label="Cast Zone"
                 value={brainResult.tactics?.priority || `CAST ${(brainResult.castZone ?? "centre").toUpperCase()}`}
                 color={C.teal} />
-              <BrainRow icon="🌊" label="Water"
-                value={`${brainResult.water?.colour ?? "?"} · ${brainResult.water?.conditions ?? "?"} · ${brainResult.water?.visibility ?? "?"} vis`}
-                color={C.blue} />
-              {brainResult.tactics?.lure && (
-                <BrainRow icon="🪝" label="Lure"
-                  value={`${brainResult.tactics.lure} · ${brainResult.tactics.technique ?? ""}`}
-                  color={C.orange} />
-              )}
-              {brainResult.structure && (
-                <BrainRow icon="🗺" label="Structure"
-                  value={brainResult.structure}
-                  color={C.dim} />
-              )}
+              <BrainRow icon="🪝" label="Lure"
+                value={brainResult.tactics?.lure
+                  ? `${brainResult.tactics.lure} · ${brainResult.tactics.technique || "standard"}`
+                  : "No recommendation"}
+                color={brainResult.tactics?.lure ? C.orange : C.mute} />
+              <BrainRow icon="📏" label="Target Depth"
+                value={brainResult.tactics?.depth || "—"}
+                color={brainResult.tactics?.depth ? C.purple : C.mute} />
+              <BrainRow icon="🗺️" label="Structure"
+                value={brainResult.structure || "Not identified"}
+                color={brainResult.structure ? C.dim : C.mute} />
             </>
           )}
         </View>

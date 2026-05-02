@@ -28,7 +28,25 @@ function buildContent(
   if (hasQuery) text += (text ? " Also: " : "") + query.trim();
   if (sonarContext && typeof sonarContext === "object") {
     const s = sonarContext as Record<string, unknown>;
-    text += ` Sonar: depth=${s.depth ?? "?"}m fish=${s.fishCount ?? 0} crocAlert=${s.crocAlert ? "YES" : "no"}.`;
+    const parts: string[] = [];
+    if (s.region)                  parts.push(`region=${s.region}`);
+    if (s.species)                 parts.push(`species=${s.species}`);
+    if (s.depth)                   parts.push(`depth=${s.depth}`);
+    if (s.fishCount !== undefined) parts.push(`fish=${s.fishCount}`);
+    if (s.archCount !== undefined) parts.push(`arches=${s.archCount}`);
+    if (s.barraPct  !== undefined) parts.push(`barraPct=${s.barraPct}%`);
+    if (s.waterTemp)               parts.push(`waterTemp=${s.waterTemp}`);
+    if (s.bottomType)              parts.push(`bottom=${s.bottomType}`);
+    if (s.waterColour)             parts.push(`waterColour=${s.waterColour}`);
+    if (s.waterClarity)            parts.push(`clarity=${s.waterClarity}`);
+    if (s.tidePhase)               parts.push(`tide=${s.tidePhase}`);
+    if (s.birdAlert)               parts.push(`birdAlert=YES`);
+    if (s.crocAlert)               parts.push(`crocAlert=YES`);
+    if (s.crocWarning)             parts.push(`crocWarning=${s.crocWarning}`);
+    if (s.lure)                    parts.push(`lastLure=${s.lure}`);
+    if (s.confidence !== undefined) parts.push(`sonarConfidence=${s.confidence}%`);
+    if (s.suggestion)              parts.push(`sonarSuggestion=${s.suggestion}`);
+    if (parts.length > 0) text += ` Sonar context: ${parts.join(", ")}.`;
   }
 
   if (!hasImage) return text || "Analyse fishing conditions.";
