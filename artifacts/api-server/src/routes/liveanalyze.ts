@@ -131,13 +131,24 @@ STRUCTURE ECHO:
   MOVEMENT: Almost stationary; barely moves from within the snag signature
   COUNT: Solo or 2–3 fish in one snag
 
-▸ THREADFIN SALMON:
-  SHAPE: Medium elongated body, similar 3:1 ratio to barra but THINNER / SLIMMER height
-  BRIGHTNESS: MEDIUM-HIGH
-  SHADOW: MEDIUM (shorter than barra)
-  POSITION: Mid-column, SOFT bottom, NOT near hard structure
-  MOVEMENT: Group movement — all fish moving same direction at similar speed
-  COUNT: SCHOOL — 5–20+ bodies clustered (KEY DIFFERENTIATOR from solo barra)
+▸ THREADFIN SALMON (Polydactylus macrochir — Blue Threadfin / King Salmon):
+  SHAPE: SLENDER elongated body — L:H ratio ~4.5:1 (noticeably THINNER than barra's 3.5:1).
+         More pointed snout vs barra's blunt forehead. No visible "wing" pectoral flare.
+         Long thread-like lower pectoral fin rays may appear as faint trailing filaments.
+  BRIGHTNESS: MEDIUM-HIGH — they have a physostomous swim bladder but SMALLER than barra's.
+              Body return is bright but body oval is NARROWER / THINNER than barra.
+  SHADOW: SHORT to MEDIUM — noticeably SHORTER than barra's shadow. Often 0.3–0.5× body length.
+          Barra shadow = body length or longer. Threadfin shadow = half body length or less.
+          This shadow length difference is the single most reliable live-sonar separator.
+  POSITION: Mid-column, AWAY from hard structure. Over SOFT BOTTOM (mud, sand, tidal flat).
+            If barra are on the same screen they will be ON structure; threadfin float nearby free.
+  MOVEMENT: GROUP movement — ALL fish drifting the SAME DIRECTION at the SAME SPEED.
+            Barra are stationary/slow ambush; threadfin schools are always on the move together.
+  COUNT: SCHOOL — 5–20+ bodies (KEY DIFFERENTIATOR). Barra = solo or 2–3 max.
+  CO-HABITATION NOTE: Barra and threadfin regularly feed together in tidal estuaries and creek mouths.
+    On live sonar you may see BOTH species simultaneously — barra tight to structure, threadfin
+    schooling mid-column nearby. Do NOT call the threadfin school "barra" just because barra are present.
+  CONFIRM: Slender oval + short shadow + away from structure + school formation + all moving together = THREADFIN SALMON.
 
 ▸ QUEENFISH:
   SHAPE: Very SLIM torpedo/cigar body — 5:1 to 6:1 L:H ratio

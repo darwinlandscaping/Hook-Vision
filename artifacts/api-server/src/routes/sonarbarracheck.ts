@@ -66,15 +66,37 @@ If the screen shows 2 or more arches that EACH individually qualify as BARRA-QUA
 • 5–8 BARRA-QUALITY ARCHES on hard structure → isBarraArch=true, confidence 90–97%. Staging school over a snag or rock bar — classic wet-season aggregation.
 • KEY RULE: Do NOT penalise count if each arch individually meets the barra profile. The count only lowers confidence when arches are THREADFIN-QUALITY (thin, mid-column, soft bottom).
 
-THREADFIN/BAITFISH SCHOOL (different from barra aggregation):
-• Thin arches at same depth, mid-water column, soft muddy bottom → NOT barra. Lower confidence.
-• Dense cloud of small dots → baitfish. NOT barra.
+THREADFIN SALMON vs BARRA — CRITICAL SEPARATION (they co-habit and feed together in the same estuaries):
+
+THREADFIN SALMON SONAR SIGNATURE (Polydactylus macrochir — Blue Threadfin / King Salmon):
+• Swim bladder: Threadfin DO have a physostomous swim bladder, BUT it is proportionally SMALLER than barra's.
+  → They produce Tier 1 (orange/red/white) arch returns — do NOT assume thin = dim.
+  → However they produce WEAK or NO acoustic shadow void below the arch. This is the key tell.
+• Arch shape: THINNER vertical height than barra. Body depth-to-length ratio ~4.5:1 vs barra ~3:1. Slimmer fish = narrower arch.
+• Position: MID-WATER COLUMN, NOT attached to hard structure. Float freely over SOFT BOTTOM (mud, sand, tidal flat).
+• Behaviour: SCHOOLING — 5 to 30+ arches typically at the SAME DEPTH LEVEL forming a horizontal band.
+  A same-depth horizontal band of multiple arches = Threadfin school. Do NOT call this a Barra aggregation.
+• Movement: All arches drifting in the SAME DIRECTION at the same speed (school movement). Barra are stationary/slow.
+• Bottom echo: Thin, dimmer bottom echo = soft substrate = Threadfin habitat.
+• Barra and Threadfin co-exist: You may see BOTH on the same screen — Barra will be ON structure, Threadfin floating nearby mid-column.
+
+DECISIVE SEPARATION RULES:
+1. Shadow void PRESENT → almost certainly Barra (or Jewfish). Shadow void ABSENT on bright arches → Threadfin.
+2. Arches ON hard structure echo → Barra. Arches floating mid-column over soft bottom → Threadfin.
+3. 5+ arches at same depth in a horizontal band → Threadfin school regardless of brightness.
+4. All arches moving same direction at same speed → schooling species (Threadfin, not Barra).
+5. Solo or 2–3 arches near structure → Barra. 6+ arches mid-column over mud → Threadfin school.
+
+THREADFIN/BAITFISH SCHOOL:
+• Dense cloud of small bright dots → baitfish. NOT barra or threadfin.
+• Multiple THIN arches same depth mid-column soft bottom → Threadfin Salmon.
 
 LONE ARCH SIZE REFERENCE (200kHz, 5–8m depth):
-• Legal barra 55–80cm: arch height ≈ 3–4% of screen height, orange/red on Lowrance/Simrad, white/orange on Humminbird, white/cyan on Garmin
-• Trophy barra 80cm+: arch height ≈ 5–8% of screen height, thick, always bright Tier 1 colour, clear shadow void below
-• Mangrove jack: arch half-buried INTO the structure echo (starts at bottom, curves into structure)
-• Threadfin: thinner arch at same size, mid-column only, soft bottom underneath
+• Legal barra 55–80cm: arch height ≈ 3–4% of screen height, orange/red on Lowrance/Simrad, white/orange on Humminbird, white/cyan on Garmin. Clear U-curve ON or near structure. Shadow void present.
+• Trophy barra 80cm+: arch height ≈ 5–8% of screen height, thick, always bright Tier 1 colour, clear shadow void below.
+• Threadfin 60–120cm: arch height ≈ 2–3% of screen height, Tier 1 colour (can be orange/red) but THINNER arch, NO shadow void, mid-column over soft bottom, one of many at same depth.
+• Mangrove jack: arch half-buried INTO the structure echo (starts at bottom, curves into structure).
+• Fingermark: loose groups 1–4m above rubble, moderate brightness, no shadow void.
 
 10-YEAR BRAND COLOUR GUIDE (for arch tier interpretation):
 • Lowrance (HDS Gen2/3/Carbon/Live, Elite Ti/FS, Hook Reveal): Orange/red = Tier 1 strongest = barra. Yellow = medium. Green = small.

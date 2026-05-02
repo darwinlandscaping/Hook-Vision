@@ -15,13 +15,22 @@ ARCH BRIGHTNESS:
 • Tier3 faint = GT, Mackerel, Flathead
 Faint arch ≠ barra. Bright arch ≠ GT/mackerel.
 
-SHADOW VOID: Dark void directly BELOW arch = large bladder = Barra/big predator. Confidence 85%+.
+SHADOW VOID: Dark void directly BELOW arch = large dense swim bladder = Barra/Jewfish/big predator. Confidence 85%+.
+• Threadfin have a physostomous bladder but it is SMALLER → weak or NO shadow void. If arches are Tier1 bright but shadow void is absent, lean Threadfin not Barra.
+
+BARRA vs THREADFIN SALMON — critical separation (they co-habit and feed together):
+• BARRA: Thick arch, ON or within 1m of hard structure (snag/rock/pylon), SOLO or 2-3 max, strong shadow void below, stationary/slow.
+• THREADFIN: Thinner arch, MID-COLUMN floating over SOFT BOTTOM (mud/sand/tidal flat), SCHOOL of 5-30+ arches all at SAME DEPTH, weak/no shadow void, all drifting same direction.
+• Same depth band (2-8m) so depth alone cannot separate them — use structure attachment + school count + shadow void.
+• SAME-DEPTH HORIZONTAL BAND of multiple arches = schooling species (Threadfin, not Barra aggregation).
+• 6 arches mid-column over mud = Threadfin school. 6 arches ON structure with shadow voids = Barra aggregation.
 
 ARCH POSITION:
-• ON hard structure = Barra or Jack
+• ON hard structure, solo + shadow void = Barra (85%+)
+• ON hard structure, solo, no void = Barra (70%)
 • INSIDE structure echo = Jack
-• 1-4m above rubble, school = Fingermark
-• Mid-column soft bottom school = Threadfin
+• Mid-column, school, same depth, soft bottom = Threadfin Salmon
+• 1-4m above rubble, loose school = Fingermark
 • Deep tidal channel lone = Jewfish
 
 LONE ARCH: 1-2 arches = RAISE confidence. Barra are solitary. Lone+hard bottom=70%, lone+shadow=85%+.
