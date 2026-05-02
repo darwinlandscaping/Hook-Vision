@@ -97,6 +97,14 @@ interface FishAnalysis {
   lure?: string;
   lureType?: string;
   technique?: string;
+  crocAlert?: boolean;
+  crocWarning?: string | null;
+  birdAlert?: string | null;
+  archCount?: number;
+  archType?: string;
+  barraPct?: number;
+  waterTemp?: string;
+  bottomType?: string;
 }
 
 const SPECIES_SLANG: Record<string, string> = {
@@ -447,22 +455,29 @@ export default function LiveScreen() {
   const [result, setResult]             = useState<FishAnalysis | null>(null);
   const [error, setError]               = useState<string | null>(null);
   const [autoSpeak, setAutoSpeak]       = useState(true);
-  const [boatMode, setBoatMode]         = useState(false);
-  const [countdown, setCountdown]       = useState(0);
-  const [scanCount, setScanCount]       = useState(0);
-  const [boatPhase, setBoatPhase]       = useState<"idle" | "capturing" | "summarizing" | "complete">("idle");
-  const [boatSummaryNarration, setBoatSummaryNarration] = useState<string | null>(null);
+  const [boatMode, setBoatMode]                     = useState(false);
+  const [boatLive, setBoatLive]                     = useState(false);
+  const [boatPhase, setBoatPhase]                   = useState<"idle"|"capturing"|"analyzing"|"waiting">("idle");
+  const [boatCycleNum, setBoatCycleNum]             = useState(0);
+  const [boatCaptureCount, setBoatCaptureCount]     = useState(0);
+  const [boatWaitRemaining, setBoatWaitRemaining]   = useState(0);
+  const [boatSummaryNarration, setBoatSummaryNarration] = useState<string|null>(null);
+  const [crocAlertActive, setCrocAlertActive]       = useState(false);
+  const [fishTrackingText, setFishTrackingText]     = useState<string|null>(null);
   const [polarOn, setPolarOn]           = useState(true);   // polarised-lens filter
   const [polarising, setPolarising]     = useState(false);  // filter in progress
   const [feedView, setFeedView]         = useState<"camera" | "visual">("camera"); // full-screen feed toggle
 
-  const nativeCamRef         = useRef<any>(null);
-  const webCamRef            = useRef<any>(null);
-  const mountTimer           = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cdTimer              = useRef<ReturnType<typeof setInterval> | null>(null);
-  const boatScanCountRef     = useRef(0);
-  const boatSessionResults   = useRef<{ result: FishAnalysis; uri: string }[]>([]);
-  const finishBoatSessionRef = useRef<(() => void) | null>(null);
+  const nativeCamRef        = useRef<any>(null);
+  const webCamRef           = useRef<any>(null);
+  const capturedFramesRef   = useRef<Array<{base64:string;uri:string;result:FishAnalysis|null;score:number}>>([]);
+  const captureTimerRef     = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const cycleTimeoutRef     = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const waitCountdownRef    = useRef<ReturnType<typeof setInterval>|null>(null);
+  const isBoatLiveRef       = useRef(false);
+  const cycleNumRef         = useRef(0);
+  const cycleStartTimeRef   = useRef(0);
+  const runBoatCycleRef     = useRef<(()=>Promise<void>)|null>(null);
 
   // ── Insta360 (shared context — one instance for whole app) ───────────────
   const { camera: insta360, pipelines } = useInsta360Context();
@@ -485,8 +500,9 @@ export default function LiveScreen() {
   const [slConnecting,    setSlConnecting]    = useState(false);
   const [slConnectedCam,  setSlConnectedCam]  = useState<DiscoveredCamera | null>(null);
 
-  const AUTO_INTERVAL  = 10;
-  const BOAT_SCAN_LIMIT = 10;
+  const BOAT_CAPTURE_INTERVAL = 3_000;
+  const BOAT_CAPTURE_COUNT    = 10;
+  const BOAT_TOTAL_CYCLE_MS   = 90_000;
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
   const topPad   = Platform.OS === "web" ? 20 : insets.top;
@@ -550,33 +566,189 @@ export default function LiveScreen() {
     }
   }, [insta360, insta360Snapping]);
 
-  // ── Boat session finish — synthesise 10 scans into full verbal analysis ──
-  const finishBoatSession = useCallback(async () => {
-    setBoatPhase("summarizing");
-    const scans = boatSessionResults.current.map(s => s.result);
+  // ── Stop live cycle ───────────────────────────────────────────────────────
+  const stopBoatLive = useCallback(() => {
+    isBoatLiveRef.current = false;
+    if (captureTimerRef.current)  { clearTimeout(captureTimerRef.current);   captureTimerRef.current  = null; }
+    if (cycleTimeoutRef.current)  { clearTimeout(cycleTimeoutRef.current);   cycleTimeoutRef.current  = null; }
+    if (waitCountdownRef.current) { clearInterval(waitCountdownRef.current); waitCountdownRef.current = null; }
+    setBoatLive(false);
+    setBoatPhase("idle");
+    setBoatCaptureCount(0);
+    setBoatWaitRemaining(0);
+    LiveScanStore.setBoatActive(false);
+  }, []);
+
+  // ── Silent single capture (no haptics, no sound) ──────────────────────────
+  const silentCapture = useCallback(async (): Promise<{base64:string;uri:string}|null> => {
+    try {
+      if (cam2Connected && Platform.OS !== "web") {
+        const snap = await cam2.takeSnapshot();
+        return snap?.base64 ? { base64: snap.base64, uri: snap.uri ?? "" } : null;
+      }
+      if (Platform.OS === "web") {
+        const photo = await webCamRef.current?.takePicture?.();
+        return photo?.base64 ? { base64: photo.base64, uri: photo.uri } : null;
+      }
+      if (!nativeCamRef.current) return null;
+      const photo = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.75, skipProcessing: true });
+      return photo?.base64 ? { base64: photo.base64, uri: photo.uri ?? "" } : null;
+    } catch { return null; }
+  }, [cam2Connected, cam2]);
+
+  // ── Full repeating boat cycle (10 captures → analyse best 2 → wait → repeat) ──
+  const runBoatCycle = useCallback(async (): Promise<void> => {
+    if (!isBoatLiveRef.current) return;
+    cycleNumRef.current += 1;
+    const cycleNum = cycleNumRef.current;
     const domain  = process.env.EXPO_PUBLIC_DOMAIN;
     const apiBase = domain ? `https://${domain}` : "";
-    try {
-      const resp = await fetchRetry(`${apiBase}/api/boat-session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scans, region: "nq" }),
-      }, 90_000);
-      if (resp.ok) {
-        const data = await resp.json() as { narration?: string };
-        const narration = data.narration ?? "Boat session complete. Ten sonar scans captured and saved.";
-        setBoatSummaryNarration(narration);
-        speak(narration);
-      } else {
-        speak("Boat session complete. Ten sonar scans captured and saved.");
+
+    capturedFramesRef.current = [];
+    cycleStartTimeRef.current = Date.now();
+    setBoatCycleNum(cycleNum);
+    setBoatPhase("capturing");
+    setBoatCaptureCount(0);
+    setCrocAlertActive(false);
+
+    for (let i = 0; i < BOAT_CAPTURE_COUNT; i++) {
+      if (!isBoatLiveRef.current) return;
+      const photo = await silentCapture();
+      if (photo) {
+        capturedFramesRef.current.push({ base64: photo.base64, uri: photo.uri, result: null, score: 0 });
+        setBoatCaptureCount(capturedFramesRef.current.length);
       }
-    } catch {
-      speak("Boat session complete. Ten sonar scans captured and saved.");
-    } finally {
-      setBoatPhase("complete");
+      if (i < BOAT_CAPTURE_COUNT - 1) {
+        await new Promise<void>(r => { captureTimerRef.current = setTimeout(r, BOAT_CAPTURE_INTERVAL); });
+      }
     }
-  }, [speak]);
-  finishBoatSessionRef.current = finishBoatSession;
+    if (captureTimerRef.current) { clearTimeout(captureTimerRef.current); captureTimerRef.current = null; }
+    if (!isBoatLiveRef.current) return;
+
+    setBoatPhase("analyzing");
+    const frames = [...capturedFramesRef.current];
+
+    const analyseOne = async (fr: typeof frames[0]) => {
+      try {
+        const resp = await fetchRetry(`${apiBase}/api/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: fr.base64 }),
+        }, 28_000);
+        if (!resp.ok) return { ...fr, result: null as FishAnalysis|null, score: 0 };
+        const reader = resp.body?.getReader();
+        if (!reader)  return { ...fr, result: null as FishAnalysis|null, score: 0 };
+        const dec = new TextDecoder(); let txt = "";
+        for (;;) { const { done, value } = await reader.read(); if (done) break; txt += dec.decode(value, { stream: true }); }
+        const m = txt.match(/\{[\s\S]*\}/);
+        if (!m) return { ...fr, result: null as FishAnalysis|null, score: 0 };
+        const d = JSON.parse(m[0]);
+        const result: FishAnalysis = {
+          fishCount: d.fishCount ?? 0, depth: d.depth ?? "unknown", distance: d.distance ?? "unknown",
+          species: d.species ?? "Unknown", confidence: d.confidence ?? 0, suggestion: d.suggestion ?? "",
+          lure: d.lure ?? d.recommendedLure ?? "", lureType: d.lureType ?? "", technique: d.technique ?? "",
+          crocAlert: d.crocAlert ?? false, crocWarning: d.crocWarning ?? null, birdAlert: d.birdAlert ?? null,
+          barraPct: d.barraPct, archCount: d.archCount, waterTemp: d.waterTemp, bottomType: d.bottomType,
+        };
+        const score = (result.fishCount ?? 0) * 10 + (result.confidence ?? 0) * 100;
+        if (result.crocAlert) setCrocAlertActive(true);
+        return { ...fr, result, score };
+      } catch { return { ...fr, result: null as FishAnalysis|null, score: 0 }; }
+    };
+
+    const analysed: typeof frames = [];
+    for (let i = 0; i < frames.length; i += 5) {
+      const batch = await Promise.all(frames.slice(i, i + 5).map(analyseOne));
+      analysed.push(...batch);
+      if (!isBoatLiveRef.current) return;
+    }
+
+    const sorted = [...analysed].sort((a, b) => b.score - a.score);
+    const best2  = sorted.slice(0, 2);
+    if (best2[0]?.result) setResult(best2[0].result);
+
+    if (MediaLibrary && Platform.OS !== "web") {
+      for (const fr of best2) {
+        if (fr.uri) {
+          try {
+            const perm = await MediaLibrary.requestPermissionsAsync();
+            if (perm.granted) await MediaLibrary.saveToLibraryAsync(fr.uri);
+          } catch {}
+        }
+      }
+    }
+
+    for (const fr of best2) {
+      if (fr.result) {
+        addEntry({ id: `boat-${cycleNum}-${Date.now()}`, timestamp: Date.now(), imageUri: fr.uri,
+          species: fr.result.species, fishCount: fr.result.fishCount, depth: fr.result.depth,
+          suggestion: fr.result.suggestion });
+      }
+    }
+
+    const withFish  = analysed.filter(f => (f.result?.fishCount ?? 0) > 0);
+    const depths    = [...new Set(analysed.map(f => f.result?.depth).filter(Boolean) as string[])].slice(0, 3);
+    setFishTrackingText(withFish.length > 0
+      ? `Cycle ${cycleNum}: fish in ${withFish.length}/${analysed.length} frames · ${depths.join(", ")}`
+      : `Cycle ${cycleNum}: no fish in ${analysed.length} frames`);
+
+    if (best2[0]?.result) {
+      const r = best2[0].result;
+      fetch(`${apiBase}/api/hud/update`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ species: r.species, fishCount: r.fishCount, depth: r.depth,
+          confidence: r.confidence, suggestion: r.suggestion, lure: r.lure ?? "",
+          crocAlert: r.crocAlert ?? false, crocWarning: r.crocWarning ?? null,
+          birdAlert: r.birdAlert ?? null, region: "nq", source: "boat" }),
+      }).catch(() => {});
+    }
+
+    if (!isBoatLiveRef.current) return;
+    if (best2.some(f => f.result)) {
+      try {
+        const scans = best2.map(f => f.result!).filter(Boolean);
+        const resp = await fetchRetry(`${apiBase}/api/boat-session`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scans, region: "nq" }),
+        }, 90_000);
+        if (resp.ok) {
+          const data = await resp.json() as { narration?: string };
+          const narration = data.narration ?? `Cycle ${cycleNum} complete.`;
+          setBoatSummaryNarration(narration);
+          speak(narration);
+        }
+      } catch {}
+    }
+
+    if (!isBoatLiveRef.current) return;
+
+    setBoatPhase("waiting");
+    const elapsed = Date.now() - cycleStartTimeRef.current;
+    const waitMs  = Math.max(5_000, BOAT_TOTAL_CYCLE_MS - elapsed);
+    let waitSecs  = Math.ceil(waitMs / 1000);
+    setBoatWaitRemaining(waitSecs);
+    waitCountdownRef.current = setInterval(() => {
+      waitSecs = Math.max(0, waitSecs - 1);
+      setBoatWaitRemaining(waitSecs);
+      if (waitSecs <= 0 && waitCountdownRef.current) { clearInterval(waitCountdownRef.current); waitCountdownRef.current = null; }
+    }, 1000);
+    await new Promise<void>(r => { cycleTimeoutRef.current = setTimeout(r, waitMs); });
+    if (waitCountdownRef.current) { clearInterval(waitCountdownRef.current); waitCountdownRef.current = null; }
+
+    if (isBoatLiveRef.current) void runBoatCycleRef.current?.();
+  }, [silentCapture, speak, addEntry]); // eslint-disable-line react-hooks/exhaustive-deps
+  runBoatCycleRef.current = runBoatCycle;
+
+  const startBoatLive = useCallback(() => {
+    isBoatLiveRef.current = true;
+    cycleNumRef.current   = 0;
+    setBoatLive(true);
+    setBoatSummaryNarration(null);
+    setFishTrackingText(null);
+    setCrocAlertActive(false);
+    LiveScanStore.setBoatActive(true);
+    void runBoatCycleRef.current?.();
+  }, []);
 
   // ── Scan — capture photo then send to Scan tab for full AI analysis ──────
   const scanNow = useCallback(async () => {
@@ -624,97 +796,9 @@ export default function LiveScreen() {
         setPolarising(false);
       }
 
-      if (boatMode) {
-        // ── Boat mode: capture 10 snapshots → stop → full verbal analysis ──
-        const domain  = process.env.EXPO_PUBLIC_DOMAIN;
-        const apiBase = domain ? `https://${domain}` : "";
-        const resp = await fetchRetry(`${apiBase}/api/analyze`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: base64 }),
-        }, 28_000);
-        if (resp.ok) {
-          const reader = resp.body?.getReader();
-          if (reader) {
-            const dec = new TextDecoder();
-            let txt = "";
-            for (;;) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              txt += dec.decode(value, { stream: true });
-            }
-            const m = txt.match(/\{[\s\S]*\}/);
-            if (m) {
-              try {
-                const d = JSON.parse(m[0]);
-                const parsed: FishAnalysis = {
-                  fishCount:  d.fishCount  ?? 0,
-                  depth:      d.depth      ?? "unknown",
-                  distance:   d.distance   ?? "unknown",
-                  species:    d.species    ?? "Unknown",
-                  confidence: d.confidence ?? 0,
-                  suggestion: d.suggestion ?? "",
-                  lure:       d.lure ?? d.recommendedLure ?? "",
-                  lureType:   d.lureType   ?? "",
-                  technique:  d.technique  ?? "",
-                };
-                // Accumulate for session summary (ref-based for closure safety)
-                boatSessionResults.current.push({ result: parsed, uri });
-                boatScanCountRef.current += 1;
-                const newCount = boatScanCountRef.current;
-                setScanCount(newCount);
-                setResult(parsed);
-                // Save sonar image to device gallery (best-effort)
-                if (uri && Platform.OS !== "web" && MediaLibrary) {
-                  try {
-                    const perm = await MediaLibrary.requestPermissionsAsync();
-                    if (perm.granted) await MediaLibrary.saveToLibraryAsync(uri);
-                  } catch { /* gallery save optional */ }
-                }
-                addEntry({
-                  id: `${Date.now()}`,
-                  timestamp: Date.now(),
-                  imageUri: uri,
-                  species: parsed.species,
-                  fishCount: parsed.fishCount,
-                  depth: parsed.depth,
-                  suggestion: parsed.suggestion,
-                });
-                fetch(`${apiBase}/api/hud/update`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    species:     parsed.species,
-                    fishCount:   parsed.fishCount,
-                    depth:       parsed.depth,
-                    confidence:  parsed.confidence,
-                    suggestion:  parsed.suggestion,
-                    lure:        parsed.lure ?? "",
-                    archCount:   parsed.archCount,
-                    barraPct:    parsed.barraPct,
-                    waterTemp:   parsed.waterTemp,
-                    bottomType:  parsed.bottomType,
-                    crocAlert:   parsed.crocAlert   ?? false,
-                    crocWarning: parsed.crocWarning ?? null,
-                    birdAlert:   parsed.birdAlert   ?? null,
-                    region:      "nq",
-                    source:      "boat",
-                  }),
-                }).catch(() => {});
-                // All 10 scans done — stop loop and deliver full analysis
-                if (newCount >= BOAT_SCAN_LIMIT) {
-                  stopBoatLoop();
-                  finishBoatSessionRef.current?.();
-                }
-              } catch { /* ignore JSON parse errors */ }
-            }
-          }
-        }
-      } else {
-        // ── Regular mode: push to Scan tab for full streaming analysis ──────
-        LiveScanStore.push(base64, uri, "live");
-        router.navigate("/");   // go to Scan tab (no-op if already there)
-      }
+      // ── Regular mode: push to Scan tab for full streaming analysis ──────────
+      LiveScanStore.push(base64, uri, "live");
+      router.navigate("/");   // go to Scan tab (no-op if already there)
 
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
@@ -726,7 +810,7 @@ export default function LiveScreen() {
       setPolarising(false);
       setScanning(false);
     }
-  }, [scanning, boatMode, polarOn, cam2Connected, cam2, insta360, addEntry, stopBoatLoop]);
+  }, [scanning, polarOn, cam2Connected, cam2, insta360]);
 
   // ── Pick from gallery & analyse ──────────────────────────────────────────
   const pickFromGallery = useCallback(async () => {
@@ -849,42 +933,16 @@ export default function LiveScreen() {
     }
   }, [galleryPicking, scanning, polarOn]);
 
-  // ── Boat mode auto-scan loop ──────────────────────────────────────────────
-  const stopBoatLoop = useCallback(() => {
-    if (mountTimer.current) { clearInterval(mountTimer.current); mountTimer.current = null; }
-    if (cdTimer.current)    { clearInterval(cdTimer.current);    cdTimer.current = null; }
-    setCountdown(0);
-    LiveScanStore.setBoatActive(false);
-  }, []);
-
-  const startBoatLoop = useCallback(() => {
-    stopBoatLoop();
-    boatScanCountRef.current   = 0;
-    boatSessionResults.current = [];
-    setBoatPhase("capturing");
-    setBoatSummaryNarration(null);
-    LiveScanStore.setBoatActive(true);
-    setCountdown(AUTO_INTERVAL);
-    // Fire first scan immediately then every AUTO_INTERVAL seconds
-    scanNow();
-    cdTimer.current = setInterval(() =>
-      setCountdown((c) => (c <= 1 ? AUTO_INTERVAL : c - 1)), 1000);
-    mountTimer.current = setInterval(() => scanNow(), AUTO_INTERVAL * 1000);
-  }, [scanNow, stopBoatLoop]);
-
+  // ── Boat mode lifecycle ───────────────────────────────────────────────────
   useEffect(() => {
-    if (boatMode) {
-      setAutoSpeak(true);
-      startBoatLoop();
-    } else {
-      stopBoatLoop();
-      setScanCount(0);
-      setBoatPhase("idle");
+    if (!boatMode) {
+      stopBoatLive();
       setBoatSummaryNarration(null);
-      boatScanCountRef.current   = 0;
-      boatSessionResults.current = [];
+      setFishTrackingText(null);
+      setCrocAlertActive(false);
+      setResult(null);
     }
-    return stopBoatLoop;
+    return () => { stopBoatLive(); };
   }, [boatMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Shared overlay UI ───────────────────────────────────────────────────
@@ -927,20 +985,19 @@ export default function LiveScreen() {
           )}
 
           {boatMode && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <View style={[styles.chip, { backgroundColor: "#aaff0022", borderColor: "#aaff0066" }]}>
-                <MaterialCommunityIcons name="anchor" size={13} color="#aaff00" />
-                <Text style={[styles.chipText, { color: "#aaff00" }]}>
-                  🚤 BOAT MODE — next scan in {countdown}s
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.chip, { backgroundColor: "#ff440022", borderColor: "#ff440066" }]}
-                onPress={() => setBoatMode(false)}
-              >
-                <Feather name="square" size={13} color="#ff4400" />
-                <Text style={[styles.chipText, { color: "#ff4400" }]}>STOP</Text>
-              </TouchableOpacity>
+            <View style={[styles.chip, { backgroundColor: "#aaff0022", borderColor: "#aaff0066" }]}>
+              <MaterialCommunityIcons name="anchor" size={13} color="#aaff00" />
+              <Text style={[styles.chipText, { color: "#aaff00" }]}>
+                {boatLive
+                  ? boatPhase === "capturing"
+                    ? `📡 ${boatCaptureCount}/${BOAT_CAPTURE_COUNT}`
+                    : boatPhase === "analyzing"
+                    ? "🧠 Analysing…"
+                    : boatPhase === "waiting"
+                    ? `⏳ ${boatWaitRemaining}s`
+                    : "🚤 LIVE"
+                  : "🚤 BOAT MODE"}
+              </Text>
             </View>
           )}
 
@@ -1800,56 +1857,63 @@ export default function LiveScreen() {
           </View>
         )}
 
+        {/* Croc alert banner */}
+        {boatMode && crocAlertActive && (
+          <View style={styles.crocBanner} pointerEvents="none">
+            <Text style={styles.crocBannerText}>🐊 CROC ALERT — CHECK SURROUNDINGS</Text>
+          </View>
+        )}
+
+        {/* Fish tracking text */}
+        {boatMode && fishTrackingText && (
+          <View style={styles.fishTrackBanner} pointerEvents="none">
+            <Text style={styles.fishTrackText}>{fishTrackingText}</Text>
+          </View>
+        )}
+
         {/* Aim guide */}
-        <View style={styles.aimGuide} pointerEvents="none">
+        <View style={[styles.aimGuide, boatMode && styles.aimGuideLive]} pointerEvents="none">
           <View style={[styles.aimCorner, styles.aimTL, { borderColor: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]} />
           <View style={[styles.aimCorner, styles.aimTR, { borderColor: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]} />
           <View style={[styles.aimCorner, styles.aimBL, { borderColor: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]} />
           <View style={[styles.aimCorner, styles.aimBR, { borderColor: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]} />
           <Text style={[styles.aimLabel, { color: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]}>
             {boatMode
-              ? boatPhase === "summarizing"
-                ? "🧠 Analysing session — full report coming…"
-                : boatPhase === "complete"
-                ? "✅ Session complete — 10 scans captured"
-                : `📡 Scan ${scanCount}/${BOAT_SCAN_LIMIT} — capturing`
+              ? boatPhase === "analyzing"
+                ? `🧠 Analysing ${boatCaptureCount} frames…`
+                : boatPhase === "waiting"
+                ? `⏳ Next cycle in ${boatWaitRemaining}s`
+                : boatPhase === "capturing"
+                ? `📡 Capturing ${boatCaptureCount}/${BOAT_CAPTURE_COUNT}`
+                : "🚤 Boat Live"
               : cam2Connected
                 ? `📺 CAM 2 · ${cam2.ip} · frame ${cam2.tick}`
                 : "Aim at sonar screen"}
           </Text>
-          {boatMode && boatPhase === "summarizing" && (
+          {boatMode && boatPhase === "analyzing" && (
             <View style={[styles.cdBadge, { borderColor: "#aaff0066", backgroundColor: "#aaff0011" }]}>
               <ActivityIndicator size="small" color="#aaff00" />
             </View>
           )}
-          {boatMode && boatPhase !== "summarizing" && (
+          {boatMode && boatPhase === "capturing" && (
             <View style={[styles.cdBadge, { borderColor: "#aaff0066", backgroundColor: "#aaff0011" }]}>
-              <Text style={[styles.cdText, { color: "#aaff00" }]}>{scanCount}/{BOAT_SCAN_LIMIT}</Text>
-              {scanCount === 0 && <Text style={[styles.cdSub, { color: "#aaff0099" }]}>{countdown}s</Text>}
+              <Text style={[styles.cdText, { color: "#aaff00" }]}>{boatCaptureCount}/{BOAT_CAPTURE_COUNT}</Text>
+            </View>
+          )}
+          {boatMode && boatPhase === "waiting" && (
+            <View style={[styles.cdBadge, { borderColor: "#aaff0066", backgroundColor: "#aaff0011" }]}>
+              <Text style={[styles.cdText, { color: "#aaff00" }]}>{boatWaitRemaining}</Text>
+              <Text style={[styles.cdSub, { color: "#aaff0099" }]}>sec</Text>
             </View>
           )}
         </View>
 
-        {/* Boat mode big result card */}
-        {boatMode && result && !scanning && boatPhase !== "complete" && (
-          <BoatResultCard
-            result={result}
-            charInfo={charInfo}
-            speaking={speaking}
-            onReplay={() => { if (speaking) stopSpeaking(); else speakResult(result); }}
-            onClear={() => { setResult(null); stopSpeaking(); }}
-          />
-        )}
-
-        {/* Boat session complete — full AI narration card */}
-        {boatMode && boatPhase === "complete" && boatSummaryNarration && (
+        {/* Boat narration card */}
+        {boatMode && boatSummaryNarration && (
           <View style={[styles.resultOverlay, { backgroundColor: "#0a162899", borderColor: "#aaff0055" }]}>
             <View style={styles.resultRow}>
-              <Text style={{ fontSize: 18 }}>🎯</Text>
-              <Text style={[styles.resultSpecies, { color: "#aaff00" }]}>Session Complete</Text>
-              <View style={[styles.countBadge, { backgroundColor: "#aaff0022" }]}>
-                <Text style={[styles.countText, { color: "#aaff00" }]}>{BOAT_SCAN_LIMIT} scans</Text>
-              </View>
+              <Text style={{ fontSize: 16 }}>🎙️</Text>
+              <Text style={[styles.resultSpecies, { color: "#aaff00" }]}>Cycle {boatCycleNum}</Text>
             </View>
             <ScrollView style={{ maxHeight: 110 }} showsVerticalScrollIndicator={false}>
               <Text style={[styles.resultDetail, { color: "#ffffffcc", lineHeight: 18 }]}>{boatSummaryNarration}</Text>
@@ -1918,9 +1982,9 @@ export default function LiveScreen() {
 
         {/* Bottom bar */}
         <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
-          {/* Scan row: [GALLERY] [● SCAN ●] [spacer] */}
-          <View style={styles.scanRow}>
-            {!boatMode ? (
+          {/* Scan row — hidden in boat mode */}
+          {!boatMode && (
+            <View style={styles.scanRow}>
               <TouchableOpacity
                 style={[styles.galleryBtn, (galleryPicking || scanning) && { opacity: 0.45 }]}
                 onPress={pickFromGallery}
@@ -1934,27 +1998,24 @@ export default function LiveScreen() {
                 )}
                 <Text style={styles.galleryBtnText}>GALLERY</Text>
               </TouchableOpacity>
-            ) : (
+
+              <GlowButton
+                onPress={scanNow}
+                scanning={scanning}
+                boatMode={false}
+                ready={isNative ? true : webReady}
+              />
+
               <View style={styles.gallerySpacer} />
-            )}
+            </View>
+          )}
 
-            <GlowButton
-              onPress={scanNow}
-              scanning={scanning}
-              boatMode={boatMode}
-              ready={isNative ? true : webReady}
-            />
-
-            {/* Mirror spacer so the scan button stays centred */}
-            <View style={styles.gallerySpacer} />
-          </View>
-
-          {/* BOAT MODE big toggle button */}
+          {/* BOAT MODE toggle + GO LIVE / STOP LIVE */}
           <TouchableOpacity
             style={[
               styles.boatModeBtn,
               boatMode
-                ? { backgroundColor: "#aaff00", borderColor: "#aaff00" }
+                ? { backgroundColor: "#0a162888", borderColor: "#aaff0066" }
                 : { backgroundColor: "#0a162888", borderColor: "#aaff0066" },
             ]}
             onPress={() => {
@@ -1964,18 +2025,34 @@ export default function LiveScreen() {
             }}
             activeOpacity={0.85}
           >
-            <MaterialCommunityIcons
-              name="anchor"
-              size={18}
-              color={boatMode ? "#0a1628" : "#aaff00"}
-            />
-            <Text style={[styles.boatModeBtnText, { color: boatMode ? "#0a1628" : "#aaff00" }]}>
+            <MaterialCommunityIcons name="anchor" size={18} color="#aaff00" />
+            <Text style={[styles.boatModeBtnText, { color: "#aaff00" }]}>
               {boatMode ? "🚤 EXIT BOAT MODE" : "🚤 BOAT MODE"}
             </Text>
-            {boatMode && (
-              <View style={styles.boatLiveDot} />
-            )}
           </TouchableOpacity>
+
+          {/* GO LIVE / STOP LIVE — only shown in boat mode */}
+          {boatMode && (
+            <TouchableOpacity
+              style={[
+                styles.boatModeBtn,
+                boatLive
+                  ? { backgroundColor: "#ff2200", borderColor: "#ff220088" }
+                  : { backgroundColor: "#aaff00", borderColor: "#aaff00" },
+              ]}
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                if (boatLive) { stopBoatLive(); } else { startBoatLive(); }
+              }}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name={boatLive ? "stop-circle" : "broadcast"} size={20} color={boatLive ? "#fff" : "#0a1628"} />
+              <Text style={[styles.boatModeBtnText, { color: boatLive ? "#fff" : "#0a1628" }]}>
+                {boatLive ? "⏹ STOP LIVE" : "▶ GO LIVE"}
+              </Text>
+              {boatLive && <View style={styles.boatLiveDot} />}
+            </TouchableOpacity>
+          )}
 
           {/* Scan a saved sonar photo */}
           {!boatMode && (
@@ -1995,7 +2072,9 @@ export default function LiveScreen() {
 
           <Text style={[styles.hint, { color: cam2Connected ? "#00a8ff" : "#ffffffcc" }]}>
             {boatMode
-              ? `Screen stays on · auto-scan every ${AUTO_INTERVAL}s · voice ON`
+              ? boatLive
+                ? "📡 Capturing every 3s · best 2 saved · voice ON"
+                : "Tap GO LIVE to start continuous boat scanning"
               : cam2Connected
                 ? "📺 Cam 2 active — tap SCAN to analyse sonar"
                 : "Point at sonar — tap to scan"}
@@ -2257,29 +2336,10 @@ export default function LiveScreen() {
     return (
       <View style={[styles.container, { backgroundColor: "#000" }]}>
         {WebCameraView && <WebCameraView ref={webCamRef} onReady={() => setWebReady(true)} />}
-        {boatMode ? (
-          <BoatModeDashboard
-            result={result}
-            scanning={scanning}
-            countdown={countdown}
-            scanCount={scanCount}
-            charInfo={charInfo}
-            speaking={speaking}
-            autoSpeak={autoSpeak}
-            onToggleVoice={() => { setAutoSpeak((v) => !v); if (autoSpeak) stopSpeaking(); }}
-            onBack={() => { setBoatMode(false); setResult(null); }}
-            onReplay={() => { if (speaking) stopSpeaking(); else if (result) speakResult(result); }}
-            onClear={() => { setResult(null); stopSpeaking(); }}
-            topPad={topPad}
-            botPad={botPad}
-            autoInterval={AUTO_INTERVAL}
-          />
-        ) : (
-          <>
-            <BarraSketches opacity={0.7} />
-            {renderOverlays(false)}
-          </>
-        )}
+        <>
+          {!boatMode && <BarraSketches opacity={0.7} />}
+          {renderOverlays(false)}
+        </>
       </View>
     );
   }
@@ -2347,41 +2407,22 @@ export default function LiveScreen() {
       {cam2Connected ? (
         <Image
           source={{ uri: `http://${cam2.ip}${cam2.path}?t=${cam2.tick}` }}
-          style={[StyleSheet.absoluteFill, boatMode && { opacity: 0 }]}
+          style={StyleSheet.absoluteFill}
           resizeMode="cover"
           onLoad={cam2.onPreviewLoad}
           onError={cam2.onPreviewError}
         />
       ) : (
-        <CameraView ref={nativeCamRef} style={[StyleSheet.absoluteFill, boatMode && { opacity: 0 }]} facing="back" mode="picture" />
+        <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
       )}
       {cam2Connected && (
         <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" />
       )}
 
-      {boatMode ? (
-        <BoatModeDashboard
-          result={result}
-          scanning={scanning}
-          countdown={countdown}
-          scanCount={scanCount}
-          charInfo={charInfo}
-          speaking={speaking}
-          autoSpeak={autoSpeak}
-          onToggleVoice={() => { setAutoSpeak((v) => !v); if (autoSpeak) stopSpeaking(); }}
-          onBack={() => { setBoatMode(false); setResult(null); }}
-          onReplay={() => { if (speaking) stopSpeaking(); else if (result) speakResult(result); }}
-          onClear={() => { setResult(null); stopSpeaking(); }}
-          topPad={insets.top}
-          botPad={insets.bottom}
-          autoInterval={AUTO_INTERVAL}
-        />
-      ) : (
-        <>
-          <BarraSketches opacity={cam2Connected ? 0.25 : 0.7} />
-          {renderOverlays(true)}
-        </>
-      )}
+      <>
+        {!boatMode && <BarraSketches opacity={cam2Connected ? 0.25 : 0.7} />}
+        {renderOverlays(true)}
+      </>
     </View>
   );
 }
@@ -2443,7 +2484,12 @@ const styles = StyleSheet.create({
   chip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
   chipText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
-  aimGuide: { position: "absolute", top: "25%", left: 32, right: 32, height: "35%", alignItems: "center", justifyContent: "center", zIndex: 5 },
+  aimGuide:     { position: "absolute", top: "25%", left: 32, right: 32, height: "35%", alignItems: "center", justifyContent: "center", zIndex: 5 },
+  aimGuideLive: { top: "12%", left: 10, right: 10, height: "60%" },
+  crocBanner:   { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: "#cc0000ee", paddingVertical: 10, alignItems: "center", zIndex: 50 },
+  crocBannerText: { color: "#fff", fontSize: 15, fontFamily: "Inter_700Bold", letterSpacing: 1 },
+  fishTrackBanner: { position: "absolute", top: 56, left: 16, right: 16, backgroundColor: "#0a162899", borderRadius: 10, paddingVertical: 6, paddingHorizontal: 12, alignItems: "center", zIndex: 40 },
+  fishTrackText:   { color: "#aaff00", fontSize: 12, fontFamily: "Inter_500Medium" },
   aimCorner: { position: "absolute", width: 22, height: 22 },
   aimTL: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 4 },
   aimTR: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 4 },
