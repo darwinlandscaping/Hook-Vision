@@ -160,7 +160,17 @@ async function prewarmThumbs(): Promise<void> {
  * Runs as a background job after server startup.
  */
 export async function syncContrastSpecies(): Promise<void> {
-  logger.info("Contrast species sync: starting (Jack + Fingermark + Threadfin)…");
+  // ── DB-first: skip iNat sync if DB already has sufficient photos ──
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(contrastReferences)
+    .where(eq(contrastReferences.active, true));
+  if ((row?.n ?? 0) >= 500) {
+    logger.info({ existing: row?.n }, "Contrast library: DB sufficient — skipping iNat sync");
+    return;
+  }
+
+  logger.info("Contrast species sync: DB empty/low — starting first-run iNaturalist sync (Jack + Fingermark + Threadfin)…");
   let grandTotal = 0;
 
   for (const sp of SPECIES) {

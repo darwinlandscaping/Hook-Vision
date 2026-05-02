@@ -315,7 +315,19 @@ async function classifyPoses(): Promise<void> {
  * Fetches up to 500 research-grade bird photos across 10 WA/Kimberley target species.
  */
 export async function initBirdLibrary(): Promise<void> {
-  logger.info("Bird reference library: starting iNaturalist sync (target: 500 photos across 10 WA/Kimberley species)…");
+  // ── DB-first: skip iNat sync if DB already has sufficient photos ──
+  // refreshBirdLibrary() on the 6-hour timer keeps data fresh.
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(birdReferences)
+    .where(eq(birdReferences.active, true));
+  if ((row?.n ?? 0) >= 150) {
+    logger.info({ existing: row?.n }, "Bird library: DB sufficient — loading from DB, skipping iNat sync");
+    await rebuildCache();
+    return;
+  }
+
+  logger.info("Bird reference library: DB empty/low — starting first-run iNaturalist sync…");
   let totalAdded = 0;
 
   for (const species of NT_BIRD_SPECIES) {

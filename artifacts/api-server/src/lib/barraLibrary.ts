@@ -421,6 +421,16 @@ async function upsertWikimediaPhotos(
  * Designed to run as a background job after server startup.
  */
 export async function collectWikimediaLates(): Promise<void> {
+  // ── DB-first: skip if we already have sufficient barra photos ──
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(barraReferences)
+    .where(eq(barraReferences.active, true));
+  if ((row?.n ?? 0) >= 500) {
+    logger.info({ existing: row?.n }, "Wikimedia Lates: DB sufficient — skipping collection");
+    return;
+  }
+
   logger.info("Wikimedia Lates collector: starting…");
   let total = 0;
 
@@ -475,7 +485,20 @@ export async function collectWikimediaLates(): Promise<void> {
  * - Wikimedia collection runs separately via collectWikimediaLates()
  */
 export async function initBarraLibrary(): Promise<void> {
-  logger.info("Barra reference library: starting global multi-species iNaturalist sync…");
+  // ── DB-first: if we already have enough photos, skip iNat and load from DB ──
+  // The 6-hour daily refreshBarraLibrary() timer keeps the DB up-to-date.
+  // This prevents 10+ HTTP requests + thousands of DB row-checks on every restart.
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(barraReferences)
+    .where(eq(barraReferences.active, true));
+  if ((row?.n ?? 0) >= 500) {
+    logger.info({ existing: row?.n }, "Barra library: DB sufficient — loading from DB, skipping iNat sync");
+    await rebuildCache();
+    return;
+  }
+
+  logger.info("Barra reference library: DB empty/low — starting first-run iNaturalist sync…");
 
   // ── Lates calcarifer (barramundi / Asian sea bass) — global, all quality ──
   try {

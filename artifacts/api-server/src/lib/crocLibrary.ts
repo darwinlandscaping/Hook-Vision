@@ -274,7 +274,19 @@ async function classifyAngles(): Promise<void> {
  * Also fetches page 1 of Crocodylus johnstoni (freshwater croc) for WA/Kimberley river coverage.
  */
 export async function initCrocLibrary(): Promise<void> {
-  logger.info("Croc reference library: starting iNaturalist sync (target: 1,000 photos)…");
+  // ── DB-first: skip iNat sync if DB already has sufficient photos ──
+  // refreshCrocLibrary() on the 6-hour timer keeps data fresh.
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(crocReferences)
+    .where(eq(crocReferences.active, true));
+  if ((row?.n ?? 0) >= 200) {
+    logger.info({ existing: row?.n }, "Croc library: DB sufficient — loading from DB, skipping iNat sync");
+    await rebuildCache();
+    return;
+  }
+
+  logger.info("Croc reference library: DB empty/low — starting first-run iNaturalist sync…");
   try {
     let totalAdded = 0;
     for (let page = 1; page <= 10; page++) {
