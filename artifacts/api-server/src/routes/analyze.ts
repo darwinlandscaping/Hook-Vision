@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getModel } from "../lib/models.js";
+import { getSonarFewShotRefs } from "../lib/sonarBrain.js";
 
 const router = Router();
 
@@ -98,6 +99,31 @@ router.post("/analyze", async (req, res) => {
       ],
     });
 
+    // Build few-shot reference blocks — inject confirmed reference images before user's sonar image
+    // so the model has visual examples of barra (positive), jack (negative), threadfin (negative) etc.
+    // This is the most critical fix for Barra vs Jack confusion — previously ZERO references were sent.
+    const refs = getSonarFewShotRefs();
+    const refBlocks: object[] = [];
+    if (refs.length > 0) {
+      const positives = refs.filter(r => r.isPositive);
+      const negatives = refs.filter(r => !r.isPositive);
+      if (positives.length > 0) {
+        refBlocks.push({ type: "text", text: `REFERENCE IMAGES — CONFIRMED SPECIES (${positives.length} images). Study these FIRST before evaluating the user's sonar:` });
+        for (const ref of positives) {
+          refBlocks.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
+          refBlocks.push({ type: "text", text: `↑ POSITIVE: ${ref.brand} — ${ref.label.split("\n")[0]}` });
+        }
+      }
+      if (negatives.length > 0) {
+        refBlocks.push({ type: "text", text: `CONTRAST REFERENCES — NOT BARRAMUNDI (${negatives.length} images — study what these look like so you do NOT misidentify them):` });
+        for (const ref of negatives) {
+          refBlocks.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
+          refBlocks.push({ type: "text", text: `↑ NEGATIVE (${ref.label.split("—")[1]?.trim().split(" ")[0] ?? "Not barra"}): ${ref.brand} — ${ref.label.split("\n")[0]}` });
+        }
+      }
+      refBlocks.push({ type: "text", text: "NOW EVALUATE THE USER'S SONAR IMAGE below. Compare arch shape (complete vs half-arch), position (on structure vs mid-column vs buried in structure), shadow voids, and arch thickness against the references above." });
+    }
+
     // Turbo: mini + high detail — drives the master confidence score.
     // High detail lets the model see fish arch shapes, brightness tiers, and shadow voids clearly.
     const turboPromise = openai.chat.completions.create({
@@ -106,7 +132,7 @@ router.post("/analyze", async (req, res) => {
       stream: true,
       messages: [
         { role: "system", content: SYS },
-        { role: "user", content: [imgHigh, { type: "text", text: OUT }] },
+        { role: "user", content: [...refBlocks, imgHigh, { type: "text", text: OUT }] as any },
       ],
     });
 

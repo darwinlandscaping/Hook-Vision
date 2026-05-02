@@ -42,13 +42,16 @@ let lastCacheTime = 0;
 const CACHE_TTL   = 4 * 60 * 60 * 1000;   // 4 hours
 
 // ─── Demo indices to use for sonar brain ─────────────────────────────────────
-// Demo 1: Lowrance HDS Live   — confirmed 3 BARRA ON STRUCTURE              (positive)
-// Demo 4: Simrad GO9 XSE      — confirmed BARRA in lower layer + baitfish   (positive — multi-species)
-// Demo 5: Humminbird split    — confirmed 5-6 BARRA MID-COLUMN shadow voids  (positive)
-// Demo 2: Garmin Echomap UHD  — THREADFIN school (most confused with barra)  (negative)
-// Demo 3: Humminbird HELIX 10 — LONE FINGERMARK arch above rocky reef        (negative — lone arch contrast)
-const POSITIVE_DEMO_NUMS = [1, 4, 5];
-const NEGATIVE_DEMO_NUMS = [2, 3];
+// Demo 1:  Lowrance HDS Live   — confirmed 3 BARRA ON STRUCTURE              (positive)
+// Demo 4:  Simrad GO9 XSE      — confirmed BARRA in lower layer + baitfish   (positive — multi-species)
+// Demo 5:  Humminbird split    — confirmed 5-6 BARRA MID-COLUMN shadow voids  (positive)
+// Demo 11: Lowrance HDS Carbon — 3 BARRA complete arches ON structure        (positive — extra barra ref)
+// Demo 2:  Garmin Echomap UHD  — THREADFIN school (most confused with barra)  (negative)
+// Demo 3:  Humminbird HELIX 10 — LONE FINGERMARK arch above rocky reef        (negative — lone arch)
+// Demo 10: Lowrance HDS Live   — MANGROVE JACK half-arch buried in structure  (negative — CRITICAL: most confused with barra)
+// Demo 12: Garmin Echomap UHD  — THREADFIN SALMON school 8 arches same depth (negative — additional threadfin)
+const POSITIVE_DEMO_NUMS = [1, 4, 5, 11];
+const NEGATIVE_DEMO_NUMS = [10, 2, 3, 12];
 
 // ─── Build reference from a DemoRef — use compressed thumbnail ───────────────
 // thumbBase64 is a 512px JPEG (~30–50KB) vs the full PNG (1.4–2.3MB).
@@ -113,14 +116,19 @@ export async function initSonarBrain(): Promise<void> {
  * Return few-shot reference images for injection into a sonar analysis call.
  * Always returns demo-based refs first (highest quality), then community.
  *
- * Layout:
- *   [0] Demo 1  — Lowrance HDS Live — 3 BARRA ON STRUCTURE          (positive)
- *   [1] Demo 4  — Simrad GO9 XSE   — BARRA lower layer + baitfish   (positive)
- *   [2] Demo 5  — Humminbird split  — 5-6 BARRA shadow voids         (positive)
- *   [3] Demo 2  — Garmin Echomap   — THREADFIN school                (negative)
- *   [4] Demo 3  — Humminbird HELIX — LONE FINGERMARK arch (not barra)(negative)
- *   [5] Community barra arch #1    (if available)
- *   [6] Community barra arch #2    (if available, different from #1)
+ * Positives (confirmed Barramundi arches):
+ *   Demo 1  — Lowrance HDS Live   — 3 BARRA ON STRUCTURE (real screenshot)
+ *   Demo 4  — Simrad GO9 XSE      — BARRA lower layer + baitfish (real)
+ *   Demo 5  — Humminbird split    — 5-6 BARRA shadow voids (real)
+ *   Demo 11 — Lowrance HDS Carbon — 3 BARRA complete full arches ON structure (synthetic)
+ *
+ * Negatives (confirmed NOT Barramundi — contrast references):
+ *   Demo 10 — Lowrance HDS Live   — MANGROVE JACK: half-arch BURIED IN structure (synthetic)
+ *   Demo 2  — Garmin Echomap UHD  — THREADFIN school mid-column soft bottom (real)
+ *   Demo 3  — Humminbird HELIX 10 — LONE FINGERMARK above rocky reef (real)
+ *   Demo 12 — Garmin Echomap UHD  — THREADFIN SALMON school 8 same-depth arches (synthetic)
+ *
+ * Community refs appended if available (confirmed by users).
  */
 export function getSonarFewShotRefs(): SonarFewShotRef[] {
   const demos = getDemoRefs();

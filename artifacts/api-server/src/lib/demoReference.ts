@@ -144,6 +144,80 @@ SPECIES CONFIRMATION: Barramundi (Lates calcarifer) — 5 to 6 fish at 5–28ft 
   },
 };
 
+// ─── Species-contrast demos (demos 10–12) — Mangrove Jack, extra Barra, Threadfin ──
+Object.assign(DEMO_LABELS, {
+  10: {
+    brand: "Lowrance",
+    model: "HDS Live",
+    mimeType: "image/png",
+    label: `DEMO 10 — LOWRANCE HDS LIVE — ANSWER: MANGROVE JACK (2 fish) — NOT BARRAMUNDI.
+
+THIS IS A NEGATIVE REFERENCE — study what Mangrove Jack looks like so you DO NOT confuse it with Barramundi.
+
+WHAT TO SEE IN THIS IMAGE:
+• TWO arches that are HALF-BURIED inside the bright structure/bottom echo — the structure echo swallows the bottom half of each arch
+• Only the TOP CURVE of each arch protrudes above the structure return — this is a TRUNCATED / INCOMPLETE arch shape
+• The arch BEGINS inside the structure echo — you cannot see where the arch bottom connects because the structure echo absorbs it
+• This is the definitive Mangrove Jack sonar signature: a fish physically INSIDE a snag/crevice/timber overhang, pressed against the structure
+• Arch colour is Tier 1 orange/red (bright — Jack has a physostomous swim bladder) but the shape is INCOMPLETE
+• No acoustic shadow void visible (structure echo obscures it)
+• Hard bright thick structure/bottom echo = rock bar, submerged timber, or snag pile
+
+KEY DIFFERENCE vs BARRAMUNDI:
+• Barramundi: COMPLETE FULL U-arch sitting ON TOP of structure echo, clear water gap or arch separation below the arch top
+• Mangrove Jack: HALF-ARCH or PARTIAL arch — arch starts INSIDE the structure return, only top curve is visible
+• If the arch appears to EMERGE FROM or BE BURIED IN the structure echo = Mangrove Jack, NOT Barramundi
+
+SPECIES CONFIRMATION: Mangrove Jack (Lutjanus argentimaculatus). Confidence should be 85%+. DO NOT call this Barramundi.`,
+  },
+  11: {
+    brand: "Lowrance",
+    model: "HDS Carbon",
+    mimeType: "image/png",
+    label: `DEMO 11 — LOWRANCE HDS CARBON — ANSWER: 3 BARRAMUNDI at 5.5m depth — ADDITIONAL POSITIVE REFERENCE.
+
+WHAT TO SEE IN THIS IMAGE:
+• THREE distinct COMPLETE FULL U-arches — each arch is a separate individual fish
+• Each arch sits DIRECTLY ON TOP of the hard bottom echo — NOT inside it, NOT embedded in it
+• CLEAR SEPARATION visible between each arch and the structure echo: you can see a thin gap/dark zone between the bottom of each arch and the hard bottom line below
+• CRITICAL: Each arch is a full U-curve from one side to the other — both ends of the arch are visible above the structure echo
+• SHADOW VOID: Dark void zone directly BELOW each arch, between the arch and the bottom echo = massive Barramundi swim bladder signature
+• Arch colour: deep orange-red Lowrance Tier 1 — maximum return from large physostomous swim bladder
+• Arch thickness (vertical height): 4–5% of screen height = legal-size barra 55–80cm
+• Hard bright solid bottom echo = rock bar / riprap — barra habitat confirmed
+• Fish are STATIONARY near structure — ambush position
+
+vs MANGROVE JACK: Each arch here is COMPLETE and sits ON the structure, not INSIDE it. The full U-shape is visible.
+
+SPECIES CONFIRMATION: Barramundi (Lates calcarifer) — 3 fish at 5–6m on hard structure. Confidence 90%+.`,
+  },
+  12: {
+    brand: "Garmin",
+    model: "ECHOMAP UHD",
+    mimeType: "image/png",
+    label: `DEMO 12 — GARMIN ECHOMAP UHD — ANSWER: THREADFIN SALMON SCHOOL — 8 fish — NOT BARRAMUNDI.
+
+THIS IS A NEGATIVE REFERENCE — study what a Threadfin Salmon school looks like so you DO NOT confuse it with Barramundi.
+
+WHAT TO SEE IN THIS IMAGE:
+• EIGHT arches all at the SAME DEPTH LEVEL (same horizontal band, ~4m) — this is schooling behaviour = NOT Barra
+• Arches are in the MID-WATER COLUMN — floating freely, NOT attached to any hard structure
+• NO structure echo nearby — fish are over SOFT BOTTOM (thin, dim bottom line = mud/sand/tidal flat)
+• Arches are THINNER (narrower vertical height) than barramundi arches — Threadfin have a smaller swim bladder and narrower body
+• Arch colour: aqua-white/cyan on Garmin palette (Tier 1 bright) — but THIN arch height
+• NO shadow voids below the arches — absent or very weak compared to Barramundi
+• All arches appear at the SAME HORIZONTAL DEPTH BAND — a horizontal line of multiple arches = schooling species
+• Garmin palette: cyan/white on dark background
+
+KEY DIFFERENCES vs BARRAMUNDI:
+• Threadfin: many arches, same depth, mid-column, soft bottom, NO shadow voids, thin arches
+• Barramundi: 1–3 arches max near structure, various depths, strong shadow voids, thick arches
+• If you see 5+ arches at the same depth floating mid-column over soft bottom = THREADFIN SCHOOL, not Barra aggregation
+
+SPECIES CONFIRMATION: Threadfin Salmon (Polydactylus macrochir). School of 8. Confidence 85%+. NOT Barramundi.`,
+  },
+});
+
 // ─── Live sonar demo labels (demos 6–9) ───────────────────────────────────────
 // These are editorial/manufacturer published images of live sonar displays,
 // used as visual grounding references for the live sonar analysis route.
@@ -258,6 +332,10 @@ export async function loadDemoReferences(): Promise<void> {
     7: "sonar-demo-7.jpg",
     8: "sonar-demo-8.jpg",
     9: "sonar-demo-9.jpg",
+    // Species-contrast synthetic references (generated — show arch shape differences)
+    10: "sonar-demo-10.png",   // Mangrove Jack — half-arch buried in structure (negative)
+    11: "sonar-demo-11.png",   // 3 Barramundi — complete arches ON structure (positive)
+    12: "sonar-demo-12.png",   // Threadfin Salmon school — 8 thin same-depth arches (negative)
   };
 
   for (const [numStr, fileName] of Object.entries(demoFiles)) {
