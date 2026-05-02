@@ -214,6 +214,34 @@ To republish updates: `cd artifacts/hookvision && EXPO_TOKEN=$EXPO_TOKEN npx eas
 
 > Note: EAS Update publishes OTA JS bundles. To create installable APKs, run `eas build --profile preview --platform android`.
 
+## HUD Brain System (`/hud`)
+
+The smart-glass HUD at `/hud` is a comprehensive rotating brain panel display for anglers.
+
+### Architecture
+- **Server-side brain loop** (every 20s): fetches BOM live tides (region-aware: wa→broome, nt→darwin, nq→karumba) + community insights DB → compiles GPT-4.1-mini predictive target → broadcasts via SSE
+- **POST /api/hud/update**: apps push scan results; triggers immediate brain recompile (300ms)
+- **GET /api/hud/data**: returns full `BrainHudState` (scan + brain + tide + community + env)
+- **GET /api/hud/events**: SSE stream of `BrainHudState`
+- **POST /api/hud/brain**: manual brain trigger
+
+### 8 Rotating Panels (20s each)
+| Panel | Name | Accent | Content |
+|-------|------|--------|---------|
+| 0 | SONAR SCAN | teal | Species, confidence bar, fish/depth/arches/barra% metrics, AI suggestion |
+| 1 | BARRA PROFILE | gold | Barra% match, arch shape, trophy indicators, water temp + bottom |
+| 2 | ENVIRONMENT | blue | BOM live tide phase + next tide, season, moon phase, time of day, water temp |
+| 3 | BIRDS & BAIT | cyan | Bird activity tags, bait school indicator, water clarity, sonar mode |
+| 4 | CROC & SAFETY | red/green | CLEAR ✅ state or 🐊 CROC ALERT with warning text |
+| 5 | WATER | blue | Clarity, temp, bottom type, sonar mode, lure used |
+| 6 | COMMUNITY BRAIN | cyan | Top species bar chart, latest community tip, report count |
+| 7 | AI TARGET | gold | Compiled AI prediction: species, urgency badge, confidence bar, depth, lure, cast zone, technique, full reasoning |
+
+### HudData fields sent by apps
+All 3 apps send: species, fishCount, depth, confidence, suggestion, lure, archCount, barraPct, waterTemp, bottomType, crocAlert, crocWarning, birdAlert, region (wa/nt/nq), source (boat)
+
+Optional new fields (can be added later): birdActivity, baitSchool, waterClarity, archShape, sonarMode
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
