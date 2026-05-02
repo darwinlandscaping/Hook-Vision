@@ -8,3 +8,4 @@ export * from "./sonar_references";
 export * from "./croc_references";
 export * from "./bird_references";
 export * from "./crocguard";
+export * from "./visual_logs";

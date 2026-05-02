@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ExpoLinking from "expo-linking";
+import * as FileSystem from "expo-file-system/legacy";
 import { useInsta360Context } from "@/contexts/Insta360Context";
 import { useCameraScanner, type DiscoveredCamera } from "@/hooks/useCameraScanner";
 import { HVHeader } from "@/components/HVHeader";
@@ -235,7 +236,7 @@ function BrainRow({ icon, label, value, color }: { icon: string; label: string; 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 export default function CamerasScreen() {
   const insets  = useSafeAreaInsets();
-  const { camera } = useInsta360Context();
+  const { camera, pipelines } = useInsta360Context();
   const { status, activeBaseUrl, startSearchAt, stopSearch } = camera;
   const scanner = useCameraScanner();
 
@@ -319,6 +320,8 @@ export default function CamerasScreen() {
   const [streamSpeed,  setStreamSpeed]  = useState(0);   // chars/sec
   const [totalMs,      setTotalMs]      = useState(0);
   const [liveMs,       setLiveMs]       = useState(0);
+  const [imageCollecting,    setImageCollecting]    = useState(false);
+  const [capturedImageCount, setCapturedImageCount] = useState(0);
   const brainStartRef = useRef<number>(0);
 
   // Tick every 33ms while loading to show live elapsed time
@@ -340,69 +343,113 @@ export default function CamerasScreen() {
     setBrainResult(null);
     setStreamChars(0);
     setStreamSpeed(0);
+    setCapturedImageCount(0);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
     const t0 = Date.now();
     let chars = 0;
 
-    // ── Fetch real HUD state so the brain gets live sonar data ──────────────
+    // ── Collect HUD data + camera frames in parallel ─────────────────────────
     let sonarContext: Record<string, unknown> = {};
-    let queryParts = "Analyse current fishing conditions. Give best cast zone and croc risk.";
-    try {
-      const hudRes = await fetch(`${apiBase}/api/hud/data`);
-      if (hudRes.ok) {
-        const hud = await hudRes.json() as {
-          scan?: {
-            species?: string; fishCount?: number; depth?: string;
-            confidence?: number; suggestion?: string; lure?: string;
-            archCount?: number; barraPct?: number; waterTemp?: string;
-            bottomType?: string; crocAlert?: boolean; crocWarning?: string;
-            birdAlert?: boolean; region?: string;
-          };
-          brain?: {
-            species?: string; urgency?: string; confidence?: number;
-            depth?: string; lure?: string; castZone?: string;
-            technique?: string; reason?: string;
-          };
-          tide?: { phase?: string; description?: string };
-          env?: { waterColour?: string; waterClarity?: string };
-        };
-        const s = hud.scan ?? {};
-        const b = hud.brain ?? {};
-        const t = hud.tide ?? {};
-        const e = hud.env ?? {};
-        sonarContext = {
-          region:       s.region,
-          species:      s.species ?? b.species,
-          depth:        s.depth ?? b.depth,
-          fishCount:    s.fishCount,
-          archCount:    s.archCount,
-          barraPct:     s.barraPct,
-          waterTemp:    s.waterTemp,
-          bottomType:   s.bottomType,
-          crocAlert:    s.crocAlert,
-          crocWarning:  s.crocWarning,
-          birdAlert:    s.birdAlert,
-          lure:         s.lure ?? b.lure,
-          confidence:   s.confidence,
-          suggestion:   s.suggestion,
-          tidePhase:    t.phase,
-          waterColour:  e.waterColour,
-          waterClarity: e.waterClarity,
-        };
-        // Remove undefined keys
-        Object.keys(sonarContext).forEach(k => sonarContext[k] === undefined && delete sonarContext[k]);
-        if (s.species) queryParts = `Target species: ${s.species}. Depth: ${s.depth ?? "unknown"}. Fish arches: ${s.fishCount !== undefined ? s.fishCount : "unknown"}. BarraPct: ${s.barraPct !== undefined && s.barraPct !== null ? s.barraPct : "unknown"}%. ${s.crocAlert ? "CROC ALERT active. " : ""}${s.birdAlert ? "Bird activity detected. " : ""}Tide: ${t.phase ?? "unknown"}. Give precise cast zone, croc risk, and lure recommendation.`;
-      }
-    } catch {}
+    let queryParts = "Analyse current fishing conditions from all available camera views. Give best cast zone, croc risk, and lure recommendation.";
+    const capturedImages: Array<{ base64: string; label: string }> = [];
+
+    setImageCollecting(true);
+    await Promise.allSettled([
+      // HUD data fetch
+      (async () => {
+        try {
+          const hudRes = await fetch(`${apiBase}/api/hud/data`);
+          if (hudRes.ok) {
+            const hud = await hudRes.json() as {
+              scan?: {
+                species?: string; fishCount?: number; depth?: string;
+                confidence?: number; suggestion?: string; lure?: string;
+                archCount?: number; barraPct?: number; waterTemp?: string;
+                bottomType?: string; crocAlert?: boolean; crocWarning?: string;
+                birdAlert?: boolean; region?: string;
+              };
+              brain?: {
+                species?: string; urgency?: string; confidence?: number;
+                depth?: string; lure?: string; castZone?: string;
+                technique?: string; reason?: string;
+              };
+              tide?: { phase?: string; description?: string };
+              env?: { waterColour?: string; waterClarity?: string };
+            };
+            const s = hud.scan ?? {};
+            const b = hud.brain ?? {};
+            const t = hud.tide ?? {};
+            const e = hud.env ?? {};
+            sonarContext = {
+              region:       s.region,
+              species:      s.species ?? b.species,
+              depth:        s.depth ?? b.depth,
+              fishCount:    s.fishCount,
+              archCount:    s.archCount,
+              barraPct:     s.barraPct,
+              waterTemp:    s.waterTemp,
+              bottomType:   s.bottomType,
+              crocAlert:    s.crocAlert,
+              crocWarning:  s.crocWarning,
+              birdAlert:    s.birdAlert,
+              lure:         s.lure ?? b.lure,
+              confidence:   s.confidence,
+              suggestion:   s.suggestion,
+              tidePhase:    t.phase,
+              waterColour:  e.waterColour,
+              waterClarity: e.waterClarity,
+            };
+            Object.keys(sonarContext).forEach(k => sonarContext[k] === undefined && delete sonarContext[k]);
+            if (s.species) queryParts = `Target species: ${s.species}. Depth: ${s.depth ?? "unknown"}. Fish arches: ${s.fishCount !== undefined ? s.fishCount : "unknown"}. BarraPct: ${s.barraPct !== undefined && s.barraPct !== null ? s.barraPct : "unknown"}%. ${s.crocAlert ? "CROC ALERT active. " : ""}${s.birdAlert ? "Bird activity detected. " : ""}Tide: ${t.phase ?? "unknown"}. Give precise cast zone, croc risk, and lure recommendation.`;
+          }
+        } catch {}
+      })(),
+
+      // Camera frame collection
+      (async () => {
+        try {
+          if (isConnected && selectedBrand === "smartlife") {
+            // SmartLife: direct HTTP snapshot → base64 via FileSystem
+            const uri = (FileSystem.cacheDirectory ?? "") + `smartlife_${Date.now()}.jpg`;
+            const dl  = await FileSystem.downloadAsync(
+              `http://192.168.4.1/snapshot.cgi?t=${Date.now()}`, uri,
+            );
+            if (dl.status === 200) {
+              const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+              capturedImages.push({ base64: b64, label: "smartlife_live" });
+            }
+          } else if (isConnected) {
+            // Insta360 / GoPro / DJI — OSC takeSnapshot (8s timeout)
+            const snap = await Promise.race([
+              camera.takeSnapshot(),
+              new Promise<null>(r => setTimeout(() => r(null), 8000)),
+            ]);
+            if (snap?.base64) {
+              const lbl = selectedBrand === "gopro" ? "gopro_live"
+                        : selectedBrand === "dji"   ? "dji_live"
+                        :                             "insta360_live";
+              capturedImages.push({ base64: snap.base64, label: lbl });
+            }
+          }
+          // Pipeline fallback — most recent 6s-cycle snapshot
+          if (capturedImages.length === 0 && pipelines.latestSnapshotBase64) {
+            capturedImages.push({ base64: pipelines.latestSnapshotBase64, label: "insta360_pipeline" });
+          }
+        } catch {}
+      })(),
+    ]);
+    setImageCollecting(false);
+    setCapturedImageCount(capturedImages.length);
 
     try {
       const res = await fetch(`${apiBase}/api/insta360/brain/stream`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          query: queryParts,
+          query:  queryParts,
           sonarContext,
+          images: capturedImages,
         }),
       });
 
@@ -454,7 +501,7 @@ export default function CamerasScreen() {
     } finally {
       setBrainLoading(false);
     }
-  }, [brainLoading, apiBase]);
+  }, [brainLoading, apiBase, isConnected, selectedBrand, camera, pipelines]);
 
   const crocColor = !brainResult ? C.mute
     : (brainResult.crocRisk === "high" || brainResult.crocDetail?.includes("CAUTION")) ? C.red
@@ -639,7 +686,7 @@ export default function CamerasScreen() {
             <Text style={{ fontSize: 16 }}>🧠</Text>
             <View style={{ flex: 1 }}>
               <Text style={[S.brainTitle, { color: C.teal }]}>AI BRAIN ANALYSER</Text>
-              <Text style={[S.brainSub, { color: C.mute }]}>gpt-5-nano · streaming SSE · detail:low · 200 token cap</Text>
+              <Text style={[S.brainSub, { color: C.mute }]}>gpt-5-nano · streaming SSE · detail:low · multi-image</Text>
             </View>
             {/* Turbo badge */}
             <View style={[S.turboBadge, { backgroundColor: C.purple + "22", borderColor: C.purple + "66" }]}>
@@ -651,7 +698,9 @@ export default function CamerasScreen() {
           <TouchableOpacity onPress={runBrain} disabled={brainLoading} activeOpacity={0.8}
             style={[S.scanBtn, { backgroundColor: brainLoading ? C.teal + "12" : C.teal + "28", borderColor: brainLoading ? C.teal + "44" : C.teal + "99", opacity: brainLoading ? 0.85 : 1 }]}>
             {brainLoading
-              ? <Text style={[S.scanBtnText, { color: C.teal }]}>⚡  {liveMs}ms · {streamChars} chars · {streamSpeed} c/s</Text>
+              ? imageCollecting
+                ? <Text style={[S.scanBtnText, { color: C.teal }]}>📷  Capturing frames...</Text>
+                : <Text style={[S.scanBtnText, { color: C.teal }]}>⚡  {liveMs}ms · {streamChars} chars · {streamSpeed} c/s</Text>
               : <Text style={[S.scanBtnText, { color: C.teal }]}>📸  SNAP + AI BRAIN SCAN</Text>
             }
           </TouchableOpacity>
@@ -668,7 +717,7 @@ export default function CamerasScreen() {
             <>
               {/* Speed stats */}
               <View style={[S.speedRow, { backgroundColor: C.purple + "12", borderColor: C.purple + "33" }]}>
-                <Text style={[S.speedText, { color: C.purple }]}>⚡ {totalMs}ms · {streamChars} chars · {streamSpeed} c/s · gpt-5-nano</Text>
+                <Text style={[S.speedText, { color: C.purple }]}>⚡ {totalMs}ms · {streamChars} chars · {streamSpeed} c/s · {capturedImageCount > 0 ? `${capturedImageCount} frame${capturedImageCount > 1 ? "s" : ""}` : "no cam"} · gpt-5-nano</Text>
               </View>
 
               {/* Summary */}

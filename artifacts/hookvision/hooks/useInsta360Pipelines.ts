@@ -46,6 +46,8 @@ export interface Insta360PipelineState {
   croc: CrocVisionResult | null;
   scanCount: number;
   lastError: string | null;
+  /** Most recent Insta360 snapshot base64 from the last pipeline cycle (up to 6s old). */
+  latestSnapshotBase64: string | null;
   start: () => void;
   stop: () => void;
 }
@@ -70,6 +72,7 @@ export function useInsta360Pipelines(
   const [croc, setCroc]             = useState<CrocVisionResult | null>(null);
   const [scanCount, setScanCount]   = useState(0);
   const [lastError, setLastError]   = useState<string | null>(null);
+  const [latestSnapshotBase64, setLatestSnapshotBase64] = useState<string | null>(null);
 
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeRef   = useRef(false);
@@ -93,6 +96,7 @@ export function useInsta360Pipelines(
       if (!snap || !activeRef.current) return;
 
       const { base64 } = snap;
+      setLatestSnapshotBase64(base64);
 
       // 2. Fire both pipelines in parallel
       const [surfRes, crocRes] = await Promise.allSettled([
@@ -167,5 +171,5 @@ export function useInsta360Pipelines(
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
 
-  return { running, scanning, surface, croc, scanCount, lastError, start, stop };
+  return { running, scanning, surface, croc, scanCount, lastError, latestSnapshotBase64, start, stop };
 }
