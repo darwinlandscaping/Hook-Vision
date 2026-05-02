@@ -28,6 +28,24 @@ import Animated, {
 
 import { HVHeader } from "@/components/HVHeader";
 import { SonarPulse } from "@/components/SonarPulse";
+
+async function fetchRetry(
+  url: string,
+  init: Omit<RequestInit, "signal">,
+  timeoutMs: number,
+  retries = 2,
+  delayMs = 2500,
+): Promise<Response> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+    } catch (err) {
+      if (attempt === retries - 1) throw err;
+      await new Promise<void>(r => setTimeout(r, delayMs));
+    }
+  }
+  throw new Error("fetchRetry: unreachable");
+}
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { useColors } from "@/hooks/useColors";
@@ -539,11 +557,11 @@ export default function LiveScreen() {
     const domain  = process.env.EXPO_PUBLIC_DOMAIN;
     const apiBase = domain ? `https://${domain}` : "";
     try {
-      const resp = await fetch(`${apiBase}/api/boat-session`, {
+      const resp = await fetchRetry(`${apiBase}/api/boat-session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scans, region: "nq" }),
-      });
+      }, 90_000);
       if (resp.ok) {
         const data = await resp.json() as { narration?: string };
         const narration = data.narration ?? "Boat session complete. Ten sonar scans captured and saved.";
@@ -610,11 +628,11 @@ export default function LiveScreen() {
         // ── Boat mode: capture 10 snapshots → stop → full verbal analysis ──
         const domain  = process.env.EXPO_PUBLIC_DOMAIN;
         const apiBase = domain ? `https://${domain}` : "";
-        const resp = await fetch(`${apiBase}/api/analyze`, {
+        const resp = await fetchRetry(`${apiBase}/api/analyze`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageBase64: base64 }),
-        });
+        }, 28_000);
         if (resp.ok) {
           const reader = resp.body?.getReader();
           if (reader) {
