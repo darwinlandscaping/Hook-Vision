@@ -143,18 +143,22 @@ Express 5 API server.
 - `POST /api/narrate` — Character-voiced narration text (GPT-4.1-mini, 4 characters × 11 languages)
 - `POST /api/fish-id` — Full species ID from fish photo (GPT-4.1)
 - `POST /api/barra-check` — Stage-1 fast barra photo check (GPT-4.1-mini, ~400ms, uses Barra Brain few-shot)
-- `GET  /api/barra-library/status` — Barra Brain stats (iNaturalist references, 267 photos)
+- `GET  /api/barra-library/status` — Barra Brain stats (1,407 photos across iNat+GBIF+ALA+Wikimedia)
+- `GET  /api/barra-library/contrast` — Contrast species stats (Jack 1,636 + Fingermark 468 + Threadfin 21)
+- `POST /api/barra-library/expand` — Trigger full multi-source expansion (GBIF + ALA + geographic iNat)
 - `POST /api/sonar-barra-check` — Stage-1 fast sonar arch check (gpt-4.1-mini, ~600ms, uses Sonar Brain few-shot)
-- `GET  /api/sonar-brain/status` — Sonar Arch Brain stats (5 expert demos + community pool)
+- `GET  /api/sonar-brain/status` — Sonar Arch Brain stats (12 expert demos + community pool)
 - `POST /api/sonar-brain/submit` — Submit community-confirmed barra arch sonar scan
 
 **AI Brain Systems:**
-- **Barra Brain** (`lib/barraLibrary.ts`): 267 iNaturalist research-grade barramundi photos; 3 rotating refs injected into every barra-check call; daily refresh
-- **Sonar Arch Brain** (`lib/sonarBrain.ts`): 5 expert-labeled sonar demo images (Lowrance/Garmin/Humminbird/Simrad); 2 positive barra refs + 1 negative contrast ref injected into every sonar analysis + sonar-barra-check call; community pool grows via `/api/sonar-brain/submit`
+- **Barra Brain** (`lib/barraLibrary.ts`): 1,407 barramundi photos from iNat+GBIF+ALA+Wikimedia+geographic; 3 rotating refs injected into every barra-check call; daily refresh. Sources: inat_calcarifer (440), ALA (345), inat (272), GBIF (196), niloticus (102), wikimedia (52), geo iNat (~0 yet)
+- **Contrast Library** (`lib/contrastLibrary.ts`): 2,125 photos of NOT-BARRA species — Mangrove Jack (1,636), Fingermark (468), Threadfin Salmon (21) from iNaturalist. Body photos injected into sonar-barra-check prompts as cross-modal "NOT BARRA" visual references. Table: `contrast_references`.
+- **Sonar Arch Brain** (`lib/sonarBrain.ts`): 12 expert-labeled sonar demo images (Lowrance/Garmin/Humminbird/Simrad) including synthetic demos 10-12 (Jack half-arch, 3×Barra, Threadfin school); 2 positive barra refs + 1-2 negative contrast refs injected into every sonar analysis; community pool grows via `/api/sonar-brain/submit`
 
 **DB Tables:**
-- `barra_references` — iNaturalist barramundi photo references
+- `barra_references` — barramundi photo references (iNat, GBIF, ALA, Wikimedia, community)
 - `sonar_references` — community-confirmed barramundi arch sonar scans
+- `contrast_references` — contrast species photos (Mangrove Jack, Fingermark, Threadfin Salmon) for species discrimination
 
 ## Critical pnpm-store Patches (MUST survive reinstalls — re-apply if lost)
 

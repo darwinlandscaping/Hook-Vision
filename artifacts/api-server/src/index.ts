@@ -15,6 +15,7 @@ import { initModels } from "./lib/models";
 import { refreshDailyConditions } from "./lib/dailyBriefing";
 import { loadDemoReferences } from "./lib/demoReference";
 import { initBarraLibrary, refreshBarraLibrary, collectWikimediaLates } from "./lib/barraLibrary";
+import { initContrastLibrary, syncContrastSpecies } from "./lib/contrastLibrary";
 import { initSonarBrain } from "./lib/sonarBrain";
 import { initCrocLibrary, refreshCrocLibrary } from "./lib/crocLibrary";
 import { initBirdLibrary, refreshBirdLibrary } from "./lib/birdLibrary";
@@ -79,6 +80,22 @@ app.listen(port, (err) => {
     )
     .catch((err) =>
       logger.warn({ err }, "Barra library init failed — detection will use text-only prompt")
+    );
+
+  // Initialise contrast species library (Jack, Threadfin Salmon, Fingermark).
+  // Populates contrast_references table from iNaturalist on first run.
+  // In-memory cache is built after DB load — subsequent runs are DB-only (fast).
+  // Contrast species sync runs in background after server is up.
+  // Idempotent — upsert logic skips already-stored observations.
+  // Populates Jack (1,600+), Fingermark (239), Threadfin (21) from iNaturalist.
+  initContrastLibrary()
+    .then(() =>
+      syncContrastSpecies().catch((err) =>
+        logger.warn({ err }, "Contrast species sync failed — species discrimination will be text-only")
+      )
+    )
+    .catch((err) =>
+      logger.warn({ err }, "Contrast library init failed")
     );
 
   // Initialise the croc reference library:

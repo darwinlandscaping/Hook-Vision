@@ -15,6 +15,7 @@ import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getSonarFewShotRefs, addCommunityBarraArch } from "../lib/sonarBrain.js";
 import { getFewShotRefs } from "../lib/barraLibrary.js";
+import { getContrastRefs } from "../lib/contrastLibrary.js";
 import { getModel } from "../lib/models.js";
 import { getAsianSeaBassContext } from "../lib/asianSeaBassKnowledge.js";
 
@@ -204,6 +205,9 @@ router.post("/sonar-barra-check", async (req, res) => {
     const mime = detectMime(imageBase64);
     const refs         = getSonarFewShotRefs();
     const barraPhotos  = getFewShotRefs(1);   // 1 real barramundi body photo from iNaturalist
+    const jackPhotos   = getContrastRefs("mangrove_jack", 1);
+    const threadfinPhotos = getContrastRefs("threadfin_salmon", 1);
+    const fingermarkPhotos = getContrastRefs("fingermark", 1);
 
     // Build few-shot reference blocks — CROSS-MODAL: body photo first, then sonar refs
     const refBlocks: object[] = [];
@@ -227,6 +231,30 @@ router.post("/sonar-barra-check", async (req, res) => {
         type: "text",
         text: `↑ Confirmed barramundi — ${bp.location} (${bp.votes} expert votes). Connect this body shape to the sonar arch signatures below.`,
       });
+    }
+
+    // ── Step 1b: Contrast species body anatomy (NOT BARRA species) ───────────
+    // Mangrove Jack, Threadfin Salmon, Fingermark — species commonly misidentified as barra.
+    // By seeing their distinct body shapes, the AI can connect body anatomy → expected sonar arch shape.
+    const contrastSpecimen = [
+      { photos: jackPhotos,       label: "MANGROVE JACK (Lutjanus argentimaculatus)", note: "Deep rounded body, NO large swim bladder air sac visible — produces HALF-ARCHES embedded in structure, NOT full barra U-arches. Typically smaller arch, holds structure differently." },
+      { photos: fingermarkPhotos, label: "FINGERMARK / GOLDEN SNAPPER (Lutjanus johnii)", note: "Similar depth to barra but lacks the massive physostomous swim bladder — produces weaker arch return, less shadow void." },
+      { photos: threadfinPhotos,  label: "THREADFIN SALMON (Polydactylus macrochir)", note: "Elongated, slender body — proportionally SMALLER swim bladder than barra. Produces THINNER arches in HORIZONTAL SCHOOLS over soft bottom, NOT on hard structure." },
+    ];
+    const contrastBlocks: object[] = [];
+    for (const sp of contrastSpecimen) {
+      if (sp.photos.length > 0 && sp.photos[0].thumbBase64) {
+        contrastBlocks.push({ type: "text", text: `NOT BARRA — ${sp.label}: ${sp.note}` });
+        contrastBlocks.push({
+          type: "image_url",
+          image_url: { url: `data:image/jpeg;base64,${sp.photos[0].thumbBase64}`, detail: "low" },
+        });
+        contrastBlocks.push({ type: "text", text: `↑ ${sp.label} — study the body shape difference vs barramundi above.` });
+      }
+    }
+    if (contrastBlocks.length > 0) {
+      refBlocks.push({ type: "text", text: "STEP 1b — CONTRAST SPECIES BODY ANATOMY (NOT BARRAMUNDI — these are the species commonly misidentified as barra):" });
+      refBlocks.push(...contrastBlocks);
     }
 
     // ── Step 2: Sonar arch references (positive + negative) ──────────────────
