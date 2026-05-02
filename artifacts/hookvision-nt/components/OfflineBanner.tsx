@@ -5,15 +5,21 @@ import { Feather } from "@expo/vector-icons";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 export function OfflineBanner() {
-  const { isOnline } = useNetworkStatus();
+  const { isOnline, cameraWifiMode } = useNetworkStatus();
   const { top } = useSafeAreaInsets();
 
   if (isOnline) return null;
 
+  const bgColor = cameraWifiMode ? "#92400e" : "#b91c1c";
+  const icon    = cameraWifiMode ? "camera"  : "wifi-off";
+  const message = cameraWifiMode
+    ? "Camera WiFi active · AI Brain paused · disconnect to restore"
+    : "No internet · AI features unavailable";
+
   return (
-    <View style={[styles.banner, { paddingTop: top + 6, pointerEvents: "none" }]}>
-      <Feather name="wifi-off" size={12} color="#fff" />
-      <Text style={styles.text}>No internet connection</Text>
+    <View style={[styles.banner, { paddingTop: top + 6, backgroundColor: bgColor }]}>
+      <Feather name={icon as any} size={12} color="#fff" />
+      <Text style={styles.text}>{message}</Text>
     </View>
   );
 }
@@ -24,7 +30,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#b91c1c",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -32,7 +37,8 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     zIndex: 9999,
     elevation: 20,
-  },
+    pointerEvents: "none",
+  } as any,
   text: {
     color: "#fff",
     fontSize: 12,
