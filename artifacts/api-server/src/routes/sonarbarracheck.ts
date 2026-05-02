@@ -96,7 +96,17 @@ LONE ARCH SIZE REFERENCE (200kHz, 5–8m depth):
 • Trophy barra 80cm+: arch height ≈ 5–8% of screen height, thick, always bright Tier 1 colour, clear shadow void below.
 • Threadfin 60–120cm: arch height ≈ 2–3% of screen height, Tier 1 colour (can be orange/red) but THINNER arch, NO shadow void, mid-column over soft bottom, one of many at same depth.
 • Mangrove jack: arch half-buried INTO the structure echo (starts at bottom, curves into structure).
-• Fingermark: loose groups 1–4m above rubble, moderate brightness, no shadow void.
+• Fingermark 40–80cm: arch height ≈ 2–4% of screen height, ROUNDER/DEEPER arch shape (snapper body plan L:H ~2.5–3:1), Tier 1 colour, small shadow void, floating 1–4m ABOVE rough rubble/reef bottom with a clear water gap below. Loose group 2–8 fish. Depth 5–25m.
+
+FINGERMARK (Lutjanus johnii — Golden Snapper) SONAR SIGNATURE:
+• Swim bladder: Physostomous — Tier 1 (orange/red/white) bright arch. Shadow void PRESENT but SMALLER than barra.
+• Arch shape: DEEP-BODIED and rounder than barra's elongated arch — reflects snapper body plan. Shorter, "fatter" U-curve.
+• KEY POSITION TELL: Arches floating 1–4m ABOVE rough rubble/reef/rock bottom echo with a CLEAR WATER GAP between fish and bottom. This hover zone is the definitive fingermark signature.
+• BARRA vs FINGERMARK: Barra sits ON/within 1m of clean hard structure (snag/pylon). Fingermark hovers ABOVE rough rubble/reef with visible gap below.
+• Group: Loose spread of 2–8 fish. NOT a tight depth-band school (not threadfin). NOT strictly solo (not barra).
+• Bottom echo: ROUGH, IRREGULAR rubble/reef echo (different from barra's clean hard structure or threadfin's thin soft mud).
+• Depth: 5–25m typical. At 5–12m over rubble = strongly Fingermark. At 12–25m over deep reef = Fingermark/Jewfish.
+• NOT barra: Fish arches with clear water gap below them over rough rocky bottom echo = Fingermark, not barra.
 
 10-YEAR BRAND COLOUR GUIDE (for arch tier interpretation):
 • Lowrance (HDS Gen2/3/Carbon/Live, Elite Ti/FS, Hook Reveal): Orange/red = Tier 1 strongest = barra. Yellow = medium. Green = small.
@@ -106,11 +116,12 @@ LONE ARCH SIZE REFERENCE (200kHz, 5–8m depth):
 • Deeper app: Fish ICONS (🐟 symbol with depth) indicate detected return — each icon = confirmed arch = fish.
 
 NOT BARRA IF (all signs must match — do NOT flag just because arch count is high):
-• Multiple THIN arches in mid-water column over SOFT BOTTOM → Threadfin Salmon. Threadfin arches are thin, dim, floating mid-column over mud.
-• Dense cloud of small bright dots → Baitfish school
-• Half-arch embedded in/inside bottom echo → Mangrove Jack
-• Multiple fish at identical depth in OPEN WATER over soft mud → Schooling species (threadfin, queenfish)
-• IMPORTANT: Multiple THICK BRIGHT arches ON HARD STRUCTURE are NOT threadfin. Do not apply this NOT BARRA rule to arches that individually qualify as BARRA-QUALITY.
+• Multiple THIN arches at same depth, mid-water column, SOFT BOTTOM → Threadfin Salmon.
+• Dense cloud of small bright dots → Baitfish school.
+• Half-arch embedded IN/INSIDE bottom echo → Mangrove Jack.
+• Arches floating 1–4m ABOVE rough rubble/reef bottom with visible water gap → Fingermark (not barra).
+• Multiple fish at identical depth in OPEN WATER over soft mud → Schooling species (threadfin, queenfish).
+• IMPORTANT: Multiple THICK BRIGHT arches ON HARD STRUCTURE are barra aggregation — do NOT apply Threadfin or Fingermark rules to arches that sit directly on clean hard structure.
 
 LIVE SONAR FORWARD-VIEW (LiveScope/ActiveTarget/MEGA Live) — barra signature:
 • Elongated body silhouette (3:1 to 4:1 ratio), high brightness, PROMINENT dark shadow below

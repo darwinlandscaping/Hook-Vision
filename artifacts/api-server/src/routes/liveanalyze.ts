@@ -150,6 +150,25 @@ STRUCTURE ECHO:
     schooling mid-column nearby. Do NOT call the threadfin school "barra" just because barra are present.
   CONFIRM: Slender oval + short shadow + away from structure + school formation + all moving together = THREADFIN SALMON.
 
+▸ FINGERMARK (Lutjanus johnii — Golden Snapper / John's Snapper):
+  SHAPE: DEEP-BODIED oval — L:H ratio ~2.5:1 to 3:1. Noticeably DEEPER/ROUNDER body than barra's elongated oval.
+         Think "snapper body" — tall and compressed, more circular from the side than barra.
+         Steeper back profile, rounded belly. Body is wide relative to its length.
+  BRIGHTNESS: HIGH — physostomous swim bladder produces strong bright return.
+  SHADOW: MEDIUM — shadow present but SHORTER than barra. Typically 0.5–0.8× body length.
+          Larger than threadfin shadow but clearly shorter than barra's full-body-length shadow.
+  POSITION: Hovering 1–4m ABOVE rough rubble/reef/rock structure. NOT embedded in structure (not jack).
+            NOT on clean hard structure (not barra). Floating above an irregular reef or rubble patch.
+            You will see the rough, bright, irregular bottom echo BELOW with a clear water gap to the fish.
+  MOVEMENT: Slow, lazy hover — occasionally drifting or dropping to inspect the reef below.
+            More mobile than jack (which barely moves) but slower than queenfish. Will swing toward bait.
+  COUNT: Loose group of 2–8 fish spread spatially above a reef patch. NOT a tight school (not threadfin).
+         NOT strictly solo (barra is solo). Loose spread with gaps between each fish.
+  DEPTH: Typically 5–25m. Deeper than most barra encounters.
+  BARRA vs FINGERMARK: Barra = elongated body (3.5:1), very long shadow, ON or touching hard structure.
+                        Fingermark = rounder/deeper body (2.5–3:1), medium shadow, floating ABOVE rough reef.
+  CONFIRM: Deep-bodied round oval + medium shadow + floating above rough rubble bottom + loose group 2–8 = FINGERMARK.
+
 ▸ QUEENFISH:
   SHAPE: Very SLIM torpedo/cigar body — 5:1 to 6:1 L:H ratio
   BRIGHTNESS: MEDIUM — small physoclistous bladder

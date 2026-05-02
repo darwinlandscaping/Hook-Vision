@@ -25,13 +25,21 @@ BARRA vs THREADFIN SALMON — critical separation (they co-habit and feed togeth
 • SAME-DEPTH HORIZONTAL BAND of multiple arches = schooling species (Threadfin, not Barra aggregation).
 • 6 arches mid-column over mud = Threadfin school. 6 arches ON structure with shadow voids = Barra aggregation.
 
+FINGERMARK (Lutjanus johnii — Golden Snapper) — critical separation:
+• FINGERMARK: Deep-bodied arch (L:H ~2.5-3:1, rounder/taller than barra's elongated arch), hovering 1-4m ABOVE rubble/rock/reef bottom, LOOSE GROUP of 2-8 fish, moderate shadow void, deeper water 5-25m.
+• KEY TELL: Fish arches floating in mid-lower column with ROUGH RUBBLE/ROCKY BOTTOM ECHO clearly visible below them. Gap between fish and bottom = fingermark hover zone.
+• BARRA vs FINGERMARK: Barra ON structure (touching); Fingermark ABOVE it with clear water gap. Barra = snags/pylons; Fingermark = rubble/reef patches.
+• DEPTH CLUE: 5-12m over rubble = Fingermark likely. 12-25m deep reef = strongly Fingermark/Jewfish. Under 5m on snag = strongly Barra.
+• Fingermark arch is DEEP-BODIED (shorter/rounder shape) vs Barra's elongated arch — reflects their snapper body plan.
+• Shadow void: PRESENT but smaller than Barra (physostomous bladder, smaller fish).
+
 ARCH POSITION:
-• ON hard structure, solo + shadow void = Barra (85%+)
+• ON hard structure (snag/pylon), solo + shadow void = Barra (85%+)
 • ON hard structure, solo, no void = Barra (70%)
-• INSIDE structure echo = Jack
-• Mid-column, school, same depth, soft bottom = Threadfin Salmon
-• 1-4m above rubble, loose school = Fingermark
-• Deep tidal channel lone = Jewfish
+• INSIDE structure echo = Mangrove Jack
+• 1-4m ABOVE rubble/reef, loose group 2-8, 5-25m depth = Fingermark
+• Mid-column, school 5-30+, same depth, soft bottom = Threadfin Salmon
+• Deep tidal channel, lone, 15m+ = Jewfish
 
 LONE ARCH: 1-2 arches = RAISE confidence. Barra are solitary. Lone+hard bottom=70%, lone+shadow=85%+.
 
