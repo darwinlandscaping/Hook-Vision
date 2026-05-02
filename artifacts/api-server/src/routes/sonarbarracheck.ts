@@ -95,7 +95,7 @@ LONE ARCH SIZE REFERENCE (200kHz, 5–8m depth):
 • Legal barra 55–80cm: arch height ≈ 3–4% of screen height, orange/red on Lowrance/Simrad, white/orange on Humminbird, white/cyan on Garmin. Clear U-curve ON or near structure. Shadow void present.
 • Trophy barra 80cm+: arch height ≈ 5–8% of screen height, thick, always bright Tier 1 colour, clear shadow void below.
 • Threadfin 60–120cm: arch height ≈ 2–3% of screen height, Tier 1 colour (can be orange/red) but THINNER arch, NO shadow void, mid-column over soft bottom, one of many at same depth.
-• Mangrove jack: arch half-buried INTO the structure echo (starts at bottom, curves into structure).
+• Mangrove jack 35–70cm: arch BURIED INSIDE the structure echo — only the TOP CURVE protrudes above the structure return. Half-arch or partial arch beginning within the snag/bottom echo. Compact, stocky shape. Tier 1 bright but arch appears truncated/incomplete. Shadow void obscured by structure echo.
 • Fingermark 40–80cm: arch height ≈ 2–4% of screen height, ROUNDER/DEEPER arch shape (snapper body plan L:H ~2.5–3:1), Tier 1 colour, small shadow void, floating 1–4m ABOVE rough rubble/reef bottom with a clear water gap below. Loose group 2–8 fish. Depth 5–25m.
 
 FINGERMARK (Lutjanus johnii — Golden Snapper) SONAR SIGNATURE:

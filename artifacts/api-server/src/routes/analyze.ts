@@ -25,6 +25,18 @@ BARRA vs THREADFIN SALMON — critical separation (they co-habit and feed togeth
 • SAME-DEPTH HORIZONTAL BAND of multiple arches = schooling species (Threadfin, not Barra aggregation).
 • 6 arches mid-column over mud = Threadfin school. 6 arches ON structure with shadow voids = Barra aggregation.
 
+MANGROVE JACK (Lutjanus argentimaculatus) — critical separation from Barra:
+• JACK: Arch is BURIED INSIDE or EMERGING FROM the structure echo — the bottom half of the arch merges with the structure/bottom return. Often only the TOP CURVE of the arch is visible above the structure echo.
+• BARRA vs JACK: Both are Tier 1 bright, both tight to hard structure. The ONLY reliable separator is arch position within the structure echo.
+  - Barra: COMPLETE full arch sitting ON TOP of or beside the structure echo. Clear separation between fish and structure.
+  - Jack: HALF-ARCH or PARTIAL arch — the arch begins inside the structure echo and only the top portion protrudes. Fish is literally inside the snag/crevice/overhang.
+• Jack body plan: Stocky, compact (L:H ~2:1) — almost square compared to Barra's elongated shape.
+• Jack habitat: Mangrove root snags, submerged timber, bridge pylons, rock overhangs, undercut banks.
+• Movement: Near-zero — true ambush predator. If the arch position in the structure echo is completely static across multiple sonar sweeps = Jack.
+• Count: Solo or 2-3 fish max, always within one piece of structure (not spread out).
+• Depth: 0-12m, most common 2-8m — same depth band as Barra, so depth cannot separate them.
+• Shadow void: Often absent or obscured because the surrounding structure echo swallows it.
+
 FINGERMARK (Lutjanus johnii — Golden Snapper) — critical separation:
 • FINGERMARK: Deep-bodied arch (L:H ~2.5-3:1, rounder/taller than barra's elongated arch), hovering 1-4m ABOVE rubble/rock/reef bottom, LOOSE GROUP of 2-8 fish, moderate shadow void, deeper water 5-25m.
 • KEY TELL: Fish arches floating in mid-lower column with ROUGH RUBBLE/ROCKY BOTTOM ECHO clearly visible below them. Gap between fish and bottom = fingermark hover zone.
@@ -34,9 +46,9 @@ FINGERMARK (Lutjanus johnii — Golden Snapper) — critical separation:
 • Shadow void: PRESENT but smaller than Barra (physostomous bladder, smaller fish).
 
 ARCH POSITION:
-• ON hard structure (snag/pylon), solo + shadow void = Barra (85%+)
-• ON hard structure, solo, no void = Barra (70%)
-• INSIDE structure echo = Mangrove Jack
+• ON hard structure (snag/pylon), complete full arch, solo + shadow void = Barra (85%+)
+• ON hard structure, complete full arch, solo, no void = Barra (70%)
+• HALF-ARCH or arch STARTING INSIDE structure echo = Mangrove Jack
 • 1-4m ABOVE rubble/reef, loose group 2-8, 5-25m depth = Fingermark
 • Mid-column, school 5-30+, same depth, soft bottom = Threadfin Salmon
 • Deep tidal channel, lone, 15m+ = Jewfish

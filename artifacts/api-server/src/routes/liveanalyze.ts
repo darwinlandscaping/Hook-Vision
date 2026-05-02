@@ -123,13 +123,28 @@ STRUCTURE ECHO:
   POSITION: Mid-column or surface-skimming, NOT tight to structure
   COUNT: Often 2–6 fish traveling together at speed
 
-▸ MANGROVE JACK:
-  SHAPE: COMPACT chunky body, 1:2 height-to-length (shorter, stubbier than barra)
-  BRIGHTNESS: HIGH (bright) but SMALLER overall size than barra
-  SHADOW: MEDIUM — shorter than barra
-  POSITION: EMBEDDED in or tightly overlapping structure echo — rarely free-swimming
-  MOVEMENT: Almost stationary; barely moves from within the snag signature
-  COUNT: Solo or 2–3 fish in one snag
+▸ MANGROVE JACK (Lutjanus argentimaculatus):
+  SHAPE: COMPACT stocky body — L:H ratio ~2:1 (almost SQUARE compared to barra's elongated 3.5:1).
+         The most deep-bodied of all target species relative to length. Steep back, rounded belly.
+         Noticeably SMALLER overall oval than adult barra. Think "brick" shape vs barra's "plank".
+  BRIGHTNESS: HIGH — physostomous swim bladder gives strong Tier 1 bright return.
+              But the body echo PARTIALLY MERGES with the structure echo — often appears as a bright
+              blob overlapping or growing out of the structure return rather than a clean standalone oval.
+  SHADOW: SHORT to MEDIUM — shadow often OBSCURED or absent because structure echo swallows it.
+          If shadow IS visible it is shorter than barra's and may be partially hidden by structure.
+  POSITION: EMBEDDED IN or tightly overlapping the structure echo. This is the definitive Jack tell.
+            On live sonar: the fish body and the snag/structure return partially FUSE together.
+            You cannot cleanly separate where structure ends and fish begins — they bleed into each other.
+            Jack is INSIDE the crevice, overhang, or root system — not next to it.
+  MOVEMENT: NEAR ZERO — the most stationary of all target species. A genuine ambush sit-and-wait predator.
+            On forward-facing live sonar the body barely shifts between frames.
+            Only movement: a sudden dart to engulf prey, then immediate return to exact position.
+  COUNT: Solo or 2–3 fish within ONE piece of structure. All fish tightly clustered at the same snag.
+  HABITAT: Mangrove root systems, submerged timber, bridge pylons, rock overhangs, undercut clay banks.
+  BARRA vs JACK on live sonar:
+    - Barra: clean standalone oval BESIDE or AGAINST structure — fish and structure are distinct.
+    - Jack: oval partially FUSED INTO the structure echo — no clean edge between fish and snag.
+  CONFIRM: Small compact oval fused into structure echo + near-zero movement + solo/pair in one snag = MANGROVE JACK.
 
 ▸ THREADFIN SALMON (Polydactylus macrochir — Blue Threadfin / King Salmon):
   SHAPE: SLENDER elongated body — L:H ratio ~4.5:1 (noticeably THINNER than barra's 3.5:1).
