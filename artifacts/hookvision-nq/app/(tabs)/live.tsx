@@ -456,7 +456,7 @@ export default function LiveScreen() {
   const [slConnecting,    setSlConnecting]    = useState(false);
   const [slConnectedCam,  setSlConnectedCam]  = useState<DiscoveredCamera | null>(null);
 
-  const AUTO_INTERVAL = 40;
+  const AUTO_INTERVAL = 10;
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
   const topPad   = Platform.OS === "web" ? 20 : insets.top;
@@ -566,9 +566,74 @@ export default function LiveScreen() {
         setPolarising(false);
       }
 
-      // Push image to Scan tab — analysis + streaming results all happen there
-      LiveScanStore.push(base64, uri, boatMode ? "boat" : "live");
-      router.navigate("/");   // go to Scan tab (no-op if already there)
+      if (boatMode) {
+        // ── Boat mode: analyze in-place, stay on camera, show live HUD ──────
+        const domain  = process.env.EXPO_PUBLIC_DOMAIN;
+        const apiBase = domain ? `https://${domain}` : "";
+        const resp = await fetch(`${apiBase}/api/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: base64 }),
+        });
+        if (resp.ok) {
+          const reader = resp.body?.getReader();
+          if (reader) {
+            const dec = new TextDecoder();
+            let txt = "";
+            for (;;) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              txt += dec.decode(value, { stream: true });
+            }
+            const m = txt.match(/\{[\s\S]*\}/);
+            if (m) {
+              try {
+                const d = JSON.parse(m[0]);
+                const parsed: FishAnalysis = {
+                  fishCount:  d.fishCount  ?? 0,
+                  depth:      d.depth      ?? "unknown",
+                  distance:   d.distance   ?? "unknown",
+                  species:    d.species    ?? "Unknown",
+                  confidence: d.confidence ?? 0,
+                  suggestion: d.suggestion ?? "",
+                  lure:       d.lure ?? d.recommendedLure ?? "",
+                  lureType:   d.lureType   ?? "",
+                  technique:  d.technique  ?? "",
+                };
+                setResult(parsed);
+                setScanCount((c) => c + 1);
+                if (autoSpeak) speakResult(parsed);
+                addEntry({
+                  id: `${Date.now()}`,
+                  timestamp: Date.now(),
+                  imageUri: uri,
+                  species: parsed.species,
+                  fishCount: parsed.fishCount,
+                  depth: parsed.depth,
+                  suggestion: parsed.suggestion,
+                });
+                fetch(`${apiBase}/api/hud/update`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    species:    parsed.species,
+                    fishCount:  parsed.fishCount,
+                    depth:      parsed.depth,
+                    confidence: parsed.confidence,
+                    suggestion: parsed.suggestion,
+                    lure:       parsed.lure ?? "",
+                    source:     "boat",
+                  }),
+                }).catch(() => {});
+              } catch { /* ignore JSON parse errors */ }
+            }
+          }
+        }
+      } else {
+        // ── Regular mode: push to Scan tab for full streaming analysis ──────
+        LiveScanStore.push(base64, uri, "live");
+        router.navigate("/");   // go to Scan tab (no-op if already there)
+      }
 
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
@@ -580,7 +645,7 @@ export default function LiveScreen() {
       setPolarising(false);
       setScanning(false);
     }
-  }, [scanning, boatMode, polarOn, cam2Connected, cam2, insta360]);
+  }, [scanning, boatMode, polarOn, cam2Connected, cam2, insta360, autoSpeak, speakResult, addEntry]);
 
   // ── Pick from gallery & analyse ──────────────────────────────────────────
   const pickFromGallery = useCallback(async () => {

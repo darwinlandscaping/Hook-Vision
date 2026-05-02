@@ -605,7 +605,7 @@ export default function LiveScreen() {
   const [slConnecting,    setSlConnecting]    = useState(false);
   const [slConnectedCam,  setSlConnectedCam]  = useState<DiscoveredCamera | null>(null);
 
-  const AUTO_INTERVAL = 40;
+  const AUTO_INTERVAL = 10;
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
   const topPad   = Platform.OS === "web" ? 20 : insets.top;
@@ -761,6 +761,19 @@ export default function LiveScreen() {
                   depth: parsed.depth,
                   suggestion: parsed.suggestion,
                 });
+                fetch(`${apiBase}/api/hud/update`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    species:    parsed.species,
+                    fishCount:  parsed.fishCount,
+                    depth:      parsed.depth,
+                    confidence: parsed.confidence,
+                    suggestion: parsed.suggestion,
+                    lure:       parsed.lure ?? "",
+                    source:     "boat",
+                  }),
+                }).catch(() => {});
               } catch { /* ignore JSON parse errors */ }
             }
           }
