@@ -1176,18 +1176,18 @@ export default function HomeScreen() {
       if (!data.species) {
         data.species = "Unknown species";
       }
-      // ── Flash wins: if flash read a confident fish but turbo came back lower, don't clobber it ──
-      // Flash confidence is 0-1; turbo is 0-100.
+      // ── Flash fallback: only use flash confidence when turbo found absolutely nothing (0%) ──
+      // Do NOT override a correct species ID (e.g. Threadfin) just because flash scored higher.
       {
         const flashPct = Math.round((localFlash?.confidence ?? 0) * 100);
         const flashHadFish = localFlash && (localFlash.fishCount ?? 0) > 0
           && !!localFlash.species && !localFlash.species.toLowerCase().includes("unknown");
-        if (flashHadFish && flashPct > (data.confidence ?? 0)) {
+        if (flashHadFish && (data.confidence ?? 0) === 0) {
           data = {
             ...data,
-            species:   data.confidence === 0 ? localFlash!.species : data.species,
+            species:   localFlash!.species,
             confidence: flashPct,
-            fishCount:  data.fishCount === 0 ? (localFlash!.fishCount ?? 0) : data.fishCount,
+            fishCount:  localFlash!.fishCount ?? 0,
           };
         }
       }
@@ -1636,11 +1636,20 @@ export default function HomeScreen() {
                         ? "#ff8800"
                         : "#888888",
                   }]}>
-                    {sonarBarraResult.isBarraArch && sonarBarraResult.confidence >= 60
-                      ? "⚡ BARRA ARCHES DETECTED"
-                      : sonarBarraResult.isBarraArch && sonarBarraResult.confidence >= 40
-                        ? "⚠ POSSIBLE BARRA ARCHES"
-                        : "NO BARRA ARCHES"}
+                    {(() => {
+                      // If main analysis already confirmed a non-Barra species, label arches with that species
+                      const mainSpecies = analysis?.species;
+                      const mainIsBarra = mainSpecies?.toLowerCase().includes("barra") ?? false;
+                      const mainHasSpecies = mainSpecies && mainSpecies !== "No fish detected" && mainSpecies !== "Unknown species" && (analysis?.confidence ?? 0) >= 50;
+                      const archLabel = (mainHasSpecies && !mainIsBarra)
+                        ? mainSpecies!.toUpperCase()
+                        : "BARRA";
+                      if (sonarBarraResult.isBarraArch && sonarBarraResult.confidence >= 60)
+                        return `⚡ ${archLabel} ARCHES DETECTED`;
+                      if (sonarBarraResult.isBarraArch && sonarBarraResult.confidence >= 40)
+                        return `⚠ POSSIBLE ${archLabel} ARCHES`;
+                      return "NO BARRA ARCHES";
+                    })()}
                   </Text>
                   <View style={styles.sonarBrainBadge}>
                     <Text style={styles.sonarBrainBadgeText}>{sonarBarraResult.confidence}%</Text>
