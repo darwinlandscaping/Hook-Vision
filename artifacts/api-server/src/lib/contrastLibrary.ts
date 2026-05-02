@@ -112,7 +112,7 @@ async function buildCache(): Promise<void> {
       .from(contrastReferences)
       .where(and(eq(contrastReferences.species, speciesKey), eq(contrastReferences.active, true)))
       .orderBy(desc(contrastReferences.votes))
-      .limit(200);
+      .limit(40);    // 40 per species — top-voted specimens only
     cache[speciesKey] = rows.map(r => ({
       photoUrl:    r.photoUrl,
       species:     r.species,
@@ -137,18 +137,20 @@ async function prewarmThumbs(): Promise<void> {
   }
   if (toWarm.length === 0) return;
 
-  await Promise.allSettled(toWarm.map(async (ref) => {
+  // Sequential — not concurrent — to avoid OOM from parallel image downloads
+  let warmed = 0;
+  for (const ref of toWarm) {
     const b64 = await makeThumbnailFromUrl(ref.photoUrl, 512, 65, 8_000);
     if (b64) {
       ref.thumbBase64 = b64;
-      // Persist to DB
+      warmed++;
       await db.update(contrastReferences)
         .set({ thumbBase64: b64 })
         .where(eq(contrastReferences.photoUrl, ref.photoUrl))
         .catch(() => {});
     }
-  }));
-  logger.info({ warmed: toWarm.length }, "Contrast species thumbnails pre-warmed");
+  }
+  logger.info({ warmed }, "Contrast species thumbnails pre-warmed");
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

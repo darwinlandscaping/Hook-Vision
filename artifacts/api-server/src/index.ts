@@ -83,39 +83,33 @@ app.listen(port, (err) => {
     );
 
   // Initialise contrast species library (Jack, Threadfin Salmon, Fingermark).
-  // Populates contrast_references table from iNaturalist on first run.
-  // In-memory cache is built after DB load — subsequent runs are DB-only (fast).
-  // Contrast species sync runs in background after server is up.
-  // Idempotent — upsert logic skips already-stored observations.
-  // Populates Jack (1,600+), Fingermark (239), Threadfin (21) from iNaturalist.
+  // On startup: load from DB into memory cache only (fast, no network).
+  // Full iNaturalist sync deferred to 8 minutes after boot so it doesn't
+  // compete with barra/croc/bird inits for memory.
   initContrastLibrary()
-    .then(() =>
-      syncContrastSpecies().catch((err) =>
-        logger.warn({ err }, "Contrast species sync failed — species discrimination will be text-only")
-      )
-    )
     .catch((err) =>
       logger.warn({ err }, "Contrast library init failed")
     );
+  setTimeout(() => {
+    syncContrastSpecies().catch((err) =>
+      logger.warn({ err }, "Contrast species deferred sync failed")
+    );
+  }, 8 * 60 * 1000);  // 8 minutes after boot
 
-  // Initialise the croc reference library:
-  // fetches up to 1,000 research-grade iNaturalist photos (Crocodylus porosus +
-  // Crocodylus johnstoni) → stores in DB → caches top 20 as compressed thumbnails.
-  // Injected into sonar analysis and Insta360 croc-vision pipeline (Pipeline 2)
-  // as few-shot cross-modal shape references.
-  initCrocLibrary().catch((err) =>
-    logger.warn({ err }, "Croc library init failed — croc detection will use text-only prompt")
-  );
+  // Croc + bird libraries are staggered so they don't compete with the barra init
+  // for memory at startup (all loading 80 refs + downloading thumbnails sequentially).
+  // Croc: 2 minutes after boot. Bird: 4 minutes after boot.
+  setTimeout(() => {
+    initCrocLibrary().catch((err) =>
+      logger.warn({ err }, "Croc library init failed — croc detection will use text-only prompt")
+    );
+  }, 2 * 60 * 1000);
 
-  // Initialise the bird reference library:
-  // fetches up to 500 research-grade iNaturalist photos across 10 WA/Kimberley water bird
-  // species (frigatebirds, terns, boobies, pelicans, osprey, brahminy kite, etc.)
-  // → stores in DB → classifies poses (diving/aerial/perched/water) → caches
-  // top 30 thumbnails. Injected into Insta360 surface-detect pipeline (Pipeline 1)
-  // as few-shot visual references so the model can ID species in real-world frames.
-  initBirdLibrary().catch((err) =>
-    logger.warn({ err }, "Bird library init failed — surface detection will use text-only prompt")
-  );
+  setTimeout(() => {
+    initBirdLibrary().catch((err) =>
+      logger.warn({ err }, "Bird library init failed — surface detection will use text-only prompt")
+    );
+  }, 4 * 60 * 1000);
 
   // Seed brain with expert regional fishing knowledge (WA/NQ/NT).
   // Idempotent — checks for seed marker before inserting, so safe to call on every boot.

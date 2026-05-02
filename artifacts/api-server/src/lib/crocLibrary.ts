@@ -56,7 +56,7 @@ export interface CrocCachedRef {
 let cache: CrocCachedRef[]  = [];
 let lastFetch                = 0;
 const CACHE_TTL_MS           = 6 * 60 * 60 * 1000;   // 6 hours
-const THUMB_PREWARM_COUNT    = 20;                     // pre-compress top 20 for fast injection
+const THUMB_PREWARM_COUNT    = 6;                      // keep low — sequential downloads, not concurrent
 
 // ─── URL helpers ──────────────────────────────────────────────────────────────
 function thumbUrl(medUrl: string): string {
@@ -145,7 +145,7 @@ async function rebuildCache(): Promise<void> {
     .from(crocReferences)
     .where(eq(crocReferences.active, true))
     .orderBy(desc(crocReferences.votes))
-    .limit(500);
+    .limit(80);    // 80 in memory — more than enough for rotation
 
   cache = rows.map(r => ({
     photoUrl:     r.photoUrl ?? "",
@@ -173,17 +173,12 @@ async function prewarmThumbnails(): Promise<void> {
   let ok = 0;
   let fail = 0;
 
-  await Promise.allSettled(
-    toWarm.map(async (ref) => {
-      const thumb = await makeThumbnailFromUrl(ref.photoUrl, 512, 65, 8_000);
-      if (thumb) {
-        ref.thumbBase64 = thumb;
-        ok++;
-      } else {
-        fail++;
-      }
-    })
-  );
+  // Sequential — not concurrent — to avoid OOM from parallel image downloads
+  for (const ref of toWarm) {
+    const thumb = await makeThumbnailFromUrl(ref.photoUrl, 512, 65, 8_000);
+    if (thumb) { ref.thumbBase64 = thumb; ok++; }
+    else        { fail++; }
+  }
 
   logger.info({ ok, fail }, "Croc thumbnail pre-warm complete");
 

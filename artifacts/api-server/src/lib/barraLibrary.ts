@@ -56,7 +56,7 @@ let lastFetch = 0;
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;   // 6 hours
 
 // How many top photos to pre-fetch and compress at startup
-const THUMB_PREWARM_COUNT = 12;
+const THUMB_PREWARM_COUNT = 5;   // keep low — sequential downloads, not concurrent
 
 // ─── Convert iNat medium URL → square thumb ───────────────────────────────────
 function thumbUrl(medUrl: string): string {
@@ -153,7 +153,7 @@ async function rebuildCache(): Promise<void> {
     .from(barraReferences)
     .where(eq(barraReferences.active, true))
     .orderBy(desc(barraReferences.votes))
-    .limit(500);   // top 500 in memory
+    .limit(80);    // 80 in memory — more than enough for rotation
 
   cache = rows.map(r => ({
     photoUrl:     r.photoUrl ?? "",
@@ -188,25 +188,14 @@ async function prewarmThumbnails(): Promise<void> {
   let ok = 0;
   let fail = 0;
 
-  await Promise.allSettled(
-    toWarm.map(async (ref) => {
-      const thumb = await makeThumbnailFromUrl(ref.photoUrl, 512, 65, 8_000);
-      if (thumb) {
-        ref.thumbBase64 = thumb;
-        ok++;
-      } else {
-        fail++;
-      }
-    })
-  );
+  // Sequential — not concurrent — to avoid OOM (exit 137) from parallel image downloads
+  for (const ref of toWarm) {
+    const thumb = await makeThumbnailFromUrl(ref.photoUrl, 512, 65, 8_000);
+    if (thumb) { ref.thumbBase64 = thumb; ok++; }
+    else        { fail++; }
+  }
 
-  logger.info(
-    { ok, fail, thumbKbAvg: Math.round(
-        cache.slice(0, ok).reduce((s, r) => s + (r.thumbBase64?.length ?? 0), 0)
-          / Math.max(1, ok) / 1024
-      ) },
-    "Barra thumbnail pre-warm complete"
-  );
+  logger.info({ ok, fail }, "Barra thumbnail pre-warm complete");
 
   // After compression, classify each thumbnail by viewing angle (one batch call)
   classifyAngles().catch(() => {});

@@ -90,7 +90,7 @@ export interface BirdCachedRef {
 let cache:      BirdCachedRef[] = [];
 let lastFetch   = 0;
 const CACHE_TTL = 6 * 60 * 60 * 1000;   // 6 hours
-const PREWARM   = 30;                     // pre-compress top 30 for fast injection
+const PREWARM   = 6;                      // keep low — sequential downloads, not concurrent
 
 // ─── URL helpers ──────────────────────────────────────────────────────────────
 function thumbUrl(medUrl: string): string {
@@ -178,7 +178,7 @@ async function rebuildCache(): Promise<void> {
     .from(birdReferences)
     .where(eq(birdReferences.active, true))
     .orderBy(desc(birdReferences.votes))
-    .limit(500);
+    .limit(80);    // 80 in memory — more than enough for rotation
 
   cache = rows.map(r => ({
     photoUrl:    r.photoUrl,
@@ -206,13 +206,12 @@ async function prewarmThumbnails(): Promise<void> {
   logger.info({ count: toWarm.length }, "Pre-warming bird thumbnail cache…");
   let ok = 0, fail = 0;
 
-  await Promise.allSettled(
-    toWarm.map(async (ref) => {
-      const thumb = await makeThumbnailFromUrl(ref.photoUrl, 512, 65, 8_000);
-      if (thumb) { ref.thumbBase64 = thumb; ok++; }
-      else        { fail++; }
-    })
-  );
+  // Sequential — not concurrent — to avoid OOM from parallel image downloads
+  for (const ref of toWarm) {
+    const thumb = await makeThumbnailFromUrl(ref.photoUrl, 512, 65, 8_000);
+    if (thumb) { ref.thumbBase64 = thumb; ok++; }
+    else        { fail++; }
+  }
 
   logger.info({ ok, fail }, "Bird thumbnail pre-warm complete");
   classifyPoses().catch(() => {});
