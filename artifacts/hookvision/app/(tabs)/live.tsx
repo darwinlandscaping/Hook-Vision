@@ -56,6 +56,12 @@ if (Platform.OS !== "web") {
   useCameraPermissions = cam.useCameraPermissions;
 }
 
+// ─── MediaLibrary — gallery saves from boat mode ──────────────────────────────
+let MediaLibrary: any = null;
+if (Platform.OS !== "web") {
+  try { MediaLibrary = require("expo-media-library"); } catch {}
+}
+
 // ─── Web camera component (loaded conditionally) ──────────────────────────────
 let WebCameraView: any = null;
 if (Platform.OS === "web") {
@@ -575,14 +581,19 @@ export default function LiveScreen() {
   const [boatMode, setBoatMode]         = useState(false);
   const [countdown, setCountdown]       = useState(0);
   const [scanCount, setScanCount]       = useState(0);
+  const [boatPhase, setBoatPhase]       = useState<"idle" | "capturing" | "summarizing" | "complete">("idle");
+  const [boatSummaryNarration, setBoatSummaryNarration] = useState<string | null>(null);
   const [polarOn, setPolarOn]           = useState(true);   // polarised-lens filter
   const [polarising, setPolarising]     = useState(false);  // filter in progress
   const [feedView, setFeedView]         = useState<"camera" | "visual">("camera"); // full-screen feed toggle
 
-  const nativeCamRef = useRef<any>(null);
-  const webCamRef    = useRef<any>(null);
-  const mountTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cdTimer      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const nativeCamRef         = useRef<any>(null);
+  const webCamRef            = useRef<any>(null);
+  const mountTimer           = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cdTimer              = useRef<ReturnType<typeof setInterval> | null>(null);
+  const boatScanCountRef     = useRef(0);
+  const boatSessionResults   = useRef<{ result: FishAnalysis; uri: string }[]>([]);
+  const finishBoatSessionRef = useRef<(() => void) | null>(null);
 
   // ── Insta360 (shared context — one instance for whole app) ───────────────
   const { camera: insta360, pipelines } = useInsta360Context();
@@ -605,7 +616,8 @@ export default function LiveScreen() {
   const [slConnecting,    setSlConnecting]    = useState(false);
   const [slConnectedCam,  setSlConnectedCam]  = useState<DiscoveredCamera | null>(null);
 
-  const AUTO_INTERVAL = 10;
+  const AUTO_INTERVAL  = 10;
+  const BOAT_SCAN_LIMIT = 10;
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
   const topPad   = Platform.OS === "web" ? 20 : insets.top;
@@ -669,6 +681,34 @@ export default function LiveScreen() {
     }
   }, [insta360, insta360Snapping]);
 
+  // ── Boat session finish — synthesise 10 scans into full verbal analysis ──
+  const finishBoatSession = useCallback(async () => {
+    setBoatPhase("summarizing");
+    const scans = boatSessionResults.current.map(s => s.result);
+    const domain  = process.env.EXPO_PUBLIC_DOMAIN;
+    const apiBase = domain ? `https://${domain}` : "";
+    try {
+      const resp = await fetch(`${apiBase}/api/boat-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scans, region: "wa" }),
+      });
+      if (resp.ok) {
+        const data = await resp.json() as { narration?: string };
+        const narration = data.narration ?? "Boat session complete. Ten sonar scans captured and saved.";
+        setBoatSummaryNarration(narration);
+        speak(narration);
+      } else {
+        speak("Boat session complete. Ten sonar scans captured and saved.");
+      }
+    } catch {
+      speak("Boat session complete. Ten sonar scans captured and saved.");
+    } finally {
+      setBoatPhase("complete");
+    }
+  }, [speak]);
+  finishBoatSessionRef.current = finishBoatSession;
+
   // ── Scan — capture photo then send to Scan tab for full AI analysis ──────
   const scanNow = useCallback(async () => {
     if (scanning) return;
@@ -716,7 +756,7 @@ export default function LiveScreen() {
       }
 
       if (boatMode) {
-        // ── Boat mode: analyze in-place, stay on camera, show live HUD ──────
+        // ── Boat mode: capture 10 snapshots → stop → full verbal analysis ──
         const domain  = process.env.EXPO_PUBLIC_DOMAIN;
         const apiBase = domain ? `https://${domain}` : "";
         const resp = await fetch(`${apiBase}/api/analyze`, {
@@ -749,9 +789,19 @@ export default function LiveScreen() {
                   lureType:   d.lureType   ?? "",
                   technique:  d.technique  ?? "",
                 };
+                // Accumulate for session summary (ref-based for closure safety)
+                boatSessionResults.current.push({ result: parsed, uri });
+                boatScanCountRef.current += 1;
+                const newCount = boatScanCountRef.current;
+                setScanCount(newCount);
                 setResult(parsed);
-                setScanCount((c) => c + 1);
-                if (autoSpeak) speakResult(parsed);
+                // Save sonar image to device gallery (best-effort)
+                if (uri && Platform.OS !== "web" && MediaLibrary) {
+                  try {
+                    const perm = await MediaLibrary.requestPermissionsAsync();
+                    if (perm.granted) await MediaLibrary.saveToLibraryAsync(uri);
+                  } catch { /* gallery save optional */ }
+                }
                 addEntry({
                   id: `${Date.now()}`,
                   timestamp: Date.now(),
@@ -782,6 +832,11 @@ export default function LiveScreen() {
                     source:      "boat",
                   }),
                 }).catch(() => {});
+                // All 10 scans done — stop loop and deliver full analysis
+                if (newCount >= BOAT_SCAN_LIMIT) {
+                  stopBoatLoop();
+                  finishBoatSessionRef.current?.();
+                }
               } catch { /* ignore JSON parse errors */ }
             }
           }
@@ -802,7 +857,7 @@ export default function LiveScreen() {
       setPolarising(false);
       setScanning(false);
     }
-  }, [scanning, boatMode, polarOn, cam2Connected, cam2, insta360, autoSpeak, speakResult, addEntry]);
+  }, [scanning, boatMode, polarOn, cam2Connected, cam2, insta360, addEntry, stopBoatLoop]);
 
   // ── Pick from gallery & analyse ──────────────────────────────────────────
   const pickFromGallery = useCallback(async () => {
@@ -935,6 +990,10 @@ export default function LiveScreen() {
 
   const startBoatLoop = useCallback(() => {
     stopBoatLoop();
+    boatScanCountRef.current   = 0;
+    boatSessionResults.current = [];
+    setBoatPhase("capturing");
+    setBoatSummaryNarration(null);
     LiveScanStore.setBoatActive(true);
     setCountdown(AUTO_INTERVAL);
     // Fire first scan immediately then every AUTO_INTERVAL seconds
@@ -951,6 +1010,10 @@ export default function LiveScreen() {
     } else {
       stopBoatLoop();
       setScanCount(0);
+      setBoatPhase("idle");
+      setBoatSummaryNarration(null);
+      boatScanCountRef.current   = 0;
+      boatSessionResults.current = [];
     }
     return stopBoatLoop;
   }, [boatMode]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1860,23 +1923,58 @@ export default function LiveScreen() {
           <View style={[styles.aimCorner, styles.aimBR, { borderColor: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]} />
           <Text style={[styles.aimLabel, { color: boatMode ? "#aaff00" : cam2Connected ? "#00a8ff" : colors.primary }]}>
             {boatMode
-              ? `📡 Scanning sonar every ${AUTO_INTERVAL}s`
+              ? boatPhase === "summarizing"
+                ? "🧠 Analysing session — full report coming…"
+                : boatPhase === "complete"
+                ? "✅ Session complete — 10 scans captured"
+                : `📡 Scan ${scanCount}/${BOAT_SCAN_LIMIT} — capturing`
               : cam2Connected
                 ? `📺 CAM 2 · ${cam2.ip} · frame ${cam2.tick}`
                 : "Aim at sonar screen"}
           </Text>
-          {boatMode && scanCount > 0 && (
+          {boatMode && boatPhase === "summarizing" && (
             <View style={[styles.cdBadge, { borderColor: "#aaff0066", backgroundColor: "#aaff0011" }]}>
-              <Text style={[styles.cdText, { color: "#aaff00" }]}>{scanCount}</Text>
-              <Text style={[styles.cdSub, { color: "#aaff0099" }]}>scans</Text>
+              <ActivityIndicator size="small" color="#aaff00" />
             </View>
           )}
-          {boatMode && scanCount === 0 && (
+          {boatMode && boatPhase !== "summarizing" && (
             <View style={[styles.cdBadge, { borderColor: "#aaff0066", backgroundColor: "#aaff0011" }]}>
-              <Text style={[styles.cdText, { color: "#aaff00" }]}>{countdown}s</Text>
+              <Text style={[styles.cdText, { color: "#aaff00" }]}>{scanCount}/{BOAT_SCAN_LIMIT}</Text>
+              {scanCount === 0 && <Text style={[styles.cdSub, { color: "#aaff0099" }]}>{countdown}s</Text>}
             </View>
           )}
         </View>
+
+        {/* Boat session complete — full AI narration card */}
+        {boatMode && boatPhase === "complete" && boatSummaryNarration && (
+          <View style={[styles.resultOverlay, { backgroundColor: "#0a162899", borderColor: "#aaff0055" }]}>
+            <View style={styles.resultRow}>
+              <Text style={{ fontSize: 18 }}>🎯</Text>
+              <Text style={[styles.resultSpecies, { color: "#aaff00" }]}>Session Complete</Text>
+              <View style={[styles.countBadge, { backgroundColor: "#aaff0022" }]}>
+                <Text style={[styles.countText, { color: "#aaff00" }]}>{BOAT_SCAN_LIMIT} scans</Text>
+              </View>
+            </View>
+            <ScrollView style={{ maxHeight: 110 }} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.resultDetail, { color: "#ffffffcc", lineHeight: 18 }]}>{boatSummaryNarration}</Text>
+            </ScrollView>
+            <View style={styles.resultActions}>
+              <TouchableOpacity
+                style={[styles.replayBtn, { backgroundColor: "#aaff0022", borderColor: "#aaff0044" }]}
+                onPress={() => { if (speaking) stopSpeaking(); else speak(boatSummaryNarration); }}
+              >
+                <Feather name={speaking ? "volume-x" : "volume-2"} size={14} color="#aaff00" />
+                <Text style={[styles.replayText, { color: "#aaff00" }]}>{speaking ? "Stop" : "🎤 Replay"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.clearBtn, { borderColor: "#aaff0033" }]}
+                onPress={() => { setBoatSummaryNarration(null); stopSpeaking(); }}
+              >
+                <Feather name="x" size={14} color="#aaff0088" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Standard result overlay (non-boat mode) */}
         {!boatMode && result && !scanning && (
