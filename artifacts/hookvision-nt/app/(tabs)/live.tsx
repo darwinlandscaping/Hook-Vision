@@ -822,28 +822,36 @@ export default function LiveScreen() {
       if (resp.ok) {
         const raw: unknown = await resp.json();
         const d: BoatCycleResponse = (typeof raw === "object" && raw !== null) ? raw as BoatCycleResponse : {};
-        cycleResult = {
+        const toStrArr = (v: unknown): string[] =>
+          Array.isArray(v) ? (v as unknown[]).filter((s): s is string => typeof s === "string") : [];
+        const toStrMatrix = (v: unknown): string[][] =>
+          Array.isArray(v)
+            ? (v as unknown[]).filter(Array.isArray).map((z) =>
+                (z as unknown[]).filter((s): s is string => typeof s === "string"))
+            : [];
+        const cr = {
           fishCount: d.fishCount ?? 0, depth: d.depthRange ?? "unknown", distance: "unknown",
           species: d.species ?? "Unknown", confidence: d.confidence ?? 0, suggestion: d.suggestion ?? "",
           lure: d.lure ?? "", lureType: d.lureType ?? "", technique: d.technique ?? "",
           crocAlert: d.crocAlert ?? false, crocWarning: d.crocWarning ?? null, birdAlert: d.birdAlert ?? null,
-          barraPct: d.barraPct ?? null, targetCount: d.targetCount ?? null, targetType: d.targetType ?? "none",
+          barraPct: d.barraPct ?? undefined, targetCount: d.targetCount ?? undefined, targetType: d.targetType ?? "none",
           waterTemp: d.waterTemp ?? "", bottomType: d.bottomType ?? "",
-          detectedZones: Array.isArray(d.activeZones) ? d.activeZones : [],
-          frameZones: Array.isArray(d.frameZones) ? d.frameZones : [],
+          detectedZones: toStrArr(d.activeZones),
+          frameZones: toStrMatrix(d.frameZones),
           movementVector: d.movementVector ?? "unknown",
-          movingZones: Array.isArray(d.movingZones) ? d.movingZones : [],
-          staticZones: Array.isArray(d.staticZones) ? d.staticZones : [],
+          movingZones: toStrArr(d.movingZones),
+          staticZones: toStrArr(d.staticZones),
           movingTargetCount: d.movingTargetCount ?? 0,
           sonarType: d.sonarType ?? "unknown",
         };
-        if (cycleResult.crocAlert) setCrocAlertActive(true);
-        setResult(cycleResult);
-        setDetectedZones(cycleResult.detectedZones ?? []);
-        setFrameZones(cycleResult.frameZones ?? []);
-        setMovementVector(cycleResult.movementVector ?? "unknown");
-        setMovingZones(cycleResult.movingZones ?? []);
-        setStaticZones(cycleResult.staticZones ?? []);
+        cycleResult = cr;
+        if (cr.crocAlert) setCrocAlertActive(true);
+        setResult(cr);
+        setDetectedZones(cr.detectedZones);
+        setFrameZones(cr.frameZones);
+        setMovementVector(cr.movementVector);
+        setMovingZones(cr.movingZones);
+        setStaticZones(cr.staticZones);
       }
     } catch { /* cycleResult stays null */ }
     if (!isBoatLiveRef.current) return;
