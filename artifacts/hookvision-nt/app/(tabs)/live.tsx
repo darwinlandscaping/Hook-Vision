@@ -735,7 +735,7 @@ export default function LiveScreen() {
           body: JSON.stringify({ imageBase64: fr.base64 }),
         }, 15_000);
         if (!resp.ok) return { ...fr, result: null as FishAnalysis|null, score: 0 };
-        const d = await resp.json() as Record<string, unknown>;
+        const d = await resp.json() as Record<string, any>;
         const result: FishAnalysis = {
           fishCount: d.fishCount ?? 0, depth: d.depth ?? "unknown", distance: d.distance ?? "unknown",
           species: d.species ?? "Unknown", confidence: d.confidence ?? 0, suggestion: d.suggestion ?? "",

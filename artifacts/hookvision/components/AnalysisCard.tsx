@@ -28,6 +28,7 @@ interface FishAnalysis {
   crocAlert?: boolean;
   crocWarning?: string | null;
   archReasoning?: string;
+  archType?: string;
 }
 
 interface AnalysisCardProps {

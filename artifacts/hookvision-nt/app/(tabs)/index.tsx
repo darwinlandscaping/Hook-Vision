@@ -1335,21 +1335,15 @@ export default function HomeScreen() {
         const summary = buildBoatSummary(boatHistoryRef.current, character);
         boatHistoryRef.current = [];
         setSummaryText(summary);
-        if (autoSpeak) {
-          stopSpeaking();
-          speak(summary);
-        }
+        stopSpeaking();
+        speak(summary);
       } else {
-        if (autoSpeak) {
-          stopSpeaking();
-          speak(buildBoatSpeech(analysis, character));
-        }
-      }
-    } else {
-      if (autoSpeak) {
         stopSpeaking();
         speak(buildBoatSpeech(analysis, character));
       }
+    } else {
+      stopSpeaking();
+      speak(buildBoatSpeech(analysis, character));
     }
   }, [analysis, scanSource]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1877,20 +1871,18 @@ export default function HomeScreen() {
             <Text style={{ color: "#ffffffdd", fontSize: 13, lineHeight: 20 }}>
               {summaryText}
             </Text>
-            {autoSpeak && (
-              <TouchableOpacity
-                style={{
-                  flexDirection: "row", alignItems: "center", gap: 6,
-                  alignSelf: "flex-start",
-                  backgroundColor: "#ffd70018", borderWidth: 1, borderColor: "#ffd70044",
-                  borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
-                }}
-                onPress={() => { stopSpeaking(); speak(summaryText); }}
-              >
-                <Feather name="volume-2" size={13} color="#ffd700" />
-                <Text style={{ color: "#ffd700", fontSize: 12, fontWeight: "600" }}>Replay Summary</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={{
+                flexDirection: "row", alignItems: "center", gap: 6,
+                alignSelf: "flex-start",
+                backgroundColor: "#ffd70018", borderWidth: 1, borderColor: "#ffd70044",
+                borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+              }}
+              onPress={() => { stopSpeaking(); speak(summaryText); }}
+            >
+              <Feather name="volume-2" size={13} color="#ffd700" />
+              <Text style={{ color: "#ffd700", fontSize: 12, fontWeight: "600" }}>Replay Summary</Text>
+            </TouchableOpacity>
           </View>
         )}
 
