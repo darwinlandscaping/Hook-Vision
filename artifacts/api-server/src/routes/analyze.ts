@@ -5,79 +5,49 @@ import { getSonarFewShotRefs } from "../lib/sonarBrain.js";
 
 const router = Router();
 
-// ─── SYSTEM PROMPT (~200 tokens) ─────────────────────────────────────────────
-const SYS = `Expert sonar fish-ID AI. Rules in strict order:
+// ─── SYSTEM PROMPT ────────────────────────────────────────────────────────────
+const SYS = `Expert barramundi sonar AI. Evaluate LIVE SONAR first, then traditional arch rules.
 
-LIVE SONAR SCREEN DETECTION — CHECK FIRST BEFORE ANYTHING ELSE:
-If the image shows a LIVE SPATIAL SONAR display (Garmin LiveScope, Humminbird MEGA Live, Lowrance ActiveTarget, Simrad) rather than traditional 2D sonar, apply LIVE SONAR rules instead of arch rules:
-• Live sonar tells: dark background (near-black, dark green, dark navy), fish appear as SOLID BRIGHT OVAL/BLOB BODIES (NOT U-shaped arches), acoustic SHADOW extends below/behind each fish body, no scrolling time axis, brand UI chrome visible (orange = Humminbird, green = Garmin, navy = Lowrance/Simrad)
-• On live sonar fishCount = number of distinct bright OVAL FISH BODIES visible on screen — COUNT EVERY VISIBLE BRIGHT OVAL
-• BARRA on live sonar: LARGE ELONGATED OVAL (3.5–4.5:1 L:H ratio), LONG DISTINCT acoustic shadow (as long as or longer than the body), near structure or in open water, solo or small group. confidence 80%+ if large oval + long shadow.
-• THREADFIN on live sonar: SLENDER oval (4.5:1+), SHORT shadow (0.3–0.5× body), school of 5–20+ all moving same direction, away from hard structure.
-• JACK on live sonar: COMPACT oval (2:1 L:H), body FUSED into structure echo (no clean edge), minimal shadow.
-• SCHOOL of 20 large elongated ovals = Barramundi aggregation or Threadfin school — use shadow length and structure proximity to separate.
-• CRITICAL: If you see ANY bright oval bodies on a dark sonar background, that is a FISH. Do NOT return fishCount=0 when bright bodies are clearly visible.
-• Set sonarMode to the matching live sonar mode (live-scope|mega-live|activetarget-forward etc). Set archType="live-sonar-body-shape".
+══ LIVE SONAR IDENTIFICATION — CHECK BEFORE ARCH RULES ══
+Tell-signs: dark background (near-black/dark-grey/dark-green), fish=SOLID BRIGHT BODIES (NOT U-arches), acoustic shadows, no horizontal scrolling time axis.
+Brand UI: orange chrome=Humminbird MEGA Live · bright green=Garmin LiveScope · dark navy=Lowrance ActiveTarget/Simrad.
 
-TOP-VIEW: No time axis, fish as ovals/dots, shadow to side → top-view mode. Large oval+wings+side-shadow=Barra. Skip arch steps.
+DOWNSCOPE LIVE (LiveScope Down / MEGA Live Down / ActiveTarget Down):
+• BARRA: ELONGATED OVAL 3.5–4.5:1 length:height. LONG acoustic shadow (≥1.5× body length) extending directly below. Anterior third BRIGHTER (swim bladder location). Large barra 80cm+: shadow 2–3× body length — shadow length is the SINGLE BEST large-barra indicator. Near hard structure (logs/rocks/pylons) OR open ambush spot. Body interior UNIFORMLY bright (not hollow). Solo or pair. Confidence: elongated oval+long shadow=80%; +hard structure=90%; +solo=95%.
+• THREADFIN LIVE: slender oval 4.5:1+, SHORT shadow 0.3–0.5× body, SCHOOL of 5–20+ same depth same direction — school formation is the #1 Threadfin tell.
+• JACK LIVE: compact oval ~2:1, body echo MERGES INTO structure return, near-zero movement.
 
-ARCH BRIGHTNESS:
-• Tier1 red/orange/white = Barra, Fingermark, Jack, Threadfin, Jewfish (big swim bladder)
-• Tier2 yellow/green = Coral Trout, Queenfish
-• Tier3 faint = GT, Mackerel, Flathead
-Faint arch ≠ barra. Bright arch ≠ GT/mackerel.
+FRONTSCOPE / FORWARD SCAN (LiveScope Fwd/Perspective · MEGA Live Side · ActiveTarget Fwd):
+• BARRA face-on (head pointing at beam): bright TEARDROP or compact oval, ANTERIOR end markedly brighter (bladder glow), faint narrowing tail echo trailing behind.
+• BARRA lateral (broadside to beam): LONG BRIGHT TORPEDO, tapered both ends, head end distinctly brighter. Pectoral fins may produce small side-shadow wings. Long shadow trailing behind toward beam far-edge. Body L:H ≥3.5:1.
+• BARRA FRONTSCOPE BEHAVIOUR (critical tell): Stationary or slow patrol near bank/log/rock edge. Signature: SUDDEN BURST — body brightens and elongates during feeding dart, then returns to exact same structure spot. If you observe this pattern, confidence ≥ 90%.
+• THREADFIN FORWARD: always school 5–20+, mid-water, steady directional movement, uniform spacing.
+• JACK FORWARD: short compact echo fused inside structure, near-zero movement.
+• CATFISH: wide flat kite/triangle shape near bottom — NOT elongated torpedo.
 
-SHADOW VOID: Dark void directly BELOW arch = large dense swim bladder = Barra/Jewfish/big predator. Confidence 85%+.
-• Threadfin have a physostomous bladder but it is SMALLER → weak or NO shadow void. If arches are Tier1 bright but shadow void is absent, lean Threadfin not Barra.
+TOP-VIEW (Perspective / 360): No time axis, fish as ovals/dots, shadows to side. Large oval + long side-shadow = Barra.
 
-BARRA vs THREADFIN SALMON — critical separation (they co-habit and feed together):
-• BARRA: Thick arch, ON or within 1m of hard structure (snag/rock/pylon), SOLO or 2-3 max, strong shadow void below, stationary/slow.
-• THREADFIN: Thinner arch, MID-COLUMN floating over SOFT BOTTOM (mud/sand/tidal flat), SCHOOL of 5-30+ arches all at SAME DEPTH, weak/no shadow void, all drifting same direction.
-• Same depth band (2-8m) so depth alone cannot separate them — use structure attachment + school count + shadow void.
-• SAME-DEPTH HORIZONTAL BAND of multiple arches = schooling species (Threadfin, not Barra aggregation).
-• 6 arches mid-column over mud = Threadfin school. 6 arches ON structure with shadow voids = Barra aggregation.
+══ TRADITIONAL 2D ARCH RULES ══
+Arch brightness: Tier1 red/orange/white=Barra/Fingermark/Jack/Threadfin/Jewfish · Tier2 yellow/green=Coral Trout/Queenfish · Tier3 faint=GT/Mackerel/Flathead.
+SHADOW VOID (dark zone directly below arch) = large dense swim bladder = Barra/Jewfish. Confidence 85%+. Threadfin bladder is smaller → weak/no void. Tier1 bright + no void → lean Threadfin.
+BARRA vs THREADFIN: Barra=thick arch ON hard structure solo+shadow void; Threadfin=thinner arch MID-COLUMN SCHOOL over soft bottom same depth no void. School of 6+ at same depth over mud = Threadfin.
+BARRA vs JACK: Jack=arch BURIED INSIDE or EMERGING FROM structure echo (half-arch, only top curve visible above structure return). Barra=COMPLETE arch ON TOP of or beside structure — clear fish/structure separation.
+FINGERMARK: deep-bodied arch L:H 2.5-3:1 (rounder/taller than barra), 1-4m ABOVE rubble/reef bottom, loose group 2-8 fish, 5-25m depth. Key tell: fish arches with ROUGH ROCKY BOTTOM clearly visible below and a clear water gap.
+LONE ARCH: 1-2 arches = RAISE confidence. Lone+hard structure=70%; lone+shadow void=85%+.
 
-MANGROVE JACK (Lutjanus argentimaculatus) — critical separation from Barra:
-• JACK: Arch is BURIED INSIDE or EMERGING FROM the structure echo — the bottom half of the arch merges with the structure/bottom return. Often only the TOP CURVE of the arch is visible above the structure echo.
-• BARRA vs JACK: Both are Tier 1 bright, both tight to hard structure. The ONLY reliable separator is arch position within the structure echo.
-  - Barra: COMPLETE full arch sitting ON TOP of or beside the structure echo. Clear separation between fish and structure.
-  - Jack: HALF-ARCH or PARTIAL arch — the arch begins inside the structure echo and only the top portion protrudes. Fish is literally inside the snag/crevice/overhang.
-• Jack body plan: Stocky, compact (L:H ~2:1) — almost square compared to Barra's elongated shape.
-• Jack habitat: Mangrove root snags, submerged timber, bridge pylons, rock overhangs, undercut banks.
-• Movement: Near-zero — true ambush predator. If the arch position in the structure echo is completely static across multiple sonar sweeps = Jack.
-• Count: Solo or 2-3 fish max, always within one piece of structure (not spread out).
-• Depth: 0-12m, most common 2-8m — same depth band as Barra, so depth cannot separate them.
-• Shadow void: Often absent or obscured because the surrounding structure echo swallows it.
-
-FINGERMARK (Lutjanus johnii — Golden Snapper) — critical separation:
-• FINGERMARK: Deep-bodied arch (L:H ~2.5-3:1, rounder/taller than barra's elongated arch), hovering 1-4m ABOVE rubble/rock/reef bottom, LOOSE GROUP of 2-8 fish, moderate shadow void, deeper water 5-25m.
-• KEY TELL: Fish arches floating in mid-lower column with ROUGH RUBBLE/ROCKY BOTTOM ECHO clearly visible below them. Gap between fish and bottom = fingermark hover zone.
-• BARRA vs FINGERMARK: Barra ON structure (touching); Fingermark ABOVE it with clear water gap. Barra = snags/pylons; Fingermark = rubble/reef patches.
-• DEPTH CLUE: 5-12m over rubble = Fingermark likely. 12-25m deep reef = strongly Fingermark/Jewfish. Under 5m on snag = strongly Barra.
-• Fingermark arch is DEEP-BODIED (shorter/rounder shape) vs Barra's elongated arch — reflects their snapper body plan.
-• Shadow void: PRESENT but smaller than Barra (physostomous bladder, smaller fish).
-
-ARCH POSITION:
-• ON hard structure (snag/pylon), complete full arch, solo + shadow void = Barra (85%+)
-• ON hard structure, complete full arch, solo, no void = Barra (70%)
-• HALF-ARCH or arch STARTING INSIDE structure echo = Mangrove Jack
-• 1-4m ABOVE rubble/reef, loose group 2-8, 5-25m depth = Fingermark
-• Mid-column, school 5-30+, same depth, soft bottom = Threadfin Salmon
-• Deep tidal channel, lone, 15m+ = Jewfish
-
-LONE ARCH: 1-2 arches = RAISE confidence. Barra are solitary. Lone+hard bottom=70%, lone+shadow=85%+.
-
-CROC: crocAlert=true ONLY if filled horizontal torpedo blob 0-3m, max brightness, wider than any fish. Never confuse bright barra arch for croc.
-
+CROC: crocAlert=true ONLY for filled horizontal torpedo 0-3m, MAX brightness, wider than any fish.
 DEPTH: 0-5m=Barra/Jack/GT/Threadfin; 5-12m=Barra/Fingermark/Jack; 12-25m=Fingermark/Jewfish; 25m+=Fingermark/Red Emperor.
 
-MANDATORY: species always required. If no fish: species="No fish detected",fishCount=0,confidence=0.`;
+GRID ZONES: The sonar image is divided into a 4×4 grid — columns A–D (left→right) and rows 1–4 (top→bottom). Identify which zones contain fish echoes/bodies and report them in detectedZones[]. Empty array if no fish.
 
-// ─── OUTPUT SPEC (~160 tokens — only fields the app reads) ────────────────
-const OUT = `Return ONLY a single valid JSON object, no markdown, nothing outside braces.
+FISH COUNT on live sonar = count EVERY distinct bright oval/torpedo body. Include partially visible bodies at screen edges. Never return fishCount=0 when bright oval bodies are clearly visible.
+MANDATORY: species always required. No fish: species="No fish detected",fishCount=0,confidence=0,detectedZones=[].`;
+
+// ─── OUTPUT SPEC ──────────────────────────────────────────────────────────────
+const OUT = `Return ONLY a single valid JSON object, no markdown, no text outside braces.
 
 Fields (all required):
-species(string) confidence(0-100 int) fishCount(int) depth(string e.g."6.5m") bottomType(string) sonarBrand(string) sonarModel(string) sonarMode(one of:traditional-2d|live-scope|split-screen-both|live-spatial|mega-live|mega-360|perspective-top-view|side-imaging) bladderShape(string) fishMovement(string) lure(specific name+size) lureType(one of:surface_popper|hardbody|bibless_minnow|soft_plastic|stickbait|metal_slug|slow_jig|frog|live_bait) technique(string) rig(string) suggestion(2 sentences: where to cast + lure action) crocAlert(bool) crocWarning(string|null) archType(string) archReasoning(what you saw + why this ID)`;
+species(string) confidence(0-100 int) fishCount(int) depth(string e.g."6.5m") bottomType(string) sonarBrand(string) sonarModel(string) sonarMode(one of:traditional-2d|live-scope|split-screen-both|live-spatial|mega-live|mega-360|perspective-top-view|side-imaging) bladderShape(string) fishMovement(string) lure(specific name+size) lureType(one of:surface_popper|hardbody|bibless_minnow|soft_plastic|stickbait|metal_slug|slow_jig|frog|live_bait) technique(string) rig(string) suggestion(2 sentences: where to cast + lure action) crocAlert(bool) crocWarning(string|null) archType(string) archReasoning(what you saw + why this ID) detectedZones(array of grid zone codes e.g.["A2","C3"] or [] if no fish)`;
 
 function detectMimeType(b64: string): "image/jpeg" | "image/png" | "image/webp" {
   const p = b64.slice(0, 8);
@@ -88,7 +58,7 @@ function detectMimeType(b64: string): "image/jpeg" | "image/png" | "image/webp" 
 }
 
 router.post("/analyze", async (req, res) => {
-  const { imageBase64 } = req.body as { imageBase64?: string };
+  const { imageBase64, cropBase64 } = req.body as { imageBase64?: string; cropBase64?: string };
   if (!imageBase64) { res.status(400).json({ error: "imageBase64 is required" }); return; }
 
   try {
@@ -143,7 +113,15 @@ router.post("/analyze", async (req, res) => {
       stream: true,
       messages: [
         { role: "system", content: SYS },
-        { role: "user", content: [...refBlocks, imgHigh, { type: "text", text: OUT }] as any },
+        { role: "user", content: [
+            ...refBlocks,
+            imgHigh,
+            ...(cropBase64 ? [
+              { type: "image_url" as const, image_url: { url: `data:${detectMimeType(cropBase64)};base64,${cropBase64}`, detail: "high" as const } },
+              { type: "text" as const, text: "↑ CENTER ZOOM CROP of the same frame — use this for detecting smaller or partially visible fish shapes near the centre." },
+            ] : []),
+            { type: "text" as const, text: OUT },
+          ] as any },
       ],
     });
 

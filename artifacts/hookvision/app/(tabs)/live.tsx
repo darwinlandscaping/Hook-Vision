@@ -132,6 +132,7 @@ interface FishAnalysis {
   barraPct?: number;
   waterTemp?: string;
   bottomType?: string;
+  detectedZones?: string[];
 }
 
 const SPECIES_SLANG: Record<string, string> = {
@@ -612,6 +613,46 @@ function BoatModeDashboard({
   );
 }
 
+// ─── Boat Mode Fish Detection Grid ────────────────────────────────────────────
+const _GRID_COLS = ["A", "B", "C", "D"] as const;
+const _GRID_ROWS = ["1", "2", "3", "4"] as const;
+
+function BoatGrid({ detectedZones }: { detectedZones: string[] }) {
+  const activeSet = new Set(detectedZones);
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {(["25%", "50%", "75%"] as const).map(pct => (
+        <View key={`h${pct}`} style={{ position: "absolute", left: 0, right: 0, top: pct, height: 1, backgroundColor: "#FF6B0066" }} />
+      ))}
+      {(["25%", "50%", "75%"] as const).map(pct => (
+        <View key={`v${pct}`} style={{ position: "absolute", top: 0, bottom: 0, left: pct, width: 1, backgroundColor: "#FF6B0066" }} />
+      ))}
+      {_GRID_ROWS.map((row, ri) => _GRID_COLS.map((col, ci) => {
+        const zone = `${col}${row}`;
+        const active = activeSet.has(zone);
+        return (
+          <View key={zone} style={{
+            position: "absolute",
+            left: `${ci * 25}%` as `${number}%`, width: "25%",
+            top: `${ri * 25}%` as `${number}%`, height: "25%",
+            backgroundColor: active ? "#FF8C0022" : "transparent",
+            borderWidth: active ? 1 : 0,
+            borderColor: "#FF8C00AA",
+          }}>
+            <Text style={{ color: active ? "#FF9500EE" : "#FF6B0040", fontSize: 9, fontWeight: "700", margin: 3, letterSpacing: 0.5 }}>
+              {zone}
+            </Text>
+          </View>
+        );
+      }))}
+      <View style={{ position: "absolute", top: 6, left: 6, width: 20, height: 20, borderTopWidth: 2, borderLeftWidth: 2, borderColor: "#FF8C00CC" }} />
+      <View style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#FF8C00CC" }} />
+      <View style={{ position: "absolute", bottom: 6, left: 6, width: 20, height: 20, borderBottomWidth: 2, borderLeftWidth: 2, borderColor: "#FF8C00CC" }} />
+      <View style={{ position: "absolute", bottom: 6, right: 6, width: 20, height: 20, borderBottomWidth: 2, borderRightWidth: 2, borderColor: "#FF8C00CC" }} />
+    </View>
+  );
+}
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function LiveScreen() {
   const colors   = useColors();
@@ -634,6 +675,7 @@ export default function LiveScreen() {
   const [boatMode, setBoatMode]                     = useState(false);
   const [boatLive, setBoatLive]                     = useState(false);
   const [boatPhase, setBoatPhase]                   = useState<"idle"|"capturing"|"analyzing"|"waiting">("idle");
+  const [detectedZones, setDetectedZones]           = useState<string[]>([]);
   const [boatCycleNum, setBoatCycleNum]             = useState(0);
   const [boatCaptureCount, setBoatCaptureCount]     = useState(0);
   const [boatWaitRemaining, setBoatWaitRemaining]   = useState(0);
@@ -767,7 +809,7 @@ export default function LiveScreen() {
         return photo?.base64 ? { base64: photo.base64, uri: photo.uri } : null;
       }
       if (!nativeCamRef.current) return null;
-      const photo = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.75, skipProcessing: true });
+      const photo = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.92, skipProcessing: true });
       return photo?.base64 ? { base64: photo.base64, uri: photo.uri ?? "" } : null;
     } catch { return null; }
   }, [cam2Connected, cam2]);
@@ -798,6 +840,7 @@ export default function LiveScreen() {
     setBoatPhase("capturing");
     setBoatCaptureCount(0);
     setCrocAlertActive(false);
+    setDetectedZones([]);
 
     for (let i = 0; i < BOAT_CAPTURE_COUNT; i++) {
       if (!isBoatLiveRef.current) return;
@@ -837,6 +880,7 @@ export default function LiveScreen() {
           lure: d.lure ?? d.recommendedLure ?? "", lureType: d.lureType ?? "", technique: d.technique ?? "",
           crocAlert: d.crocAlert ?? false, crocWarning: d.crocWarning ?? null, birdAlert: d.birdAlert ?? null,
           barraPct: d.barraPct, archCount: d.archCount, waterTemp: d.waterTemp, bottomType: d.bottomType,
+          detectedZones: Array.isArray(d.detectedZones) ? d.detectedZones : [],
         };
         const score = (result.fishCount ?? 0) * 10 + (result.confidence ?? 0) * 100;
         if (result.crocAlert) setCrocAlertActive(true);
@@ -854,7 +898,7 @@ export default function LiveScreen() {
     // Pick best 2 by score (fishCount × 10 + confidence × 100)
     const sorted = [...analysed].sort((a, b) => b.score - a.score);
     const best2  = sorted.slice(0, 2);
-    if (best2[0]?.result) setResult(best2[0].result);
+    if (best2[0]?.result) { setResult(best2[0].result); setDetectedZones(best2[0].result.detectedZones ?? []); }
 
     // Save only best 2 to gallery
     if (MediaLibrary && Platform.OS !== "web") {
@@ -1159,6 +1203,11 @@ export default function LiveScreen() {
         {/* Boat mode tint */}
         {boatMode && (
           <View style={[StyleSheet.absoluteFill, styles.boatTint]} pointerEvents="none" />
+        )}
+
+        {/* Boat mode fish-detection grid */}
+        {boatMode && boatLive && (
+          <BoatGrid detectedZones={detectedZones} />
         )}
 
         {/* Top bar */}
