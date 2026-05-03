@@ -1,8 +1,6 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getModel } from "../lib/models.js";
-import { getSonarFewShotRefs } from "../lib/sonarBrain.js";
-import { getFewShotRefs } from "../lib/barraLibrary.js";
 
 const router = Router();
 
@@ -171,56 +169,19 @@ router.post("/boat-cycle", async (req, res) => {
   const clipped = frames.slice(0, 5);
 
   try {
-    // ── Reference images: sonar brain refs + barra body (cross-modal) ────────
-    const sonarRefs = getSonarFewShotRefs();
-    const barraPhotos = getFewShotRefs(2);
-
-    // Build content array using liveanalyze.ts pattern — no cast needed
+    // ── Frame images only — no reference injection (arch refs confuse live sonar) ──
     const content: ContentPart[] = [];
 
-    // 1. Barra body anatomy (cross-modal bridge: body shape → sonar return)
-    const bodyRef = barraPhotos.find(r => r.thumbBase64);
-    if (bodyRef?.thumbBase64) {
-      content.push({ type: "text", text: "BARRAMUNDI BODY ANATOMY (cross-modal — connect body shape to expected sonar return):" });
-      content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${bodyRef.thumbBase64}`, detail: "low" } });
-      content.push({ type: "text", text: `↑ Confirmed barramundi — ${bodyRef.location}. Note the deep laterally-compressed body and large swim bladder position → thick bright arch + acoustic shadow void on sonar.` });
-    }
-
-    // 2. Confirmed barra sonar arch references (positive examples)
-    const positiveRefs = sonarRefs.filter(r => r.isPositive).slice(0, 2);
-    if (positiveRefs.length > 0) {
-      content.push({ type: "text", text: `CONFIRMED BARRAMUNDI SONAR ARCH REFERENCES (${positiveRefs.length} expert-labeled images — study arch shape, thickness, shadow void):` });
-      for (const ref of positiveRefs) {
-        content.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
-        content.push({ type: "text", text: `↑ ${ref.brand} — ${ref.label.split("\n")[0]}` });
-      }
-    }
-
-    // 3. One contrast reference (NOT barra — shows threadfin/other false-positive)
-    const negativeRef = sonarRefs.find(r => !r.isPositive);
-    if (negativeRef) {
-      content.push({ type: "text", text: "CONTRAST — NOT BARRAMUNDI (study the differences vs confirmed barra above):" });
-      content.push({ type: "image_url", image_url: { url: `data:${negativeRef.mimeType};base64,${negativeRef.base64}`, detail: "low" } });
-      content.push({ type: "text", text: `↑ ${negativeRef.brand} — ${negativeRef.label.split("\n")[0]}` });
-    }
-
-    if (content.length > 0) {
-      content.push({ type: "text", text: `── END REFERENCES. Now analyse the ${clipped.length} sequential sonar frames below (oldest first):` });
-    }
-
-    // ── Frame images (oldest → newest, last frame at full resolution) ─────────
     for (let i = 0; i < clipped.length; i++) {
       const b64 = clipped[i]!;
-      const isLast = i === clipped.length - 1;
-      const detail: "high" | "low" = isLast ? "high" : "low";
-      content.push({ type: "text", text: `Frame ${i + 1} of ${clipped.length}${isLast ? " [FULL RESOLUTION — scan every pixel for returns]" : ""}:` });
-      content.push({ type: "image_url", image_url: { url: `data:${detectMimeType(b64)};base64,${b64}`, detail } });
+      content.push({ type: "text", text: `Frame ${i + 1} of ${clipped.length}:` });
+      content.push({ type: "image_url", image_url: { url: `data:${detectMimeType(b64)};base64,${b64}`, detail: "low" } });
     }
 
     content.push({ type: "text", text: `Report ALL zones containing ANY sonar return in each frame. Identify movement (zones that shift or appear briefly = fish). Return JSON matching schema:\n${CYCLE_SCHEMA}` });
 
     const completion = await openai.chat.completions.create({
-      model: getModel("mid"),
+      model: getModel("top"),
       max_completion_tokens: 800,
       stream: false,
       messages: [

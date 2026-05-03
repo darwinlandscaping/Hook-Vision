@@ -792,7 +792,7 @@ export default function LiveScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ frames: frames.map(f => f.base64) }),
-      }, 30_000);
+      }, 60_000);
       if (resp.ok) {
         const d = await resp.json() as Record<string, any>;
         cycleResult = {
