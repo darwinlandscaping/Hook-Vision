@@ -242,9 +242,8 @@ router.post("/boat-cycle", async (req, res) => {
       messages: [
         { role: "system", content: CYCLE_SYS },
         {
-          role: "user",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          content: [...refContent, ...imgContent, { type: "text", text: `Identify sonar type, detect movement, report movingZones vs staticZones across ${clipped.length} frames. Return JSON matching schema:\n${CYCLE_SCHEMA}` }] as any,
+          role: "user" as const,
+          content: [...refContent, ...imgContent, { type: "text" as const, text: `Identify sonar type, detect movement, report movingZones vs staticZones across ${clipped.length} frames. Return JSON matching schema:\n${CYCLE_SCHEMA}` }] as any,
         },
       ],
     });
