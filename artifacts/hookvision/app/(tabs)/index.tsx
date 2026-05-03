@@ -1346,14 +1346,14 @@ export default function HomeScreen() {
         boatHistoryRef.current = [];
         setSummaryText(summary);
         stopSpeaking();
-        speak(summary);
+        autoSpeak(summary);
       } else {
         stopSpeaking();
-        speak(buildBoatSpeech(analysis, character));
+        autoSpeak(buildBoatSpeech(analysis, character));
       }
     } else {
       stopSpeaking();
-      speak(buildBoatSpeech(analysis, character));
+      autoSpeak(buildBoatSpeech(analysis, character));
     }
   }, [analysis, scanSource]); // eslint-disable-line react-hooks/exhaustive-deps
 

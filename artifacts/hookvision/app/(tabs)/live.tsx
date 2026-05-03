@@ -29,6 +29,32 @@ import Animated, {
 import { HVHeader } from "@/components/HVHeader";
 import { SonarPulse } from "@/components/SonarPulse";
 
+interface BoatCycleResponse {
+  fishCount?: number;
+  depthRange?: string;
+  species?: string;
+  confidence?: number;
+  suggestion?: string;
+  lure?: string;
+  lureType?: string;
+  technique?: string;
+  crocAlert?: boolean;
+  crocWarning?: string | null;
+  birdAlert?: string | null;
+  barraPct?: number | null;
+  targetCount?: number | null;
+  targetType?: string;
+  waterTemp?: string;
+  bottomType?: string;
+  activeZones?: unknown[];
+  frameZones?: unknown[];
+  movementVector?: string;
+  movingZones?: unknown[];
+  staticZones?: unknown[];
+  movingTargetCount?: number;
+  sonarType?: string;
+}
+
 // Retries a fetch through transient network errors (e.g. Starlink handoff dropouts).
 // Uses capped linear back-off so the device waits long enough for the satellite
 // connection to re-establish (typically 1–10 s) without waiting forever.
@@ -944,7 +970,8 @@ export default function LiveScreen() {
         body: JSON.stringify({ frames: frames.map(f => f.base64) }),
       }, 60_000);
       if (resp.ok) {
-        const d = await resp.json() as Record<string, any>;
+        const raw: unknown = await resp.json();
+        const d: BoatCycleResponse = (typeof raw === "object" && raw !== null) ? raw as BoatCycleResponse : {};
         cycleResult = {
           fishCount: d.fishCount ?? 0, depth: d.depthRange ?? "unknown", distance: "unknown",
           species: d.species ?? "Unknown", confidence: d.confidence ?? 0, suggestion: d.suggestion ?? "",
