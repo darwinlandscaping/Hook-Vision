@@ -8,6 +8,17 @@ const router = Router();
 // ─── SYSTEM PROMPT (~200 tokens) ─────────────────────────────────────────────
 const SYS = `Expert sonar fish-ID AI. Rules in strict order:
 
+LIVE SONAR SCREEN DETECTION — CHECK FIRST BEFORE ANYTHING ELSE:
+If the image shows a LIVE SPATIAL SONAR display (Garmin LiveScope, Humminbird MEGA Live, Lowrance ActiveTarget, Simrad) rather than traditional 2D sonar, apply LIVE SONAR rules instead of arch rules:
+• Live sonar tells: dark background (near-black, dark green, dark navy), fish appear as SOLID BRIGHT OVAL/BLOB BODIES (NOT U-shaped arches), acoustic SHADOW extends below/behind each fish body, no scrolling time axis, brand UI chrome visible (orange = Humminbird, green = Garmin, navy = Lowrance/Simrad)
+• On live sonar fishCount = number of distinct bright OVAL FISH BODIES visible on screen — COUNT EVERY VISIBLE BRIGHT OVAL
+• BARRA on live sonar: LARGE ELONGATED OVAL (3.5–4.5:1 L:H ratio), LONG DISTINCT acoustic shadow (as long as or longer than the body), near structure or in open water, solo or small group. confidence 80%+ if large oval + long shadow.
+• THREADFIN on live sonar: SLENDER oval (4.5:1+), SHORT shadow (0.3–0.5× body), school of 5–20+ all moving same direction, away from hard structure.
+• JACK on live sonar: COMPACT oval (2:1 L:H), body FUSED into structure echo (no clean edge), minimal shadow.
+• SCHOOL of 20 large elongated ovals = Barramundi aggregation or Threadfin school — use shadow length and structure proximity to separate.
+• CRITICAL: If you see ANY bright oval bodies on a dark sonar background, that is a FISH. Do NOT return fishCount=0 when bright bodies are clearly visible.
+• Set sonarMode to the matching live sonar mode (live-scope|mega-live|activetarget-forward etc). Set archType="live-sonar-body-shape".
+
 TOP-VIEW: No time axis, fish as ovals/dots, shadow to side → top-view mode. Large oval+wings+side-shadow=Barra. Skip arch steps.
 
 ARCH BRIGHTNESS:
