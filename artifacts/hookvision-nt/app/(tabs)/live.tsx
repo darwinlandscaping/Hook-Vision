@@ -164,6 +164,10 @@ interface FishAnalysis {
   detectedZones?: string[];
   frameZones?: string[][];
   movementVector?: string;
+  movingZones?: string[];
+  staticZones?: string[];
+  movingTargetCount?: number;
+  sonarType?: string;
 }
 
 const SPECIES_SLANG: Record<string, string> = {
@@ -499,11 +503,15 @@ function BoatModeDashboard({
 const _GRID_COLS = ["A", "B", "C", "D"] as const;
 const _GRID_ROWS = ["1", "2", "3", "4"] as const;
 
-function BoatGrid({ detectedZones, frameZones, movementVector }: {
+function BoatGrid({ detectedZones, frameZones, movementVector, movingZones, staticZones }: {
   detectedZones: string[];
   frameZones?: string[][];
   movementVector?: string;
+  movingZones?: string[];
+  staticZones?: string[];
 }) {
+  const movingSet = new Set(movingZones ?? []);
+  const staticSet = new Set(staticZones ?? []);
   const totalFrames = frameZones && frameZones.length > 0 ? frameZones.length : 1;
   const zoneLastFrame = new Map<string, number>();
   if (frameZones && frameZones.length > 0) {
@@ -514,6 +522,7 @@ function BoatGrid({ detectedZones, frameZones, movementVector }: {
   const ARROW: Record<string, string> = {
     left: "←", right: "→", deeper: "↓", shallower: "↑", stationary: "●",
   };
+  const movingCount = movingZones && movingZones.length > 0 ? Math.ceil(movingZones.length / 2) : 0;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {(["25%", "50%", "75%"] as const).map(pct => (
@@ -525,17 +534,35 @@ function BoatGrid({ detectedZones, frameZones, movementVector }: {
       {_GRID_ROWS.map((row, ri) => _GRID_COLS.map((col, ci) => {
         const zone = `${col}${row}`;
         const lastFi = zoneLastFrame.get(zone);
-        const alpha = lastFi !== undefined ? 0.15 + (lastFi / Math.max(totalFrames - 1, 1)) * 0.65 : 0;
+        const frameAlpha = lastFi !== undefined ? 0.15 + (lastFi / Math.max(totalFrames - 1, 1)) * 0.65 : 0;
+        const isMoving = movingSet.has(zone);
+        const isStatic = staticSet.has(zone);
+        let bgColor = "transparent";
+        let borderColor = "transparent";
+        let borderWidth = 0;
+        let labelColor = "#FF6B0030";
+        if (isMoving) {
+          bgColor = "rgba(0,220,100,0.18)";
+          borderColor = "rgba(0,220,100,0.85)";
+          borderWidth = 1.5;
+          labelColor = "rgba(0,255,120,0.95)";
+        } else if (isStatic) {
+          bgColor = "rgba(180,180,180,0.05)";
+          labelColor = "rgba(150,150,150,0.5)";
+        } else if (frameAlpha > 0) {
+          bgColor = `rgba(255,140,0,${(frameAlpha * 0.3).toFixed(2)})`;
+          borderColor = `rgba(255,140,0,${frameAlpha.toFixed(2)})`;
+          borderWidth = frameAlpha > 0.5 ? 1 : 0;
+          labelColor = `rgba(255,165,0,${Math.min(frameAlpha + 0.2, 1).toFixed(2)})`;
+        }
         return (
           <View key={zone} style={{
             position: "absolute",
             left: `${ci * 25}%` as `${number}%`, width: "25%",
             top: `${ri * 25}%` as `${number}%`, height: "25%",
-            backgroundColor: alpha > 0 ? `rgba(255,140,0,${(alpha * 0.3).toFixed(2)})` : "transparent",
-            borderWidth: alpha > 0.5 ? 1 : 0,
-            borderColor: `rgba(255,140,0,${alpha.toFixed(2)})`,
+            backgroundColor: bgColor, borderWidth, borderColor,
           }}>
-            <Text style={{ color: alpha > 0 ? `rgba(255,165,0,${Math.min(alpha + 0.2, 1).toFixed(2)})` : "#FF6B0030", fontSize: 9, fontWeight: "700", margin: 3, letterSpacing: 0.5 }}>
+            <Text style={{ color: labelColor, fontSize: 9, fontWeight: "700", margin: 3, letterSpacing: 0.5 }}>
               {zone}
             </Text>
           </View>
@@ -545,6 +572,11 @@ function BoatGrid({ detectedZones, frameZones, movementVector }: {
       <View style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#FF8C00CC" }} />
       <View style={{ position: "absolute", bottom: 6, left: 6, width: 20, height: 20, borderBottomWidth: 2, borderLeftWidth: 2, borderColor: "#FF8C00CC" }} />
       <View style={{ position: "absolute", bottom: 6, right: 6, width: 20, height: 20, borderBottomWidth: 2, borderRightWidth: 2, borderColor: "#FF8C00CC" }} />
+      {movingCount > 0 && (
+        <View style={{ position: "absolute", top: 10, left: 10, backgroundColor: "rgba(0,200,80,0.88)", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
+          <Text style={{ color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.5 }}>▶ {movingCount > 1 ? `${movingCount} TARGETS` : "MOVEMENT"}</Text>
+        </View>
+      )}
       {movementVector && movementVector !== "unknown" && (
         <View style={{ position: "absolute", bottom: 10, right: 10, backgroundColor: "rgba(255,140,0,0.85)", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, flexDirection: "row", alignItems: "center", gap: 3 }}>
           <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}>{ARROW[movementVector] ?? "?"}</Text>
@@ -580,6 +612,8 @@ export default function LiveScreen() {
   const [detectedZones, setDetectedZones]           = useState<string[]>([]);
   const [frameZones, setFrameZones]                 = useState<string[][]>([]);
   const [movementVector, setMovementVector]         = useState<string>("unknown");
+  const [movingZones, setMovingZones]               = useState<string[]>([]);
+  const [staticZones, setStaticZones]               = useState<string[]>([]);
   const [boatCycleNum, setBoatCycleNum]             = useState(0);
   const [boatCaptureCount, setBoatCaptureCount]     = useState(0);
   const [boatWaitRemaining, setBoatWaitRemaining]   = useState(0);
@@ -771,12 +805,18 @@ export default function LiveScreen() {
           detectedZones: Array.isArray(d.activeZones) ? d.activeZones : [],
           frameZones: Array.isArray(d.frameZones) ? d.frameZones : [],
           movementVector: d.movementVector ?? "unknown",
+          movingZones: Array.isArray(d.movingZones) ? d.movingZones : [],
+          staticZones: Array.isArray(d.staticZones) ? d.staticZones : [],
+          movingTargetCount: d.movingTargetCount ?? 0,
+          sonarType: d.sonarType ?? "unknown",
         };
         if (cycleResult.crocAlert) setCrocAlertActive(true);
         setResult(cycleResult);
         setDetectedZones(cycleResult.detectedZones ?? []);
         setFrameZones(cycleResult.frameZones ?? []);
         setMovementVector(cycleResult.movementVector ?? "unknown");
+        setMovingZones(cycleResult.movingZones ?? []);
+        setStaticZones(cycleResult.staticZones ?? []);
       }
     } catch { /* cycleResult stays null */ }
     if (!isBoatLiveRef.current) return;
@@ -797,8 +837,11 @@ export default function LiveScreen() {
     }
 
     {
-      const archInfo = `${cycleResult?.archCount ?? 0} arch${(cycleResult?.archCount ?? 0) !== 1 ? "es" : ""} · ${cycleResult?.archType ?? "none"} · ${cycleResult?.movementVector ?? "?"}`;
-      setFishTrackingText((cycleResult?.fishCount ?? 0) > 0
+      const mCount = cycleResult?.movingTargetCount ?? (cycleResult?.movingZones?.length ? Math.ceil(cycleResult.movingZones.length / 2) : 0);
+      const sonar = cycleResult?.sonarType && cycleResult.sonarType !== "unknown" ? ` [${cycleResult.sonarType}]` : "";
+      const moveText = mCount > 0 ? `${mCount} moving target${mCount > 1 ? "s" : ""}` : "no movement";
+      const archInfo = `${moveText} · ${cycleResult?.archType ?? "none"} · ${cycleResult?.movementVector ?? "?"}${sonar}`;
+      setFishTrackingText((cycleResult?.fishCount ?? 0) > 0 || mCount > 0
         ? `Cycle ${cycleNum}: ${archInfo} · ${cycleResult?.depth ?? "?"}`
         : `Cycle ${cycleNum}: no fish · ${archInfo}`);
     }
@@ -1079,7 +1122,7 @@ export default function LiveScreen() {
 
         {/* Boat mode fish-detection grid */}
         {boatMode && boatLive && (
-          <BoatGrid detectedZones={detectedZones} frameZones={frameZones} movementVector={movementVector} />
+          <BoatGrid detectedZones={detectedZones} frameZones={frameZones} movementVector={movementVector} movingZones={movingZones} staticZones={staticZones} />
         )}
 
         {/* Top bar */}
