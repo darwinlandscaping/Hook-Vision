@@ -6,9 +6,10 @@ import { getFewShotRefs } from "../lib/barraLibrary.js";
 
 const router = Router();
 
-type ContentItem =
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string; detail: "low" } };
+// Structural content-part types compatible with the OpenAI SDK (matches liveanalyze.ts pattern)
+type ImagePart = { type: "image_url"; image_url: { url: string; detail: "high" | "low" } };
+type TextPart  = { type: "text"; text: string };
+type ContentPart = ImagePart | TextPart;
 
 function detectMimeType(b64: string): string {
   const p = b64.slice(0, 12);
@@ -33,7 +34,10 @@ router.post("/boat-analyze", async (req, res) => {
 
   try {
     const mime = detectMimeType(imageBase64);
-    const img = { type: "image_url" as const, image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low" as const } };
+    const content: ContentPart[] = [
+      { type: "image_url", image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low" } },
+      { type: "text", text: `Analyse sonar for fish arches. JSON: ${SINGLE_OUT}` },
+    ];
 
     const completion = await openai.chat.completions.create({
       model: getModel("fast"),
@@ -41,7 +45,7 @@ router.post("/boat-analyze", async (req, res) => {
       stream: false,
       messages: [
         { role: "system", content: SINGLE_SYS },
-        { role: "user", content: [img, { type: "text", text: `Analyse sonar for fish arches. JSON: ${SINGLE_OUT}` }] },
+        { role: "user", content },
       ],
     });
 
@@ -105,7 +109,7 @@ LIVE SONAR / FORWARD SCAN (Garmin LiveScope, Lowrance ActiveTarget, Humminbird M
 • Bottom shows as a curved arc at the bottom of the display. Everything above = water column.
 • Barramundi in live sonar: LARGE elongated oval blob (4:1 to 5:1 length:height ratio), near structure or bottom, often stationary or slow-moving (barra are ambush predators), high brightness.
 • Crocodile: VERY LARGE near-surface blob (wider than barra, depth 0–2m), irregular/wide profile.
-• In 5 frames of live sonar: blobs that MOVE position = active fish. Same position all 5 frames = structure.
+• In 5 frames of live sonar: blobs that MOVE position = active fish. Blobs in same position all 5 frames = structure.
 
 MEGA 360 / PANOPTIX 360:
 • Circular radar-like display centred on boat. Fish = isolated bright dots or short arcs at radial distance.
@@ -197,43 +201,48 @@ router.post("/boat-cycle", async (req, res) => {
     // ── Reference images: sonar brain refs + barra body (cross-modal) ────────
     const sonarRefs = getSonarFewShotRefs();
     const barraPhotos = getFewShotRefs(2);
-    const refContent: ContentItem[] = [];
+
+    // Build content array using liveanalyze.ts pattern — no cast needed
+    const content: ContentPart[] = [];
 
     // 1. Barra body anatomy (cross-modal bridge: body shape → sonar return)
     const bodyRef = barraPhotos.find(r => r.thumbBase64);
     if (bodyRef?.thumbBase64) {
-      refContent.push({ type: "text", text: "BARRAMUNDI BODY ANATOMY (cross-modal — connect body shape to expected sonar return):" });
-      refContent.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${bodyRef.thumbBase64}`, detail: "low" } });
-      refContent.push({ type: "text", text: `↑ Confirmed barramundi — ${bodyRef.location}. Note the deep laterally-compressed body and large swim bladder position → thick bright arch + acoustic shadow void on sonar.` });
+      content.push({ type: "text", text: "BARRAMUNDI BODY ANATOMY (cross-modal — connect body shape to expected sonar return):" });
+      content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${bodyRef.thumbBase64}`, detail: "low" } });
+      content.push({ type: "text", text: `↑ Confirmed barramundi — ${bodyRef.location}. Note the deep laterally-compressed body and large swim bladder position → thick bright arch + acoustic shadow void on sonar.` });
     }
 
     // 2. Confirmed barra sonar arch references (positive examples)
     const positiveRefs = sonarRefs.filter(r => r.isPositive).slice(0, 2);
     if (positiveRefs.length > 0) {
-      refContent.push({ type: "text", text: `CONFIRMED BARRAMUNDI SONAR ARCH REFERENCES (${positiveRefs.length} expert-labeled images — study arch shape, thickness, shadow void):` });
+      content.push({ type: "text", text: `CONFIRMED BARRAMUNDI SONAR ARCH REFERENCES (${positiveRefs.length} expert-labeled images — study arch shape, thickness, shadow void):` });
       for (const ref of positiveRefs) {
-        refContent.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
-        refContent.push({ type: "text", text: `↑ ${ref.brand} — ${ref.label.split("\n")[0]}` });
+        content.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
+        content.push({ type: "text", text: `↑ ${ref.brand} — ${ref.label.split("\n")[0]}` });
       }
     }
 
     // 3. One contrast reference (NOT barra — shows threadfin/other false-positive)
     const negativeRef = sonarRefs.find(r => !r.isPositive);
     if (negativeRef) {
-      refContent.push({ type: "text", text: "CONTRAST — NOT BARRAMUNDI (study the differences vs confirmed barra above):" });
-      refContent.push({ type: "image_url", image_url: { url: `data:${negativeRef.mimeType};base64,${negativeRef.base64}`, detail: "low" } });
-      refContent.push({ type: "text", text: `↑ ${negativeRef.brand} — ${negativeRef.label.split("\n")[0]}` });
+      content.push({ type: "text", text: "CONTRAST — NOT BARRAMUNDI (study the differences vs confirmed barra above):" });
+      content.push({ type: "image_url", image_url: { url: `data:${negativeRef.mimeType};base64,${negativeRef.base64}`, detail: "low" } });
+      content.push({ type: "text", text: `↑ ${negativeRef.brand} — ${negativeRef.label.split("\n")[0]}` });
     }
 
-    if (refContent.length > 0) {
-      refContent.push({ type: "text", text: `── END REFERENCES. Now analyse the ${clipped.length} sequential sonar frames below (oldest first):` });
+    if (content.length > 0) {
+      content.push({ type: "text", text: `── END REFERENCES. Now analyse the ${clipped.length} sequential sonar frames below (oldest first):` });
     }
 
-    // ── Frame images ──────────────────────────────────────────────────────────
-    const imgContent: ContentItem[] = clipped.flatMap((b64, i) => ([
-      { type: "text" as const, text: `Frame ${i + 1} of ${clipped.length}:` },
-      { type: "image_url" as const, image_url: { url: `data:${detectMimeType(b64)};base64,${b64}`, detail: "low" as const } },
-    ]));
+    // ── Frame images (oldest → newest) ───────────────────────────────────────
+    for (let i = 0; i < clipped.length; i++) {
+      const b64 = clipped[i]!;
+      content.push({ type: "text", text: `Frame ${i + 1} of ${clipped.length}:` });
+      content.push({ type: "image_url", image_url: { url: `data:${detectMimeType(b64)};base64,${b64}`, detail: "low" } });
+    }
+
+    content.push({ type: "text", text: `Identify sonar type, detect movement, report movingZones vs staticZones across ${clipped.length} frames. Return JSON matching schema:\n${CYCLE_SCHEMA}` });
 
     const completion = await openai.chat.completions.create({
       model: getModel("mid"),
@@ -241,10 +250,7 @@ router.post("/boat-cycle", async (req, res) => {
       stream: false,
       messages: [
         { role: "system", content: CYCLE_SYS },
-        {
-          role: "user" as const,
-          content: [...refContent, ...imgContent, { type: "text" as const, text: `Identify sonar type, detect movement, report movingZones vs staticZones across ${clipped.length} frames. Return JSON matching schema:\n${CYCLE_SCHEMA}` }] as any,
-        },
+        { role: "user", content },
       ],
     });
 
@@ -267,7 +273,7 @@ router.post("/boat-cycle", async (req, res) => {
       for (const z of zones) zoneFreq.set(z, (zoneFreq.get(z) ?? 0) + 1);
     }
     const nFrames = Math.max(frameZones.length, 1);
-    const staticThreshold = Math.max(4, nFrames - 1);  // present in 4+/5 frames = static structure
+    const staticThreshold = Math.max(4, nFrames - 1);  // 4+/5 frames = static structure
 
     const serverStaticZones = [...zoneFreq.entries()]
       .filter(([, c]) => c >= staticThreshold)
@@ -276,7 +282,7 @@ router.post("/boat-cycle", async (req, res) => {
       .filter(([, c]) => c > 0 && c < staticThreshold)
       .map(([z]) => z);
 
-    // Merge AI-reported with server-computed; server-computed static zones override AI moving zones
+    // Merge AI-reported with server-computed; server-static overrides AI-moving
     const aiMovingZones = Array.isArray(d.movingZones)
       ? (d.movingZones as unknown[]).filter((s): s is string => typeof s === "string")
       : [];
