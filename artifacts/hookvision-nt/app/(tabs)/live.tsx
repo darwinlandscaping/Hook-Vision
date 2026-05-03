@@ -702,16 +702,6 @@ export default function LiveScreen() {
     const domain  = process.env.EXPO_PUBLIC_DOMAIN;
     const apiBase = domain ? `https://${domain}` : "";
 
-    // Connectivity pre-check — waits through Starlink satellite-handoff dropouts
-    // (up to 5 × 3 s = 15 s) before giving up instead of failing on the first blip.
-    if (!await waitForConnectivity(apiBase)) {
-      const msg = "No connection after multiple retries — check your Starlink signal and try again.";
-      setBoatSummaryNarration(msg);
-      speak(msg);
-      setBoatPhase("idle");
-      return;
-    }
-
     capturedFramesRef.current = [];
     cycleStartTimeRef.current = Date.now();
     setBoatCycleNum(cycleNum);

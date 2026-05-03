@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const DOMAIN     = process.env.EXPO_PUBLIC_DOMAIN;
 const HEALTH_URL = DOMAIN ? `https://${DOMAIN}/api/healthz` : null;
 
-// Known camera WiFi gateway IPs — these respond when phone is on a camera hotspot
 const CAMERA_IPS = [
-  "http://192.168.42.1",   // Insta360
-  "http://10.5.5.9:8080",  // GoPro
-  "http://192.168.2.1",    // DJI Osmo
-  "http://192.168.4.1",    // SmartLife
+  "http://192.168.42.1",
+  "http://10.5.5.9:8080",
+  "http://192.168.2.1",
+  "http://192.168.4.1",
 ];
 
 async function pingUrl(url: string, timeoutMs: number): Promise<boolean> {
@@ -26,6 +25,7 @@ async function pingUrl(url: string, timeoutMs: number): Promise<boolean> {
 export function useNetworkStatus() {
   const [isOnline,       setIsOnline]       = useState(true);
   const [cameraWifiMode, setCameraWifiMode] = useState(false);
+  const failStreak = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,14 +33,18 @@ export function useNetworkStatus() {
     const check = async () => {
       if (!HEALTH_URL) return;
 
-      const apiOk = await pingUrl(HEALTH_URL, 3000);
+      const apiOk = await pingUrl(HEALTH_URL, 8000);
       if (cancelled) return;
 
       if (apiOk) {
+        failStreak.current = 0;
         setIsOnline(true);
         setCameraWifiMode(false);
         return;
       }
+
+      failStreak.current += 1;
+      if (failStreak.current < 2) return;
 
       const cameraChecks = await Promise.any(
         CAMERA_IPS.map(ip => pingUrl(ip, 1500).then(ok => { if (!ok) throw new Error(); return ok; }))

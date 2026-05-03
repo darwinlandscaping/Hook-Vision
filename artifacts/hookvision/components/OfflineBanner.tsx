@@ -14,7 +14,7 @@ export function OfflineBanner() {
   const icon    = cameraWifiMode ? "camera"  : "wifi-off";
   const message = cameraWifiMode
     ? "Camera WiFi active · AI Brain paused · disconnect to restore"
-    : "No internet · AI features unavailable";
+    : "Weak signal · AI retrying automatically";
 
   return (
     <View style={[styles.banner, { paddingTop: top + 6, backgroundColor: bgColor }]}>
