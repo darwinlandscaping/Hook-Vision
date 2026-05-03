@@ -859,22 +859,33 @@ export default function LiveScreen() {
       }, ).catch(() => {});
     }
 
-    // Narrate best 2 via /api/boat-session
+    // Narrate — always fires after every cycle, even if no fish detected
     if (!isBoatLiveRef.current) return;
-    if (best2.some(f => f.result)) {
+    {
+      const scans = best2.map(f => f.result).filter((r): r is FishAnalysis => r !== null);
+      const fallback = scans.length === 0
+        ? `Cycle ${cycleNum} complete. Ten frames captured — no fish detected in this pass. Water looks clear, keep scanning.`
+        : undefined;
       try {
-        const scans = best2.map(f => f.result!).filter(Boolean);
         const resp = await fetchRetry(`${apiBase}/api/boat-session`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ scans, region: "wa" }),
         }, 90_000);
         if (resp.ok) {
           const data = await resp.json() as { narration?: string };
-          const narration = data.narration ?? `Cycle ${cycleNum} complete.`;
+          const narration = data.narration ?? fallback ?? `Cycle ${cycleNum} complete.`;
           setBoatSummaryNarration(narration);
           speak(narration);
+        } else {
+          const msg = fallback ?? `Cycle ${cycleNum} complete.`;
+          setBoatSummaryNarration(msg);
+          speak(msg);
         }
-      } catch {}
+      } catch {
+        const msg = fallback ?? `Cycle ${cycleNum} complete.`;
+        setBoatSummaryNarration(msg);
+        speak(msg);
+      }
     }
 
     if (!isBoatLiveRef.current) return;

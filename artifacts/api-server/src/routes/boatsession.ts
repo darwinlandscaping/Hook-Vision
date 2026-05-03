@@ -41,18 +41,14 @@ router.post("/boat-session", async (req, res) => {
     region?: string;
   };
 
-  if (!Array.isArray(scans) || scans.length === 0) {
-    res.status(400).json({ error: "No scan data provided" });
-    return;
-  }
-
-  const cappedScans = scans.slice(0, 10);
+  const cappedScans = Array.isArray(scans) ? scans.slice(0, 10) : [];
+  const noData      = cappedScans.length === 0;
 
   // ── Aggregate stats across all scans ──────────────────────────────────────
   const totalFish = cappedScans.reduce((s, r) => s + (r.fishCount ?? 0), 0);
-  const avgFish   = Math.round(totalFish / cappedScans.length);
-  const maxFish   = Math.max(...cappedScans.map(r => r.fishCount ?? 0));
-  const avgConf   = Math.round(
+  const avgFish   = noData ? 0 : Math.round(totalFish / cappedScans.length);
+  const maxFish   = noData ? 0 : Math.max(...cappedScans.map(r => r.fishCount ?? 0));
+  const avgConf   = noData ? 0 : Math.round(
     cappedScans.reduce((s, r) => s + (r.confidence ?? 0), 0) / cappedScans.length
   );
 
@@ -70,24 +66,37 @@ router.post("/boat-session", async (req, res) => {
   const anyCroc    = cappedScans.some(r => r.crocAlert);
   const crocWarning = cappedScans.find(r => r.crocWarning)?.crocWarning ?? null;
   const birdAlert   = cappedScans.find(r => r.birdAlert)?.birdAlert ?? null;
-  const avgBarra    = cappedScans.reduce((s, r) => s + (r.barraPct ?? 0), 0) / cappedScans.length;
+  const avgBarra    = noData ? 0 : cappedScans.reduce((s, r) => s + (r.barraPct ?? 0), 0) / cappedScans.length;
 
-  const sessionSummary = [
-    `Session: ${cappedScans.length} sonar scans, region ${region.toUpperCase()}.`,
-    `Fish counts per scan: ${cappedScans.map(r => r.fishCount).join(", ")}.`,
-    `Average fish: ${avgFish}, peak: ${maxFish}, overall confidence: ${avgConf}%.`,
-    `Species detected: ${topSpecies.join(", ")}.`,
-    `Depth readings: ${depths.join(", ")}.`,
-    `Barramundi probability average: ${Math.round(avgBarra)}%.`,
-    lures.length    ? `Lures suggested: ${lures.join(", ")}.`      : "",
-    techniques.length ? `Techniques: ${techniques.join(", ")}.`    : "",
-    anyCroc         ? `⚠️ CROC ALERT detected. ${crocWarning ?? "Stay alert."}`  : "No croc activity detected.",
-    birdAlert       ? `Bird activity: ${birdAlert}.`               : "No bird alerts.",
-    `Individual scans: ${cappedScans.map((r, i) => `#${i + 1}: ${r.fishCount} fish at ${r.depth} (${r.species})`).join("; ")}.`,
-  ].filter(Boolean).join("\n");
+  const sessionSummary = noData
+    ? `Session: 10 frames captured, region ${region.toUpperCase()}. No AI analysis data returned — camera may be obscured or water too turbid. No fish detected.`
+    : [
+        `Session: ${cappedScans.length} sonar scans, region ${region.toUpperCase()}.`,
+        `Fish counts per scan: ${cappedScans.map(r => r.fishCount).join(", ")}.`,
+        `Average fish: ${avgFish}, peak: ${maxFish}, overall confidence: ${avgConf}%.`,
+        `Species detected: ${topSpecies.join(", ")}.`,
+        `Depth readings: ${depths.join(", ")}.`,
+        `Barramundi probability average: ${Math.round(avgBarra)}%.`,
+        lures.length      ? `Lures suggested: ${lures.join(", ")}.`   : "",
+        techniques.length ? `Techniques: ${techniques.join(", ")}.`    : "",
+        anyCroc           ? `⚠️ CROC ALERT detected. ${crocWarning ?? "Stay alert."}` : "No croc activity detected.",
+        birdAlert         ? `Bird activity: ${birdAlert}.`             : "No bird alerts.",
+        `Individual scans: ${cappedScans.map((r, i) => `#${i + 1}: ${r.fishCount} fish at ${r.depth} (${r.species})`).join("; ")}.`,
+      ].filter(Boolean).join("\n");
 
   try {
     const model = await getModel("gpt-4.1");
+
+    const userPrompt = noData
+      ? `Ten sonar frames were captured in ${region.toUpperCase()} but none returned fish analysis data. ` +
+        `Deliver a short, calm spoken-word update for the angler: acknowledge that this pass came up blank, ` +
+        `suggest possible reasons (turbid water, camera angle, sonar off-target), and encourage them to keep scanning. ` +
+        `Under 100 words. Speak directly to the angler.`
+      : `Here is the complete data from a ${cappedScans.length}-scan boat mode sonar session:\n\n` +
+        `${sessionSummary}\n\n` +
+        `Deliver a comprehensive fishing intelligence briefing: what's consistently on the sonar, ` +
+        `best depth to target, dominant species, recommended lure and technique, croc/bird alerts, ` +
+        `and your overall verdict. Make it punchy and immediately actionable.`;
 
     const completion = await openai.chat.completions.create({
       model,
@@ -100,15 +109,7 @@ router.post("/boat-session", async (req, res) => {
             "Synthesise sonar session data into a punchy, actionable spoken-word briefing. " +
             "Be specific, confident, and exciting. Under 280 words. Speak directly to the angler.",
         },
-        {
-          role: "user",
-          content:
-            `Here is the complete data from a ${cappedScans.length}-scan boat mode sonar session:\n\n` +
-            `${sessionSummary}\n\n` +
-            "Deliver a comprehensive fishing intelligence briefing: what's consistently on the sonar, " +
-            "best depth to target, dominant species, recommended lure and technique, croc/bird alerts, " +
-            "and your overall verdict. Make it punchy and immediately actionable.",
-        },
+        { role: "user", content: userPrompt },
       ],
     });
 
