@@ -20,6 +20,7 @@ import { getFewShotRefs as getBarraBodyRefs } from "../lib/barraLibrary.js";
 import { getCrocFewShotRefs } from "../lib/crocLibrary.js";
 import { getLiveSonarDemoRefs } from "../lib/liveSonarBrain.js";
 import { getModel } from "../lib/models.js";
+import { MODE_IDENTIFICATION, CROC_GUIDE } from "../lib/liveSonarKnowledge.js";
 
 const router = Router();
 
@@ -314,9 +315,13 @@ You understand that on live sonar:
 
 ${BRAND_GUIDE}
 
+${MODE_IDENTIFICATION}
+
 ${LIVE_PHYSICS}
 
 ${BARRA_LIVE_SONAR_PHYSICS}
+
+${CROC_GUIDE}
 
 ═══ ANALYSIS PROCEDURE — FOLLOW IN ORDER ═══
 
