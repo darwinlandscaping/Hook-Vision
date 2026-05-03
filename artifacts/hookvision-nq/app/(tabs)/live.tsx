@@ -162,6 +162,8 @@ interface FishAnalysis {
   waterTemp?: string;
   bottomType?: string;
   detectedZones?: string[];
+  frameZones?: string[][];
+  movementVector?: string;
 }
 
 const SPECIES_SLANG: Record<string, string> = {
@@ -497,8 +499,21 @@ function BoatModeDashboard({
 const _GRID_COLS = ["A", "B", "C", "D"] as const;
 const _GRID_ROWS = ["1", "2", "3", "4"] as const;
 
-function BoatGrid({ detectedZones }: { detectedZones: string[] }) {
-  const activeSet = new Set(detectedZones);
+function BoatGrid({ detectedZones, frameZones, movementVector }: {
+  detectedZones: string[];
+  frameZones?: string[][];
+  movementVector?: string;
+}) {
+  const totalFrames = frameZones && frameZones.length > 0 ? frameZones.length : 1;
+  const zoneLastFrame = new Map<string, number>();
+  if (frameZones && frameZones.length > 0) {
+    frameZones.forEach((zones, fi) => zones.forEach(z => zoneLastFrame.set(z, fi)));
+  } else {
+    detectedZones.forEach(z => zoneLastFrame.set(z, 0));
+  }
+  const ARROW: Record<string, string> = {
+    left: "←", right: "→", deeper: "↓", shallower: "↑", stationary: "●",
+  };
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {(["25%", "50%", "75%"] as const).map(pct => (
@@ -509,17 +524,18 @@ function BoatGrid({ detectedZones }: { detectedZones: string[] }) {
       ))}
       {_GRID_ROWS.map((row, ri) => _GRID_COLS.map((col, ci) => {
         const zone = `${col}${row}`;
-        const active = activeSet.has(zone);
+        const lastFi = zoneLastFrame.get(zone);
+        const alpha = lastFi !== undefined ? 0.15 + (lastFi / Math.max(totalFrames - 1, 1)) * 0.65 : 0;
         return (
           <View key={zone} style={{
             position: "absolute",
             left: `${ci * 25}%` as `${number}%`, width: "25%",
             top: `${ri * 25}%` as `${number}%`, height: "25%",
-            backgroundColor: active ? "#FF8C0022" : "transparent",
-            borderWidth: active ? 1 : 0,
-            borderColor: "#FF8C00AA",
+            backgroundColor: alpha > 0 ? `rgba(255,140,0,${(alpha * 0.3).toFixed(2)})` : "transparent",
+            borderWidth: alpha > 0.5 ? 1 : 0,
+            borderColor: `rgba(255,140,0,${alpha.toFixed(2)})`,
           }}>
-            <Text style={{ color: active ? "#FF9500EE" : "#FF6B0040", fontSize: 9, fontWeight: "700", margin: 3, letterSpacing: 0.5 }}>
+            <Text style={{ color: alpha > 0 ? `rgba(255,165,0,${Math.min(alpha + 0.2, 1).toFixed(2)})` : "#FF6B0030", fontSize: 9, fontWeight: "700", margin: 3, letterSpacing: 0.5 }}>
               {zone}
             </Text>
           </View>
@@ -529,6 +545,12 @@ function BoatGrid({ detectedZones }: { detectedZones: string[] }) {
       <View style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#FF8C00CC" }} />
       <View style={{ position: "absolute", bottom: 6, left: 6, width: 20, height: 20, borderBottomWidth: 2, borderLeftWidth: 2, borderColor: "#FF8C00CC" }} />
       <View style={{ position: "absolute", bottom: 6, right: 6, width: 20, height: 20, borderBottomWidth: 2, borderRightWidth: 2, borderColor: "#FF8C00CC" }} />
+      {movementVector && movementVector !== "unknown" && (
+        <View style={{ position: "absolute", bottom: 10, right: 10, backgroundColor: "rgba(255,140,0,0.85)", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, flexDirection: "row", alignItems: "center", gap: 3 }}>
+          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}>{ARROW[movementVector] ?? "?"}</Text>
+          <Text style={{ color: "#ffffffcc", fontSize: 9, fontWeight: "600" }}>{movementVector.toUpperCase()}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -556,6 +578,8 @@ export default function LiveScreen() {
   const [boatLive, setBoatLive]                     = useState(false);
   const [boatPhase, setBoatPhase]                   = useState<"idle"|"capturing"|"analyzing"|"waiting">("idle");
   const [detectedZones, setDetectedZones]           = useState<string[]>([]);
+  const [frameZones, setFrameZones]                 = useState<string[][]>([]);
+  const [movementVector, setMovementVector]         = useState<string>("unknown");
   const [boatCycleNum, setBoatCycleNum]             = useState(0);
   const [boatCaptureCount, setBoatCaptureCount]     = useState(0);
   const [boatWaitRemaining, setBoatWaitRemaining]   = useState(0);
@@ -724,76 +748,63 @@ export default function LiveScreen() {
     if (captureTimerRef.current) { clearTimeout(captureTimerRef.current); captureTimerRef.current = null; }
     if (!isBoatLiveRef.current) return;
 
+    // Single multi-frame call — AI sees all 5 frames together to track arch movement
     setBoatPhase("analyzing");
     const frames = [...capturedFramesRef.current];
 
-    const analyseOne = async (fr: typeof frames[0]) => {
-      try {
-        const resp = await fetchRetry(`${apiBase}/api/boat-analyze`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: fr.base64 }),
-        }, 15_000);
-        if (!resp.ok) return { ...fr, result: null as FishAnalysis|null, score: 0 };
+    let cycleResult: FishAnalysis | null = null;
+    try {
+      const resp = await fetchRetry(`${apiBase}/api/boat-cycle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frames: frames.map(f => f.base64) }),
+      }, 30_000);
+      if (resp.ok) {
         const d = await resp.json() as Record<string, any>;
-        const result: FishAnalysis = {
-          fishCount: d.fishCount ?? 0, depth: d.depth ?? "unknown", distance: d.distance ?? "unknown",
+        cycleResult = {
+          fishCount: d.fishCount ?? 0, depth: d.depthRange ?? "unknown", distance: "unknown",
           species: d.species ?? "Unknown", confidence: d.confidence ?? 0, suggestion: d.suggestion ?? "",
-          lure: d.lure ?? d.recommendedLure ?? "", lureType: d.lureType ?? "", technique: d.technique ?? "",
+          lure: d.lure ?? "", lureType: d.lureType ?? "", technique: d.technique ?? "",
           crocAlert: d.crocAlert ?? false, crocWarning: d.crocWarning ?? null, birdAlert: d.birdAlert ?? null,
-          barraPct: d.barraPct, archCount: d.archCount, waterTemp: d.waterTemp, bottomType: d.bottomType,
-          detectedZones: Array.isArray(d.detectedZones) ? d.detectedZones : [],
+          barraPct: d.barraPct ?? null, archCount: d.archCount ?? null, archType: d.archType ?? "none",
+          waterTemp: d.waterTemp ?? "", bottomType: d.bottomType ?? "",
+          detectedZones: Array.isArray(d.activeZones) ? d.activeZones : [],
+          frameZones: Array.isArray(d.frameZones) ? d.frameZones : [],
+          movementVector: d.movementVector ?? "unknown",
         };
-        const score = (result.fishCount ?? 0) * 10 + (result.confidence ?? 0) * 100;
-        if (result.crocAlert) setCrocAlertActive(true);
-        return { ...fr, result, score };
-      } catch { return { ...fr, result: null as FishAnalysis|null, score: 0 }; }
-    };
-
-    // Analyse all frames in parallel — live results appear as each frame completes
-    let _bestScore = 0;
-    const analysed = await Promise.all(frames.map(async (fr) => {
-      const res = await analyseOne(fr);
-      if (res.result && isBoatLiveRef.current && res.score > _bestScore) {
-        _bestScore = res.score;
-        setResult(res.result);
-        setDetectedZones(res.result.detectedZones ?? []);
+        if (cycleResult.crocAlert) setCrocAlertActive(true);
+        setResult(cycleResult);
+        setDetectedZones(cycleResult.detectedZones ?? []);
+        setFrameZones(cycleResult.frameZones ?? []);
+        setMovementVector(cycleResult.movementVector ?? "unknown");
       }
-      return res;
-    }));
+    } catch { /* cycleResult stays null */ }
     if (!isBoatLiveRef.current) return;
 
-    const sorted = [...analysed].sort((a, b) => b.score - a.score);
-    const best2  = sorted.slice(0, 2);
-    if (best2[0]?.result) { setResult(best2[0].result); setDetectedZones(best2[0].result.detectedZones ?? []); }
-
-    if (MediaLibrary && Platform.OS !== "web") {
-      for (const fr of best2) {
-        if (fr.uri) {
-          try {
-            const perm = await MediaLibrary.requestPermissionsAsync();
-            if (perm.granted) await MediaLibrary.saveToLibraryAsync(fr.uri);
-          } catch {}
-        }
+    if (MediaLibrary && Platform.OS !== "web" && cycleResult && (cycleResult.fishCount ?? 0) > 0) {
+      for (const fr of frames.filter(f => f.uri).slice(-2)) {
+        try {
+          const perm = await MediaLibrary.requestPermissionsAsync();
+          if (perm.granted) await MediaLibrary.saveToLibraryAsync(fr.uri);
+        } catch {}
       }
     }
 
-    for (const fr of best2) {
-      if (fr.result) {
-        addEntry({ id: `boat-${cycleNum}-${Date.now()}`, timestamp: Date.now(), imageUri: fr.uri,
-          species: fr.result.species, fishCount: fr.result.fishCount, depth: fr.result.depth,
-          suggestion: fr.result.suggestion });
-      }
+    if (cycleResult) {
+      addEntry({ id: `boat-${cycleNum}-${Date.now()}`, timestamp: Date.now(), imageUri: frames.at(-1)?.uri ?? "",
+        species: cycleResult.species, fishCount: cycleResult.fishCount, depth: cycleResult.depth,
+        suggestion: cycleResult.suggestion });
     }
 
-    const withFish  = analysed.filter(f => (f.result?.fishCount ?? 0) > 0);
-    const depths    = [...new Set(analysed.map(f => f.result?.depth).filter(Boolean) as string[])].slice(0, 3);
-    setFishTrackingText(withFish.length > 0
-      ? `Cycle ${cycleNum}: fish in ${withFish.length}/${analysed.length} frames · ${depths.join(", ")}`
-      : `Cycle ${cycleNum}: no fish in ${analysed.length} frames`);
+    {
+      const archInfo = `${cycleResult?.archCount ?? 0} arch${(cycleResult?.archCount ?? 0) !== 1 ? "es" : ""} · ${cycleResult?.archType ?? "none"} · ${cycleResult?.movementVector ?? "?"}`;
+      setFishTrackingText((cycleResult?.fishCount ?? 0) > 0
+        ? `Cycle ${cycleNum}: ${archInfo} · ${cycleResult?.depth ?? "?"}`
+        : `Cycle ${cycleNum}: no fish · ${archInfo}`);
+    }
 
-    if (best2[0]?.result) {
-      const r = best2[0].result;
+    if (cycleResult) {
+      const r = cycleResult;
       fetch(`${apiBase}/api/hud/update`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ species: r.species, fishCount: r.fishCount, depth: r.depth,
@@ -806,7 +817,7 @@ export default function LiveScreen() {
     // Narrate — always fires after every cycle, even if no fish detected
     if (!isBoatLiveRef.current) return;
     {
-      const scans = best2.map(f => f.result).filter((r): r is FishAnalysis => r !== null);
+      const scans = cycleResult ? [cycleResult] : [];
       const fallback = scans.length === 0
         ? `Cycle ${cycleNum} complete. Five frames captured — no fish detected in this pass. Water looks clear, keep scanning.`
         : undefined;
@@ -1068,7 +1079,7 @@ export default function LiveScreen() {
 
         {/* Boat mode fish-detection grid */}
         {boatMode && boatLive && (
-          <BoatGrid detectedZones={detectedZones} />
+          <BoatGrid detectedZones={detectedZones} frameZones={frameZones} movementVector={movementVector} />
         )}
 
         {/* Top bar */}
