@@ -156,8 +156,8 @@ interface FishAnalysis {
   crocAlert?: boolean;
   crocWarning?: string | null;
   birdAlert?: string | null;
-  archCount?: number;
-  archType?: string;
+  targetCount?: number;
+  targetType?: string;
   barraPct?: number;
   waterTemp?: string;
   bottomType?: string;
@@ -932,7 +932,7 @@ export default function LiveScreen() {
     if (captureTimerRef.current) { clearTimeout(captureTimerRef.current); captureTimerRef.current = null; }
     if (!isBoatLiveRef.current) return;
 
-    // Phase 2: single multi-frame call — AI sees all 5 frames together to track arch movement
+    // Phase 2: single multi-frame call — AI sees all 5 frames together to track fish movement
     setBoatPhase("analyzing");
     const frames = [...capturedFramesRef.current];
 
@@ -950,7 +950,7 @@ export default function LiveScreen() {
           species: d.species ?? "Unknown", confidence: d.confidence ?? 0, suggestion: d.suggestion ?? "",
           lure: d.lure ?? "", lureType: d.lureType ?? "", technique: d.technique ?? "",
           crocAlert: d.crocAlert ?? false, crocWarning: d.crocWarning ?? null, birdAlert: d.birdAlert ?? null,
-          barraPct: d.barraPct ?? null, archCount: d.archCount ?? null, archType: d.archType ?? "none",
+          barraPct: d.barraPct ?? null, targetCount: d.targetCount ?? null, targetType: d.targetType ?? "none",
           waterTemp: d.waterTemp ?? "", bottomType: d.bottomType ?? "",
           detectedZones: Array.isArray(d.activeZones) ? d.activeZones : [],
           frameZones: Array.isArray(d.frameZones) ? d.frameZones : [],
@@ -991,7 +991,7 @@ export default function LiveScreen() {
       const mCount = cycleResult?.movingTargetCount ?? (cycleResult?.movingZones?.length ? Math.ceil(cycleResult.movingZones.length / 2) : 0);
       const sonar = cycleResult?.sonarType && cycleResult.sonarType !== "unknown" ? ` [${cycleResult.sonarType}]` : "";
       const moveText = mCount > 0 ? `${mCount} moving target${mCount > 1 ? "s" : ""}` : "no movement";
-      const archInfo = `${moveText} · ${cycleResult?.archType ?? "none"} · ${cycleResult?.movementVector ?? "?"}${sonar}`;
+      const archInfo = `${moveText} · ${cycleResult?.targetType ?? "none"} · ${cycleResult?.movementVector ?? "?"}${sonar}`;
       setFishTrackingText((cycleResult?.fishCount ?? 0) > 0 || mCount > 0
         ? `Cycle ${cycleNum}: ${archInfo} · ${cycleResult?.depth ?? "?"}`
         : `Cycle ${cycleNum}: no fish · ${archInfo}`);
