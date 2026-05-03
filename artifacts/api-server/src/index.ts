@@ -37,13 +37,19 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
+const server = app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
   }
 
   logger.info({ port }, "Server listening");
+
+  // Keep connections alive longer than Replit's reverse-proxy 60 s window.
+  // Without this, Node's default 5 s keepAliveTimeout causes the proxy to
+  // see the connection close mid-flight and reset it to the phone as a 502.
+  server.keepAliveTimeout = 65_000;   // ms — must exceed proxy keep-alive (60 s)
+  server.headersTimeout   = 70_000;   // ms — slightly longer than keepAlive
 
   // Auto-detect the best available OpenAI models for each tier (top/mid/fast).
   // Refreshes every 6 hours so new model releases are picked up automatically.

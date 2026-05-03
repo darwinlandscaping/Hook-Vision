@@ -33,18 +33,43 @@ async function fetchRetry(
   url: string,
   init: Omit<RequestInit, "signal">,
   timeoutMs: number,
-  retries = 2,
-  delayMs = 2500,
+  retries = 3,
+  baseDelayMs = 2000,
 ): Promise<Response> {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
     } catch (err) {
       if (attempt === retries - 1) throw err;
-      await new Promise<void>(r => setTimeout(r, delayMs));
+      const delay = baseDelayMs * Math.pow(2, attempt); // 2 s → 4 s → 8 s
+      await new Promise<void>(r => setTimeout(r, delay));
     }
   }
   throw new Error("fetchRetry: unreachable");
+}
+
+async function readStreamWithTimeout(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  totalMs: number,
+  chunkMs = 10_000,
+): Promise<string> {
+  const dec = new TextDecoder();
+  let txt = "";
+  const deadline = Date.now() + totalMs;
+  for (;;) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error("stream total timeout");
+    const to = Math.min(remaining, chunkMs);
+    const { done, value } = await Promise.race([
+      reader.read(),
+      new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error("stream chunk timeout")), to)
+      ),
+    ]);
+    if (done) break;
+    txt += dec.decode(value, { stream: true });
+  }
+  return txt;
 }
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
@@ -604,6 +629,17 @@ export default function LiveScreen() {
     const domain  = process.env.EXPO_PUBLIC_DOMAIN;
     const apiBase = domain ? `https://${domain}` : "";
 
+    // Connectivity pre-check — abort immediately rather than burning 28 s per frame
+    try {
+      await fetch(`${apiBase}/api/ping`, { signal: AbortSignal.timeout(5_000) });
+    } catch {
+      const msg = "No server connection — check your internet signal and try again.";
+      setBoatSummaryNarration(msg);
+      speak(msg);
+      setBoatPhase("idle");
+      return;
+    }
+
     capturedFramesRef.current = [];
     cycleStartTimeRef.current = Date.now();
     setBoatCycleNum(cycleNum);
@@ -638,8 +674,7 @@ export default function LiveScreen() {
         if (!resp.ok) return { ...fr, result: null as FishAnalysis|null, score: 0 };
         const reader = resp.body?.getReader();
         if (!reader)  return { ...fr, result: null as FishAnalysis|null, score: 0 };
-        const dec = new TextDecoder(); let txt = "";
-        for (;;) { const { done, value } = await reader.read(); if (done) break; txt += dec.decode(value, { stream: true }); }
+        const txt = await readStreamWithTimeout(reader, 26_000);
         const m = txt.match(/\{[\s\S]*\}/);
         if (!m) return { ...fr, result: null as FishAnalysis|null, score: 0 };
         const d = JSON.parse(m[0]);
@@ -657,8 +692,8 @@ export default function LiveScreen() {
     };
 
     const analysed: typeof frames = [];
-    for (let i = 0; i < frames.length; i += 5) {
-      const batch = await Promise.all(frames.slice(i, i + 5).map(analyseOne));
+    for (let i = 0; i < frames.length; i += 3) {
+      const batch = await Promise.all(frames.slice(i, i + 3).map(analyseOne));
       analysed.push(...batch);
       if (!isBoatLiveRef.current) return;
     }
@@ -714,7 +749,7 @@ export default function LiveScreen() {
         const resp = await fetchRetry(`${apiBase}/api/boat-session`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ scans, region: "nt" }),
-        }, 90_000);
+        }, 45_000);
         if (resp.ok) {
           const data = await resp.json() as { narration?: string };
           const narration = data.narration ?? fallback ?? `Cycle ${cycleNum} complete.`;
