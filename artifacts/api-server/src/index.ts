@@ -51,6 +51,14 @@ const server = app.listen(port, (err) => {
   server.keepAliveTimeout = 65_000;   // ms — must exceed proxy keep-alive (60 s)
   server.headersTimeout   = 70_000;   // ms — slightly longer than keepAlive
 
+  // TCP keepalive probes on every accepted socket.
+  // Causes the OS to probe idle connections every 30 s, so a Starlink dropout
+  // that silently kills a TCP connection is detected in ~90 s instead of the
+  // OS default of 2 hours — prevents zombie connections stacking up.
+  server.on("connection", (socket) => {
+    socket.setKeepAlive(true, 30_000);
+  });
+
   // Auto-detect the best available OpenAI models for each tier (top/mid/fast).
   // Refreshes every 6 hours so new model releases are picked up automatically.
   initModels().catch((err) =>

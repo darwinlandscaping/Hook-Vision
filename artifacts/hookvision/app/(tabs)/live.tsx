@@ -29,31 +29,60 @@ import Animated, {
 import { HVHeader } from "@/components/HVHeader";
 import { SonarPulse } from "@/components/SonarPulse";
 
+// Retries a fetch through transient network errors (e.g. Starlink handoff dropouts).
+// Uses capped linear back-off so the device waits long enough for the satellite
+// connection to re-establish (typically 1–10 s) without waiting forever.
 async function fetchRetry(
   url: string,
   init: Omit<RequestInit, "signal">,
   timeoutMs: number,
-  retries = 3,
-  baseDelayMs = 2000,
+  retries = 4,
+  baseDelayMs = 3_500,
 ): Promise<Response> {
+  let lastErr: unknown;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
     } catch (err) {
-      if (attempt === retries - 1) throw err;
-      const delay = baseDelayMs * Math.pow(2, attempt); // 2 s → 4 s → 8 s
+      lastErr = err;
+      if (attempt === retries - 1) break;
+      // Linear back-off capped at 10 s — matches Starlink re-establishment window
+      const delay = Math.min(baseDelayMs * (attempt + 1), 10_000);
       await new Promise<void>(r => setTimeout(r, delay));
     }
   }
-  throw new Error("fetchRetry: unreachable");
+  throw lastErr ?? new Error("fetchRetry: all retries exhausted");
+}
+
+// Retries /api/ping up to maxAttempts times before declaring no connection.
+// Starlink satellite-handoff dropouts typically last 1–10 s — this waits them
+// out before failing the cycle, instead of aborting on the first missed ping.
+async function waitForConnectivity(
+  apiBase: string,
+  maxAttempts = 5,
+  intervalMs = 3_000,
+): Promise<boolean> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const r = await fetch(`${apiBase}/api/ping`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(7_000),
+      });
+      if (r.ok) return true;
+    } catch { /* network error — likely a Starlink handoff, will retry */ }
+    if (i < maxAttempts - 1) {
+      await new Promise<void>(r => setTimeout(r, intervalMs));
+    }
+  }
+  return false;
 }
 
 // Reads a streaming response body with a per-chunk watchdog timer.
-// Prevents indefinite silent hangs when the phone drops mid-stream.
+// Chunk timeout raised to 18 s to survive Starlink packet-loss gaps mid-stream.
 async function readStreamWithTimeout(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   totalMs: number,
-  chunkMs = 10_000,
+  chunkMs = 18_000,
 ): Promise<string> {
   const dec = new TextDecoder();
   let txt = "";
@@ -822,11 +851,10 @@ export default function LiveScreen() {
     const domain  = process.env.EXPO_PUBLIC_DOMAIN;
     const apiBase = domain ? `https://${domain}` : "";
 
-    // Connectivity pre-check — abort immediately rather than burning 28 s per frame
-    try {
-      await fetch(`${apiBase}/api/ping`, { signal: AbortSignal.timeout(5_000) });
-    } catch {
-      const msg = "No server connection — check your internet signal and try again.";
+    // Connectivity pre-check — waits through Starlink satellite-handoff dropouts
+    // (up to 5 × 3 s = 15 s) before giving up instead of failing on the first blip.
+    if (!await waitForConnectivity(apiBase)) {
+      const msg = "No connection after multiple retries — check your Starlink signal and try again.";
       setBoatSummaryNarration(msg);
       speak(msg);
       setBoatPhase("idle");
