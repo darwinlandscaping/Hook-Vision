@@ -91,12 +91,12 @@ async function readStreamWithTimeout(
     const remaining = deadline - Date.now();
     if (remaining <= 0) throw new Error("stream total timeout");
     const to = Math.min(remaining, chunkMs);
+    let chunkTimer: ReturnType<typeof setTimeout> | null = null;
     const { done, value } = await Promise.race([
       reader.read(),
-      new Promise<never>((_, rej) =>
-        setTimeout(() => rej(new Error("stream chunk timeout")), to)
-      ),
+      new Promise<never>((_, rej) => { chunkTimer = setTimeout(() => rej(new Error("stream chunk timeout")), to); }),
     ]);
+    if (chunkTimer !== null) { clearTimeout(chunkTimer); chunkTimer = null; }
     if (done) break;
     txt += dec.decode(value, { stream: true });
   }
@@ -747,8 +747,8 @@ export default function LiveScreen() {
   const [slConnecting,    setSlConnecting]    = useState(false);
   const [slConnectedCam,  setSlConnectedCam]  = useState<DiscoveredCamera | null>(null);
 
-  const BOAT_CAPTURE_INTERVAL = 3_000;   // 3 s between silent captures
-  const BOAT_CAPTURE_COUNT    = 10;      // photos per cycle
+  const BOAT_CAPTURE_INTERVAL = 2_000;   // 2 s between silent captures
+  const BOAT_CAPTURE_COUNT    = 5;       // photos per cycle
   const BOAT_TOTAL_CYCLE_MS   = 90_000; // 30 s capture + 60 s gap = 90 s total
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
@@ -838,7 +838,7 @@ export default function LiveScreen() {
         return photo?.base64 ? { base64: photo.base64, uri: photo.uri } : null;
       }
       if (!nativeCamRef.current) return null;
-      const photo = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.92, skipProcessing: true });
+      const photo = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.7, skipProcessing: true });
       return photo?.base64 ? { base64: photo.base64, uri: photo.uri ?? "" } : null;
     } catch { return null; }
   }, [cam2Connected, cam2]);
@@ -894,11 +894,11 @@ export default function LiveScreen() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageBase64: fr.base64 }),
-        }, 28_000);
+        }, 55_000);
         if (!resp.ok) return { ...fr, result: null as FishAnalysis|null, score: 0 };
         const reader = resp.body?.getReader();
         if (!reader)  return { ...fr, result: null as FishAnalysis|null, score: 0 };
-        const txt = await readStreamWithTimeout(reader, 26_000);
+        const txt = await readStreamWithTimeout(reader, 50_000);
         const m = txt.match(/\{[\s\S]*\}/);
         if (!m) return { ...fr, result: null as FishAnalysis|null, score: 0 };
         const d = JSON.parse(m[0]);
@@ -916,12 +916,18 @@ export default function LiveScreen() {
       } catch { return { ...fr, result: null as FishAnalysis|null, score: 0 }; }
     };
 
-    const analysed: typeof frames = [];
-    for (let i = 0; i < frames.length; i += 3) {
-      const batch = await Promise.all(frames.slice(i, i + 3).map(analyseOne));
-      analysed.push(...batch);
-      if (!isBoatLiveRef.current) return;
-    }
+    // Analyse all frames in parallel — live results appear as each frame completes
+    let _bestScore = 0;
+    const analysed = await Promise.all(frames.map(async (fr) => {
+      const res = await analyseOne(fr);
+      if (res.result && isBoatLiveRef.current && res.score > _bestScore) {
+        _bestScore = res.score;
+        setResult(res.result);
+        setDetectedZones(res.result.detectedZones ?? []);
+      }
+      return res;
+    }));
+    if (!isBoatLiveRef.current) return;
 
     // Pick best 2 by score (fishCount × 10 + confidence × 100)
     const sorted = [...analysed].sort((a, b) => b.score - a.score);
@@ -973,7 +979,7 @@ export default function LiveScreen() {
     {
       const scans = best2.map(f => f.result).filter((r): r is FishAnalysis => r !== null);
       const fallback = scans.length === 0
-        ? `Cycle ${cycleNum} complete. Ten frames captured — no fish detected in this pass. Water looks clear, keep scanning.`
+        ? `Cycle ${cycleNum} complete. Five frames captured — no fish detected in this pass. Water looks clear, keep scanning.`
         : undefined;
       try {
         const resp = await fetchRetry(`${apiBase}/api/boat-session`, {
