@@ -1025,16 +1025,16 @@ export default function LiveScreen() {
           const data = await resp.json() as { narration?: string };
           const narration = data.narration ?? fallback ?? `Cycle ${cycleNum} complete.`;
           setBoatSummaryNarration(narration);
-          speak(narration);
+          if (autoSpeak) speak(narration);
         } else {
           const msg = fallback ?? `Cycle ${cycleNum} complete.`;
           setBoatSummaryNarration(msg);
-          speak(msg);
+          if (autoSpeak) speak(msg);
         }
       } catch {
         const msg = fallback ?? `Cycle ${cycleNum} complete.`;
         setBoatSummaryNarration(msg);
-        speak(msg);
+        if (autoSpeak) speak(msg);
       }
     }
 
