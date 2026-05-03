@@ -27,6 +27,7 @@ import crocguardRouter from "./crocguard";
 import liveanalyzeRouter from "./liveanalyze";
 import modelsRouter from "./models";
 import boatSessionRouter from "./boatsession";
+import boatAnalyzeRouter from "./boatanalyze";
 
 const router: IRouter = Router();
 
@@ -58,5 +59,6 @@ router.use("/crocguard", crocguardRouter); // mounts at /api/crocguard/*
 router.use(liveanalyzeRouter);            // POST /api/live-sonar-analyze
 router.use(modelsRouter);                 // GET  /api/models
 router.use(boatSessionRouter);            // POST /api/boat-session
+router.use(boatAnalyzeRouter);           // POST /api/boat-analyze (fast, non-streaming)
 
 export default router;

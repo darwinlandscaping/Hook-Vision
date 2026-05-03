@@ -890,18 +890,13 @@ export default function LiveScreen() {
 
     const analyseOne = async (fr: typeof frames[0]) => {
       try {
-        const resp = await fetchRetry(`${apiBase}/api/analyze`, {
+        const resp = await fetchRetry(`${apiBase}/api/boat-analyze`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageBase64: fr.base64 }),
-        }, 55_000);
+        }, 15_000);
         if (!resp.ok) return { ...fr, result: null as FishAnalysis|null, score: 0 };
-        const reader = resp.body?.getReader();
-        if (!reader)  return { ...fr, result: null as FishAnalysis|null, score: 0 };
-        const txt = await readStreamWithTimeout(reader, 50_000);
-        const m = txt.match(/\{[\s\S]*\}/);
-        if (!m) return { ...fr, result: null as FishAnalysis|null, score: 0 };
-        const d = JSON.parse(m[0]);
+        const d = await resp.json() as Record<string, unknown>;
         const result: FishAnalysis = {
           fishCount: d.fishCount ?? 0, depth: d.depth ?? "unknown", distance: d.distance ?? "unknown",
           species: d.species ?? "Unknown", confidence: d.confidence ?? 0, suggestion: d.suggestion ?? "",
