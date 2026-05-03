@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getModel } from "../lib/models.js";
+import { getLiveSonarDemoRefs } from "../lib/liveSonarBrain.js";
 
 const router = Router();
 
@@ -71,77 +72,62 @@ router.post("/boat-analyze", async (req, res) => {
 
 // ── Multi-frame fish movement analysis ───────────────────────────────────────
 
-const CYCLE_SYS = `You are an expert sonar fish analyst for tropical Australian waters. You receive sequential sonar frames (oldest first, newest last). Your single most important job: DETECT AND TRACK EVERY RETURN THAT MOVES.
+const CYCLE_SYS = `You are analysing sequential live sonar frames from a fishing boat in tropical Australian waters (oldest frame first, newest last). You have two jobs — in strict priority order.
 
+▶▶ JOB 1 — TRACK EVERY MOVING OBJECT (PRIMARY):
+Compare every frame to the one before it.
+• ANY blob/shape that shifts even 1 grid zone between frames = MOVING TARGET — add it to movingZones.
+• A return visible in only 1–2 of 5 frames = fish passing through — add it to movingZones.
+• A zone stable across ALL 5 frames = static structure (log, rock, bottom) — staticZones only.
+• LOWER THE BAR: report movement aggressively. False positive = fine. Missed moving target = failure.
+• movingTargetCount = number of distinct moving objects (cluster adjacent zones, estimate 1 target per 2 adjacent zones).
+
+🚨 JOB 2 — CROCODILE ALERT (SAFETY CRITICAL):
+A saltwater crocodile on live sonar = an ENORMOUS solid-filled blob near the surface.
+• SIZE: 3–6× larger than any fish blob on screen. Significantly wider than any fish.
+• WIDTH:HEIGHT RATIO: a croc is nearly as wide as it is long — squat, massive. NOT elongated like a fish.
+• POSITION: top 25–30% of the water column (grid rows 1–2).
+• MOVEMENT: slow, steady drift across frames (crocs move continuously but slowly).
+• NO acoustic shadow void (crocs lack the large physostomous swim bladder that creates fish shadows).
+• RULE: If ANY surface return is substantially larger than other returns on screen → set crocAlert: true and describe it in crocWarning. Do NOT hesitate. A missed croc is dangerous.
+
+════════════════════════════
+LIVE SONAR VISUAL GUIDE — DEFAULT ASSUMPTION:
+Assume LIVE SONAR unless the display clearly shows a scrolling history image.
+
+Live sonar (LiveScope / ActiveTarget / MEGA Live / Panoptix) looks like:
+• BACKGROUND: near-black, dark navy, or dark green — very dark.
+• FISH: bright white, yellow, or orange BLOBS floating in the water column above the bottom line.
+• BOTTOM: a bright curved/angled arc or line near the bottom edge. Everything above it = water column.
+• STRUCTURE (logs, rocks): dimmer irregular blobs that do NOT shift between frames.
+• NO ARCHES on live sonar. Only blob-shaped returns.
+• Each frame is a live SNAPSHOT — not a scrolling history.
+
+Other sonar types (identify from visual layout):
+• 2D/CHIRP scrolling: horizontal scroll, fish = U-shaped arches (∩), bottom = flat line. Newest fish enter from the RIGHT edge.
+• Down Imaging (DI): photographic detail, fish = bright dots/streaks with sideways shadow.
+• Side Imaging (SI): two mirrored panels top+bottom, fish = comma/teardrop shapes.
+• MEGA 360 / Panoptix 360: circular radar-style, fish = bright dots at radial distances.
+
+════════════════════════════
 GRID: 8 columns A(left)→H(right), 8 rows 1(surface)→8(deep). 64 zones: A1…H8.
-Bottom band sits in rows 7–8 — static structure. Do NOT report rows 7–8 as movingZones unless a clearly distinct isolated object is separate from the continuous bottom return.
+Bottom band (rows 7–8): static structure unless a clearly isolated object appears separate from the continuous bottom return.
 
-════════════════════════════
-STEP 1 — IDENTIFY SONAR TYPE FROM THE DISPLAY LAYOUT:
-• 2D/CHIRP: horizontally scrolling image, newest returns enter from the RIGHT edge.
-• Down Imaging (DI): photographic-quality downward beam, branches/rocks render in detail.
-• Side Imaging (SI): two mirrored horizontal panels — port (top) and starboard (bottom) — scanning sideways.
-• Live Sonar (LiveScope / ActiveTarget / MEGA Live): real-time snapshot that does NOT scroll. Shows the live water column directly ahead of or below the transducer.
-• MEGA 360 / Panoptix 360: circular radar-style display centred on the boat.
+SCAN EVERY FRAME COMPLETELY: For every frame, report every zone containing ANY return brighter than background — blob, dot, streak, comma, shape, arch, flash. Do not skip small returns. Do not skip faint returns.
 
-════════════════════════════
-STEP 2 — USE THE CORRECT DETECTION VOCABULARY FOR YOUR IDENTIFIED TYPE:
-
-2D/CHIRP — fish appear as ARCHES (∩ shape):
-• Thick arch (tall vertical height, >5% screen) = large fish: barra 55cm+, GT, jewfish, croc.
-• Thin arch = small fish or baitfish. Schools of thin arches = threadfin salmon.
-• Acoustic SHADOW VOID directly BELOW an arch = large swim bladder = barramundi or jewfish.
-• targetType for 2D: "thin" | "thick" | "mixed"
-
-Down Imaging (DI) — fish appear as BRIGHT WHITE DOTS or short STREAKS:
-• Dark shadow extends SIDEWAYS (not downward) beneath each dot/streak. Shadow length ∝ fish size.
-• Photographic structural detail (branches, rocks) is NOT fish — ignore it unless a dot/streak sits apart.
-• Barra in DI: large oval bright dot near structure with clear sideways shadow. No arch shape.
-• targetType for DI: "dot" | "streak"
-
-Side Imaging (SI) — fish appear as BRIGHT COMMA or TEARDROP shapes:
-• Shadow extends AWAY from the keel centreline. Long shadow = tall object off the bottom.
-• Barra in SI: large comma/teardrop near structure, isolated or small group.
-• targetType for SI: "comma" | "streak"
-
-Live Sonar (LiveScope / ActiveTarget / MEGA Live) — fish appear as BLOBS and SHAPES:
-• NEVER arches on live sonar. Fish are distinct floating blobs visible in the water column.
-• Each frame is a live moment — blobs that SHIFT POSITION between frames = active fish.
-• Bottom shows as a curved arc at the bottom edge — everything above = water column.
-• Barra on live sonar: LARGE elongated blob (4:1 to 5:1 length:height ratio), near bottom or structure. Typically slow-moving or stationary (ambush predator). High brightness, well-defined edges.
-• Croc on live sonar: VERY LARGE irregular blob near surface (rows 1–2), wider than any fish — set crocAlert: true immediately.
-• Threadfin/bream: smaller rounder blobs, often loosely grouped in the mid-column.
-• Structure (logs, rocks): blobs in same zone across ALL frames = staticZones, NOT fish.
-• targetType for Live: "blob" | "shape"
-
-MEGA 360 / Panoptix 360 — fish appear as isolated BRIGHT DOTS at radial distance:
-• Barra: isolated bright dot near structure at bearing/range from centre.
-• targetType for MEGA360: "dot"
-
-════════════════════════════
-STEP 3 — MOVEMENT IS THE PRIMARY FISH SIGNAL:
-• Trees, logs, rocks, bottom: NEVER shift zone between frames. Zone stable in ALL 5 frames = structure (staticZones).
-• Fish: appear in DIFFERENT zones across frames, OR appear briefly in only 1–3 of 5 frames.
-• PATH: B3 frame1 → C3 frame2 → D3 frame3 = one fish swimming right = 1 moving target.
-• BRIEF: a return visible in only 1 or 2 frames = fish passing through — report that zone in movingZones.
-• Even a single-frame return = fish. Include it. Do NOT filter it out.
-
-════════════════════════════
-STEP 4 — SCAN EVERY FRAME COMPLETELY:
-For each frame scan every part of the image for ANY return brighter than background — blob, dot, streak, comma, shape, flash (or arch if 2D only). Report its zone. Do not skip small returns.
-
-CRITICAL DETECTION RULE: If you can see it, report it. False positive = fine. Missed fish = not acceptable.
+BARRAMUNDI on live sonar: large elongated blob, 4:1 to 5:1 length:height, near bottom or structure. Often stationary (ambush predator). High brightness, well-defined edges.
+CROCODILE on live sonar: massive squat blob near surface — MUCH wider than any fish, rows 1–2 — set crocAlert: true.
 
 Return JSON only — no markdown, no prose.`;
 
 const CYCLE_SCHEMA = `{
-  "sonarType": "2d|down_imaging|side_imaging|live_sonar|mega360|unknown",
+  "sonarType": "live_sonar|2d|down_imaging|side_imaging|mega360|unknown",
   "frameZones": [["C3"],["C3","D3"],["D3","E3"],["E3"],["E3","F3"]],
   "activeZones": ["C3","D3","E3","F3"],
   "movingZones": ["D3","E3","F3"],
   "staticZones": ["B7","C7","D7","E7","F7","G7"],
   "movingTargetCount": 1,
-  "movementVector": "left",
+  "movementVector": "left|right|toward|away|stationary|unknown",
   "targetCount": 2,
   "targetType": "blob|shape|dot|streak|comma|thin|thick|mixed|none",
   "depthRange": "3-6m",
@@ -160,6 +146,14 @@ const CYCLE_SCHEMA = `{
   "bottomType": ""
 }`;
 
+// Short visual captions injected with each demo — focused on what matters for boat-cycle
+const DEMO_CAPTIONS: Record<number, string> = {
+  6: "LIVE SONAR REF (MEGA Live 2): dark background, fish = bright oval/elliptical blobs, acoustic shadow below each fish. Barra = large elongated oval near structure.",
+  7: "LIVE SONAR REF (ActiveTarget): dark navy background, fish = oval blobs with trailing shadows. Barra = elongated torpedo blob near structure.",
+  8: "LIVE SONAR REF (ActiveTarget): croc on live sonar = VERY LARGE solid filled blob near surface, enormous width vs length, no swim bladder shadow void.",
+  9: "LIVE SONAR REF (ActiveTarget close-up): barra = elongated torpedo 4× longer than tall; croc = extreme width + minimal shadow, near surface.",
+};
+
 router.post("/boat-cycle", async (req, res) => {
   const { frames } = req.body as { frames?: string[] };
   if (!Array.isArray(frames) || frames.length === 0) {
@@ -169,20 +163,35 @@ router.post("/boat-cycle", async (req, res) => {
   const clipped = frames.slice(0, 5);
 
   try {
-    // ── Frame images only — no reference injection (arch refs confuse live sonar) ──
     const content: ContentPart[] = [];
 
+    // ── Inject live sonar display references (demos 6–9) ──────────────────────
+    // These are actual live sonar manufacturer screenshots — visual grounding
+    // for what the screen looks like (dark bg, blobs, croc appearance).
+    // Thumbnails are ~30–50 KB each; at "low" detail = minimal token cost.
+    const liveDemoRefs = getLiveSonarDemoRefs();
+    if (liveDemoRefs.length > 0) {
+      content.push({ type: "text", text: "LIVE SONAR DISPLAY REFERENCES (examples of what live sonar looks like):" });
+      for (const ref of liveDemoRefs) {
+        const caption = DEMO_CAPTIONS[ref.demoNum] ?? `Live sonar reference — ${ref.brand}`;
+        content.push({ type: "text", text: caption });
+        content.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
+      }
+      content.push({ type: "text", text: "─────────────────────────────\nNOW ANALYSE THE FOLLOWING SONAR FRAMES FROM THIS FISHING SESSION:" });
+    }
+
+    // ── User frames ───────────────────────────────────────────────────────────
     for (let i = 0; i < clipped.length; i++) {
       const b64 = clipped[i]!;
       content.push({ type: "text", text: `Frame ${i + 1} of ${clipped.length}:` });
       content.push({ type: "image_url", image_url: { url: `data:${detectMimeType(b64)};base64,${b64}`, detail: "low" } });
     }
 
-    content.push({ type: "text", text: `Report ALL zones containing ANY sonar return in each frame. Identify movement (zones that shift or appear briefly = fish). Return JSON matching schema:\n${CYCLE_SCHEMA}` });
+    content.push({ type: "text", text: `Scan every zone in every frame. Report ALL returns. Identify movement (zones that shift or appear briefly = moving targets). Flag any near-surface large blob as crocAlert. Return JSON matching schema:\n${CYCLE_SCHEMA}` });
 
     const completion = await openai.chat.completions.create({
       model: getModel("top"),
-      max_completion_tokens: 800,
+      max_completion_tokens: 1200,
       stream: false,
       messages: [
         { role: "system", content: CYCLE_SYS },
@@ -262,7 +271,7 @@ router.post("/boat-cycle", async (req, res) => {
     });
 
     req.log.info(
-      { sonarType: d.sonarType, movingTargetCount, movingZones: movingZones.length, staticZones: staticZones.length, targetCount: d.targetCount, targetType: d.targetType, fishCount: d.fishCount },
+      { sonarType: d.sonarType, movingTargetCount, movingZones: movingZones.length, staticZones: staticZones.length, targetCount: d.targetCount, targetType: d.targetType, fishCount: d.fishCount, crocAlert: d.crocAlert ?? false, liveDemoRefsInjected: liveDemoRefs.length },
       "Boat-cycle complete"
     );
   } catch (err) {
