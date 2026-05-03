@@ -73,102 +73,48 @@ router.post("/boat-analyze", async (req, res) => {
 
 // ── Multi-frame arch-movement analysis ───────────────────────────────────────
 
-const CYCLE_SYS = `You are an expert sonar fish analyst specialising in barramundi (Lates calcarifer) in tropical Australian waters. You receive sequential sonar frames captured 2 seconds apart — oldest first, newest last.
+const CYCLE_SYS = `You are an expert sonar fish analyst for tropical Australian waters. You receive sequential sonar frames (oldest first, newest last). Your single most important job: DETECT AND TRACK EVERY RETURN THAT MOVES.
 
-GRID: columns A(left)→D(right), rows 1(surface)→4(deep). 16 zones: A1 A2 A3 A4  B1 B2 B3 B4  C1 C2 C3 C4  D1 D2 D3 D4.
+GRID: 8 columns A(left)→H(right), 8 rows 1(surface)→8(deep). 64 zones: A1…H8.
+Bottom band sits in rows 7–8 — it is static structure. Do NOT report row 7–8 as movingZones unless a distinct isolated object is clearly separate from the continuous bottom return.
 
-══════════════════════════════════════════════
-SONAR TYPE — IDENTIFY FIRST FROM DISPLAY LAYOUT:
-══════════════════════════════════════════════
+════════════════════════════
+SONAR TYPE — identify from display layout FIRST:
+• 2D/CHIRP: horizontal scrolling image, new echoes enter from RIGHT. Fish = ARCH (∩ shape). Thick arch = large fish (barra/croc/GT). Thin = small fish.
+• Down Imaging (DI): photographic downward beam. Fish = bright WHITE DOTS or short streaks + dark sideways shadow beneath.
+• Side Imaging (SI): two mirrored horizontal panels. Fish = bright COMMA or TEARDROP shapes + shadow extending away from centre line.
+• Live Sonar (LiveScope / ActiveTarget / MEGA Live): real-time snapshot — does NOT scroll. Fish = distinct BLOBS separate from background. Each frame is a live moment.
+• MEGA 360 / Panoptix 360: circular radar display. Fish = isolated bright dots at radial distance from centre.
 
-2D / CHIRP (traditional scrolling sonar):
-• Display scrolls horizontally. New echoes enter from the RIGHT. Time axis runs left (oldest) → right (newest).
-• Fish = ARCH shape (∩ curve). Arch forms because the conical beam hits fish leading edge first, then centre, then trailing edge as the boat passes over.
-• THICK arch (tall vertical height, >5% screen height) = large fish: barramundi 55cm+, GT, jewfish, croc.
-• THIN arch = small fish or baitfish.
-• Bottom return = bright continuous HORIZONTAL BAND near the bottom — NOT a fish. NEVER report bottom band as a zone.
-• Acoustic SHADOW VOID = dark area directly BELOW an arch = fish blocked the sonar beam = large physostomous swim bladder = BARRAMUNDI or jewfish signature.
-• Across 5 frames in 2D: arches drift LEFTWARD as sonar scrolls. Extra leftward drift = fish swimming away. Rightward = fish swimming toward boat.
+════════════════════════════
+MOVEMENT IS THE PRIMARY FISH SIGNAL:
+• Trees, logs, rocks, bottom: NEVER shift zone between frames. Zone stable in ALL 5 frames = structure (staticZones).
+• Fish: appear in DIFFERENT zones across frames, OR appear briefly in only 1–3 of 5 frames.
+• PATH: B3 frame1 → C3 frame2 → D3 frame3 = one fish swimming right — that is 1 moving target.
+• BRIEF: a return visible in only 1 or 2 frames = fish passing through — report that zone in movingZones.
+• Even a single-frame return that wasn't there before = fish. Include it. Do NOT filter it out.
 
-DOWN IMAGING / DOWN SCAN (Lowrance StructureScan, Humminbird DI, Garmin DownVü):
-• Very narrow beam pointing STRAIGHT DOWN, photographic-quality image.
-• Fish do NOT appear as arches. Fish appear as bright WHITE DOTS or short horizontal WHITE STREAKS with a dark shadow extending SIDEWAYS beneath them.
-• Structure (tree limbs, rocks, snags) shows photographic detail — individual branches visible.
-• Barramundi in DI: LARGE bright oval dot or short streak, often adjacent to structure. No arch shape.
-• Bottom = bright white horizontal band. Do NOT report structure detail as fish zones.
+════════════════════════════
+SCAN EVERY FRAME COMPLETELY:
+For each frame scan every part of the image for ANY return brighter than background — arch, blob, dot, streak, flash. Report its zone. Do not skip small returns. Do not dismiss faint returns.
 
-SIDE IMAGING (Lowrance StructureScan, Humminbird SI, Garmin SideVü):
-• TWO horizontal panels: port side (top half) and starboard (bottom half) scanning SIDEWAYS from the boat.
-• Fish appear as bright WHITE COMMA or TEARDROP shapes with a dark SHADOW extending away from the keel line.
-• Shadow length = object height (long shadow = big object off the bottom).
-• Barramundi in SI: large bright comma/teardrop near structure, isolated or small group.
+CRITICAL DETECTION RULE: If you can see it, report it. Prefer sensitivity over precision — a false positive is fine, a missed fish is not. The app will cross-reference across frames to confirm.
 
-LIVE SONAR / FORWARD SCAN (Garmin LiveScope, Lowrance ActiveTarget, Humminbird MEGA Live):
-• Real-time beam pointing FORWARD (0–45° ahead) or straight down. Does NOT scroll.
-• Shows the CURRENT MOMENT — each frame is a live snapshot. Fish appear as DISTINCT MOVING BLOBS.
-• Bottom shows as a curved arc at the bottom of the display. Everything above = water column.
-• Barramundi in live sonar: LARGE elongated oval blob (4:1 to 5:1 length:height ratio), near structure or bottom, often stationary or slow-moving (barra are ambush predators), high brightness.
-• Crocodile: VERY LARGE near-surface blob (wider than barra, depth 0–2m), irregular/wide profile.
-• In 5 frames of live sonar: blobs that MOVE position = active fish. Blobs in same position all 5 frames = structure.
-
-MEGA 360 / PANOPTIX 360:
-• Circular radar-like display centred on boat. Fish = isolated bright dots or short arcs at radial distance.
-• Barramundi: isolated bright dot near structure at bearing/range.
-
-BRAND COLOUR GUIDE (for return-strength interpretation):
-• Lowrance (HDS/Elite/Hook): Orange/red = Tier 1 strongest. Yellow = medium. Green = weak.
-• Humminbird (HELIX/SOLIX): White/orange = Tier 1. Yellow = medium. Green = weak.
-• Garmin (Echomap/Striker): White/cyan = Tier 1. Green = medium. Dim = weak.
-• Simrad (GO/NSS): Same as Lowrance — orange/red = Tier 1.
-
-══════════════════════════════════════════════
-MOVEMENT DETECTION — PRIMARY FISH INDICATOR ACROSS 5 FRAMES:
-══════════════════════════════════════════════
-
-KEY INSIGHT: Trees, logs, rocks, and the bottom do NOT move between frames.
-ANYTHING that shifts grid zone between consecutive frames IS ALIVE (fish, crocodile, or turtle).
-
-• STATIC ZONES: zones present in 4+ of 5 frames = permanent structure, bottom, log, rock. NOT fish.
-• MOVING ZONES: zones present in only 1–3 of 5 frames, or zones that SHIFT POSITION between frames = fish.
-• DELTA: if zone X appears in frame 3 but NOT in frames 1, 2, 4, 5 = something passed through zone X = fish.
-• PATH TRACKING: A2 in frame 1 → B2 in frame 2 → C2 in frame 3 = one fish swimming left = 1 moving target.
-• Even ONE zone that appears briefly (1–2 frames) out of 5 = fish passing through. Report as movingZones.
-• DO NOT include bottom-row zones (row 4) as movingZones unless you see clear distinct object movement there.
-
-Report movingZones and staticZones separately — the app highlights fish zones in GREEN and structure in grey.
-
-══════════════════════════════════════════════
-BARRAMUNDI BODY → SONAR PHYSICS (cross-modal bridge):
-══════════════════════════════════════════════
-• Barra have a LARGE PHYSOSTOMOUS SWIM BLADDER (gas-filled sac in upper body cavity).
-• This bladder is the #1 sonar reflector → THICK BRIGHT ARCH + ACOUSTIC SHADOW VOID below the fish.
-• Deep laterally-compressed body (3:1 length:height ratio) → TALLER arch than threadfin.
-• Barra are AMBUSH PREDATORS: hold near structure (snags, rocks, pylons, ledges). Rarely mid-column.
-• Large barra 80cm+: arch 5–8% screen height, always Tier 1 bright, strong shadow void.
-• Legal barra 55–80cm: arch 3–5% screen height, Tier 1 bright, clear shadow void.
-
-SPECIES DISTINCTIONS:
-• BARRAMUNDI: thick bright arch on/near structure, shadow void below, slow-moving to stationary.
-• THREADFIN SALMON: thin arches in SCHOOLS (5–30) at same depth over soft bottom, mid-column, NO shadow void.
-• CROCODILE: ENORMOUS arch 0.5–3m depth, much thicker than any fish arch — FLAG crocAlert immediately.
-• GIANT TREVALLY: thick bright arch mid-water, paired/small group, no structure attachment, aggressive movement.
-• JEWFISH / BLACK JEWFISH: single very large thick arch, deep 5–20m, near bottom structure, strong shadow void.
-
-YOUR TASK:
-1. Identify sonarType from display layout (first decision).
-2. For EACH frame, list which zones contain fish-indicator returns (arches, blobs, dots) — NOT static bottom/structure.
-3. Track changes: which zones appeared or disappeared between consecutive frames?
-4. Identify movingZones (fish — zones that shift or appear briefly) vs staticZones (zones constant across most frames).
-5. Assess if detected targets match barramundi signature using references shown above.
+════════════════════════════
+SPECIES GUIDE:
+• BARRAMUNDI: thick bright arch near structure (snag/rock/pylon) + acoustic shadow void BELOW the arch = large swim bladder. Slow-moving or stationary. Legal size arch = 3–5% screen height.
+• THREADFIN: thin arches in schools (5–30), same depth, soft bottom, no shadow void.
+• CROCODILE: enormous arch rows 1–2 (0–3m depth), wider than any fish — set crocAlert: true immediately.
+• GIANT TREVALLY: thick bright arch mid-water, small group, no structure attachment.
 
 Return JSON only — no markdown, no prose.`;
 
 const CYCLE_SCHEMA = `{
   "sonarType": "2d|down_imaging|side_imaging|live_sonar|mega360|unknown",
-  "frameZones": [["A2"],["A2","B2"],["B2","C2"],["C2"],["C2","D2"]],
-  "activeZones": ["A2","B2","C2","D2"],
-  "movingZones": ["B2","C2"],
-  "staticZones": ["A4","B4","C4","D4"],
+  "frameZones": [["C3"],["C3","D3"],["D3","E3"],["E3"],["E3","F3"]],
+  "activeZones": ["C3","D3","E3","F3"],
+  "movingZones": ["D3","E3","F3"],
+  "staticZones": ["B7","C7","D7","E7","F7","G7"],
   "movingTargetCount": 1,
   "movementVector": "left",
   "archCount": 2,
@@ -235,18 +181,20 @@ router.post("/boat-cycle", async (req, res) => {
       content.push({ type: "text", text: `── END REFERENCES. Now analyse the ${clipped.length} sequential sonar frames below (oldest first):` });
     }
 
-    // ── Frame images (oldest → newest) ───────────────────────────────────────
+    // ── Frame images (oldest → newest, last frame at full resolution) ─────────
     for (let i = 0; i < clipped.length; i++) {
       const b64 = clipped[i]!;
-      content.push({ type: "text", text: `Frame ${i + 1} of ${clipped.length}:` });
-      content.push({ type: "image_url", image_url: { url: `data:${detectMimeType(b64)};base64,${b64}`, detail: "low" } });
+      const isLast = i === clipped.length - 1;
+      const detail: "high" | "low" = isLast ? "high" : "low";
+      content.push({ type: "text", text: `Frame ${i + 1} of ${clipped.length}${isLast ? " [FULL RESOLUTION — scan every pixel for returns]" : ""}:` });
+      content.push({ type: "image_url", image_url: { url: `data:${detectMimeType(b64)};base64,${b64}`, detail } });
     }
 
-    content.push({ type: "text", text: `Identify sonar type, detect movement, report movingZones vs staticZones across ${clipped.length} frames. Return JSON matching schema:\n${CYCLE_SCHEMA}` });
+    content.push({ type: "text", text: `Report ALL zones containing ANY sonar return in each frame. Identify movement (zones that shift or appear briefly = fish). Return JSON matching schema:\n${CYCLE_SCHEMA}` });
 
     const completion = await openai.chat.completions.create({
       model: getModel("mid"),
-      max_completion_tokens: 600,
+      max_completion_tokens: 800,
       stream: false,
       messages: [
         { role: "system", content: CYCLE_SYS },

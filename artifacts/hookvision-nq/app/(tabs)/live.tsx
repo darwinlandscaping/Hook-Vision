@@ -500,8 +500,8 @@ function BoatModeDashboard({
 }
 
 // ─── Boat Mode Fish Detection Grid ────────────────────────────────────────────
-const _GRID_COLS = ["A", "B", "C", "D"] as const;
-const _GRID_ROWS = ["1", "2", "3", "4"] as const;
+const _GRID_COLS = ["A", "B", "C", "D", "E", "F", "G", "H"] as const;
+const _GRID_ROWS = ["1", "2", "3", "4", "5", "6", "7", "8"] as const;
 
 function BoatGrid({ detectedZones, frameZones, movementVector, movingZones, staticZones }: {
   detectedZones: string[];
@@ -525,11 +525,11 @@ function BoatGrid({ detectedZones, frameZones, movementVector, movingZones, stat
   const movingCount = movingZones && movingZones.length > 0 ? Math.ceil(movingZones.length / 2) : 0;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {(["25%", "50%", "75%"] as const).map(pct => (
-        <View key={`h${pct}`} style={{ position: "absolute", left: 0, right: 0, top: pct, height: 1, backgroundColor: "#FF6B0066" }} />
+      {(["12.5%","25%","37.5%","50%","62.5%","75%","87.5%"] as const).map(pct => (
+        <View key={`h${pct}`} style={{ position: "absolute", left: 0, right: 0, top: pct, height: 1, backgroundColor: "#FF6B0044" }} />
       ))}
-      {(["25%", "50%", "75%"] as const).map(pct => (
-        <View key={`v${pct}`} style={{ position: "absolute", top: 0, bottom: 0, left: pct, width: 1, backgroundColor: "#FF6B0066" }} />
+      {(["12.5%","25%","37.5%","50%","62.5%","75%","87.5%"] as const).map(pct => (
+        <View key={`v${pct}`} style={{ position: "absolute", top: 0, bottom: 0, left: pct, width: 1, backgroundColor: "#FF6B0044" }} />
       ))}
       {_GRID_ROWS.map((row, ri) => _GRID_COLS.map((col, ci) => {
         const zone = `${col}${row}`;
@@ -558,20 +558,20 @@ function BoatGrid({ detectedZones, frameZones, movementVector, movingZones, stat
         return (
           <View key={zone} style={{
             position: "absolute",
-            left: `${ci * 25}%` as `${number}%`, width: "25%",
-            top: `${ri * 25}%` as `${number}%`, height: "25%",
+            left: `${ci * 12.5}%` as `${number}%`, width: "12.5%",
+            top: `${ri * 12.5}%` as `${number}%`, height: "12.5%",
             backgroundColor: bgColor, borderWidth, borderColor,
           }}>
-            <Text style={{ color: labelColor, fontSize: 9, fontWeight: "700", margin: 3, letterSpacing: 0.5 }}>
+            <Text style={{ color: labelColor, fontSize: 7, fontWeight: "700", margin: 2, letterSpacing: 0 }}>
               {zone}
             </Text>
           </View>
         );
       }))}
-      <View style={{ position: "absolute", top: 6, left: 6, width: 20, height: 20, borderTopWidth: 2, borderLeftWidth: 2, borderColor: "#FF8C00CC" }} />
-      <View style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#FF8C00CC" }} />
-      <View style={{ position: "absolute", bottom: 6, left: 6, width: 20, height: 20, borderBottomWidth: 2, borderLeftWidth: 2, borderColor: "#FF8C00CC" }} />
-      <View style={{ position: "absolute", bottom: 6, right: 6, width: 20, height: 20, borderBottomWidth: 2, borderRightWidth: 2, borderColor: "#FF8C00CC" }} />
+      <View style={{ position: "absolute", top: 6, left: 6, width: 16, height: 16, borderTopWidth: 2, borderLeftWidth: 2, borderColor: "#FF8C00CC" }} />
+      <View style={{ position: "absolute", top: 6, right: 6, width: 16, height: 16, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#FF8C00CC" }} />
+      <View style={{ position: "absolute", bottom: 6, left: 6, width: 16, height: 16, borderBottomWidth: 2, borderLeftWidth: 2, borderColor: "#FF8C00CC" }} />
+      <View style={{ position: "absolute", bottom: 6, right: 6, width: 16, height: 16, borderBottomWidth: 2, borderRightWidth: 2, borderColor: "#FF8C00CC" }} />
       {movingCount > 0 && (
         <View style={{ position: "absolute", top: 10, left: 10, backgroundColor: "rgba(0,200,80,0.88)", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
           <Text style={{ color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.5 }}>▶ {movingCount > 1 ? `${movingCount} TARGETS` : "MOVEMENT"}</Text>
@@ -656,9 +656,9 @@ export default function LiveScreen() {
   const [slConnecting,    setSlConnecting]    = useState(false);
   const [slConnectedCam,  setSlConnectedCam]  = useState<DiscoveredCamera | null>(null);
 
-  const BOAT_CAPTURE_INTERVAL = 2_000;
+  const BOAT_CAPTURE_INTERVAL = 1_000;   // 1 s between silent captures — faster movement tracking
   const BOAT_CAPTURE_COUNT    = 5;
-  const BOAT_TOTAL_CYCLE_MS   = 90_000;
+  const BOAT_TOTAL_CYCLE_MS   = 45_000; // 4 s capture + analysis + 30 s gap = 45 s total
 
   const charInfo = CHARACTERS.find((c) => c.id === character) ?? CHARACTERS[0];
   const topPad   = Platform.OS === "web" ? 20 : insets.top;
