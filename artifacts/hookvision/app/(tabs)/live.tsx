@@ -135,6 +135,7 @@ import { useHistory } from "@/context/HistoryContext";
 import { CHARACTERS, useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
 import { LiveScanStore } from "@/stores/LiveScanStore";
 import { BoatDemoStore } from "@/stores/BoatDemoStore";
+import { DemoSonarView } from "@/components/DemoSonarView";
 import { useInsta360Context } from "@/contexts/Insta360Context";
 import { useCamera2, DEFAULT_CAM2_IP, DEFAULT_CAM2_PATH } from "@/hooks/useCamera2";
 import { useCameraScanner, type DiscoveredCamera } from "@/hooks/useCameraScanner";
@@ -2951,7 +2952,9 @@ export default function LiveScreen() {
   return (
     <View style={[styles.container, { backgroundColor: "#000" }]}>
       {/* ── Viewfinder — always visible, even in boat mode ──────────────────── */}
-      {cam2Connected ? (
+      {BoatDemoStore.active ? (
+        <DemoSonarView />
+      ) : cam2Connected ? (
         <Image
           source={{ uri: `http://${cam2.ip}${cam2.path}?t=${cam2.tick}` }}
           style={StyleSheet.absoluteFill}
@@ -2962,7 +2965,7 @@ export default function LiveScreen() {
       ) : (
         <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
       )}
-      {cam2Connected && (
+      {!BoatDemoStore.active && cam2Connected && (
         <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" />
       )}
 

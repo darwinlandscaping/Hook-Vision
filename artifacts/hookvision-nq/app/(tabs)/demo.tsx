@@ -112,7 +112,6 @@ export default function DemoScreen() {
   const insets = useSafeAreaInsets();
   const [loadingNum, setLoadingNum] = useState<DemoNum | null>(null);
   const [demoLoading, setDemoLoading] = useState(false);
-  const [slideIdx,    setSlideIdx]    = useState(0);
   const [livePulse,   setLivePulse]   = useState(true);
 
   useAutoNarrate(() => "Demo Sonar Scans. Nine sonar screenshots including Gulf Country barra, Mangrove Jack, and live sonar references. Tap any card to run instant AI analysis.");
@@ -122,12 +121,6 @@ export default function DemoScreen() {
   // Base URL for API-served demo images (demos 6–9 are JPEG, served from API)
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   const apiBase = domain ? `https://${domain}` : "";
-
-  // Cycle the live-demo slideshow (frames 6→7→8→9→loop)
-  useEffect(() => {
-    const t = setInterval(() => setSlideIdx(i => (i + 1) % 4), 750);
-    return () => clearInterval(t);
-  }, []);
 
   // Pulse the LIVE badge
   useEffect(() => {
@@ -141,12 +134,13 @@ export default function DemoScreen() {
     try {
       setDemoLoading(true);
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      const liveNums: DemoNum[] = [6, 7, 8, 9];
+      const demoNums: DemoNum[] = [1, 2, 3, 4, 5];
       const frames: { base64: string; uri: string }[] = [];
-      for (const num of liveNums) {
-        const apiUrl = `${apiBase}/api/demos/sonar-demo-${num}.jpg`;
+      for (const num of demoNums) {
         try {
           if (Platform.OS === "web") {
+            const fname = num === 5 ? "sonar-sample.png" : `sonar-demo-${num}.png`;
+            const apiUrl = `${apiBase}/api/demos/${fname}`;
             const resp = await fetch(apiUrl);
             if (!resp.ok) continue;
             const blob = await resp.blob();
@@ -158,13 +152,14 @@ export default function DemoScreen() {
             });
             frames.push({ base64: b64, uri: apiUrl });
           } else {
-            const cacheUri = `${FileSystem.cacheDirectory}demo-${num}.jpg`;
-            const dl = await FileSystem.downloadAsync(apiUrl, cacheUri);
-            if (dl.status !== 200) continue;
-            const b64 = await FileSystem.readAsStringAsync(dl.uri, {
+            const asset = Asset.fromModule(LOCAL_DEMO_IMAGES[num]!);
+            await asset.downloadAsync();
+            const localUri = asset.localUri;
+            if (!localUri) continue;
+            const b64 = await FileSystem.readAsStringAsync(localUri, {
               encoding: FileSystem.EncodingType.Base64,
             });
-            frames.push({ base64: b64, uri: dl.uri });
+            frames.push({ base64: b64, uri: localUri });
           }
         } catch { /* skip failed frame */ }
       }
@@ -260,14 +255,14 @@ export default function DemoScreen() {
         <View style={[styles.strip, { backgroundColor: "#00ff88" }]} />
         <View style={styles.imageWrap}>
           <Image
-            source={{ uri: `${apiBase}/api/demos/sonar-demo-${([6, 7, 8, 9] as DemoNum[])[slideIdx]}.jpg` }}
+            source={LOCAL_DEMO_IMAGES[5]}
             style={styles.image}
             resizeMode="cover"
           />
           <View style={[styles.brandBadge, { backgroundColor: colors.background + "ee" }]}>
-            <Text style={[styles.brandText, { color: "#00ff88" }]}>Live Sonar</Text>
+            <Text style={[styles.brandText, { color: "#00ff88" }]}>Barra Sonar</Text>
             <Text style={[styles.modelText, { color: colors.mutedForeground }]}>
-              MEGA Live · ActiveTarget · LiveScope
+              Lowrance · Humminbird · Simrad
             </Text>
           </View>
           <View style={{
@@ -284,10 +279,10 @@ export default function DemoScreen() {
         </View>
         <View style={styles.body}>
           <Text style={[styles.desc, { color: colors.foreground }]}>
-            Practice the full boat mode AI pipeline without being on the water. Loads 4 live sonar reference frames (MEGA Live 2, ActiveTarget, LiveScope) and runs the complete two-phase detection — identical to real boat mode.
+            Practice the full boat mode AI pipeline without being on the water. Plays 5 real barra sonar frames (Kimberley, Lowrance, Humminbird) as an animated ~20-second live feed — identical detection pipeline to real boat mode.
           </Text>
           <View style={styles.tags}>
-            {["Boat Mode", "4 Live Frames", "Movement Tracking", "Full Analysis"].map(t => (
+            {["Boat Mode", "5 Barra Frames", "~20s Animated Feed", "Full Analysis"].map(t => (
               <View key={t} style={[styles.tag, { backgroundColor: "#00ff8822" }]}>
                 <Text style={[styles.tagText, { color: "#00ff88" }]}>{t}</Text>
               </View>
