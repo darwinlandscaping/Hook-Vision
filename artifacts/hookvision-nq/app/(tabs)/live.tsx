@@ -911,35 +911,53 @@ export default function LiveScreen() {
           }
         } catch { /* cycleResult stays null */ }
       } else {
-        // Arch-2D: two-phase pipeline
-        // Phase A — screen all 5 frames via /api/boat-analyze (~1-2s, fast) to find the best candidate
-        // Phase B — run ONLY the best frame through /api/analyze (full streaming = scan page quality)
+        // Two-phase pipeline — full live sonar intelligence + scan-page quality
+        //
+        // Phase A: /api/boat-cycle with ALL 5 frames
+        //   Uses the complete liveSonarKnowledge module (MODE_IDENTIFICATION,
+        //   VISUAL_APPEARANCE, MOVEMENT_GUIDE, CROC_GUIDE, SPECIES_QUICK_REF),
+        //   actual manufacturer demo reference images (MEGA Live, ActiveTarget,
+        //   LiveScope), and cross-frame movement tracking.
+        //   Arch detection is a SUBSET of this — live blobs, shadows, and movement
+        //   patterns are the primary signals.
+        //   Returns frameZones[], movingZones[], staticZones[], movementVector.
+        //
+        // Phase B: /api/analyze on the single best frame (full streaming)
+        //   Same dual-model pipeline as the scan page (flash + turbo, high-detail,
+        //   confirmed species reference images from sonarBrain).
+        //   Arch-2D rules apply here too, but only as supporting evidence.
         try {
-          const screenJobs = frames.map(f =>
-            fetchRetry(`${apiBase}/api/boat-analyze`, {
+          // Phase A — full live-sonar intelligence across all 5 frames
+          let cycleData: Record<string, unknown> | null = null;
+          try {
+            const cResp = await fetchRetry(`${apiBase}/api/boat-cycle`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ imageBase64: f.base64 }),
-            }, 30_000)
-              .then(r => r.ok ? (r.json() as Promise<Record<string, unknown>>) : null)
-              .catch((): null => null)
-          );
-          const screenResults = await Promise.all(screenJobs);
+              body: JSON.stringify({ frames: frames.map(f => f.base64) }),
+            }, 60_000);
+            if (cResp.ok) cycleData = await cResp.json() as Record<string, unknown>;
+          } catch { /* fall through — bestIdx defaults to last frame */ }
 
-          // Pick best frame — highest fishCount, tie-break confidence; default to last frame
+          // Best frame = frame with the most active zones (densest fish echo return)
           let bestIdx = frames.length - 1;
-          let bestCount = -1;
-          let bestConf  = -1;
-          screenResults.forEach((sr, i) => {
-            if (!sr) return;
-            const c = parseInt(String(sr.fishCount ?? "0"), 10) || 0;
-            const x = (sr.confidence as number) ?? 0;
-            if (c > bestCount || (c === bestCount && x > bestConf)) {
-              bestCount = c; bestConf = x; bestIdx = i;
-            }
-          });
+          const cdFrameZ = cycleData && Array.isArray(cycleData.frameZones)
+            ? cycleData.frameZones as string[][] : [];
+          if (cdFrameZ.length > 0) {
+            let maxZ = -1;
+            cdFrameZ.forEach((zones, i) => {
+              if (Array.isArray(zones) && zones.length > maxZ) { maxZ = zones.length; bestIdx = i; }
+            });
+          }
 
-          // Phase B — identical to scan page: single frame through /api/analyze streaming
+          // Carry movement intelligence from Phase A into the final result
+          const cdMoving  = cycleData && Array.isArray(cycleData.movingZones)
+            ? cycleData.movingZones  as string[] : [];
+          const cdStatic  = cycleData && Array.isArray(cycleData.staticZones)
+            ? cycleData.staticZones  as string[] : [];
+          const cdVector  = (cycleData?.movementVector   as string) ?? "unknown";
+          const cdMTC     = (cycleData?.movingTargetCount as number) ?? 0;
+
+          // Phase B — identical to scan page: single best frame through /api/analyze streaming
           const bf = frames[bestIdx];
           const fullResp = await fetchRetry(`${apiBase}/api/analyze`, {
             method: "POST",
@@ -968,37 +986,39 @@ export default function LiveScreen() {
               try { d = JSON.parse(m[0]); } catch { /* leave empty */ }
               if (typeof d.fishCount !== "number") d.fishCount = parseInt(String(d.fishCount ?? "0"), 10) || 0;
               const cr: FishAnalysis = {
-                fishCount:         (d.fishCount        as number)           ?? 0,
-                depth:             ((d.depth ?? d.depthRange) as string)    ?? "unknown",
-                distance:          (d.distance          as string)          ?? "unknown",
-                species:           (d.species           as string)          ?? "Unknown",
-                confidence:        (d.confidence        as number)          ?? 0,
-                suggestion:        (d.suggestion        as string)          ?? "",
-                lure:              (d.lure              as string)          ?? "",
-                lureType:          (d.lureType          as string)          ?? "",
-                technique:         (d.technique         as string)          ?? "",
-                crocAlert:         (d.crocAlert         as boolean)         ?? false,
-                crocWarning:       (d.crocWarning       as string | null)   ?? null,
-                birdAlert:         null, barraPct: undefined, targetCount: undefined,
-                targetType:        "arch-2d",
-                waterTemp:         (d.waterTemp         as string)          ?? "",
-                bottomType:        (d.bottomType        as string)          ?? "",
+                fishCount:         (d.fishCount        as number)         ?? 0,
+                depth:             ((d.depth ?? d.depthRange) as string)  ?? "unknown",
+                distance:          (d.distance          as string)        ?? "unknown",
+                species:           (d.species           as string)        ?? "Unknown",
+                confidence:        (d.confidence        as number)        ?? 0,
+                suggestion:        (d.suggestion        as string)        ?? "",
+                lure:              (d.lure              as string)        ?? "",
+                lureType:          (d.lureType          as string)        ?? "",
+                technique:         (d.technique         as string)        ?? "",
+                crocAlert:         (d.crocAlert         as boolean)       ?? false,
+                crocWarning:       (d.crocWarning       as string | null) ?? null,
+                birdAlert:         null,
+                barraPct:          (cycleData?.barraPct    as number | undefined),
+                targetCount:       (cycleData?.targetCount as number | undefined),
+                targetType:        (cycleData?.targetType  as string) ?? "arch-2d",
+                waterTemp:         (d.waterTemp         as string)        ?? "",
+                bottomType:        (d.bottomType        as string)        ?? "",
                 detectedZones:     Array.isArray(d.detectedZones) ? d.detectedZones as string[] : [],
-                frameZones:        [],
-                movementVector:    "unknown",
-                movingZones:       [],
-                staticZones:       [],
-                movingTargetCount: 0,
-                sonarType:         "arch-2d",
+                frameZones:        cdFrameZ,
+                movementVector:    cdVector,
+                movingZones:       cdMoving,
+                staticZones:       cdStatic,
+                movingTargetCount: cdMTC,
+                sonarType:         (cycleData?.sonarType as string) ?? "arch-2d",
               };
               cycleResult = cr;
               if (cr.crocAlert) setCrocAlertActive(true);
               setResult(cr);
               setDetectedZones(cr.detectedZones ?? []);
-              setFrameZones([]);
-              setMovementVector("unknown");
-              setMovingZones([]);
-              setStaticZones([]);
+              setFrameZones(cdFrameZ);
+              setMovementVector(cdVector);
+              setMovingZones(cdMoving);
+              setStaticZones(cdStatic);
             }
           }
         } catch { /* cycleResult stays null */ }
