@@ -1100,6 +1100,45 @@ export default function LiveScreen() {
           }
         } catch { /* cycleResult stays null */ }
       }
+
+      // Phase 3 — DPT 4.1: GPT-4.1 Vision secondary analysis on the best captured frame
+      if (cycleResult && isBoatLiveRef.current) {
+        setLsB64(bestFrame.base64);
+        setLsUri(bestFrame.uri ?? null);
+        setLsAnalysis(null);
+        setLsLoading(true);
+        try {
+          const dptDomain = process.env.EXPO_PUBLIC_DOMAIN;
+          const dptBase   = dptDomain ? `https://${dptDomain}` : "";
+          let dptSonarType = "arch-2d";
+          try {
+            const dvr = await fetchRetry(`${dptBase}/api/sonar-validate`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ imageBase64: bestFrame.base64 }),
+            }, 15_000, 2, 2_000);
+            if (dvr.ok) {
+              const dvd = await dvr.json() as { isSonar?: boolean; sonarType?: string };
+              dptSonarType = dvd.sonarType ?? "arch-2d";
+            }
+          } catch { /* fail open */ }
+          const dptEndpoint = dptSonarType === "live-sonar"
+            ? `${dptBase}/api/live-sonar-analyze`
+            : `${dptBase}/api/analyze`;
+          const dresp = await fetchRetry(dptEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64: bestFrame.base64, location: null }),
+          }, 90_000);
+          if (dresp.ok) {
+            const ddata = await dresp.json() as FishAnalysis;
+            setLsAnalysis(ddata);
+            if (ddata.crocAlert) setCrocAlertActive(true);
+          }
+        } catch { /* DPT step optional — primary result unaffected */ } finally {
+          setLsLoading(false);
+        }
+      }
     }
     if (!isBoatLiveRef.current) return;
 
@@ -2903,39 +2942,93 @@ export default function LiveScreen() {
       >
         <HVHeader subtitle="Live Camera" />
 
-        {/* ─── Boat Mode card ───────────────────────────────────────────────── */}
-        <View style={{ backgroundColor: colors.card, borderRadius: 18, borderWidth: 1.5, borderColor: "#aaff0044", overflow: "hidden" }}>
-          <View style={{ height: 5, backgroundColor: "#aaff00" }} />
-          <View style={{ paddingHorizontal: 18, paddingVertical: 18, gap: 12 }}>
+        {/* ─── Unified Live Sonar Analysis ──────────────────────────────────────── */}
+        <View style={{ backgroundColor: colors.card, borderRadius: 18, borderWidth: 1.5, borderColor: "#ffffff18", overflow: "hidden" }}>
+          <View style={{ height: 5, flexDirection: "row" }}>
+            <View style={{ flex: 1, backgroundColor: "#aaff00" }} />
+            <View style={{ flex: 1, backgroundColor: "#00d4aa" }} />
+          </View>
+          <View style={{ paddingHorizontal: 18, paddingVertical: 18, gap: 14 }}>
+
+            {/* Header */}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: "#aaff0018", borderWidth: 1, borderColor: "#aaff0055", alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: "#ffffff0a", borderWidth: 1, borderColor: "#ffffff22", alignItems: "center", justifyContent: "center" }}>
                 <MaterialCommunityIcons name="ferry" size={27} color="#aaff00" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.foreground, fontSize: 17, fontFamily: "Inter_700Bold" }}>Auto-Scan</Text>
-                <Text style={{ color: "#aaff00", fontSize: 12, fontFamily: "Inter_500Medium" }}>Boat Mode · hands-free · 45 s cycles</Text>
+                <Text style={{ color: colors.foreground, fontSize: 17, fontFamily: "Inter_700Bold" }}>Live Sonar Analysis</Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_500Medium" }}>
+                  <Text style={{ color: "#aaff00" }}>Auto-Scan</Text>  {MIDDOT}  <Text style={{ color: "#00d4aa" }}>DPT 4.1</Text>  {MIDDOT}  45 s cycles
+                </Text>
               </View>
             </View>
-            {!result ? (
-              <Text style={{ color: colors.mutedForeground, fontSize: 13, lineHeight: 19 }}>
-                Lay phone flat on sonar screen. Scans silently every 45 s and analyses automatically — no tapping needed once started.
-              </Text>
-            ) : null}
-            <TouchableOpacity
-              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#aaff00", borderRadius: 12, paddingVertical: 13 }}
-              onPress={() => setBoatMode(true)}
-              activeOpacity={0.85}
-            >
-              <MaterialCommunityIcons name="play-circle" size={18} color="#0a1628" />
-              <Text style={{ color: "#0a1628", fontSize: 14, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>
-                {result ? "▶ NEW AUTO-SCAN" : "▶ START AUTO-SCAN"}
-              </Text>
-            </TouchableOpacity>
-            {result ? (
-              <View style={{ gap: 10 }}>
-                <Text style={{ color: "#aaff00", fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 }}>
-                  LAST CYCLE RESULT · CYCLE {boatCycleNum}
+
+            {/* Controls */}
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TouchableOpacity
+                style={{ flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#aaff00", borderRadius: 12, paddingVertical: 13 }}
+                onPress={() => setBoatMode(true)}
+                activeOpacity={0.85}
+              >
+                <MaterialCommunityIcons name="play-circle" size={16} color="#0a1628" />
+                <Text style={{ color: "#0a1628", fontSize: 13, fontFamily: "Inter_700Bold" }}>
+                  {result ? "NEW AUTO-SCAN" : "START AUTO-SCAN"}
                 </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "#00d4aa", borderRadius: 12, paddingVertical: 13 }}
+                onPress={lsPickCamera}
+                disabled={lsLoading}
+                activeOpacity={0.85}
+              >
+                <Feather name="camera" size={15} color="#0a1628" />
+                <Text style={{ color: "#0a1628", fontSize: 13, fontFamily: "Inter_700Bold" }}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: colors.secondary, borderRadius: 12, paddingVertical: 13, borderWidth: 1, borderColor: "#00d4aa55" }}
+                onPress={lsPickGallery}
+                disabled={lsLoading}
+                activeOpacity={0.8}
+              >
+                <Feather name="image" size={15} color="#00d4aa" />
+                <Text style={{ color: "#00d4aa", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Image preview */}
+            {lsUri ? (
+              <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: lsLoading ? "#00d4aa88" : colors.border }}>
+                <Image source={{ uri: lsUri }} style={{ width: "100%", aspectRatio: 4 / 3 }} resizeMode="cover" />
+              </View>
+            ) : null}
+
+            {/* Analyze button — manual path only */}
+            {lsUri && !lsLoading && !lsAnalysis && !result ? (
+              <TouchableOpacity
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14 }}
+                onPress={lsAnalyze}
+                activeOpacity={0.85}
+              >
+                <SonarPulse size={18} active={false} />
+                <Text style={{ color: colors.primaryForeground, fontSize: 15, fontFamily: "Inter_700Bold" }}>Analyze Sonar — DPT 4.1</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {/* Error */}
+            {lsError ? (
+              <View style={{ backgroundColor: "#ef444420", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "#ef444455" }}>
+                <Text style={{ color: "#ef4444", fontSize: 13, lineHeight: 18 }}>{lsError}</Text>
+              </View>
+            ) : null}
+
+            {/* ── Auto-Scan result (lime) ── */}
+            {result ? (
+              <View style={{ gap: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View style={{ height: 1, flex: 1, backgroundColor: "#aaff0033" }} />
+                  <Text style={{ color: "#aaff00", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>AUTO-SCAN · CYCLE {boatCycleNum}</Text>
+                  <View style={{ height: 1, flex: 1, backgroundColor: "#aaff0033" }} />
+                </View>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <View style={{ flex: 1, backgroundColor: "#aaff0015", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
                     <Text style={{ color: "#aaff00", fontSize: 24, fontFamily: "Inter_700Bold" }}>{result.fishCount}</Text>
@@ -2950,7 +3043,7 @@ export default function LiveScreen() {
                     <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>SPECIES</Text>
                   </View>
                 </View>
-                <View style={{ backgroundColor: colors.secondary, borderRadius: 10, padding: 14, gap: 6 }}>
+                <View style={{ backgroundColor: colors.secondary, borderRadius: 10, padding: 12, gap: 4 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Depth</Text>
                     <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>{result.depth}</Text>
@@ -2965,92 +3058,39 @@ export default function LiveScreen() {
                     <Text style={{ color: "#ff4444", fontFamily: "Inter_700Bold", fontSize: 14, flex: 1 }}>CROCODILE DETECTED — STAY ALERT</Text>
                   </View>
                 ) : null}
-                <TouchableOpacity
-                  style={{ alignItems: "center", paddingVertical: 8 }}
-                  onPress={() => setResult(null)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ color: "#aaff0077", fontSize: 12, fontFamily: "Inter_500Medium" }}>← Clear result</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
-          </View>
-        </View>
-
-        {/* ─── Scan Sonar panel ─────────────────────────────────────────────── */}
-        <View style={{ backgroundColor: colors.card, borderRadius: 18, borderWidth: 1.5, borderColor: "#00d4aa44", overflow: "hidden" }}>
-          <View style={{ height: 5, backgroundColor: "#00d4aa" }} />
-          <View style={{ paddingHorizontal: 18, paddingVertical: 18, gap: 14 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: "#00d4aa18", borderWidth: 1, borderColor: "#00d4aa55", alignItems: "center", justifyContent: "center" }}>
-                <SonarPulse size={36} active={lsLoading} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.foreground, fontSize: 17, fontFamily: "Inter_700Bold" }}>Scan Sonar</Text>
-                <Text style={{ color: "#00d4aa", fontSize: 12, fontFamily: "Inter_500Medium" }}>GPT-4.1 Vision Analysis</Text>
-              </View>
-            </View>
-
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <TouchableOpacity
-                style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#00d4aa", borderRadius: 12, paddingVertical: 13 }}
-                onPress={lsPickCamera}
-                disabled={lsLoading}
-                activeOpacity={0.85}
-              >
-                <Feather name="camera" size={17} color="#0a1628" />
-                <Text style={{ color: "#0a1628", fontSize: 14, fontFamily: "Inter_700Bold" }}>Camera</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.secondary, borderRadius: 12, paddingVertical: 13, borderWidth: 1, borderColor: "#00d4aa55" }}
-                onPress={lsPickGallery}
-                disabled={lsLoading}
-                activeOpacity={0.8}
-              >
-                <Feather name="image" size={17} color="#00d4aa" />
-                <Text style={{ color: "#00d4aa", fontSize: 14, fontFamily: "Inter_600SemiBold" }}>Gallery</Text>
-              </TouchableOpacity>
-            </View>
-
-            {lsUri ? (
-              <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: lsLoading ? "#00d4aa88" : colors.border }}>
-                <Image source={{ uri: lsUri }} style={{ width: "100%", aspectRatio: 4 / 3 }} resizeMode="cover" />
               </View>
             ) : null}
 
-            {lsUri && !lsLoading && !lsAnalysis ? (
-              <TouchableOpacity
-                style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14 }}
-                onPress={lsAnalyze}
-                activeOpacity={0.85}
-              >
-                <SonarPulse size={18} active={false} />
-                <Text style={{ color: colors.primaryForeground, fontSize: 16, fontFamily: "Inter_700Bold" }}>Analyze Sonar</Text>
-              </TouchableOpacity>
-            ) : null}
-
+            {/* ── DPT 4.1 loading indicator ── */}
             {lsLoading ? (
-              <View style={{ alignItems: "center", gap: 10, paddingVertical: 16 }}>
-                <ActivityIndicator color="#00d4aa" size="large" />
-                <Text style={{ color: "#00d4aa", fontSize: 13, fontFamily: "Inter_500Medium" }}>Analysing sonar…</Text>
+              <View style={{ gap: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View style={{ height: 1, flex: 1, backgroundColor: "#00d4aa33" }} />
+                  <Text style={{ color: "#00d4aa", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>DPT 4.1 ANALYSING</Text>
+                  <View style={{ height: 1, flex: 1, backgroundColor: "#00d4aa33" }} />
+                </View>
+                <View style={{ alignItems: "center", gap: 10, paddingVertical: 12 }}>
+                  <ActivityIndicator color="#00d4aa" size="large" />
+                  <Text style={{ color: "#00d4aa", fontSize: 13, fontFamily: "Inter_500Medium" }}>GPT-4.1 Vision scanning…</Text>
+                </View>
               </View>
             ) : null}
 
-            {lsError ? (
-              <View style={{ backgroundColor: "#ef444420", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "#ef444455" }}>
-                <Text style={{ color: "#ef4444", fontSize: 13, lineHeight: 18 }}>{lsError}</Text>
-              </View>
-            ) : null}
-
+            {/* ── DPT 4.1 result (teal) ── */}
             {lsAnalysis && !lsLoading ? (
-              <View style={{ gap: 10 }}>
+              <View style={{ gap: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View style={{ height: 1, flex: 1, backgroundColor: "#00d4aa33" }} />
+                  <Text style={{ color: "#00d4aa", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>DPT 4.1 RESULT</Text>
+                  <View style={{ height: 1, flex: 1, backgroundColor: "#00d4aa33" }} />
+                </View>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <View style={{ flex: 1, backgroundColor: "#00d4aa15", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
-                    <Text style={{ color: "#00d4aa", fontSize: 26, fontFamily: "Inter_700Bold" }}>{lsAnalysis.fishCount}</Text>
+                    <Text style={{ color: "#00d4aa", fontSize: 24, fontFamily: "Inter_700Bold" }}>{lsAnalysis.fishCount}</Text>
                     <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>FISH</Text>
                   </View>
                   <View style={{ flex: 1, backgroundColor: "#00d4aa15", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
-                    <Text style={{ color: "#00d4aa", fontSize: 26, fontFamily: "Inter_700Bold" }}>{lsAnalysis.confidence}%</Text>
+                    <Text style={{ color: "#00d4aa", fontSize: 24, fontFamily: "Inter_700Bold" }}>{lsAnalysis.confidence}%</Text>
                     <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>CONFIDENCE</Text>
                   </View>
                   <View style={{ flex: 2, backgroundColor: "#00d4aa15", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
@@ -3058,7 +3098,7 @@ export default function LiveScreen() {
                     <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>SPECIES</Text>
                   </View>
                 </View>
-                <View style={{ backgroundColor: colors.secondary, borderRadius: 10, padding: 14, gap: 6 }}>
+                <View style={{ backgroundColor: colors.secondary, borderRadius: 10, padding: 12, gap: 4 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Depth</Text>
                     <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>{lsAnalysis.depth}</Text>
@@ -3073,15 +3113,25 @@ export default function LiveScreen() {
                     <Text style={{ color: "#ff4444", fontFamily: "Inter_700Bold", fontSize: 14, flex: 1 }}>CROCODILE DETECTED — STAY ALERT</Text>
                   </View>
                 ) : null}
-                <TouchableOpacity
-                  style={{ alignItems: "center", paddingVertical: 10 }}
-                  onPress={() => { setLsUri(null); setLsB64(null); setLsAnalysis(null); setLsError(null); }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ color: "#00d4aa", fontSize: 13, fontFamily: "Inter_500Medium" }}>← New scan</Text>
-                </TouchableOpacity>
               </View>
             ) : null}
+
+            {/* Clear all / empty state */}
+            {(result || lsAnalysis) ? (
+              <TouchableOpacity
+                style={{ alignItems: "center", paddingVertical: 8 }}
+                onPress={() => { setResult(null); setLsUri(null); setLsB64(null); setLsAnalysis(null); setLsError(null); }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: "#ffffff44", fontSize: 12, fontFamily: "Inter_500Medium" }}>← Clear all results</Text>
+              </TouchableOpacity>
+            ) : (
+              !result && !lsAnalysis && !lsUri ? (
+                <Text style={{ color: colors.mutedForeground, fontSize: 13, lineHeight: 19, textAlign: "center" }}>
+                  Point your phone at the sonar screen and tap Start Auto-Scan, or pick a photo to analyse manually.
+                </Text>
+              ) : null
+            )}
           </View>
         </View>
       </ScrollView>
