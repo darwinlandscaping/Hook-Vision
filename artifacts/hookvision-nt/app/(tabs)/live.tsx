@@ -2937,15 +2937,16 @@ export default function LiveScreen() {
       >
         <HVHeader subtitle="Live Camera" />
 
-        {/* ─── Unified Live Sonar Analysis ──────────────────────────────────────── */}
+        {/* ─── Live Sonar Analysis — AI Pipeline ──────────────────────────────── */}
         <View style={{ backgroundColor: colors.card, borderRadius: 18, borderWidth: 1.5, borderColor: "#ffffff18", overflow: "hidden" }}>
+          {/* Dual accent bar: lime = Auto-Scan | teal = DPT 4.1 */}
           <View style={{ height: 5, flexDirection: "row" }}>
             <View style={{ flex: 1, backgroundColor: "#aaff00" }} />
             <View style={{ flex: 1, backgroundColor: "#00d4aa" }} />
           </View>
           <View style={{ paddingHorizontal: 18, paddingVertical: 18, gap: 14 }}>
 
-            {/* Header */}
+            {/* ── Card header ─────────────────────────────────────────────── */}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
               <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: "#ffffff0a", borderWidth: 1, borderColor: "#ffffff22", alignItems: "center", justifyContent: "center" }}>
                 <MaterialCommunityIcons name="ferry" size={27} color="#aaff00" />
@@ -2953,12 +2954,39 @@ export default function LiveScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.foreground, fontSize: 17, fontFamily: "Inter_700Bold" }}>Live Sonar Analysis</Text>
                 <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_500Medium" }}>
-                  <Text style={{ color: "#aaff00" }}>Auto-Scan</Text>  {MIDDOT}  <Text style={{ color: "#00d4aa" }}>DPT 4.1</Text>  {MIDDOT}  45 s cycles
+                  <Text style={{ color: "#aaff00" }}>Auto-Scan</Text>
+                  <Text>{"  ·  "}</Text>
+                  <Text style={{ color: "#00d4aa" }}>DPT 4.1</Text>
+                  <Text>{"  ·  45 s cycles"}</Text>
                 </Text>
               </View>
             </View>
 
-            {/* Controls */}
+            {/* ── AI Pipeline stages ──────────────────────────────────────── */}
+            <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+              <View style={{ flex: 1, backgroundColor: "#aaff0018", borderRadius: 10, padding: 10, alignItems: "center", gap: 2, borderWidth: 1, borderColor: boatMode ? "#aaff0088" : "#aaff0033" }}>
+                <Text style={{ color: "#aaff00", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>STAGE 1</Text>
+                <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Auto-Scan</Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 9 }}>Arch-Sonar AI</Text>
+                {boatMode ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#aaff00", marginTop: 2 }} /> : null}
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={18} color="#ffffff33" />
+              <View style={{ flex: 1, backgroundColor: "#00d4aa18", borderRadius: 10, padding: 10, alignItems: "center", gap: 2, borderWidth: 1, borderColor: lsLoading ? "#00d4aa88" : "#00d4aa33" }}>
+                <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>STAGE 2</Text>
+                <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>DPT 4.1</Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 9 }}>GPT-4.1 Vision</Text>
+                {lsLoading ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#00d4aa", marginTop: 2 }} /> : null}
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={18} color="#ffffff33" />
+              <View style={{ flex: 1, backgroundColor: "#ffffff08", borderRadius: 10, padding: 10, alignItems: "center", gap: 2, borderWidth: 1, borderColor: (result || lsAnalysis) ? "#ffffff55" : "#ffffff18" }}>
+                <Text style={{ color: "#ffffff88", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>OUTPUT</Text>
+                <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Results</Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 9 }}>Stacked below</Text>
+                {(result || lsAnalysis) ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#ffffff88", marginTop: 2 }} /> : null}
+              </View>
+            </View>
+
+            {/* ── Controls ────────────────────────────────────────────────── */}
             <View style={{ flexDirection: "row", gap: 8 }}>
               <TouchableOpacity
                 style={{ flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#aaff00", borderRadius: 12, paddingVertical: 13 }}
@@ -2990,14 +3018,100 @@ export default function LiveScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Image preview */}
-            {lsUri ? (
-              <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: lsLoading ? "#00d4aa88" : colors.border }}>
-                <Image source={{ uri: lsUri }} style={{ width: "100%", aspectRatio: 4 / 3 }} resizeMode="cover" />
+            {/* ── Scan guide (shown when no image is loaded) ───────────────── */}
+            {!lsUri && !result ? (
+              <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: "#ffffff18", backgroundColor: "#ffffff06" }}>
+                {/* 3×3 reference grid */}
+                <View style={{ aspectRatio: 4 / 3, position: "relative" }}>
+                  {/* Grid columns */}
+                  <View style={{ position: "absolute", left: "33.3%", top: 0, bottom: 0, width: 1, backgroundColor: "#00d4aa22" }} />
+                  <View style={{ position: "absolute", left: "66.6%", top: 0, bottom: 0, width: 1, backgroundColor: "#00d4aa22" }} />
+                  {/* Grid rows */}
+                  <View style={{ position: "absolute", top: "33.3%", left: 0, right: 0, height: 1, backgroundColor: "#00d4aa22" }} />
+                  <View style={{ position: "absolute", top: "66.6%", left: 0, right: 0, height: 1, backgroundColor: "#00d4aa22" }} />
+                  {/* Corner crosshair brackets */}
+                  <View style={{ position: "absolute", top: 10, left: 10, width: 18, height: 18, borderTopWidth: 2, borderLeftWidth: 2, borderColor: "#00d4aa88" }} />
+                  <View style={{ position: "absolute", top: 10, right: 10, width: 18, height: 18, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#00d4aa88" }} />
+                  <View style={{ position: "absolute", bottom: 10, left: 10, width: 18, height: 18, borderBottomWidth: 2, borderLeftWidth: 2, borderColor: "#00d4aa88" }} />
+                  <View style={{ position: "absolute", bottom: 10, right: 10, width: 18, height: 18, borderBottomWidth: 2, borderRightWidth: 2, borderColor: "#00d4aa88" }} />
+                  {/* Center crosshair */}
+                  <View style={{ position: "absolute", top: "50%", left: "50%", width: 24, height: 24, marginLeft: -12, marginTop: -12, borderWidth: 1.5, borderRadius: 12, borderColor: "#aaff0066" }} />
+                  <View style={{ position: "absolute", top: "50%", left: "40%", right: "40%", height: 1, backgroundColor: "#aaff0044" }} />
+                  <View style={{ position: "absolute", left: "50%", top: "40%", bottom: "40%", width: 1, backgroundColor: "#aaff0044" }} />
+                  {/* Depth zone labels */}
+                  <View style={{ position: "absolute", right: 6, top: "5%", alignItems: "flex-end", gap: 2 }}>
+                    <Text style={{ color: "#00d4aa88", fontSize: 8, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 }}>SURFACE</Text>
+                  </View>
+                  <View style={{ position: "absolute", right: 6, top: "37%", alignItems: "flex-end" }}>
+                    <Text style={{ color: "#00d4aa66", fontSize: 8, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 }}>MID</Text>
+                  </View>
+                  <View style={{ position: "absolute", right: 6, bottom: "8%", alignItems: "flex-end" }}>
+                    <Text style={{ color: "#00d4aa44", fontSize: 8, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 }}>DEEP</Text>
+                  </View>
+                  {/* Guide text */}
+                  <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    <MaterialCommunityIcons name="sonar" size={28} color="#ffffff22" />
+                    <Text style={{ color: "#ffffff44", fontSize: 12, fontFamily: "Inter_500Medium", textAlign: "center" }}>
+                      {"Point at sonar screen\nthen tap Camera or Start Auto-Scan"}
+                    </Text>
+                  </View>
+                </View>
+                {/* Zone bar */}
+                <View style={{ flexDirection: "row", borderTopWidth: 1, borderColor: "#ffffff0a" }}>
+                  <View style={{ flex: 1, paddingVertical: 5, alignItems: "center", borderRightWidth: 1, borderColor: "#ffffff0a" }}>
+                    <Text style={{ color: "#00d4aa", fontSize: 8, fontFamily: "Inter_700Bold", letterSpacing: 0.8 }}>SURFACE</Text>
+                  </View>
+                  <View style={{ flex: 1, paddingVertical: 5, alignItems: "center", borderRightWidth: 1, borderColor: "#ffffff0a" }}>
+                    <Text style={{ color: "#00d4aa99", fontSize: 8, fontFamily: "Inter_700Bold", letterSpacing: 0.8 }}>MID WATER</Text>
+                  </View>
+                  <View style={{ flex: 1, paddingVertical: 5, alignItems: "center" }}>
+                    <Text style={{ color: "#00d4aa55", fontSize: 8, fontFamily: "Inter_700Bold", letterSpacing: 0.8 }}>DEEP WATER</Text>
+                  </View>
+                </View>
               </View>
             ) : null}
 
-            {/* Analyze button — manual path only */}
+            {/* ── Image preview with grid overlay ─────────────────────────── */}
+            {lsUri ? (
+              <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: lsLoading ? "#00d4aa88" : colors.border }}>
+                <View style={{ position: "relative" }}>
+                  <Image source={{ uri: lsUri }} style={{ width: "100%", aspectRatio: 4 / 3 }} resizeMode="cover" />
+                  {/* Reference grid overlay */}
+                  <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+                    <View style={{ position: "absolute", left: "33.3%", top: 0, bottom: 0, width: 1, backgroundColor: "#00d4aa33" }} />
+                    <View style={{ position: "absolute", left: "66.6%", top: 0, bottom: 0, width: 1, backgroundColor: "#00d4aa33" }} />
+                    <View style={{ position: "absolute", top: "33.3%", left: 0, right: 0, height: 1, backgroundColor: "#00d4aa33" }} />
+                    <View style={{ position: "absolute", top: "66.6%", left: 0, right: 0, height: 1, backgroundColor: "#00d4aa33" }} />
+                    {/* Corner brackets */}
+                    <View style={{ position: "absolute", top: 8, left: 8, width: 16, height: 16, borderTopWidth: 2, borderLeftWidth: 2, borderColor: "#00d4aacc" }} />
+                    <View style={{ position: "absolute", top: 8, right: 8, width: 16, height: 16, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#00d4aacc" }} />
+                    <View style={{ position: "absolute", bottom: 8, left: 8, width: 16, height: 16, borderBottomWidth: 2, borderLeftWidth: 2, borderColor: "#00d4aacc" }} />
+                    <View style={{ position: "absolute", bottom: 8, right: 8, width: 16, height: 16, borderBottomWidth: 2, borderRightWidth: 2, borderColor: "#00d4aacc" }} />
+                    {/* Depth zone labels */}
+                    <View style={{ position: "absolute", right: 6, top: 6 }}>
+                      <Text style={{ color: "#00d4aacc", fontSize: 8, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>SURFACE</Text>
+                    </View>
+                    <View style={{ position: "absolute", right: 6, top: "36%" }}>
+                      <Text style={{ color: "#00d4aa99", fontSize: 8, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>MID</Text>
+                    </View>
+                    <View style={{ position: "absolute", right: 6, bottom: 6 }}>
+                      <Text style={{ color: "#00d4aa66", fontSize: 8, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>DEEP</Text>
+                    </View>
+                    {/* Scanning pulse when loading */}
+                    {lsLoading ? (
+                      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#00d4aa08" }}>
+                        <View style={{ position: "absolute", bottom: 6, left: 8, right: 8, flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <ActivityIndicator color="#00d4aa" size="small" />
+                          <Text style={{ color: "#00d4aa", fontSize: 10, fontFamily: "Inter_600SemiBold" }}>GPT-4.1 Vision analysing…</Text>
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
+            {/* ── Analyze button — manual DPT path ────────────────────────── */}
             {lsUri && !lsLoading && !lsAnalysis && !result ? (
               <TouchableOpacity
                 style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14 }}
@@ -3009,35 +3123,48 @@ export default function LiveScreen() {
               </TouchableOpacity>
             ) : null}
 
-            {/* Error */}
+            {/* ── Error ───────────────────────────────────────────────────── */}
             {lsError ? (
               <View style={{ backgroundColor: "#ef444420", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "#ef444455" }}>
                 <Text style={{ color: "#ef4444", fontSize: 13, lineHeight: 18 }}>{lsError}</Text>
               </View>
             ) : null}
 
-            {/* ── Auto-Scan result (lime) ── */}
+            {/* ══════════════════════════════════════════════════════════════
+                STAGE 1 — Auto-Scan result  (lime)
+            ══════════════════════════════════════════════════════════════ */}
             {result ? (
-              <View style={{ gap: 8 }}>
+              <View style={{ gap: 10 }}>
+                {/* Stage header */}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <View style={{ height: 1, flex: 1, backgroundColor: "#aaff0033" }} />
-                  <Text style={{ color: "#aaff00", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>AUTO-SCAN · CYCLE {boatCycleNum}</Text>
-                  <View style={{ height: 1, flex: 1, backgroundColor: "#aaff0033" }} />
+                  <View style={{ height: 1.5, flex: 1, backgroundColor: "#aaff0033" }} />
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#aaff0018", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#aaff0044" }}>
+                    <Text style={{ color: "#aaff00", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>STAGE 1</Text>
+                    <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: "#aaff00" }} />
+                    <Text style={{ color: "#aaff00", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>AUTO-SCAN · CYCLE {boatCycleNum}</Text>
+                  </View>
+                  <View style={{ height: 1.5, flex: 1, backgroundColor: "#aaff0033" }} />
                 </View>
+                {/* Fish / Confidence / Species tiles */}
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <View style={{ flex: 1, backgroundColor: "#aaff0015", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
-                    <Text style={{ color: "#aaff00", fontSize: 24, fontFamily: "Inter_700Bold" }}>{result.fishCount}</Text>
+                    <Text style={{ color: "#aaff00", fontSize: 26, fontFamily: "Inter_700Bold" }}>{result.fishCount}</Text>
                     <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>FISH</Text>
                   </View>
-                  <View style={{ flex: 1, backgroundColor: "#aaff0015", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
-                    <Text style={{ color: "#aaff00", fontSize: 24, fontFamily: "Inter_700Bold" }}>{result.confidence}%</Text>
-                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>CONFIDENCE</Text>
+                  <View style={{ flex: 1, backgroundColor: "#aaff0015", borderRadius: 10, padding: 12, alignItems: "center", gap: 4 }}>
+                    <Text style={{ color: "#aaff00", fontSize: 26, fontFamily: "Inter_700Bold" }}>{result.confidence}%</Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>CONF</Text>
+                    {/* Confidence bar */}
+                    <View style={{ width: "100%", height: 3, backgroundColor: "#ffffff15", borderRadius: 2 }}>
+                      <View style={{ width: `${result.confidence}%`, height: 3, backgroundColor: "#aaff00", borderRadius: 2 }} />
+                    </View>
                   </View>
                   <View style={{ flex: 2, backgroundColor: "#aaff0015", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
                     <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" }} numberOfLines={2}>{result.species}</Text>
                     <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>SPECIES</Text>
                   </View>
                 </View>
+                {/* Detail row */}
                 <View style={{ backgroundColor: colors.secondary, borderRadius: 10, padding: 12, gap: 4 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Depth</Text>
@@ -3056,43 +3183,63 @@ export default function LiveScreen() {
               </View>
             ) : null}
 
-            {/* ── DPT 4.1 loading indicator ── */}
+            {/* ══════════════════════════════════════════════════════════════
+                STAGE 2 — DPT 4.1 loading
+            ══════════════════════════════════════════════════════════════ */}
             {lsLoading ? (
               <View style={{ gap: 8 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <View style={{ height: 1, flex: 1, backgroundColor: "#00d4aa33" }} />
-                  <Text style={{ color: "#00d4aa", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>DPT 4.1 ANALYSING</Text>
-                  <View style={{ height: 1, flex: 1, backgroundColor: "#00d4aa33" }} />
+                  <View style={{ height: 1.5, flex: 1, backgroundColor: "#00d4aa33" }} />
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#00d4aa18", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#00d4aa44" }}>
+                    <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>STAGE 2</Text>
+                    <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: "#00d4aa" }} />
+                    <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>DPT 4.1 SCANNING</Text>
+                  </View>
+                  <View style={{ height: 1.5, flex: 1, backgroundColor: "#00d4aa33" }} />
                 </View>
-                <View style={{ alignItems: "center", gap: 10, paddingVertical: 12 }}>
+                <View style={{ alignItems: "center", gap: 10, paddingVertical: 14, backgroundColor: "#00d4aa0a", borderRadius: 12 }}>
                   <ActivityIndicator color="#00d4aa" size="large" />
-                  <Text style={{ color: "#00d4aa", fontSize: 13, fontFamily: "Inter_500Medium" }}>GPT-4.1 Vision scanning…</Text>
+                  <Text style={{ color: "#00d4aa", fontSize: 13, fontFamily: "Inter_500Medium" }}>GPT-4.1 Vision scanning sonar image…</Text>
+                  <Text style={{ color: "#00d4aa66", fontSize: 11 }}>3×3 grid analysis · depth zones · arch detection</Text>
                 </View>
               </View>
             ) : null}
 
-            {/* ── DPT 4.1 result (teal) ── */}
+            {/* ══════════════════════════════════════════════════════════════
+                STAGE 2 — DPT 4.1 result  (teal)
+            ══════════════════════════════════════════════════════════════ */}
             {lsAnalysis && !lsLoading ? (
-              <View style={{ gap: 8 }}>
+              <View style={{ gap: 10 }}>
+                {/* Stage header */}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <View style={{ height: 1, flex: 1, backgroundColor: "#00d4aa33" }} />
-                  <Text style={{ color: "#00d4aa", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>DPT 4.1 RESULT</Text>
-                  <View style={{ height: 1, flex: 1, backgroundColor: "#00d4aa33" }} />
+                  <View style={{ height: 1.5, flex: 1, backgroundColor: "#00d4aa33" }} />
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#00d4aa18", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#00d4aa44" }}>
+                    <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>STAGE 2</Text>
+                    <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: "#00d4aa" }} />
+                    <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>DPT 4.1 RESULT</Text>
+                  </View>
+                  <View style={{ height: 1.5, flex: 1, backgroundColor: "#00d4aa33" }} />
                 </View>
+                {/* Fish / Confidence / Species tiles */}
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <View style={{ flex: 1, backgroundColor: "#00d4aa15", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
-                    <Text style={{ color: "#00d4aa", fontSize: 24, fontFamily: "Inter_700Bold" }}>{lsAnalysis.fishCount}</Text>
+                    <Text style={{ color: "#00d4aa", fontSize: 26, fontFamily: "Inter_700Bold" }}>{lsAnalysis.fishCount}</Text>
                     <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>FISH</Text>
                   </View>
-                  <View style={{ flex: 1, backgroundColor: "#00d4aa15", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
-                    <Text style={{ color: "#00d4aa", fontSize: 24, fontFamily: "Inter_700Bold" }}>{lsAnalysis.confidence}%</Text>
-                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>CONFIDENCE</Text>
+                  <View style={{ flex: 1, backgroundColor: "#00d4aa15", borderRadius: 10, padding: 12, alignItems: "center", gap: 4 }}>
+                    <Text style={{ color: "#00d4aa", fontSize: 26, fontFamily: "Inter_700Bold" }}>{lsAnalysis.confidence}%</Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>CONF</Text>
+                    {/* Confidence bar */}
+                    <View style={{ width: "100%", height: 3, backgroundColor: "#ffffff15", borderRadius: 2 }}>
+                      <View style={{ width: `${lsAnalysis.confidence}%`, height: 3, backgroundColor: "#00d4aa", borderRadius: 2 }} />
+                    </View>
                   </View>
                   <View style={{ flex: 2, backgroundColor: "#00d4aa15", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
                     <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" }} numberOfLines={2}>{lsAnalysis.species}</Text>
                     <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>SPECIES</Text>
                   </View>
                 </View>
+                {/* Detail row */}
                 <View style={{ backgroundColor: colors.secondary, borderRadius: 10, padding: 12, gap: 4 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Depth</Text>
@@ -3111,7 +3258,7 @@ export default function LiveScreen() {
               </View>
             ) : null}
 
-            {/* Clear all / empty state */}
+            {/* ── Clear all / empty-state hint ────────────────────────────── */}
             {(result || lsAnalysis) ? (
               <TouchableOpacity
                 style={{ alignItems: "center", paddingVertical: 8 }}
@@ -3121,11 +3268,7 @@ export default function LiveScreen() {
                 <Text style={{ color: "#ffffff44", fontSize: 12, fontFamily: "Inter_500Medium" }}>← Clear all results</Text>
               </TouchableOpacity>
             ) : (
-              !result && !lsAnalysis && !lsUri ? (
-                <Text style={{ color: colors.mutedForeground, fontSize: 13, lineHeight: 19, textAlign: "center" }}>
-                  Point your phone at the sonar screen and tap Start Auto-Scan, or pick a photo to analyse manually.
-                </Text>
-              ) : null
+              !result && !lsAnalysis && !lsUri ? null : null
             )}
           </View>
         </View>
