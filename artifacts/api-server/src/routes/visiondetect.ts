@@ -260,10 +260,11 @@ router.post("/vision-detect", async (req, res) => {
       }
     }
 
-    // The live frame itself
+    // The live frame itself — use "low" detail for speed (live frames are fast-moving,
+    // high detail adds 10-15s latency with no meaningful gain for fish/croc detection)
     content.push({
       type: "image_url",
-      image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "high" },
+      image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low" },
     });
 
     // Final instruction
@@ -279,7 +280,7 @@ router.post("/vision-detect", async (req, res) => {
     // ── Call GPT-4.1 Vision ─────────────────────────────────────────────────
     const completion = await openai.chat.completions.create({
       model: getModel("top"),
-      max_completion_tokens: 600,
+      max_completion_tokens: 400,
       stream: false,
       messages: [
         { role: "system", content: systemContent },

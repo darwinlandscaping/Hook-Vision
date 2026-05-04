@@ -756,7 +756,7 @@ export default function LiveScreen() {
     setVisionDetecting(true);
     try {
       const photo = await nativeCamRef.current.takePictureAsync({
-        base64: true, quality: 0.45, skipProcessing: true,
+        base64: true, quality: 0.28, skipProcessing: false, exif: false,
       });
       if (!photo?.base64) return;
       const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -765,7 +765,7 @@ export default function LiveScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64: photo.base64, region: "nt", mode: visionModeTypeRef.current }),
-        signal: AbortSignal.timeout(18_000),
+        signal: AbortSignal.timeout(15_000),
       });
       if (resp.ok) {
         const data = await resp.json() as { targets: VisionTarget[]; frameNote: string };
@@ -787,7 +787,7 @@ export default function LiveScreen() {
     setVisionFrameNote("");
     activateKeepAwakeAsync().catch(() => {});
     if (visionIntervalRef.current) clearInterval(visionIntervalRef.current);
-    visionIntervalRef.current = setInterval(() => { captureVisionFrameRef.current?.(); }, 2_000);
+    visionIntervalRef.current = setInterval(() => { captureVisionFrameRef.current?.(); }, 3_500);
   }, []);
 
   const speakResult = useCallback(
