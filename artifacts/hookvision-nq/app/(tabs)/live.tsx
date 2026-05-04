@@ -56,6 +56,14 @@ interface BoatCycleResponse {
   sonarType?: string;
 }
 
+interface VisionTarget {
+  id: string;
+  label: string;
+  confidence: number;
+  box: { x: number; y: number; w: number; h: number };
+  note?: string;
+}
+
 // Retries a fetch through transient network errors (e.g. Starlink handoff dropouts).
 // Uses capped linear back-off so the device waits long enough for the satellite
 // connection to re-establish (typically 1–10 s) without waiting forever.
@@ -655,6 +663,16 @@ export default function LiveScreen() {
   const [polarising, setPolarising]     = useState(false);  // filter in progress
   const [feedView, setFeedView]         = useState<"camera" | "visual">("camera"); // full-screen feed toggle
 
+  // ── VISION MODE — live real-time AI detector ──────────────────────────────
+  const [visionMode, setVisionMode]         = useState(false);
+  const [visionModeType, setVisionModeType] = useState<"face"|"object"|"barra">("barra");
+  const [visionDetecting, setVisionDetecting] = useState(false);
+  const [visionTargets, setVisionTargets]   = useState<VisionTarget[]>([]);
+  const [visionFrameNote, setVisionFrameNote] = useState("");
+  const visionIntervalRef   = useRef<ReturnType<typeof setInterval>|null>(null);
+  const visionDetectingRef  = useRef(false);
+  const visionModeTypeRef   = useRef<"face"|"object"|"barra">("barra");
+
   // ── Live Scan Panel (non-boat-mode scan) ──────────────────────────────────
   const [lsUri, setLsUri]           = useState<string | null>(null);
   const [lsB64, setLsB64]           = useState<string | null>(null);
@@ -719,6 +737,57 @@ export default function LiveScreen() {
     } catch {
       setWebPermission("denied");
     }
+  }, []);
+
+  // ── VISION MODE callbacks ─────────────────────────────────────────────────
+  const stopVisionMode = useCallback(() => {
+    if (visionIntervalRef.current) { clearInterval(visionIntervalRef.current); visionIntervalRef.current = null; }
+    visionDetectingRef.current = false;
+    setVisionMode(false);
+    setVisionDetecting(false);
+    setVisionTargets([]);
+    setVisionFrameNote("");
+    try { deactivateKeepAwake(); } catch {}
+  }, []);
+
+  const captureVisionFrame = useCallback(async () => {
+    if (!nativeCamRef.current || visionDetectingRef.current) return;
+    visionDetectingRef.current = true;
+    setVisionDetecting(true);
+    try {
+      const photo = await nativeCamRef.current.takePictureAsync({
+        base64: true, quality: 0.45, skipProcessing: true,
+      });
+      if (!photo?.base64) return;
+      const domain = process.env.EXPO_PUBLIC_DOMAIN;
+      const baseUrl = domain ? `https://${domain}` : "";
+      const resp = await fetch(`${baseUrl}/api/vision-detect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: photo.base64, region: "nq", mode: visionModeTypeRef.current }),
+        signal: AbortSignal.timeout(18_000),
+      });
+      if (resp.ok) {
+        const data = await resp.json() as { targets: VisionTarget[]; frameNote: string };
+        setVisionTargets(data.targets ?? []);
+        setVisionFrameNote(data.frameNote ?? "");
+      }
+    } catch { /* fail silently — next interval will retry */ } finally {
+      visionDetectingRef.current = false;
+      setVisionDetecting(false);
+    }
+  }, []);
+
+  const captureVisionFrameRef = useRef(captureVisionFrame);
+  useEffect(() => { captureVisionFrameRef.current = captureVisionFrame; }, [captureVisionFrame]);
+
+  const startVisionMode = useCallback(() => {
+    setVisionMode(true);
+    setVisionTargets([]);
+    setVisionFrameNote("");
+    activateKeepAwakeAsync().catch(() => {});
+    if (visionIntervalRef.current) clearInterval(visionIntervalRef.current);
+    visionIntervalRef.current = setInterval(() => { captureVisionFrameRef.current?.(); }, 2_000);
   }, []);
 
   const speakResult = useCallback(
@@ -2458,6 +2527,21 @@ export default function LiveScreen() {
             </TouchableOpacity>
           )}
 
+          {/* VISION MODE button */}
+          {!boatMode && (
+            <TouchableOpacity
+              style={[styles.boatModeBtn, { backgroundColor: "#0a162888", borderColor: "#00d4aa44" }]}
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                startVisionMode();
+              }}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name="eye-circle-outline" size={18} color="#00d4aa" />
+              <Text style={[styles.boatModeBtnText, { color: "#00d4aa" }]}>👁 VISION MODE</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Scan a saved sonar photo */}
           {!boatMode && (
             <TouchableOpacity
@@ -2799,6 +2883,88 @@ export default function LiveScreen() {
               {galleryPicking ? <ActivityIndicator color="#00d4aa" size="small" /> : <Feather name="image" size={17} color="#00d4aa" />}
               <Text style={styles.pickGalleryBtnText}>{galleryPicking ? "Analysing…" : "Gallery"}</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // ── VISION MODE — full-screen live AI detector ───────────────────────────
+  if (visionMode) {
+    return (
+      <View style={[styles.container, { backgroundColor: "#000" }]}>
+        {Platform.OS !== "web" && (
+          <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
+        )}
+
+        {/* Targeting overlay — bounding boxes */}
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          {visionTargets.map((t) => {
+            const isBarramundi = t.label.toLowerCase().includes("barra") || t.label.toLowerCase().includes("lates");
+            const isCroc = t.label.toLowerCase().includes("croc") || t.label.toLowerCase().includes("crocodile");
+            const isPerson = t.label.toLowerCase().includes("person") || t.label.toLowerCase().includes("face") || t.label.toLowerCase().includes("human");
+            const bColor = isCroc ? "#ff3030" : isBarramundi ? "#00d4aa" : isPerson ? "#ffffff" : "#ffd700";
+            const bgColor = isCroc ? "#ff303018" : isBarramundi ? "#00d4aa18" : isPerson ? "#ffffff10" : "#ffd70012";
+            return (
+              <View key={t.id} style={{ position: "absolute", left: `${Math.max(0, Math.min(t.box.x, 0.98)) * 100}%` as any, top: `${Math.max(0, Math.min(t.box.y, 0.98)) * 100}%` as any, width: `${Math.max(0.04, Math.min(t.box.w, 1 - t.box.x)) * 100}%` as any, height: `${Math.max(0.04, Math.min(t.box.h, 1 - t.box.y)) * 100}%` as any, borderWidth: 2, borderColor: bColor, backgroundColor: bgColor, borderRadius: 4 }}>
+                <View style={{ position: "absolute", top: -2, left: -2, width: 14, height: 14, borderTopWidth: 3, borderLeftWidth: 3, borderColor: bColor }} />
+                <View style={{ position: "absolute", top: -2, right: -2, width: 14, height: 14, borderTopWidth: 3, borderRightWidth: 3, borderColor: bColor }} />
+                <View style={{ position: "absolute", bottom: -2, left: -2, width: 14, height: 14, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: bColor }} />
+                <View style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderBottomWidth: 3, borderRightWidth: 3, borderColor: bColor }} />
+                <View style={{ position: "absolute", top: -26, left: -2, flexDirection: "row", alignItems: "center", backgroundColor: bColor + "dd", borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3 }}>
+                  <Text style={{ color: "#000", fontSize: 10, fontFamily: "Inter_700Bold" }} numberOfLines={1}>
+                    {isCroc ? "⚠ " : isBarramundi ? "🐟 " : isPerson ? "👤 " : "● "}{t.label} {Math.round(t.confidence * 100)}%
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* HUD strip — top */}
+        <View style={{ position: "absolute", top: insets.top + 4, left: 0, right: 0, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, backgroundColor: "#0a162299", gap: 8 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: visionDetecting ? "#ffd700" : "#00ff88" }} />
+          <Text style={{ color: "#fff", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1.2, flex: 1 }}>
+            VISION · {visionModeType === "barra" ? "🐟 BARRA" : visionModeType === "face" ? "👤 FACE" : "🔍 OBJECT"}{visionDetecting ? " · SCANNING…" : " · LIVE"}
+          </Text>
+          <Text style={{ color: visionTargets.length > 0 ? "#00d4aa" : "#ffffff55", fontSize: 10, fontFamily: "Inter_700Bold" }}>
+            {visionTargets.length > 0 ? `${visionTargets.length} TARGET${visionTargets.length !== 1 ? "S" : ""} LOCKED` : "SCANNING"}
+          </Text>
+          <TouchableOpacity onPress={stopVisionMode} style={{ backgroundColor: "#ff444433", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#ff4444aa", marginLeft: 6 }}>
+            <Text style={{ color: "#ff6666", fontSize: 10, fontFamily: "Inter_700Bold" }}>EXIT</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Croc alert banner */}
+        {visionTargets.some(t => t.label.toLowerCase().includes("croc")) && (
+          <View style={{ position: "absolute", top: insets.top + 52, left: 14, right: 14, backgroundColor: "#ff2222ee", borderRadius: 12, padding: 12, borderWidth: 2, borderColor: "#ff4444", alignItems: "center" }}>
+            <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_700Bold", letterSpacing: 0.8 }}>⚠ CROCODILE DETECTED — STAY IN THE BOAT</Text>
+          </View>
+        )}
+
+        {/* Frame note */}
+        {!!visionFrameNote && (
+          <View style={{ position: "absolute", bottom: insets.bottom + 140, left: 14, right: 14, backgroundColor: "#0a162299", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: "#00d4aa33" }}>
+            <Text style={{ color: "#ffffffcc", fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" }} numberOfLines={2}>{visionFrameNote}</Text>
+          </View>
+        )}
+
+        {/* Brain badge + mode selector — bottom */}
+        <View style={{ position: "absolute", bottom: insets.bottom + 56, left: 14, right: 14, gap: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 }}>
+            <MaterialCommunityIcons name="brain" size={11} color="#00d4aa66" />
+            <Text style={{ color: "#00d4aa66", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>NQ REGIONAL BRAIN + BARRA LIBRARY ACTIVE</Text>
+          </View>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {(["face", "object", "barra"] as const).map((m) => {
+              const active = visionModeType === m;
+              const mColor = m === "barra" ? "#00d4aa" : m === "face" ? "#a855f7" : "#ffd700";
+              return (
+                <TouchableOpacity key={m} style={{ flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, backgroundColor: active ? mColor + "22" : "#0a162888", borderColor: active ? mColor : "#ffffff22" }} onPress={() => { visionModeTypeRef.current = m; setVisionModeType(m); }} activeOpacity={0.8}>
+                  <Text style={{ color: active ? mColor : "#ffffff55", fontSize: 11, fontFamily: "Inter_700Bold" }}>{m === "face" ? "👤 FACE" : m === "object" ? "🔍 OBJECT" : "🐟 BARRA"}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </View>
