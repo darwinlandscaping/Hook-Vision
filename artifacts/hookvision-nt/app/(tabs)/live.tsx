@@ -904,7 +904,7 @@ export default function LiveScreen() {
     if (captureTimerRef.current) { clearTimeout(captureTimerRef.current); captureTimerRef.current = null; }
     if (!isBoatLiveRef.current) return;
 
-    // Phase 2: detect sonar type then analyze all frames
+    // Phase 2: GPT-4.1 Vision as primary — runs immediately, no gate
     setBoatPhase("analyzing");
     const frames = [...capturedFramesRef.current];
     const bestFrame = frames.at(-1) ?? frames[0];
@@ -912,8 +912,8 @@ export default function LiveScreen() {
     let cycleResult: FishAnalysis | null = null;
 
     if (bestFrame) {
-      // Detect sonar type from best frame (fail-open to arch-2d)
-      let boatSonarType = "arch-2d";
+      // Detect sonar type once — reused by DPT and boat-cycle
+      let sonarType = "arch-2d";
       try {
         const vr = await fetchRetry(`${apiBase}/api/sonar-validate`, {
           method: "POST",
@@ -922,222 +922,111 @@ export default function LiveScreen() {
         }, 15_000, 2, 2_000);
         if (vr.ok) {
           const vd = await vr.json() as { isSonar?: boolean; sonarType?: string };
-          boatSonarType = vd.sonarType ?? "arch-2d";
+          sonarType = vd.sonarType ?? "arch-2d";
         }
       } catch { /* fail open */ }
 
-      if (boatSonarType === "live-sonar") {
-        // Live sonar: streaming specialist endpoint, best frame only
-        try {
-          const resp = await fetchRetry(`${apiBase}/api/live-sonar-analyze`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64: bestFrame.base64 }),
-          }, 90_000);
-          if (resp.ok) {
-            let accumulated = "";
-            if (resp.body) {
-              const reader = resp.body.getReader();
-              try { accumulated = await readStreamWithTimeout(reader, 85_000); }
-              catch { /* partial — fall through to parse */ }
-              finally { try { reader.cancel(); } catch {} }
-            } else {
-              accumulated = await resp.text();
-            }
-            accumulated = accumulated.replace(/__FLASH__:[^\n]*\n?/, "")
-              .replace(/\n__CV__:[^\n]*/, "").replace(/\n__SCAN2__:[^\n]*/, "");
-            const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
-            const m = cleaned.match(/\{[\s\S]*\}/);
-            if (m) {
-              let d: Record<string, unknown> = {};
-              try { d = JSON.parse(m[0]); } catch { /* leave empty */ }
-              if (typeof d.fishCount !== "number") d.fishCount = parseInt(String(d.fishCount ?? "0"), 10) || 0;
-              const cr: FishAnalysis = {
-                fishCount:         (d.fishCount        as number)         ?? 0,
-                depth:             ((d.depth ?? d.depthRange) as string)  ?? "unknown",
-                distance:          (d.distance          as string)        ?? "unknown",
-                species:           (d.species           as string)        ?? "Unknown",
-                confidence:        (d.confidence        as number)        ?? 0,
-                suggestion:        (d.suggestion        as string)        ?? "",
-                lure:              (d.lure              as string)        ?? "",
-                lureType:          (d.lureType          as string)        ?? "",
-                technique:         (d.technique         as string)        ?? "",
-                crocAlert:         (d.crocAlert         as boolean)       ?? false,
-                crocWarning:       (d.crocWarning       as string | null) ?? null,
-                birdAlert:         null, barraPct: undefined, targetCount: undefined,
-                targetType:        "live-sonar",
-                waterTemp:         (d.waterTemp         as string)        ?? "",
-                bottomType:        (d.bottomType        as string)        ?? "",
-                detectedZones:     [],
-                frameZones:        [],
-                movementVector:    (d.movementVector    as string)        ?? "unknown",
-                movingZones:       [],
-                staticZones:       [],
-                movingTargetCount: (d.movingTargetCount as number)        ?? 0,
-                sonarType:         "live-sonar",
-              };
-              cycleResult = cr;
-              if (cr.crocAlert) setCrocAlertActive(true);
-              setResult(cr);
-              setDetectedZones([]);
-              setFrameZones([]);
-              setMovementVector(cr.movementVector ?? "unknown");
-              setMovingZones([]);
-              setStaticZones([]);
-            }
+      // ── PRIMARY: GPT-4.1 Vision — runs immediately, always ───────────────
+      setLsB64(bestFrame.base64);
+      setLsUri(bestFrame.uri ?? null);
+      setLsAnalysis(null);
+      setLsLoading(true);
+      try {
+        const dptEndpoint = sonarType === "live-sonar"
+          ? `${apiBase}/api/live-sonar-analyze`
+          : `${apiBase}/api/analyze`;
+        const dresp = await fetchRetry(dptEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: bestFrame.base64 }),
+        }, 90_000);
+        if (dresp.ok) {
+          let accumulated = "";
+          if (dresp.body) {
+            const reader = dresp.body.getReader();
+            try { accumulated = await readStreamWithTimeout(reader, 85_000); }
+            catch { /* partial — fall through to parse */ }
+            finally { try { reader.cancel(); } catch {} }
+          } else {
+            accumulated = await dresp.text();
           }
-        } catch { /* cycleResult stays null */ }
-      } else {
-        // Two-phase pipeline — full live sonar intelligence + scan-page quality
-        //
-        // Phase A: /api/boat-cycle with ALL 5 frames
-        //   Uses the complete liveSonarKnowledge module (MODE_IDENTIFICATION,
-        //   VISUAL_APPEARANCE, MOVEMENT_GUIDE, CROC_GUIDE, SPECIES_QUICK_REF),
-        //   actual manufacturer demo reference images (MEGA Live, ActiveTarget,
-        //   LiveScope), and cross-frame movement tracking.
-        //   Arch detection is a SUBSET of this — live blobs, shadows, and movement
-        //   patterns are the primary signals.
-        //   Returns frameZones[], movingZones[], staticZones[], movementVector.
-        //
-        // Phase B: /api/analyze on the single best frame (full streaming)
-        //   Same dual-model pipeline as the scan page (flash + turbo, high-detail,
-        //   confirmed species reference images from sonarBrain).
-        //   Arch-2D rules apply here too, but only as supporting evidence.
-        try {
-          // Phase A — full live-sonar intelligence across all 5 frames
-          let cycleData: Record<string, unknown> | null = null;
-          try {
-            const cResp = await fetchRetry(`${apiBase}/api/boat-cycle`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ frames: frames.map(f => f.base64) }),
-            }, 60_000);
-            if (cResp.ok) cycleData = await cResp.json() as Record<string, unknown>;
-          } catch { /* fall through — bestIdx defaults to last frame */ }
-
-          // Best frame = frame with the most active zones (densest fish echo return)
-          let bestIdx = frames.length - 1;
-          const cdFrameZ = cycleData && Array.isArray(cycleData.frameZones)
-            ? cycleData.frameZones as string[][] : [];
-          if (cdFrameZ.length > 0) {
-            let maxZ = -1;
-            cdFrameZ.forEach((zones, i) => {
-              if (Array.isArray(zones) && zones.length > maxZ) { maxZ = zones.length; bestIdx = i; }
-            });
+          accumulated = accumulated
+            .replace(/__FLASH__:[^\n]*\n?/, "")
+            .replace(/\n__CV__:[^\n]*/, "")
+            .replace(/\n__SCAN2__:[^\n]*/, "");
+          const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
+          const m = cleaned.match(/\{[\s\S]*\}/);
+          if (m) {
+            let d: Record<string, unknown> = {};
+            try { d = JSON.parse(m[0]); } catch { /* leave empty */ }
+            if (typeof d.fishCount !== "number") d.fishCount = parseInt(String(d.fishCount ?? "0"), 10) || 0;
+            const cr: FishAnalysis = {
+              fishCount:         (d.fishCount        as number)         ?? 0,
+              depth:             ((d.depth ?? d.depthRange) as string)  ?? "unknown",
+              distance:          (d.distance          as string)        ?? "unknown",
+              species:           (d.species           as string)        ?? "Unknown",
+              confidence:        (d.confidence        as number)        ?? 0,
+              suggestion:        (d.suggestion        as string)        ?? "",
+              lure:              (d.lure              as string)        ?? "",
+              lureType:          (d.lureType          as string)        ?? "",
+              technique:         (d.technique         as string)        ?? "",
+              crocAlert:         (d.crocAlert         as boolean)       ?? false,
+              crocWarning:       (d.crocWarning       as string | null) ?? null,
+              birdAlert:         null, barraPct: undefined, targetCount: undefined,
+              targetType:        sonarType,
+              waterTemp:         (d.waterTemp         as string)        ?? "",
+              bottomType:        (d.bottomType        as string)        ?? "",
+              detectedZones:     Array.isArray(d.detectedZones) ? d.detectedZones as string[] : [],
+              frameZones:        [],
+              movementVector:    (d.movementVector    as string)        ?? "unknown",
+              movingZones:       [],
+              staticZones:       [],
+              movingTargetCount: (d.movingTargetCount as number)        ?? 0,
+              sonarType:         sonarType,
+            };
+            cycleResult = cr;
+            if (cr.crocAlert) setCrocAlertActive(true);
+            setResult(cr);
+            setLsAnalysis(cr);
+            setDetectedZones(cr.detectedZones ?? []);
+            setMovementVector(cr.movementVector ?? "unknown");
           }
-
-          // Carry movement intelligence from Phase A into the final result
-          const cdMoving  = cycleData && Array.isArray(cycleData.movingZones)
-            ? cycleData.movingZones  as string[] : [];
-          const cdStatic  = cycleData && Array.isArray(cycleData.staticZones)
-            ? cycleData.staticZones  as string[] : [];
-          const cdVector  = (cycleData?.movementVector   as string) ?? "unknown";
-          const cdMTC     = (cycleData?.movingTargetCount as number) ?? 0;
-
-          // Phase B — identical to scan page: single best frame through /api/analyze streaming
-          const bf = frames[bestIdx];
-          const fullResp = await fetchRetry(`${apiBase}/api/analyze`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64: bf.base64 }),
-          }, 90_000);
-
-          if (fullResp.ok) {
-            let accumulated = "";
-            if (fullResp.body) {
-              const reader = fullResp.body.getReader();
-              try { accumulated = await readStreamWithTimeout(reader, 85_000); }
-              catch { /* partial — fall through to parse */ }
-              finally { try { reader.cancel(); } catch {} }
-            } else {
-              accumulated = await fullResp.text();
-            }
-            accumulated = accumulated
-              .replace(/__FLASH__:[^\n]*\n?/, "")
-              .replace(/\n__CV__:[^\n]*/, "")
-              .replace(/\n__SCAN2__:[^\n]*/, "");
-            const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
-            const m = cleaned.match(/\{[\s\S]*\}/);
-            if (m) {
-              let d: Record<string, unknown> = {};
-              try { d = JSON.parse(m[0]); } catch { /* leave empty */ }
-              if (typeof d.fishCount !== "number") d.fishCount = parseInt(String(d.fishCount ?? "0"), 10) || 0;
-              const cr: FishAnalysis = {
-                fishCount:         (d.fishCount        as number)         ?? 0,
-                depth:             ((d.depth ?? d.depthRange) as string)  ?? "unknown",
-                distance:          (d.distance          as string)        ?? "unknown",
-                species:           (d.species           as string)        ?? "Unknown",
-                confidence:        (d.confidence        as number)        ?? 0,
-                suggestion:        (d.suggestion        as string)        ?? "",
-                lure:              (d.lure              as string)        ?? "",
-                lureType:          (d.lureType          as string)        ?? "",
-                technique:         (d.technique         as string)        ?? "",
-                crocAlert:         (d.crocAlert         as boolean)       ?? false,
-                crocWarning:       (d.crocWarning       as string | null) ?? null,
-                birdAlert:         null,
-                barraPct:          (cycleData?.barraPct    as number | undefined),
-                targetCount:       (cycleData?.targetCount as number | undefined),
-                targetType:        (cycleData?.targetType  as string) ?? "arch-2d",
-                waterTemp:         (d.waterTemp         as string)        ?? "",
-                bottomType:        (d.bottomType        as string)        ?? "",
-                detectedZones:     Array.isArray(d.detectedZones) ? d.detectedZones as string[] : [],
-                frameZones:        cdFrameZ,
-                movementVector:    cdVector,
-                movingZones:       cdMoving,
-                staticZones:       cdStatic,
-                movingTargetCount: cdMTC,
-                sonarType:         (cycleData?.sonarType as string) ?? "arch-2d",
-              };
-              cycleResult = cr;
-              if (cr.crocAlert) setCrocAlertActive(true);
-              setResult(cr);
-              setDetectedZones(cr.detectedZones ?? []);
-              setFrameZones(cdFrameZ);
-              setMovementVector(cdVector);
-              setMovingZones(cdMoving);
-              setStaticZones(cdStatic);
-            }
-          }
-        } catch { /* cycleResult stays null */ }
+        }
+      } catch { /* cycleResult stays null */ } finally {
+        setLsLoading(false);
       }
 
-      // Phase 3 — DPT 4.1: GPT-4.1 Vision secondary analysis on the best captured frame
-      if (cycleResult && isBoatLiveRef.current) {
-        setLsB64(bestFrame.base64);
-        setLsUri(bestFrame.uri ?? null);
-        setLsAnalysis(null);
-        setLsLoading(true);
+      // ── SECONDARY: boat-cycle for zone/movement intelligence ─────────────
+      if (isBoatLiveRef.current) {
         try {
-          const dptDomain = process.env.EXPO_PUBLIC_DOMAIN;
-          const dptBase   = dptDomain ? `https://${dptDomain}` : "";
-          let dptSonarType = "arch-2d";
-          try {
-            const dvr = await fetchRetry(`${dptBase}/api/sonar-validate`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ imageBase64: bestFrame.base64 }),
-            }, 15_000, 2, 2_000);
-            if (dvr.ok) {
-              const dvd = await dvr.json() as { isSonar?: boolean; sonarType?: string };
-              dptSonarType = dvd.sonarType ?? "arch-2d";
-            }
-          } catch { /* fail open */ }
-          const dptEndpoint = dptSonarType === "live-sonar"
-            ? `${dptBase}/api/live-sonar-analyze`
-            : `${dptBase}/api/analyze`;
-          const dresp = await fetchRetry(dptEndpoint, {
+          const cResp = await fetchRetry(`${apiBase}/api/boat-cycle`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64: bestFrame.base64, location: null }),
-          }, 90_000);
-          if (dresp.ok) {
-            const ddata = await dresp.json() as FishAnalysis;
-            setLsAnalysis(ddata);
-            if (ddata.crocAlert) setCrocAlertActive(true);
+            body: JSON.stringify({ frames: frames.map(f => f.base64) }),
+          }, 60_000);
+          if (cResp.ok) {
+            const cycleData = await cResp.json() as Record<string, unknown>;
+            const cdFrameZ = Array.isArray(cycleData.frameZones)  ? cycleData.frameZones  as string[][] : [];
+            const cdMoving = Array.isArray(cycleData.movingZones) ? cycleData.movingZones as string[]  : [];
+            const cdStatic = Array.isArray(cycleData.staticZones) ? cycleData.staticZones as string[]  : [];
+            const cdVector = (cycleData.movementVector   as string) ?? "unknown";
+            const cdMTC    = (cycleData.movingTargetCount as number) ?? 0;
+            setResult(prev => prev ? {
+              ...prev,
+              frameZones:        cdFrameZ,
+              movingZones:       cdMoving,
+              staticZones:       cdStatic,
+              movementVector:    cdVector,
+              movingTargetCount: cdMTC,
+              barraPct:          (cycleData.barraPct    as number | undefined) ?? prev.barraPct,
+              targetCount:       (cycleData.targetCount as number | undefined) ?? prev.targetCount,
+            } : prev);
+            setFrameZones(cdFrameZ);
+            setMovementVector(cdVector);
+            setMovingZones(cdMoving);
+            setStaticZones(cdStatic);
           }
-        } catch { /* DPT step optional — primary result unaffected */ } finally {
-          setLsLoading(false);
-        }
+        } catch { /* zone data optional */ }
       }
     }
     if (!isBoatLiveRef.current) return;
@@ -2940,10 +2829,7 @@ export default function LiveScreen() {
         {/* ─── Live Sonar Analysis — AI Pipeline ──────────────────────────────── */}
         <View style={{ backgroundColor: colors.card, borderRadius: 18, borderWidth: 1.5, borderColor: "#ffffff18", overflow: "hidden" }}>
           {/* Dual accent bar: lime = Auto-Scan | teal = DPT 4.1 */}
-          <View style={{ height: 5, flexDirection: "row" }}>
-            <View style={{ flex: 1, backgroundColor: "#aaff00" }} />
-            <View style={{ flex: 1, backgroundColor: "#00d4aa" }} />
-          </View>
+          <View style={{ height: 5, backgroundColor: "#00d4aa" }} />
           <View style={{ paddingHorizontal: 18, paddingVertical: 18, gap: 14 }}>
 
             {/* ── Card header ─────────────────────────────────────────────── */}
@@ -2954,37 +2840,25 @@ export default function LiveScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.foreground, fontSize: 17, fontFamily: "Inter_700Bold" }}>Live Sonar Analysis</Text>
                 <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_500Medium" }}>
-                  <Text style={{ color: "#aaff00" }}>Auto-Scan</Text>
-                  <Text>{"  ·  "}</Text>
-                  <Text style={{ color: "#00d4aa" }}>DPT 4.1</Text>
-                  <Text>{"  ·  45 s cycles"}</Text>
+                  <Text style={{ color: "#00d4aa" }}>GPT-4.1 Vision</Text>
+                  <Text>{"  ·  Auto-Scan  ·  45 s cycles"}</Text>
                 </Text>
               </View>
             </View>
 
-            {/* ── AI Pipeline stages ──────────────────────────────────────── */}
-            <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
-              <View style={{ flex: 1, backgroundColor: "#aaff0018", borderRadius: 10, padding: 10, alignItems: "center", gap: 2, borderWidth: 1, borderColor: boatMode ? "#aaff0088" : "#aaff0033" }}>
-                <Text style={{ color: "#aaff00", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>STAGE 1</Text>
-                <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Auto-Scan</Text>
-                <Text style={{ color: colors.mutedForeground, fontSize: 9 }}>Arch-Sonar AI</Text>
-                {boatMode ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#aaff00", marginTop: 2 }} /> : null}
+            {/* ── Scan status ─────────────────────────────────────────────── */}
+            {boatLive ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: lsLoading ? "#00d4aa0a" : "#ffffff06", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: lsLoading ? "#00d4aa55" : "#ffffff18" }}>
+                {lsLoading
+                  ? <ActivityIndicator size="small" color="#00d4aa" />
+                  : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: boatPhase === "capturing" ? "#aaff00" : boatPhase === "analyzing" ? "#00d4aa" : "#ffffff33" }} />
+                }
+                <Text style={{ color: lsLoading ? "#00d4aa" : colors.mutedForeground, fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1 }}>
+                  {lsLoading ? "GPT-4.1 Vision scanning sonar…" : boatPhase === "capturing" ? "Capturing frames…" : boatPhase === "waiting" ? `Next scan in ${boatWaitRemaining}s` : "Scan complete"}
+                </Text>
+                {boatCycleNum > 0 ? <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>{"Cycle " + boatCycleNum}</Text> : null}
               </View>
-              <MaterialCommunityIcons name="chevron-right" size={18} color="#ffffff33" />
-              <View style={{ flex: 1, backgroundColor: "#00d4aa18", borderRadius: 10, padding: 10, alignItems: "center", gap: 2, borderWidth: 1, borderColor: lsLoading ? "#00d4aa88" : "#00d4aa33" }}>
-                <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>STAGE 2</Text>
-                <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>DPT 4.1</Text>
-                <Text style={{ color: colors.mutedForeground, fontSize: 9 }}>GPT-4.1 Vision</Text>
-                {lsLoading ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#00d4aa", marginTop: 2 }} /> : null}
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={18} color="#ffffff33" />
-              <View style={{ flex: 1, backgroundColor: "#ffffff08", borderRadius: 10, padding: 10, alignItems: "center", gap: 2, borderWidth: 1, borderColor: (result || lsAnalysis) ? "#ffffff55" : "#ffffff18" }}>
-                <Text style={{ color: "#ffffff88", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>OUTPUT</Text>
-                <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Results</Text>
-                <Text style={{ color: colors.mutedForeground, fontSize: 9 }}>Stacked below</Text>
-                {(result || lsAnalysis) ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#ffffff88", marginTop: 2 }} /> : null}
-              </View>
-            </View>
+            ) : null}
 
             {/* ── Controls ────────────────────────────────────────────────── */}
             <View style={{ flexDirection: "row", gap: 8 }}>
@@ -3130,58 +3004,6 @@ export default function LiveScreen() {
               </View>
             ) : null}
 
-            {/* ══════════════════════════════════════════════════════════════
-                STAGE 1 — Auto-Scan result  (lime)
-            ══════════════════════════════════════════════════════════════ */}
-            {result ? (
-              <View style={{ gap: 10 }}>
-                {/* Stage header */}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <View style={{ height: 1.5, flex: 1, backgroundColor: "#aaff0033" }} />
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#aaff0018", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#aaff0044" }}>
-                    <Text style={{ color: "#aaff00", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>STAGE 1</Text>
-                    <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: "#aaff00" }} />
-                    <Text style={{ color: "#aaff00", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>AUTO-SCAN · CYCLE {boatCycleNum}</Text>
-                  </View>
-                  <View style={{ height: 1.5, flex: 1, backgroundColor: "#aaff0033" }} />
-                </View>
-                {/* Fish / Confidence / Species tiles */}
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                  <View style={{ flex: 1, backgroundColor: "#aaff0015", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
-                    <Text style={{ color: "#aaff00", fontSize: 26, fontFamily: "Inter_700Bold" }}>{result.fishCount}</Text>
-                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>FISH</Text>
-                  </View>
-                  <View style={{ flex: 1, backgroundColor: "#aaff0015", borderRadius: 10, padding: 12, alignItems: "center", gap: 4 }}>
-                    <Text style={{ color: "#aaff00", fontSize: 26, fontFamily: "Inter_700Bold" }}>{result.confidence}%</Text>
-                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>CONF</Text>
-                    {/* Confidence bar */}
-                    <View style={{ width: "100%", height: 3, backgroundColor: "#ffffff15", borderRadius: 2 }}>
-                      <View style={{ width: `${result.confidence}%`, height: 3, backgroundColor: "#aaff00", borderRadius: 2 }} />
-                    </View>
-                  </View>
-                  <View style={{ flex: 2, backgroundColor: "#aaff0015", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
-                    <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" }} numberOfLines={2}>{result.species}</Text>
-                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>SPECIES</Text>
-                  </View>
-                </View>
-                {/* Detail row */}
-                <View style={{ backgroundColor: colors.secondary, borderRadius: 10, padding: 12, gap: 4 }}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Depth</Text>
-                    <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>{result.depth}</Text>
-                  </View>
-                  {result.suggestion ? (
-                    <Text style={{ color: colors.mutedForeground, fontSize: 12, lineHeight: 18 }}>{result.suggestion}</Text>
-                  ) : null}
-                </View>
-                {result.crocAlert ? (
-                  <View style={{ backgroundColor: "#ff000022", borderRadius: 10, padding: 12, borderWidth: 1.5, borderColor: "#ff0000aa", flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <Text style={{ fontSize: 22 }}>🐊</Text>
-                    <Text style={{ color: "#ff4444", fontFamily: "Inter_700Bold", fontSize: 14, flex: 1 }}>CROCODILE DETECTED — STAY ALERT</Text>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
 
             {/* ══════════════════════════════════════════════════════════════
                 STAGE 2 — DPT 4.1 loading
