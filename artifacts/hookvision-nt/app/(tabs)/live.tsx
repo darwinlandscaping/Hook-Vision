@@ -1391,14 +1391,16 @@ export default function LiveScreen() {
     }
   }, [galleryPicking, scanning, polarOn]);
 
-  // ── Boat mode lifecycle ───────────────────────────────────────────────────
+  // ── Boat mode lifecycle — auto-starts scan on entry; stops on exit ────────
   useEffect(() => {
-    if (!boatMode) {
+    if (boatMode) {
+      if (!isBoatLiveRef.current) startBoatLive();
+    } else {
       stopBoatLive();
       setBoatSummaryNarration(null);
       setFishTrackingText(null);
       setCrocAlertActive(false);
-      setResult(null);
+      // result is intentionally preserved so the card shows it after exiting
     }
     return () => { stopBoatLive(); };
   }, [boatMode]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -2897,11 +2899,7 @@ export default function LiveScreen() {
         <HVHeader subtitle="Live Camera" />
 
         {/* ─── Boat Mode card ───────────────────────────────────────────────── */}
-        <TouchableOpacity
-          style={{ backgroundColor: colors.card, borderRadius: 18, borderWidth: 1.5, borderColor: "#aaff0044", overflow: "hidden" }}
-          onPress={() => setBoatMode(true)}
-          activeOpacity={0.85}
-        >
+        <View style={{ backgroundColor: colors.card, borderRadius: 18, borderWidth: 1.5, borderColor: "#aaff0044", overflow: "hidden" }}>
           <View style={{ height: 5, backgroundColor: "#aaff00" }} />
           <View style={{ paddingHorizontal: 18, paddingVertical: 18, gap: 12 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
@@ -2909,18 +2907,70 @@ export default function LiveScreen() {
                 <MaterialCommunityIcons name="ferry" size={27} color="#aaff00" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.foreground, fontSize: 17, fontFamily: "Inter_700Bold" }}>Boat Mode</Text>
-                <Text style={{ color: "#aaff00", fontSize: 12, fontFamily: "Inter_500Medium" }}>Hands-free auto-scan · 45s cycles</Text>
-              </View>
-              <View style={{ backgroundColor: "#aaff00", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 }}>
-                <Text style={{ color: "#0a1628", fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>GO LIVE</Text>
+                <Text style={{ color: colors.foreground, fontSize: 17, fontFamily: "Inter_700Bold" }}>Auto-Scan</Text>
+                <Text style={{ color: "#aaff00", fontSize: 12, fontFamily: "Inter_500Medium" }}>Boat Mode · hands-free · 45 s cycles</Text>
               </View>
             </View>
-            <Text style={{ color: colors.mutedForeground, fontSize: 13, lineHeight: 19 }}>
-              Lay phone flat on sonar screen. Silently captures and analyses every 45 seconds — no tapping needed.
-            </Text>
+            {!result ? (
+              <Text style={{ color: colors.mutedForeground, fontSize: 13, lineHeight: 19 }}>
+                Lay phone flat on sonar screen. Scans silently every 45 s and analyses automatically — no tapping needed once started.
+              </Text>
+            ) : null}
+            <TouchableOpacity
+              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#aaff00", borderRadius: 12, paddingVertical: 13 }}
+              onPress={() => setBoatMode(true)}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name="play-circle" size={18} color="#0a1628" />
+              <Text style={{ color: "#0a1628", fontSize: 14, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>
+                {result ? "▶ NEW AUTO-SCAN" : "▶ START AUTO-SCAN"}
+              </Text>
+            </TouchableOpacity>
+            {result ? (
+              <View style={{ gap: 10 }}>
+                <Text style={{ color: "#aaff00", fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 }}>
+                  LAST CYCLE RESULT · CYCLE {boatCycleNum}
+                </Text>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <View style={{ flex: 1, backgroundColor: "#aaff0015", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
+                    <Text style={{ color: "#aaff00", fontSize: 24, fontFamily: "Inter_700Bold" }}>{result.fishCount}</Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>FISH</Text>
+                  </View>
+                  <View style={{ flex: 1, backgroundColor: "#aaff0015", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
+                    <Text style={{ color: "#aaff00", fontSize: 24, fontFamily: "Inter_700Bold" }}>{result.confidence}%</Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>CONFIDENCE</Text>
+                  </View>
+                  <View style={{ flex: 2, backgroundColor: "#aaff0015", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
+                    <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" }} numberOfLines={2}>{result.species}</Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>SPECIES</Text>
+                  </View>
+                </View>
+                <View style={{ backgroundColor: colors.secondary, borderRadius: 10, padding: 14, gap: 6 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Depth</Text>
+                    <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>{result.depth}</Text>
+                  </View>
+                  {result.suggestion ? (
+                    <Text style={{ color: colors.mutedForeground, fontSize: 12, lineHeight: 18 }}>{result.suggestion}</Text>
+                  ) : null}
+                </View>
+                {result.crocAlert ? (
+                  <View style={{ backgroundColor: "#ff000022", borderRadius: 10, padding: 12, borderWidth: 1.5, borderColor: "#ff0000aa", flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <Text style={{ fontSize: 22 }}>🐊</Text>
+                    <Text style={{ color: "#ff4444", fontFamily: "Inter_700Bold", fontSize: 14, flex: 1 }}>CROCODILE DETECTED — STAY ALERT</Text>
+                  </View>
+                ) : null}
+                <TouchableOpacity
+                  style={{ alignItems: "center", paddingVertical: 8 }}
+                  onPress={() => setResult(null)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: "#aaff0077", fontSize: 12, fontFamily: "Inter_500Medium" }}>← Clear result</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
-        </TouchableOpacity>
+        </View>
 
         {/* ─── Scan Sonar panel ─────────────────────────────────────────────── */}
         <View style={{ backgroundColor: colors.card, borderRadius: 18, borderWidth: 1.5, borderColor: "#00d4aa44", overflow: "hidden" }}>
