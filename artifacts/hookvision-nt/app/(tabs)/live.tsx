@@ -2857,32 +2857,8 @@ export default function LiveScreen() {
               </View>
             </View>
 
-            {/* ── Scan status ─────────────────────────────────────────────── */}
-            {boatLive ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: lsLoading ? "#00d4aa0a" : "#ffffff06", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: lsLoading ? "#00d4aa55" : "#ffffff18" }}>
-                {lsLoading
-                  ? <ActivityIndicator size="small" color="#00d4aa" />
-                  : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: boatPhase === "capturing" ? "#aaff00" : boatPhase === "analyzing" ? "#00d4aa" : "#ffffff33" }} />
-                }
-                <Text style={{ color: lsLoading ? "#00d4aa" : colors.mutedForeground, fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1 }}>
-                  {lsLoading ? "GPT-4.1 Vision scanning sonar…" : boatPhase === "capturing" ? "Capturing frames…" : boatPhase === "waiting" ? `Next scan in ${boatWaitRemaining}s` : "Scan complete"}
-                </Text>
-                {boatCycleNum > 0 ? <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>{"Cycle " + boatCycleNum}</Text> : null}
-              </View>
-            ) : null}
-
-            {/* ── Controls ────────────────────────────────────────────────── */}
+            {/* ── Sequence 1 — GPT-4.1 Vision: Camera / Gallery ───────────── */}
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <TouchableOpacity
-                style={{ flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#aaff00", borderRadius: 12, paddingVertical: 13 }}
-                onPress={() => setBoatMode(true)}
-                activeOpacity={0.85}
-              >
-                <MaterialCommunityIcons name="play-circle" size={16} color="#0a1628" />
-                <Text style={{ color: "#0a1628", fontSize: 13, fontFamily: "Inter_700Bold" }}>
-                  {result ? "NEW AUTO-SCAN" : "START AUTO-SCAN"}
-                </Text>
-              </TouchableOpacity>
               <TouchableOpacity
                 style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "#00d4aa", borderRadius: 12, paddingVertical: 13 }}
                 onPress={lsPickCamera}
@@ -3086,6 +3062,30 @@ export default function LiveScreen() {
                 ) : null}
               </View>
             ) : null}
+
+            {/* ── Sequence 2 — Auto-Scan: boat-cycle zone intelligence ─────── */}
+            {boatLive ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: lsLoading ? "#00d4aa0a" : "#ffffff06", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: lsLoading ? "#00d4aa55" : "#ffffff18" }}>
+                {lsLoading
+                  ? <ActivityIndicator size="small" color="#00d4aa" />
+                  : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: boatPhase === "capturing" ? "#aaff00" : boatPhase === "analyzing" ? "#00d4aa" : "#ffffff33" }} />
+                }
+                <Text style={{ color: lsLoading ? "#00d4aa" : colors.mutedForeground, fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1 }}>
+                  {lsLoading ? "GPT-4.1 Vision scanning sonar…" : boatPhase === "capturing" ? "Capturing frames…" : boatPhase === "waiting" ? `Next scan in ${boatWaitRemaining}s` : "Scan complete"}
+                </Text>
+                {boatCycleNum > 0 ? <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>{"Cycle " + boatCycleNum}</Text> : null}
+              </View>
+            ) : null}
+            <TouchableOpacity
+              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#aaff00", borderRadius: 12, paddingVertical: 13 }}
+              onPress={() => setBoatMode(true)}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name="play-circle" size={16} color="#0a1628" />
+              <Text style={{ color: "#0a1628", fontSize: 13, fontFamily: "Inter_700Bold" }}>
+                {result ? "NEW AUTO-SCAN" : "START AUTO-SCAN"}
+              </Text>
+            </TouchableOpacity>
 
             {/* ── Clear all / empty-state hint ────────────────────────────── */}
             {(result || lsAnalysis) ? (
