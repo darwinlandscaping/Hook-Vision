@@ -958,52 +958,121 @@ export default function LiveScreen() {
     if (captureTimerRef.current) { clearTimeout(captureTimerRef.current); captureTimerRef.current = null; }
     if (!isBoatLiveRef.current) return;
 
-    // Phase 2: single multi-frame call — AI sees all 5 frames together to track fish movement
+    // Phase 2: sonar-type detection → route to the correct specialist (mirrors scan page logic)
     setBoatPhase("analyzing");
     const frames = [...capturedFramesRef.current];
 
+    // Quick sonar-type validation on the first frame — same gate used by manual scan page.
+    // Fails open (arch-2d) so a bad network never blocks the full cycle.
+    let boatSonarType = "arch-2d";
+    if (frames.length > 0) {
+      try {
+        const vr = await fetchRetry(`${apiBase}/api/sonar-validate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: frames[0].base64 }),
+        }, 15_000, 2, 2_000);
+        if (vr.ok) {
+          const vd = await vr.json() as { isSonar?: boolean; sonarType?: string };
+          boatSonarType = vd.sonarType ?? "arch-2d";
+        }
+      } catch { /* fail open */ }
+    }
+
     let cycleResult: FishAnalysis | null = null;
-    try {
-      const resp = await fetchRetry(`${apiBase}/api/boat-cycle`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frames: frames.map(f => f.base64) }),
-      }, 60_000);
-      if (resp.ok) {
-        const raw: unknown = await resp.json();
-        const d: BoatCycleResponse = (typeof raw === "object" && raw !== null) ? raw as BoatCycleResponse : {};
-        const toStrArr = (v: unknown): string[] =>
-          Array.isArray(v) ? (v as unknown[]).filter((s): s is string => typeof s === "string") : [];
-        const toStrMatrix = (v: unknown): string[][] =>
-          Array.isArray(v)
-            ? (v as unknown[]).filter(Array.isArray).map((z) =>
-                (z as unknown[]).filter((s): s is string => typeof s === "string"))
-            : [];
-        const cr = {
-          fishCount: d.fishCount ?? 0, depth: d.depthRange ?? "unknown", distance: "unknown",
-          species: d.species ?? "Unknown", confidence: d.confidence ?? 0, suggestion: d.suggestion ?? "",
-          lure: d.lure ?? "", lureType: d.lureType ?? "", technique: d.technique ?? "",
-          crocAlert: d.crocAlert ?? false, crocWarning: d.crocWarning ?? null, birdAlert: d.birdAlert ?? null,
-          barraPct: d.barraPct ?? undefined, targetCount: d.targetCount ?? undefined, targetType: d.targetType ?? "none",
-          waterTemp: d.waterTemp ?? "", bottomType: d.bottomType ?? "",
-          detectedZones: toStrArr(d.activeZones),
-          frameZones: toStrMatrix(d.frameZones),
-          movementVector: d.movementVector ?? "unknown",
-          movingZones: toStrArr(d.movingZones),
-          staticZones: toStrArr(d.staticZones),
-          movingTargetCount: d.movingTargetCount ?? 0,
-          sonarType: d.sonarType ?? "unknown",
-        };
-        cycleResult = cr;
-        if (cr.crocAlert) setCrocAlertActive(true);
-        setResult(cr);
-        setDetectedZones(cr.detectedZones);
-        setFrameZones(cr.frameZones);
-        setMovementVector(cr.movementVector);
-        setMovingZones(cr.movingZones);
-        setStaticZones(cr.staticZones);
-      }
-    } catch { /* cycleResult stays null */ }
+
+    if (boatSonarType === "live-sonar") {
+      // ── Live sonar route: single-frame analysis via the live-sonar specialist ──
+      const bestFrame = frames.at(-1) ?? frames[0];
+      try {
+        const resp = await fetchRetry(`${apiBase}/api/live-sonar-analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: bestFrame.base64 }),
+        }, 60_000);
+        if (resp.ok) {
+          const raw: unknown = await resp.json();
+          const d = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+          const cr: FishAnalysis = {
+            fishCount: (d.fishCount as number) ?? 0,
+            depth: (d.depth as string) ?? "unknown",
+            distance: "unknown",
+            species: (d.species as string) ?? "Unknown",
+            confidence: (d.confidence as number) ?? 0,
+            suggestion: (d.suggestion as string) ?? "",
+            lure: (d.lure as string) ?? "",
+            lureType: (d.lureType as string) ?? "",
+            technique: (d.technique as string) ?? "",
+            crocAlert: (d.crocAlert as boolean) ?? false,
+            crocWarning: (d.crocWarning as string | null) ?? null,
+            birdAlert: null,
+            barraPct: undefined,
+            targetCount: undefined,
+            targetType: "live-sonar",
+            waterTemp: (d.waterTemp as string) ?? "",
+            bottomType: (d.bottomType as string) ?? "",
+            detectedZones: [],
+            frameZones: [],
+            movementVector: "unknown",
+            movingZones: [],
+            staticZones: [],
+            movingTargetCount: 0,
+            sonarType: "live-sonar",
+          };
+          cycleResult = cr;
+          if (cr.crocAlert) setCrocAlertActive(true);
+          setResult(cr);
+          setDetectedZones([]);
+          setFrameZones([]);
+          setMovementVector("unknown");
+          setMovingZones([]);
+          setStaticZones([]);
+        }
+      } catch { /* cycleResult stays null */ }
+    } else {
+      // ── Arch-2D / side-imaging route: multi-frame boat-cycle analysis ──
+      try {
+        const resp = await fetchRetry(`${apiBase}/api/boat-cycle`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ frames: frames.map(f => f.base64) }),
+        }, 60_000);
+        if (resp.ok) {
+          const raw: unknown = await resp.json();
+          const d: BoatCycleResponse = (typeof raw === "object" && raw !== null) ? raw as BoatCycleResponse : {};
+          const toStrArr = (v: unknown): string[] =>
+            Array.isArray(v) ? (v as unknown[]).filter((s): s is string => typeof s === "string") : [];
+          const toStrMatrix = (v: unknown): string[][] =>
+            Array.isArray(v)
+              ? (v as unknown[]).filter(Array.isArray).map((z) =>
+                  (z as unknown[]).filter((s): s is string => typeof s === "string"))
+              : [];
+          const cr: FishAnalysis = {
+            fishCount: d.fishCount ?? 0, depth: d.depthRange ?? "unknown", distance: "unknown",
+            species: d.species ?? "Unknown", confidence: d.confidence ?? 0, suggestion: d.suggestion ?? "",
+            lure: d.lure ?? "", lureType: d.lureType ?? "", technique: d.technique ?? "",
+            crocAlert: d.crocAlert ?? false, crocWarning: d.crocWarning ?? null, birdAlert: d.birdAlert ?? null,
+            barraPct: d.barraPct ?? undefined, targetCount: d.targetCount ?? undefined, targetType: d.targetType ?? "none",
+            waterTemp: d.waterTemp ?? "", bottomType: d.bottomType ?? "",
+            detectedZones: toStrArr(d.activeZones),
+            frameZones: toStrMatrix(d.frameZones),
+            movementVector: d.movementVector ?? "unknown",
+            movingZones: toStrArr(d.movingZones),
+            staticZones: toStrArr(d.staticZones),
+            movingTargetCount: d.movingTargetCount ?? 0,
+            sonarType: d.sonarType ?? "unknown",
+          };
+          cycleResult = cr;
+          if (cr.crocAlert) setCrocAlertActive(true);
+          setResult(cr);
+          setDetectedZones(cr.detectedZones);
+          setFrameZones(cr.frameZones);
+          setMovementVector(cr.movementVector);
+          setMovingZones(cr.movingZones);
+          setStaticZones(cr.staticZones);
+        }
+      } catch { /* cycleResult stays null */ }
+    }
     if (!isBoatLiveRef.current) return;
 
     // Save only best 2 to gallery

@@ -31,6 +31,7 @@ import Animated, {
 
 import { AnalysisCard } from "@/components/AnalysisCard";
 import { HVHeader } from "@/components/HVHeader";
+import { NarratorButton } from "@/components/NarratorButton";
 import { SonarOverlay } from "@/components/SonarOverlay";
 import { SonarPulse } from "@/components/SonarPulse";
 import { useColors } from "@/hooks/useColors";
@@ -738,6 +739,7 @@ export default function HomeScreen() {
   const { addEntry } = useHistory();
   const { autoSpeak, speak, character, stop: stopSpeaking } = useNarrator();
   const hud = useHudStream();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useAutoNarrate(() => "Sonar Analyser. Load a photo of your sonar screen, or tap the camera button to scan and get instant AI fish detection.");
 
@@ -1355,6 +1357,13 @@ export default function HomeScreen() {
     }
   }, [boatActive]);
 
+  // Auto-scroll to show analysis results when they arrive (fixes blue-page visual)
+  useEffect(() => {
+    if (analysis) {
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 200);
+    }
+  }, [analysis]);
+
   // ── Learn why two species differ on sonar ─────────────────────────────────
   const learnWhy = useCallback(async (expected: string, found: string) => {
     try {
@@ -1381,11 +1390,21 @@ export default function HomeScreen() {
   if (imageUri) {
     return (
       <ScrollView
+        ref={scrollViewRef}
         style={[styles.container, { backgroundColor: colors.background }]}
         contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: Platform.OS === "web" ? 70 : insets.bottom + 24, paddingHorizontal: 16, gap: 14 }}
         showsVerticalScrollIndicator={false}
       >
         <HVHeader subtitle="AI Sonar Analysis" />
+
+        {/* ── Narrator button — stays visible throughout analysis ── */}
+        <NarratorButton
+          pageType="sonar-analysis"
+          content={analysis
+            ? `${analysis.fishCount} fish detected at ${analysis.depth}. Species: ${analysis.species}. Confidence ${analysis.confidence}%. ${analysis.suggestion}`
+            : "Sonar Analyser ready. Load a photo to begin fish detection."}
+          compact
+        />
 
         {/* ── Back button ── */}
         {!boatActive && (
@@ -1789,7 +1808,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} cvRegions={cvRegions} />}
+        {analysis && <AnalysisCard analysis={analysis} imageUri={imageUri ?? undefined} cvRegions={cvRegions} autoSpeak={false} />}
 
         {/* ── Live Sonar Detail Card ── */}
         {analysis && liveSonarMode && analysis.liveBrand && analysis.liveBrand !== "not-live-sonar" && (
@@ -1914,7 +1933,7 @@ export default function HomeScreen() {
               style={{ width: "100%", height: 160 }}
               resizeMode="cover"
             />
-            <AnalysisCard analysis={prevAnalysis} imageUri={prevImageUri} cvRegions={[]} />
+            <AnalysisCard analysis={prevAnalysis} imageUri={prevImageUri} cvRegions={[]} autoSpeak={false} />
           </View>
         )}
 
