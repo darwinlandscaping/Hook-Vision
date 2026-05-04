@@ -2409,80 +2409,8 @@ export default function LiveScreen() {
           </View>
         )}
 
-        {/* Standard result overlay (non-boat mode) */}
-        {!boatMode && result && !scanning && (
-          <View style={[styles.resultOverlay, { backgroundColor: `${colors.background}ee`, borderColor: colors.border }]}>
-            <View style={styles.resultRow}>
-              <Text style={styles.charBadge}>{charInfo.emoji}</Text>
-              <MaterialCommunityIcons name="fish" size={16} color={colors.primary} />
-              <Text style={[styles.resultSpecies, { color: colors.primary }]}>{result.species}</Text>
-              <View style={[styles.countBadge, { backgroundColor: `${colors.primary}22` }]}>
-                <Text style={[styles.countText, { color: colors.primary }]}>{result.fishCount} fish</Text>
-              </View>
-            </View>
-            <Text style={[styles.resultDetail, { color: colors.foreground }]}>{result.depth} · {result.distance}</Text>
-            {result.lure && <Text style={[styles.resultLure, { color: colors.accent }]} numberOfLines={2}>{result.lure}</Text>}
-            <View style={styles.resultActions}>
-              <TouchableOpacity
-                style={[styles.replayBtn, { backgroundColor: `${charInfo.color}22`, borderColor: `${charInfo.color}44` }]}
-                onPress={() => { if (speaking) stopSpeaking(); else speakResult(result); }}
-              >
-                <Feather name={speaking ? "volume-x" : "volume-2"} size={14} color={charInfo.color} />
-                <Text style={[styles.replayText, { color: charInfo.color }]}>
-                  {speaking ? "Stop" : `${charInfo.emoji} Read`}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.clearBtn, { borderColor: colors.border }]}
-                onPress={() => { setResult(null); stopSpeaking(); }}
-              >
-                <Feather name="x" size={14} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Error overlay */}
-        {error && !scanning && (
-          <View style={[styles.errorOverlay, { backgroundColor: `${colors.destructive}22`, borderColor: `${colors.destructive}55` }]}>
-            <Feather name="alert-circle" size={14} color={colors.destructive} />
-            <Text style={[styles.errorText, { color: colors.destructive }]} numberOfLines={2}>{error}</Text>
-            <TouchableOpacity onPress={() => setError(null)}>
-              <Feather name="x" size={14} color={colors.destructive} />
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* Bottom bar */}
         <View style={[styles.bottomBar, { paddingBottom: botPad }]}>
-          {/* Scan row — hidden in boat mode */}
-          {!boatMode && (
-            <View style={styles.scanRow}>
-              <TouchableOpacity
-                style={[styles.galleryBtn, (galleryPicking || scanning) && { opacity: 0.45 }]}
-                onPress={pickFromGallery}
-                disabled={galleryPicking || scanning}
-                activeOpacity={0.78}
-              >
-                {galleryPicking ? (
-                  <ActivityIndicator color="#00d4aa" size="small" />
-                ) : (
-                  <Feather name="image" size={26} color="#00d4aa" />
-                )}
-                <Text style={styles.galleryBtnText}>GALLERY</Text>
-              </TouchableOpacity>
-
-              <GlowButton
-                onPress={scanNow}
-                scanning={scanning}
-                boatMode={false}
-                ready={isNative ? true : webReady}
-              />
-
-              <View style={styles.gallerySpacer} />
-            </View>
-          )}
-
           {/* BOAT MODE toggle + GO LIVE / STOP LIVE */}
           <TouchableOpacity
             style={[styles.boatModeBtn, { backgroundColor: "#0a162888", borderColor: "#aaff0066" }]}
@@ -2522,23 +2450,23 @@ export default function LiveScreen() {
             </TouchableOpacity>
           )}
 
-          {/* VISION MODE button */}
+          {/* VISION MODE — primary live detection button */}
           {!boatMode && (
             <TouchableOpacity
-              style={[styles.boatModeBtn, { backgroundColor: "#0a162888", borderColor: "#00d4aa44" }]}
+              style={[styles.boatModeBtn, { backgroundColor: "#00d4aa22", borderColor: "#00d4aa88" }]}
               onPress={() => {
                 if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
                 startVisionMode();
               }}
               activeOpacity={0.85}
             >
-              <MaterialCommunityIcons name="eye-circle-outline" size={18} color="#00d4aa" />
-              <Text style={[styles.boatModeBtnText, { color: "#00d4aa" }]}>👁 VISION MODE</Text>
+              <MaterialCommunityIcons name="eye-circle-outline" size={22} color="#00d4aa" />
+              <Text style={[styles.boatModeBtnText, { color: "#00d4aa", fontSize: 14 }]}>👁 VISION MODE</Text>
             </TouchableOpacity>
           )}
 
-          {/* Scan a saved sonar photo */}
-          {!boatMode && (
+          {/* Scan a saved sonar photo — REMOVED */}
+          {false && (
             <TouchableOpacity
               style={styles.sonarPhotoBtn}
               onPress={() => {
@@ -2558,14 +2486,12 @@ export default function LiveScreen() {
               ? boatLive
                 ? "📡 Capturing every 3s · best 2 saved · voice ON"
                 : "Tap GO LIVE to start continuous boat scanning"
-              : cam2Connected
-                ? "📺 Cam 2 active — tap SCAN to analyse sonar"
-                : "Point at sonar — tap to scan"}
+              : "Tap VISION MODE to start live AI detection"}
           </Text>
         </View>
 
-        {/* ── AI VISUAL FEED full-screen overlay ─────────────────────────────── */}
-        {feedView === "visual" && (
+        {/* ── AI VISUAL FEED (removed) */}
+        {false && (
           <View style={[StyleSheet.absoluteFill, styles.visualFeedBg]}>
             {/* Visual feed top label */}
             <View style={[styles.visualFeedHeader, { paddingTop: (isNative ? insets.top : topPad) + 10 }]}>
@@ -2689,8 +2615,9 @@ export default function LiveScreen() {
           </View>
         )}
 
-        {/* ── Floating swap feed button ───────────────────────────────────────── */}
-        <TouchableOpacity
+        {/* ── Floating swap feed button (removed) */}
+        {false && (
+          <TouchableOpacity
           style={[
             styles.swapFeedBtn,
             feedView === "visual"
@@ -2714,6 +2641,7 @@ export default function LiveScreen() {
             {feedView === "camera" ? "AI VIEW" : "CAMERA"}
           </Text>
         </TouchableOpacity>
+        )}
       </>
     );
   }
