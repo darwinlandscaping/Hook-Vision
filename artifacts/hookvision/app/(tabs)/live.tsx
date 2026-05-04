@@ -917,21 +917,32 @@ export default function LiveScreen() {
         const snap = await cam2.takeSnapshot();
         if (!snap) return null;
         if (snap.uri) {
-          const j = await manipulateAsync(snap.uri, [], { format: SaveFormat.JPEG, compress: 0.75, base64: true });
-          return { base64: j.base64 ?? "", uri: j.uri };
+          try {
+            const j = await manipulateAsync(snap.uri, [], { format: SaveFormat.JPEG, compress: 0.75, base64: true });
+            if (j.base64) return { base64: j.base64, uri: j.uri };
+          } catch { /* fall through to raw */ }
         }
         const raw = (snap.base64 ?? "").replace(/^data:[^;]+;base64,/, "");
-        return raw ? { base64: raw, uri: "" } : null;
+        return raw ? { base64: raw, uri: snap.uri ?? "" } : null;
       }
       if (Platform.OS === "web") {
         const photo = await webCamRef.current?.takePicture?.();
         return photo?.base64 ? { base64: photo.base64, uri: photo.uri } : null;
       }
       if (!nativeCamRef.current) return null;
-      const photo = await nativeCamRef.current.takePictureAsync({ base64: false, quality: 0.85, skipProcessing: false });
-      if (!photo?.uri) return null;
-      const j = await manipulateAsync(photo.uri, [], { format: SaveFormat.JPEG, compress: 0.75, base64: true });
-      return { base64: j.base64 ?? "", uri: j.uri };
+      // base64:true is the safety net; skipProcessing:false avoids HEIF on iOS
+      const photo = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.85, skipProcessing: false });
+      if (!photo) return null;
+      // Prefer manipulateAsync → guaranteed clean JPEG (same as scan page toJpeg)
+      if (photo.uri) {
+        try {
+          const j = await manipulateAsync(photo.uri, [], { format: SaveFormat.JPEG, compress: 0.75, base64: true });
+          if (j.base64) return { base64: j.base64, uri: j.uri };
+        } catch { /* fall through to raw base64 */ }
+      }
+      // Fallback: raw camera base64 (strip any accidental data: prefix)
+      const raw = (photo.base64 ?? "").replace(/^data:[^;]+;base64,/, "");
+      return raw ? { base64: raw, uri: photo.uri ?? "" } : null;
     } catch { return null; }
   }, [cam2Connected, cam2]);
 
@@ -1050,85 +1061,95 @@ export default function LiveScreen() {
           }
         } catch { /* cycleResult stays null */ }
       } else {
-        // Arch-2D: all 5 frames analyzed concurrently with /api/analyze — same full pipeline as the Scan page
-        // Each frame is a different live sonar capture; best result wins (highest fishCount, tie-break on confidence)
+        // Arch-2D: two-phase pipeline
+        // Phase A — screen all 5 frames via /api/boat-analyze (~1-2s, fast) to find the best candidate
+        // Phase B — run ONLY the best frame through /api/analyze (full streaming = scan page quality)
         try {
-          const frameJobs = frames.map(f => (async (): Promise<Record<string, unknown> | null> => {
-            try {
-              const resp = await fetchRetry(`${apiBase}/api/analyze`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ imageBase64: f.base64 }),
-              }, 90_000);
-              if (!resp.ok) return null;
-              let accumulated = "";
-              if (resp.body) {
-                const reader = resp.body.getReader();
-                try { accumulated = await readStreamWithTimeout(reader, 85_000); }
-                catch { /* partial — fall through to parse */ }
-                finally { try { reader.cancel(); } catch {} }
-              } else {
-                accumulated = await resp.text();
-              }
-              accumulated = accumulated
-                .replace(/__FLASH__:[^\n]*\n?/, "")
-                .replace(/\n__CV__:[^\n]*/, "")
-                .replace(/\n__SCAN2__:[^\n]*/, "");
-              const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
-              const m = cleaned.match(/\{[\s\S]*\}/);
-              if (!m) return null;
-              let d: Record<string, unknown> = {};
-              try { d = JSON.parse(m[0]); } catch { return null; }
-              if (typeof d.fishCount !== "number") d.fishCount = parseInt(String(d.fishCount ?? "0"), 10) || 0;
-              return d;
-            } catch { return null; }
-          })());
-          const frameResponses = (await Promise.all(frameJobs)).filter(
-            (d): d is Record<string, unknown> => d !== null
+          const screenJobs = frames.map(f =>
+            fetchRetry(`${apiBase}/api/boat-analyze`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ imageBase64: f.base64 }),
+            }, 30_000)
+              .then(r => r.ok ? (r.json() as Promise<Record<string, unknown>>) : null)
+              .catch((): null => null)
           );
-          if (frameResponses.length > 0) {
-            const best = frameResponses.reduce((a, b) => {
-              const aC = (a.fishCount as number) ?? 0;
-              const bC = (b.fishCount as number) ?? 0;
-              const aX = (a.confidence as number) ?? 0;
-              const bX = (b.confidence as number) ?? 0;
-              return bC > aC || (bC === aC && bX > aX) ? b : a;
-            });
-            if (typeof best.fishCount !== "number") {
-              best.fishCount = parseInt(String(best.fishCount ?? "0"), 10) || 0;
+          const screenResults = await Promise.all(screenJobs);
+
+          // Pick best frame — highest fishCount, tie-break confidence; default to last frame
+          let bestIdx = frames.length - 1;
+          let bestCount = -1;
+          let bestConf  = -1;
+          screenResults.forEach((sr, i) => {
+            if (!sr) return;
+            const c = parseInt(String(sr.fishCount ?? "0"), 10) || 0;
+            const x = (sr.confidence as number) ?? 0;
+            if (c > bestCount || (c === bestCount && x > bestConf)) {
+              bestCount = c; bestConf = x; bestIdx = i;
             }
-            const cr: FishAnalysis = {
-              fishCount:         (best.fishCount        as number)           ?? 0,
-              depth:             ((best.depth ?? best.depthRange) as string) ?? "unknown",
-              distance:          (best.distance          as string)          ?? "unknown",
-              species:           (best.species           as string)          ?? "Unknown",
-              confidence:        (best.confidence        as number)          ?? 0,
-              suggestion:        (best.suggestion        as string)          ?? "",
-              lure:              (best.lure              as string)          ?? "",
-              lureType:          (best.lureType          as string)          ?? "",
-              technique:         (best.technique         as string)          ?? "",
-              crocAlert:         (best.crocAlert         as boolean)         ?? false,
-              crocWarning:       (best.crocWarning       as string | null)   ?? null,
-              birdAlert:         null, barraPct: undefined, targetCount: undefined,
-              targetType:        "arch-2d",
-              waterTemp:         (best.waterTemp         as string)          ?? "",
-              bottomType:        (best.bottomType        as string)          ?? "",
-              detectedZones:     Array.isArray(best.detectedZones) ? best.detectedZones as string[] : [],
-              frameZones:        [],
-              movementVector:    "unknown",
-              movingZones:       [],
-              staticZones:       [],
-              movingTargetCount: 0,
-              sonarType:         "arch-2d",
-            };
-            cycleResult = cr;
-            if (cr.crocAlert) setCrocAlertActive(true);
-            setResult(cr);
-            setDetectedZones(cr.detectedZones ?? []);
-            setFrameZones([]);
-            setMovementVector("unknown");
-            setMovingZones([]);
-            setStaticZones([]);
+          });
+
+          // Phase B — identical to scan page: single frame through /api/analyze streaming
+          const bf = frames[bestIdx];
+          const fullResp = await fetchRetry(`${apiBase}/api/analyze`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64: bf.base64 }),
+          }, 90_000);
+
+          if (fullResp.ok) {
+            let accumulated = "";
+            if (fullResp.body) {
+              const reader = fullResp.body.getReader();
+              try { accumulated = await readStreamWithTimeout(reader, 85_000); }
+              catch { /* partial — fall through to parse */ }
+              finally { try { reader.cancel(); } catch {} }
+            } else {
+              accumulated = await fullResp.text();
+            }
+            accumulated = accumulated
+              .replace(/__FLASH__:[^\n]*\n?/, "")
+              .replace(/\n__CV__:[^\n]*/, "")
+              .replace(/\n__SCAN2__:[^\n]*/, "");
+            const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
+            const m = cleaned.match(/\{[\s\S]*\}/);
+            if (m) {
+              let d: Record<string, unknown> = {};
+              try { d = JSON.parse(m[0]); } catch { /* leave empty */ }
+              if (typeof d.fishCount !== "number") d.fishCount = parseInt(String(d.fishCount ?? "0"), 10) || 0;
+              const cr: FishAnalysis = {
+                fishCount:         (d.fishCount        as number)           ?? 0,
+                depth:             ((d.depth ?? d.depthRange) as string)    ?? "unknown",
+                distance:          (d.distance          as string)          ?? "unknown",
+                species:           (d.species           as string)          ?? "Unknown",
+                confidence:        (d.confidence        as number)          ?? 0,
+                suggestion:        (d.suggestion        as string)          ?? "",
+                lure:              (d.lure              as string)          ?? "",
+                lureType:          (d.lureType          as string)          ?? "",
+                technique:         (d.technique         as string)          ?? "",
+                crocAlert:         (d.crocAlert         as boolean)         ?? false,
+                crocWarning:       (d.crocWarning       as string | null)   ?? null,
+                birdAlert:         null, barraPct: undefined, targetCount: undefined,
+                targetType:        "arch-2d",
+                waterTemp:         (d.waterTemp         as string)          ?? "",
+                bottomType:        (d.bottomType        as string)          ?? "",
+                detectedZones:     Array.isArray(d.detectedZones) ? d.detectedZones as string[] : [],
+                frameZones:        [],
+                movementVector:    "unknown",
+                movingZones:       [],
+                staticZones:       [],
+                movingTargetCount: 0,
+                sonarType:         "arch-2d",
+              };
+              cycleResult = cr;
+              if (cr.crocAlert) setCrocAlertActive(true);
+              setResult(cr);
+              setDetectedZones(cr.detectedZones ?? []);
+              setFrameZones([]);
+              setMovementVector("unknown");
+              setMovingZones([]);
+              setStaticZones([]);
+            }
           }
         } catch { /* cycleResult stays null */ }
       }
