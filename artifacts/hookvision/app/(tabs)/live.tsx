@@ -915,15 +915,23 @@ export default function LiveScreen() {
     try {
       if (cam2Connected && Platform.OS !== "web") {
         const snap = await cam2.takeSnapshot();
-        return snap?.base64 ? { base64: snap.base64, uri: snap.uri ?? "" } : null;
+        if (!snap) return null;
+        if (snap.uri) {
+          const j = await manipulateAsync(snap.uri, [], { format: SaveFormat.JPEG, compress: 0.75, base64: true });
+          return { base64: j.base64 ?? "", uri: j.uri };
+        }
+        const raw = (snap.base64 ?? "").replace(/^data:[^;]+;base64,/, "");
+        return raw ? { base64: raw, uri: "" } : null;
       }
       if (Platform.OS === "web") {
         const photo = await webCamRef.current?.takePicture?.();
         return photo?.base64 ? { base64: photo.base64, uri: photo.uri } : null;
       }
       if (!nativeCamRef.current) return null;
-      const photo = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.7, skipProcessing: true });
-      return photo?.base64 ? { base64: photo.base64, uri: photo.uri ?? "" } : null;
+      const photo = await nativeCamRef.current.takePictureAsync({ base64: false, quality: 0.85, skipProcessing: false });
+      if (!photo?.uri) return null;
+      const j = await manipulateAsync(photo.uri, [], { format: SaveFormat.JPEG, compress: 0.75, base64: true });
+      return { base64: j.base64 ?? "", uri: j.uri };
     } catch { return null; }
   }, [cam2Connected, cam2]);
 
