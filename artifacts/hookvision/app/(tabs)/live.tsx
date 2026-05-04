@@ -922,8 +922,19 @@ export default function LiveScreen() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64: lsB64, location: null }),
       });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json() as FishAnalysis;
+      if (!resp.ok) throw new Error(`Analysis failed (${resp.status}) — check your connection and try again.`);
+      // ── Stream the response (analyze streams text/plain, not JSON) ─────────
+      let accumulated = "";
+      if (resp.body) {
+        const reader = resp.body.getReader();
+        try { accumulated = await readStreamWithTimeout(reader, 85_000); }
+        finally { try { reader.cancel(); } catch {} }
+      } else {
+        accumulated = await resp.text();
+      }
+      // Strip __FLASH__ prefix line before JSON parsing
+      accumulated = accumulated.replace(/__FLASH__:[^\n]*\n?/, "");
+      const data = JSON.parse(accumulated.trim()) as FishAnalysis;
       setLsAnalysis(data);
       if (data.crocAlert) setCrocAlertActive(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -3173,9 +3184,7 @@ export default function LiveScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <View style={{ height: 1.5, flex: 1, backgroundColor: "#00d4aa33" }} />
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#00d4aa18", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#00d4aa44" }}>
-                    <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>STAGE 2</Text>
-                    <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: "#00d4aa" }} />
-                    <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>DPT 4.1 SCANNING</Text>
+                    <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>GPT-4.1 VISION SCANNING</Text>
                   </View>
                   <View style={{ height: 1.5, flex: 1, backgroundColor: "#00d4aa33" }} />
                 </View>
@@ -3196,9 +3205,7 @@ export default function LiveScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <View style={{ height: 1.5, flex: 1, backgroundColor: "#00d4aa33" }} />
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#00d4aa18", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#00d4aa44" }}>
-                    <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>STAGE 2</Text>
-                    <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: "#00d4aa" }} />
-                    <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>DPT 4.1 RESULT</Text>
+                    <Text style={{ color: "#00d4aa", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>{"GPT-4.1 VISION · CYCLE " + boatCycleNum}</Text>
                   </View>
                   <View style={{ height: 1.5, flex: 1, backgroundColor: "#00d4aa33" }} />
                 </View>
