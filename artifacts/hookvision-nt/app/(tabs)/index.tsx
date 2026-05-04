@@ -1360,7 +1360,7 @@ export default function HomeScreen() {
   // Auto-scroll to show analysis results when they arrive (fixes blue-page visual)
   useEffect(() => {
     if (analysis) {
-      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 200);
+      setTimeout(() => scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: true }), 200);
     }
   }, [analysis]);
 

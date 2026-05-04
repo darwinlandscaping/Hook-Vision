@@ -1357,10 +1357,10 @@ export default function HomeScreen() {
     }
   }, [boatActive]);
 
-  // Auto-scroll to show analysis results when they arrive (fixes blue-page visual)
+  // Keep sonar image visible when analysis arrives — scroll to top so the image stays on screen
   useEffect(() => {
     if (analysis) {
-      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 200);
+      setTimeout(() => scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: true }), 200);
     }
   }, [analysis]);
 

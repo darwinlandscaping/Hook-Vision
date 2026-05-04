@@ -958,7 +958,7 @@ export default function LiveScreen() {
     if (captureTimerRef.current) { clearTimeout(captureTimerRef.current); captureTimerRef.current = null; }
     if (!isBoatLiveRef.current) return;
 
-    // Phase 2: pick best frame → same streaming analyzer as the Scan page
+    // Phase 2: detect sonar type then analyze all frames
     setBoatPhase("analyzing");
     const frames = [...capturedFramesRef.current];
     const bestFrame = frames.at(-1) ?? frames[0];
@@ -966,7 +966,7 @@ export default function LiveScreen() {
     let cycleResult: FishAnalysis | null = null;
 
     if (bestFrame) {
-      // Sonar-type gate — same as the Scan page (fails open to arch-2d)
+      // Detect sonar type from best frame (fail-open to arch-2d)
       let boatSonarType = "arch-2d";
       try {
         const vr = await fetchRetry(`${apiBase}/api/sonar-validate`, {
@@ -980,79 +980,127 @@ export default function LiveScreen() {
         }
       } catch { /* fail open */ }
 
-      // Route to the exact same endpoints as the Scan page
-      const endpoint = boatSonarType === "live-sonar" ? "/api/live-sonar-analyze" : "/api/analyze";
-
-      try {
-        const resp = await fetchRetry(`${apiBase}${endpoint}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: bestFrame.base64 }),
-        }, 90_000);
-
-        if (resp.ok) {
-          // Stream the response exactly like the Scan page
-          let accumulated = "";
-          if (resp.body) {
-            const reader = resp.body.getReader();
-            try {
-              accumulated = await readStreamWithTimeout(reader, 85_000);
-            } catch { /* partial — fall through to parse */ }
-            finally { try { reader.cancel(); } catch {} }
-          } else {
-            accumulated = await resp.text();
+      if (boatSonarType === "live-sonar") {
+        // Live sonar: streaming specialist endpoint, best frame only
+        try {
+          const resp = await fetchRetry(`${apiBase}/api/live-sonar-analyze`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64: bestFrame.base64 }),
+          }, 90_000);
+          if (resp.ok) {
+            let accumulated = "";
+            if (resp.body) {
+              const reader = resp.body.getReader();
+              try { accumulated = await readStreamWithTimeout(reader, 85_000); }
+              catch { /* partial — fall through to parse */ }
+              finally { try { reader.cancel(); } catch {} }
+            } else {
+              accumulated = await resp.text();
+            }
+            accumulated = accumulated.replace(/__FLASH__:[^\n]*\n?/, "")
+              .replace(/\n__CV__:[^\n]*/, "").replace(/\n__SCAN2__:[^\n]*/, "");
+            const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
+            const m = cleaned.match(/\{[\s\S]*\}/);
+            if (m) {
+              let d: Record<string, unknown> = {};
+              try { d = JSON.parse(m[0]); } catch { /* leave empty */ }
+              if (typeof d.fishCount !== "number") d.fishCount = parseInt(String(d.fishCount ?? "0"), 10) || 0;
+              const cr: FishAnalysis = {
+                fishCount:         (d.fishCount        as number)         ?? 0,
+                depth:             ((d.depth ?? d.depthRange) as string)  ?? "unknown",
+                distance:          (d.distance          as string)        ?? "unknown",
+                species:           (d.species           as string)        ?? "Unknown",
+                confidence:        (d.confidence        as number)        ?? 0,
+                suggestion:        (d.suggestion        as string)        ?? "",
+                lure:              (d.lure              as string)        ?? "",
+                lureType:          (d.lureType          as string)        ?? "",
+                technique:         (d.technique         as string)        ?? "",
+                crocAlert:         (d.crocAlert         as boolean)       ?? false,
+                crocWarning:       (d.crocWarning       as string | null) ?? null,
+                birdAlert:         null, barraPct: undefined, targetCount: undefined,
+                targetType:        "live-sonar",
+                waterTemp:         (d.waterTemp         as string)        ?? "",
+                bottomType:        (d.bottomType        as string)        ?? "",
+                detectedZones:     [],
+                frameZones:        [],
+                movementVector:    (d.movementVector    as string)        ?? "unknown",
+                movingZones:       [],
+                staticZones:       [],
+                movingTargetCount: (d.movingTargetCount as number)        ?? 0,
+                sonarType:         "live-sonar",
+              };
+              cycleResult = cr;
+              if (cr.crocAlert) setCrocAlertActive(true);
+              setResult(cr);
+              setDetectedZones([]);
+              setFrameZones([]);
+              setMovementVector(cr.movementVector ?? "unknown");
+              setMovingZones([]);
+              setStaticZones([]);
+            }
           }
-
-          // Strip scan-page inline tokens before JSON parsing
-          accumulated = accumulated.replace(/__FLASH__:[^\n]*\n?/, "");
-          accumulated = accumulated.replace(/\n__CV__:[^\n]*/,    "");
-          accumulated = accumulated.replace(/\n__SCAN2__:[^\n]*/, "");
-
-          const cleaned   = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
-          const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            let d: Record<string, unknown> = {};
-            try { d = JSON.parse(jsonMatch[0]); } catch { /* leave empty */ }
-            if (typeof d.fishCount !== "number") {
-              d.fishCount = parseInt(String(d.fishCount ?? "0"), 10) || 0;
+        } catch { /* cycleResult stays null */ }
+      } else {
+        // Arch-2D: all frames analyzed concurrently via /api/boat-analyze (fast, non-streaming JSON)
+        // Pick best result — highest fishCount, tie-break on confidence
+        try {
+          const frameJobs = frames.map(f =>
+            fetchRetry(`${apiBase}/api/boat-analyze`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ imageBase64: f.base64 }),
+            }, 30_000).then(r => r.ok ? r.json() as Promise<Record<string, unknown>> : null).catch(() => null)
+          );
+          const frameResponses = (await Promise.all(frameJobs)).filter(
+            (d): d is Record<string, unknown> => d !== null
+          );
+          if (frameResponses.length > 0) {
+            const best = frameResponses.reduce((a, b) => {
+              const aC = (a.fishCount as number) ?? 0;
+              const bC = (b.fishCount as number) ?? 0;
+              const aX = (a.confidence as number) ?? 0;
+              const bX = (b.confidence as number) ?? 0;
+              return bC > aC || (bC === aC && bX > aX) ? b : a;
+            });
+            if (typeof best.fishCount !== "number") {
+              best.fishCount = parseInt(String(best.fishCount ?? "0"), 10) || 0;
             }
             const cr: FishAnalysis = {
-              fishCount:         (d.fishCount        as number)         ?? 0,
-              depth:             ((d.depth ?? d.depthRange) as string)  ?? "unknown",
-              distance:          (d.distance          as string)        ?? "unknown",
-              species:           (d.species           as string)        ?? "Unknown",
-              confidence:        (d.confidence        as number)        ?? 0,
-              suggestion:        (d.suggestion        as string)        ?? "",
-              lure:              (d.lure              as string)        ?? "",
-              lureType:          (d.lureType          as string)        ?? "",
-              technique:         (d.technique         as string)        ?? "",
-              crocAlert:         (d.crocAlert         as boolean)       ?? false,
-              crocWarning:       (d.crocWarning       as string | null) ?? null,
-              birdAlert:         null,
-              barraPct:          undefined,
-              targetCount:       undefined,
-              targetType:        boatSonarType,
-              waterTemp:         (d.waterTemp         as string)        ?? "",
-              bottomType:        (d.bottomType        as string)        ?? "",
-              detectedZones:     [],
+              fishCount:         (best.fishCount        as number)           ?? 0,
+              depth:             ((best.depth ?? best.depthRange) as string) ?? "unknown",
+              distance:          (best.distance          as string)          ?? "unknown",
+              species:           (best.species           as string)          ?? "Unknown",
+              confidence:        (best.confidence        as number)          ?? 0,
+              suggestion:        (best.suggestion        as string)          ?? "",
+              lure:              (best.lure              as string)          ?? "",
+              lureType:          (best.lureType          as string)          ?? "",
+              technique:         (best.technique         as string)          ?? "",
+              crocAlert:         (best.crocAlert         as boolean)         ?? false,
+              crocWarning:       (best.crocWarning       as string | null)   ?? null,
+              birdAlert:         null, barraPct: undefined, targetCount: undefined,
+              targetType:        "arch-2d",
+              waterTemp:         (best.waterTemp         as string)          ?? "",
+              bottomType:        (best.bottomType        as string)          ?? "",
+              detectedZones:     Array.isArray(best.detectedZones) ? best.detectedZones as string[] : [],
               frameZones:        [],
               movementVector:    "unknown",
               movingZones:       [],
               staticZones:       [],
               movingTargetCount: 0,
-              sonarType:         boatSonarType,
+              sonarType:         "arch-2d",
             };
             cycleResult = cr;
             if (cr.crocAlert) setCrocAlertActive(true);
             setResult(cr);
-            setDetectedZones([]);
+            setDetectedZones(cr.detectedZones ?? []);
             setFrameZones([]);
             setMovementVector("unknown");
             setMovingZones([]);
             setStaticZones([]);
           }
-        }
-      } catch { /* cycleResult stays null */ }
+        } catch { /* cycleResult stays null */ }
+      }
     }
     if (!isBoatLiveRef.current) return;
 
