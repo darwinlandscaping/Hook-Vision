@@ -10,6 +10,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import * as Haptics from "expo-haptics";
@@ -629,6 +630,7 @@ function BoatGrid({ detectedZones, frameZones, movementVector, movingZones, stat
 export default function LiveScreen() {
   const colors   = useColors();
   const insets   = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const { addEntry } = useHistory();
   const { character, speak, stop: stopSpeaking, speaking } = useNarrator();
   useAutoNarrate(() => "AI Live Camera — real-time Barramundi and wildlife detection active. NT regional brain loaded.");
@@ -671,6 +673,7 @@ export default function LiveScreen() {
   const [visionFrameNote, setVisionFrameNote] = useState("");
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const visionIntervalRef   = useRef<ReturnType<typeof setInterval>|null>(null);
+  const visionScanAnim      = useRef(new Animated.Value(0)).current;
   const visionDetectingRef  = useRef(false);
   const visionModeTypeRef   = useRef<"face"|"object"|"barra">("barra");
 
@@ -802,12 +805,23 @@ export default function LiveScreen() {
     setAnalysisRunning(false);
   }, []);
 
-  // Auto-start: open camera when permission granted — user presses START to begin analysis
+  // Auto-start: open camera + begin GPT-4.1 vision analysis loop immediately
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (nativePermission?.granted && Platform.OS !== "web") startVisionMode();
+    if (nativePermission?.granted && Platform.OS !== "web") { startVisionMode(); startAnalysis(); }
     return () => stopVisionMode();
   }, [nativePermission?.granted]);
+
+  // Sonar sweep animation — continuous while camera is live
+  useEffect(() => {
+    if (!visionMode) { visionScanAnim.stopAnimation(); visionScanAnim.setValue(0); return; }
+    const loop = Animated.loop(
+      Animated.timing(visionScanAnim, { toValue: 1, duration: 2400, useNativeDriver: true })
+    );
+    loop.start();
+    return () => { loop.stop(); visionScanAnim.setValue(0); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visionMode]);
 
   const speakResult = useCallback(
     (analysis: FishAnalysis) => speak(buildSpeech(analysis, character)),
@@ -2860,6 +2874,46 @@ export default function LiveScreen() {
             <Text style={{ color: "#00d4aa33", fontSize: 7, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>DEEP</Text>
           </View>
         </View>
+
+        {/* Animated sonar sweep line — continuous top-to-bottom */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            height: 2,
+            backgroundColor: "#00d4aa",
+            shadowColor: "#00d4aa",
+            shadowOffset: { width: 0, height: 0 },
+            shadowRadius: 12,
+            shadowOpacity: 1,
+            transform: [{
+              translateY: visionScanAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, windowHeight],
+              }),
+            }],
+          }}
+        />
+        {/* Sweep glow trail */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            height: 80,
+            opacity: 0.10,
+            backgroundColor: "#00d4aa",
+            transform: [{
+              translateY: visionScanAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-80, windowHeight - 80],
+              }),
+            }],
+          }}
+        />
 
         {/* Targeting overlay — bounding boxes */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
