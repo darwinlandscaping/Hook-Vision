@@ -808,52 +808,102 @@ export default function LiveScreen() {
     if (captureTimerRef.current) { clearTimeout(captureTimerRef.current); captureTimerRef.current = null; }
     if (!isBoatLiveRef.current) return;
 
-    // Single multi-frame call — AI sees all 5 frames together to track fish movement
+    // Phase 2: pick best frame → same streaming analyzer as the Scan page
     setBoatPhase("analyzing");
     const frames = [...capturedFramesRef.current];
+    const bestFrame = frames.at(-1) ?? frames[0];
 
     let cycleResult: FishAnalysis | null = null;
-    try {
-      const resp = await fetchRetry(`${apiBase}/api/boat-cycle`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frames: frames.map(f => f.base64) }),
-      }, 60_000);
-      if (resp.ok) {
-        const raw: unknown = await resp.json();
-        const d: BoatCycleResponse = (typeof raw === "object" && raw !== null) ? raw as BoatCycleResponse : {};
-        const toStrArr = (v: unknown): string[] =>
-          Array.isArray(v) ? (v as unknown[]).filter((s): s is string => typeof s === "string") : [];
-        const toStrMatrix = (v: unknown): string[][] =>
-          Array.isArray(v)
-            ? (v as unknown[]).filter(Array.isArray).map((z) =>
-                (z as unknown[]).filter((s): s is string => typeof s === "string"))
-            : [];
-        const cr = {
-          fishCount: d.fishCount ?? 0, depth: d.depthRange ?? "unknown", distance: "unknown",
-          species: d.species ?? "Unknown", confidence: d.confidence ?? 0, suggestion: d.suggestion ?? "",
-          lure: d.lure ?? "", lureType: d.lureType ?? "", technique: d.technique ?? "",
-          crocAlert: d.crocAlert ?? false, crocWarning: d.crocWarning ?? null, birdAlert: d.birdAlert ?? null,
-          barraPct: d.barraPct ?? undefined, targetCount: d.targetCount ?? undefined, targetType: d.targetType ?? "none",
-          waterTemp: d.waterTemp ?? "", bottomType: d.bottomType ?? "",
-          detectedZones: toStrArr(d.activeZones),
-          frameZones: toStrMatrix(d.frameZones),
-          movementVector: d.movementVector ?? "unknown",
-          movingZones: toStrArr(d.movingZones),
-          staticZones: toStrArr(d.staticZones),
-          movingTargetCount: d.movingTargetCount ?? 0,
-          sonarType: d.sonarType ?? "unknown",
-        };
-        cycleResult = cr;
-        if (cr.crocAlert) setCrocAlertActive(true);
-        setResult(cr);
-        setDetectedZones(cr.detectedZones);
-        setFrameZones(cr.frameZones);
-        setMovementVector(cr.movementVector);
-        setMovingZones(cr.movingZones);
-        setStaticZones(cr.staticZones);
-      }
-    } catch { /* cycleResult stays null */ }
+
+    if (bestFrame) {
+      // Sonar-type gate — same as the Scan page (fails open to arch-2d)
+      let boatSonarType = "arch-2d";
+      try {
+        const vr = await fetchRetry(`${apiBase}/api/sonar-validate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: bestFrame.base64 }),
+        }, 15_000, 2, 2_000);
+        if (vr.ok) {
+          const vd = await vr.json() as { isSonar?: boolean; sonarType?: string };
+          boatSonarType = vd.sonarType ?? "arch-2d";
+        }
+      } catch { /* fail open */ }
+
+      // Route to the exact same endpoints as the Scan page
+      const endpoint = boatSonarType === "live-sonar" ? "/api/live-sonar-analyze" : "/api/analyze";
+
+      try {
+        const resp = await fetchRetry(`${apiBase}${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: bestFrame.base64 }),
+        }, 90_000);
+
+        if (resp.ok) {
+          // Stream the response exactly like the Scan page
+          let accumulated = "";
+          if (resp.body) {
+            const reader = resp.body.getReader();
+            try {
+              accumulated = await readStreamWithTimeout(reader, 85_000);
+            } catch { /* partial — fall through to parse */ }
+            finally { try { reader.cancel(); } catch {} }
+          } else {
+            accumulated = await resp.text();
+          }
+
+          // Strip scan-page inline tokens before JSON parsing
+          accumulated = accumulated.replace(/__FLASH__:[^\n]*\n?/, "");
+          accumulated = accumulated.replace(/\n__CV__:[^\n]*/,    "");
+          accumulated = accumulated.replace(/\n__SCAN2__:[^\n]*/, "");
+
+          const cleaned   = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
+          const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            let d: Record<string, unknown> = {};
+            try { d = JSON.parse(jsonMatch[0]); } catch { /* leave empty */ }
+            if (typeof d.fishCount !== "number") {
+              d.fishCount = parseInt(String(d.fishCount ?? "0"), 10) || 0;
+            }
+            const cr: FishAnalysis = {
+              fishCount:         (d.fishCount        as number)         ?? 0,
+              depth:             ((d.depth ?? d.depthRange) as string)  ?? "unknown",
+              distance:          (d.distance          as string)        ?? "unknown",
+              species:           (d.species           as string)        ?? "Unknown",
+              confidence:        (d.confidence        as number)        ?? 0,
+              suggestion:        (d.suggestion        as string)        ?? "",
+              lure:              (d.lure              as string)        ?? "",
+              lureType:          (d.lureType          as string)        ?? "",
+              technique:         (d.technique         as string)        ?? "",
+              crocAlert:         (d.crocAlert         as boolean)       ?? false,
+              crocWarning:       (d.crocWarning       as string | null) ?? null,
+              birdAlert:         null,
+              barraPct:          undefined,
+              targetCount:       undefined,
+              targetType:        boatSonarType,
+              waterTemp:         (d.waterTemp         as string)        ?? "",
+              bottomType:        (d.bottomType        as string)        ?? "",
+              detectedZones:     [],
+              frameZones:        [],
+              movementVector:    "unknown",
+              movingZones:       [],
+              staticZones:       [],
+              movingTargetCount: 0,
+              sonarType:         boatSonarType,
+            };
+            cycleResult = cr;
+            if (cr.crocAlert) setCrocAlertActive(true);
+            setResult(cr);
+            setDetectedZones([]);
+            setFrameZones([]);
+            setMovementVector("unknown");
+            setMovingZones([]);
+            setStaticZones([]);
+          }
+        }
+      } catch { /* cycleResult stays null */ }
+    }
     if (!isBoatLiveRef.current) return;
 
     if (MediaLibrary && Platform.OS !== "web" && cycleResult && (cycleResult.fishCount ?? 0) > 0) {
