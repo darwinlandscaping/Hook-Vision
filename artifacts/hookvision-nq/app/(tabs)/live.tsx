@@ -631,7 +631,7 @@ export default function LiveScreen() {
   const insets   = useSafeAreaInsets();
   const { addEntry } = useHistory();
   const { character, speak, stop: stopSpeaking, speaking } = useNarrator();
-  useAutoNarrate(() => isBoatLiveRef.current ? "" : "Live Camera mode. Point your phone at a sonar screen for real-time AI fish detection. Activate Boat Mode for hands-free auto-scanning.");
+  useAutoNarrate(() => "AI Live Camera — real-time Barramundi and wildlife detection active. NQ regional brain loaded.");
 
   const [nativePermission, requestNativePermission] =
     useCameraPermissions ? useCameraPermissions() : [null, null];
@@ -789,6 +789,13 @@ export default function LiveScreen() {
     if (visionIntervalRef.current) clearInterval(visionIntervalRef.current);
     visionIntervalRef.current = setInterval(() => { captureVisionFrameRef.current?.(); }, 3_500);
   }, []);
+
+  // Auto-start: full-screen AI analyzer activates as soon as camera permission is ready
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (nativePermission?.granted && Platform.OS !== "web") startVisionMode();
+    return () => stopVisionMode();
+  }, [nativePermission?.granted]);
 
   const speakResult = useCallback(
     (analysis: FishAnalysis) => speak(buildSpeech(analysis, character)),
@@ -2810,14 +2817,11 @@ export default function LiveScreen() {
         <View style={{ position: "absolute", top: insets.top + 4, left: 0, right: 0, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, backgroundColor: "#0a162299", gap: 8 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: visionDetecting ? "#ffd700" : "#00ff88" }} />
           <Text style={{ color: "#fff", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1.2, flex: 1 }}>
-            VISION · {visionModeType === "barra" ? "🐟 BARRA" : visionModeType === "face" ? "👤 FACE" : "🔍 OBJECT"}{visionDetecting ? " · SCANNING…" : " · LIVE"}
+            AI LIVE · 🐟 BARRA · NQ{visionDetecting ? " · SCANNING…" : " · READY"}
           </Text>
           <Text style={{ color: visionTargets.length > 0 ? "#00d4aa" : "#ffffff55", fontSize: 10, fontFamily: "Inter_700Bold" }}>
-            {visionTargets.length > 0 ? `${visionTargets.length} TARGET${visionTargets.length !== 1 ? "S" : ""} LOCKED` : "SCANNING"}
+            {visionTargets.length > 0 ? `${visionTargets.length} TARGET${visionTargets.length !== 1 ? "S" : ""} LOCKED` : "WATCHING"}
           </Text>
-          <TouchableOpacity onPress={stopVisionMode} style={{ backgroundColor: "#ff444433", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#ff4444aa", marginLeft: 6 }}>
-            <Text style={{ color: "#ff6666", fontSize: 10, fontFamily: "Inter_700Bold" }}>EXIT</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Croc alert banner */}
@@ -2834,22 +2838,11 @@ export default function LiveScreen() {
           </View>
         )}
 
-        {/* Brain badge + mode selector — bottom */}
-        <View style={{ position: "absolute", bottom: insets.bottom + 56, left: 14, right: 14, gap: 8 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 }}>
+        {/* Brain badge — bottom */}
+        <View style={{ position: "absolute", bottom: insets.bottom + 16, left: 14, right: 14, alignItems: "center" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
             <MaterialCommunityIcons name="brain" size={11} color="#00d4aa66" />
             <Text style={{ color: "#00d4aa66", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>NQ REGIONAL BRAIN + BARRA LIBRARY ACTIVE</Text>
-          </View>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {(["face", "object", "barra"] as const).map((m) => {
-              const active = visionModeType === m;
-              const mColor = m === "barra" ? "#00d4aa" : m === "face" ? "#a855f7" : "#ffd700";
-              return (
-                <TouchableOpacity key={m} style={{ flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, backgroundColor: active ? mColor + "22" : "#0a162888", borderColor: active ? mColor : "#ffffff22" }} onPress={() => { visionModeTypeRef.current = m; setVisionModeType(m); }} activeOpacity={0.8}>
-                  <Text style={{ color: active ? mColor : "#ffffff55", fontSize: 11, fontFamily: "Inter_700Bold" }}>{m === "face" ? "👤 FACE" : m === "object" ? "🔍 OBJECT" : "🐟 BARRA"}</Text>
-                </TouchableOpacity>
-              );
-            })}
           </View>
         </View>
       </View>
