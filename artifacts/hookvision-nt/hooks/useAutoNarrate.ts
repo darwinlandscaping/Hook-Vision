@@ -14,7 +14,7 @@ export function useAutoNarrate(getText: () => string) {
 
   useFocusEffect(
     useCallback(() => {
-      const id = setTimeout(() => autoSpeak(getTextRef.current()), 700);
+      const id = setTimeout(() => { const t = getTextRef.current(); if (t) autoSpeak(t); }, 700);
       return () => clearTimeout(id);
     }, [autoSpeak])
   );

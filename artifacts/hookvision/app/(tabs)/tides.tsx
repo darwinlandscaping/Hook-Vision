@@ -475,7 +475,7 @@ function TideDetailView({ loc, region, onBack, colors, topPad, bottomPad }: {
         <>
           <View style={styles.tidesHeaderRow}>
             <SectionHeader icon="🌊" label="TIDE PREDICTIONS" color={colors.primary} />
-            <Text style={[styles.tidesSubtitle, { color: colors.mutedForeground }]}>Broome time (UTC+8:00)</Text>
+            <Text style={[styles.tidesSubtitle, { color: colors.mutedForeground }]}>AWST (UTC+8:00)</Text>
           </View>
 
           {data.data.length > 0 && <NextTideCard data={data.data} colors={colors} />}

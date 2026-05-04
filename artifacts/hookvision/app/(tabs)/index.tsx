@@ -745,7 +745,7 @@ export default function HomeScreen() {
   const hud = useHudStream();
   const scrollViewRef = useRef<ScrollView>(null);
 
-  useAutoNarrate(() => "Sonar Analyser. Load a photo of your sonar screen, or tap the camera button to scan and get instant AI fish detection.");
+  useAutoNarrate(() => imageUri ? "" : "Sonar Analyser. Load a photo of your sonar screen, or tap the camera button to scan and get instant AI fish detection.");
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);

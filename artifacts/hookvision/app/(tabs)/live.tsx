@@ -768,7 +768,7 @@ export default function LiveScreen() {
   const insets   = useSafeAreaInsets();
   const { addEntry } = useHistory();
   const { character, speak, stop: stopSpeaking, speaking } = useNarrator();
-  useAutoNarrate(() => "Live Camera mode. Point your phone at a sonar screen for real-time AI fish detection. Activate Boat Mode for hands-free auto-scanning.");
+  useAutoNarrate(() => isBoatLiveRef.current ? "" : "Live Camera mode. Point your phone at a sonar screen for real-time AI fish detection. Activate Boat Mode for hands-free auto-scanning.");
 
   const [nativePermission, requestNativePermission] =
     useCameraPermissions ? useCameraPermissions() : [null, null];
@@ -1042,16 +1042,39 @@ export default function LiveScreen() {
           }
         } catch { /* cycleResult stays null */ }
       } else {
-        // Arch-2D: all frames analyzed concurrently via /api/boat-analyze (fast, non-streaming JSON)
-        // Pick best result — highest fishCount, tie-break on confidence
+        // Arch-2D: all 5 frames analyzed concurrently with /api/analyze — same full pipeline as the Scan page
+        // Each frame is a different live sonar capture; best result wins (highest fishCount, tie-break on confidence)
         try {
-          const frameJobs = frames.map(f =>
-            fetchRetry(`${apiBase}/api/boat-analyze`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ imageBase64: f.base64 }),
-            }, 30_000).then(r => r.ok ? r.json() as Promise<Record<string, unknown>> : null).catch(() => null)
-          );
+          const frameJobs = frames.map(f => (async (): Promise<Record<string, unknown> | null> => {
+            try {
+              const resp = await fetchRetry(`${apiBase}/api/analyze`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ imageBase64: f.base64 }),
+              }, 90_000);
+              if (!resp.ok) return null;
+              let accumulated = "";
+              if (resp.body) {
+                const reader = resp.body.getReader();
+                try { accumulated = await readStreamWithTimeout(reader, 85_000); }
+                catch { /* partial — fall through to parse */ }
+                finally { try { reader.cancel(); } catch {} }
+              } else {
+                accumulated = await resp.text();
+              }
+              accumulated = accumulated
+                .replace(/__FLASH__:[^\n]*\n?/, "")
+                .replace(/\n__CV__:[^\n]*/, "")
+                .replace(/\n__SCAN2__:[^\n]*/, "");
+              const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
+              const m = cleaned.match(/\{[\s\S]*\}/);
+              if (!m) return null;
+              let d: Record<string, unknown> = {};
+              try { d = JSON.parse(m[0]); } catch { return null; }
+              if (typeof d.fishCount !== "number") d.fishCount = parseInt(String(d.fishCount ?? "0"), 10) || 0;
+              return d;
+            } catch { return null; }
+          })());
           const frameResponses = (await Promise.all(frameJobs)).filter(
             (d): d is Record<string, unknown> => d !== null
           );
