@@ -787,6 +787,8 @@ export default function LiveScreen() {
     setVisionFrameNote("");
     activateKeepAwakeAsync().catch(() => {});
     if (visionIntervalRef.current) clearInterval(visionIntervalRef.current);
+    // Fire first capture almost immediately, then every 3.5 s
+    setTimeout(() => { captureVisionFrameRef.current?.(); }, 600);
     visionIntervalRef.current = setInterval(() => { captureVisionFrameRef.current?.(); }, 3_500);
   }, []);
 
@@ -2869,12 +2871,23 @@ export default function LiveScreen() {
           </View>
         )}
 
-        {/* Frame note */}
-        {!!visionFrameNote && (
-          <View style={{ position: "absolute", bottom: insets.bottom + 140, left: 14, right: 14, backgroundColor: "#0a162299", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: "#00d4aa33" }}>
-            <Text style={{ color: "#ffffffcc", fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" }} numberOfLines={2}>{visionFrameNote}</Text>
-          </View>
-        )}
+        {/* Analysis status + result — full-width prominent panel */}
+        <View style={{ position: "absolute", bottom: insets.bottom + 52, left: 14, right: 14 }}>
+          {visionDetecting ? (
+            <View style={{ backgroundColor: "#0a1628f0", borderRadius: 14, paddingHorizontal: 18, paddingVertical: 16, borderWidth: 1.5, borderColor: "#ffd70088", flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <ActivityIndicator color="#ffd700" size="small" />
+              <Text style={{ color: "#ffd700", fontSize: 14, fontFamily: "Inter_700Bold", letterSpacing: 0.8, flex: 1 }}>ANALYZING FRAME…</Text>
+            </View>
+          ) : visionFrameNote ? (
+            <View style={{ backgroundColor: "#0a1628f0", borderRadius: 14, paddingHorizontal: 18, paddingVertical: 16, borderWidth: 1.5, borderColor: visionTargets.length > 0 ? "#00d4aa77" : "#ffffff22" }}>
+              <Text style={{ color: visionTargets.length > 0 ? "#00d4aaee" : "#ffffffcc", fontSize: 14, fontFamily: "Inter_500Medium", textAlign: "center", lineHeight: 22 }}>{visionFrameNote}</Text>
+            </View>
+          ) : (
+            <View style={{ backgroundColor: "#0a162877", borderRadius: 14, paddingHorizontal: 18, paddingVertical: 14, borderWidth: 1, borderColor: "#ffffff18", alignItems: "center" }}>
+              <Text style={{ color: "#ffffff55", fontSize: 13, fontFamily: "Inter_500Medium" }}>Point camera at water — first scan in 0.6 s</Text>
+            </View>
+          )}
+        </View>
 
         {/* Brain badge — bottom */}
         <View style={{ position: "absolute", bottom: insets.bottom + 16, left: 14, right: 14, alignItems: "center" }}>
