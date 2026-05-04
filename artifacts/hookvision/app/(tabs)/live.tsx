@@ -15,7 +15,7 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
@@ -134,6 +134,7 @@ import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/context/HistoryContext";
 import { CHARACTERS, useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
 import { LiveScanStore } from "@/stores/LiveScanStore";
+import { BoatDemoStore } from "@/stores/BoatDemoStore";
 import { useInsta360Context } from "@/contexts/Insta360Context";
 import { useCamera2, DEFAULT_CAM2_IP, DEFAULT_CAM2_PATH } from "@/hooks/useCamera2";
 import { useCameraScanner, type DiscoveredCamera } from "@/hooks/useCameraScanner";
@@ -908,11 +909,17 @@ export default function LiveScreen() {
     setBoatCaptureCount(0);
     setBoatWaitRemaining(0);
     LiveScanStore.setBoatActive(false);
+    BoatDemoStore.clear();
   }, []);
 
   // ── Silent single capture (no haptics, no sound) ──────────────────────────
   const silentCapture = useCallback(async (): Promise<{base64:string;uri:string}|null> => {
     try {
+      // ── Demo mode: return next pre-loaded frame instead of camera capture ──
+      if (BoatDemoStore.active && BoatDemoStore.length > 0) {
+        return BoatDemoStore.nextFrame();
+      }
+
       if (cam2Connected && Platform.OS !== "web") {
         const snap = await cam2.takeSnapshot();
         if (!snap) return null;
@@ -1274,6 +1281,16 @@ export default function LiveScreen() {
     LiveScanStore.setBoatActive(true);
     void runBoatCycleRef.current?.();
   }, []);
+
+  // ── Demo boat mode: auto-start when navigated from demo tab ──────────────
+  useFocusEffect(useCallback(() => {
+    if (BoatDemoStore.active && !isBoatLiveRef.current) {
+      const t = setTimeout(() => {
+        if (BoatDemoStore.active && !isBoatLiveRef.current) startBoatLive();
+      }, 400);
+      return () => clearTimeout(t);
+    }
+  }, [startBoatLive]));
 
   // ── Scan — capture photo then send to Scan tab for full AI analysis ──────
   const scanNow = useCallback(async () => {

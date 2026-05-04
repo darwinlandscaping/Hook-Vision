@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +20,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
+import { BoatDemoStore } from "@/stores/BoatDemoStore";
 
 // ─── Local bundled sonar images (demos 1–5, always available, no network) ─────
 const LOCAL_DEMO_IMAGES: Partial<Record<number, any>> = {
@@ -110,6 +111,10 @@ export default function DemoScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [loadingNum, setLoadingNum] = useState<DemoNum | null>(null);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [slideIdx,    setSlideIdx]    = useState(0);
+  const [livePulse,   setLivePulse]   = useState(true);
+
   useAutoNarrate(() => "Demo Sonar Scans. Nine sonar screenshots including Kimberley barra, Threadfin Salmon, and live sonar references. Tap any card to run instant AI analysis.");
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
@@ -117,6 +122,64 @@ export default function DemoScreen() {
   // Base URL for API-served demo images (demos 6–9 are JPEG, served from API)
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   const apiBase = domain ? `https://${domain}` : "";
+
+  // Cycle the live-demo slideshow (frames 6→7→8→9→loop)
+  useEffect(() => {
+    const t = setInterval(() => setSlideIdx(i => (i + 1) % 4), 750);
+    return () => clearInterval(t);
+  }, []);
+
+  // Pulse the LIVE badge
+  useEffect(() => {
+    const t = setInterval(() => setLivePulse(p => !p), 700);
+    return () => clearInterval(t);
+  }, []);
+
+  // Load all 4 live-sonar frames → store → navigate to Live tab (boat mode auto-starts)
+  const startDemoBoatMode = useCallback(async () => {
+    if (demoLoading) return;
+    try {
+      setDemoLoading(true);
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      const liveNums: DemoNum[] = [6, 7, 8, 9];
+      const frames: { base64: string; uri: string }[] = [];
+      for (const num of liveNums) {
+        const apiUrl = `${apiBase}/api/demos/sonar-demo-${num}.jpg`;
+        try {
+          if (Platform.OS === "web") {
+            const resp = await fetch(apiUrl);
+            if (!resp.ok) continue;
+            const blob = await resp.blob();
+            const b64 = await new Promise<string>((res, rej) => {
+              const fr = new FileReader();
+              fr.onload = () => res((fr.result as string).split(",")[1]);
+              fr.onerror = rej;
+              fr.readAsDataURL(blob);
+            });
+            frames.push({ base64: b64, uri: apiUrl });
+          } else {
+            const cacheUri = `${FileSystem.cacheDirectory}demo-${num}.jpg`;
+            const dl = await FileSystem.downloadAsync(apiUrl, cacheUri);
+            if (dl.status !== 200) continue;
+            const b64 = await FileSystem.readAsStringAsync(dl.uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            frames.push({ base64: b64, uri: dl.uri });
+          }
+        } catch { /* skip failed frame */ }
+      }
+      if (frames.length === 0) {
+        Alert.alert("Error", "Could not load demo sonar images.");
+        return;
+      }
+      BoatDemoStore.setFrames(frames);
+      router.navigate("/(tabs)/live" as any);
+    } catch {
+      Alert.alert("Error", "Could not start demo.");
+    } finally {
+      setDemoLoading(false);
+    }
+  }, [apiBase, demoLoading]);
 
   const loadAndAnalyze = useCallback(async (num: DemoNum) => {
     try {
@@ -191,6 +254,63 @@ export default function DemoScreen() {
       <Text style={[styles.intro, { color: colors.mutedForeground }]}>
         Try the AI analysis on real sonar screenshots from popular fish finders. Tap any scan to load it into the Analyze tab.
       </Text>
+
+      {/* ─── LIVE BOAT MODE DEMO ──────────────────────────────────────────── */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: "#00ff8844" }]}>
+        <View style={[styles.strip, { backgroundColor: "#00ff88" }]} />
+        <View style={styles.imageWrap}>
+          <Image
+            source={{ uri: `${apiBase}/api/demos/sonar-demo-${([6, 7, 8, 9] as DemoNum[])[slideIdx]}.jpg` }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+          <View style={[styles.brandBadge, { backgroundColor: colors.background + "ee" }]}>
+            <Text style={[styles.brandText, { color: "#00ff88" }]}>Live Sonar</Text>
+            <Text style={[styles.modelText, { color: colors.mutedForeground }]}>
+              MEGA Live · ActiveTarget · LiveScope
+            </Text>
+          </View>
+          <View style={{
+            position: "absolute", top: 10, right: 10,
+            flexDirection: "row", alignItems: "center", gap: 5,
+            backgroundColor: "#0a162888", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10,
+          }}>
+            <View style={{
+              width: 7, height: 7, borderRadius: 4,
+              backgroundColor: "#00ff88", opacity: livePulse ? 1 : 0.25,
+            }} />
+            <Text style={{ color: "#00ff88", fontSize: 11, fontFamily: "Inter_700Bold" }}>LIVE DEMO</Text>
+          </View>
+        </View>
+        <View style={styles.body}>
+          <Text style={[styles.desc, { color: colors.foreground }]}>
+            Practice the full boat mode AI pipeline without being on the water. Loads 4 live sonar reference frames (MEGA Live 2, ActiveTarget, LiveScope) and runs the complete two-phase detection — identical to real boat mode.
+          </Text>
+          <View style={styles.tags}>
+            {["Boat Mode", "4 Live Frames", "Movement Tracking", "Full Analysis"].map(t => (
+              <View key={t} style={[styles.tag, { backgroundColor: "#00ff8822" }]}>
+                <Text style={[styles.tagText, { color: "#00ff88" }]}>{t}</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[styles.analyzeBtn, { backgroundColor: demoLoading ? "#00ff8866" : "#00ff88" }]}
+            onPress={startDemoBoatMode}
+            activeOpacity={0.85}
+            disabled={demoLoading || loadingNum !== null}
+          >
+            {demoLoading ? (
+              <ActivityIndicator size="small" color="#0a1628" />
+            ) : (
+              <>
+                <Feather name="radio" size={16} color="#0a1628" />
+                <Text style={styles.analyzeBtnText}>Start Demo Boat Analysis</Text>
+                <Feather name="arrow-right" size={14} color="#0a1628" />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {DEMOS.map((d) => {
         const isLoading = loadingNum === d.num;
