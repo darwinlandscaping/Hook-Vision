@@ -81,11 +81,25 @@ export function useAudioAlert(
 
     if (currentStatus === "orange") {
       Vibration.vibrate([0, 200, 100, 200]);
-      playSound(BEEP_LOCAL, BEEP_REMOTE, 0.6);
+      playSound(BEEP_LOCAL, BEEP_REMOTE, 1.0);
     } else if (currentStatus === "red") {
       Vibration.vibrate([0, 400, 200, 400, 200, 400]);
       playSound(SIREN_LOCAL, SIREN_REMOTE, 1.0);
       setTimeout(speakWarning, 1500);
     }
   }, [currentStatus, prevStatus, audioEnabled]);
+}
+
+export async function playBeep() {
+  Vibration.vibrate([0, 200, 100, 200]);
+  await playSound(BEEP_LOCAL, BEEP_REMOTE, 1.0);
+}
+
+export async function playSiren() {
+  Vibration.vibrate([0, 400, 200, 400, 200, 400]);
+  await playSound(SIREN_LOCAL, SIREN_REMOTE, 1.0);
+}
+
+export function speakTest() {
+  speakWarning();
 }

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Linking,
   Platform,
@@ -139,6 +140,7 @@ import { DemoSonarView } from "@/components/DemoSonarView";
 import { useInsta360Context } from "@/contexts/Insta360Context";
 import { useCamera2, DEFAULT_CAM2_IP, DEFAULT_CAM2_PATH } from "@/hooks/useCamera2";
 import { useCameraScanner, type DiscoveredCamera } from "@/hooks/useCameraScanner";
+import { useCrocSound } from "@/hooks/useCrocSound";
 import { HUD_PAGE_URL } from "@/hooks/useHudStream";
 import { Insta360PipelineCard } from "@/components/Insta360PipelineCard";
 import { polarFilter } from "@/utils/polarFilter";
@@ -647,10 +649,18 @@ export default function LiveScreen() {
   const [boatWaitRemaining, setBoatWaitRemaining]   = useState(0);
   const [boatSummaryNarration, setBoatSummaryNarration] = useState<string|null>(null);
   const [crocAlertActive, setCrocAlertActive]       = useState(false);
+  useCrocSound(crocAlertActive);
   const [fishTrackingText, setFishTrackingText]     = useState<string|null>(null);
   const [polarOn, setPolarOn]           = useState(true);   // polarised-lens filter
   const [polarising, setPolarising]     = useState(false);  // filter in progress
   const [feedView, setFeedView]         = useState<"camera" | "visual">("camera"); // full-screen feed toggle
+
+  // ── Live Scan Panel (non-boat-mode scan) ──────────────────────────────────
+  const [lsUri, setLsUri]           = useState<string | null>(null);
+  const [lsB64, setLsB64]           = useState<string | null>(null);
+  const [lsAnalysis, setLsAnalysis] = useState<FishAnalysis | null>(null);
+  const [lsLoading, setLsLoading]   = useState(false);
+  const [lsError, setLsError]       = useState<string | null>(null);
 
   const nativeCamRef        = useRef<any>(null);
   const webCamRef           = useRef<any>(null);
@@ -715,6 +725,65 @@ export default function LiveScreen() {
     (analysis: FishAnalysis) => speak(buildSpeech(analysis, character)),
     [speak, character]
   );
+
+  // ── Live Scan Panel callbacks ─────────────────────────────────────────────
+  const lsPickCamera = useCallback(async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") { Alert.alert("Permission Required", "Allow camera access to photograph your sonar screen."); return; }
+    const picked = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.85, base64: false });
+    if (!picked.canceled && picked.assets[0]) {
+      const jpeg = await manipulateAsync(picked.assets[0].uri, [{ resize: { width: 1280 } }], { compress: 0.85, format: SaveFormat.JPEG, base64: true });
+      setLsUri(jpeg.uri); setLsB64(jpeg.base64 ?? null);
+      setLsAnalysis(null); setLsError(null);
+    }
+  }, []);
+
+  const lsPickGallery = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") { Alert.alert("Permission Required", "Allow access to your photo library."); return; }
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.85, base64: false });
+    if (!picked.canceled && picked.assets[0]) {
+      const jpeg = await manipulateAsync(picked.assets[0].uri, [{ resize: { width: 1280 } }], { compress: 0.85, format: SaveFormat.JPEG, base64: true });
+      setLsUri(jpeg.uri); setLsB64(jpeg.base64 ?? null);
+      setLsAnalysis(null); setLsError(null);
+    }
+  }, []);
+
+  const lsAnalyze = useCallback(async () => {
+    if (!lsB64) return;
+    setLsLoading(true);
+    setLsError(null);
+    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const baseUrl = domain ? `https://${domain}` : "";
+    try {
+      let sonarType = "arch-2d";
+      try {
+        const vr = await fetch(`${baseUrl}/api/sonar-validate`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: lsB64 }),
+        });
+        if (vr.ok) {
+          const vd = await vr.json() as { isSonar: boolean; sonarType?: string; reason?: string };
+          if (!vd.isSonar) { setLsError(`Not a sonar image — ${vd.reason ?? "Please photograph your sonar screen."}`); return; }
+          sonarType = vd.sonarType ?? "arch-2d";
+        }
+      } catch { /* fail open */ }
+      const endpoint = sonarType === "live-sonar" ? `${baseUrl}/api/live-sonar-analyze` : `${baseUrl}/api/analyze`;
+      const resp = await fetch(endpoint, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: lsB64, location: null }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json() as FishAnalysis;
+      setLsAnalysis(data);
+      if (data.crocAlert) setCrocAlertActive(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e: any) {
+      setLsError(e?.message ?? "Analysis failed — please try again.");
+    } finally {
+      setLsLoading(false);
+    }
+  }, [lsB64]);
 
   // ── Open device WiFi settings ──────────────────────────────────────────────
   const openWifiSettings = useCallback(async () => {
@@ -2790,30 +2859,177 @@ export default function LiveScreen() {
     );
   }
 
+  if (boatMode) {
+    return (
+      <View style={[styles.container, { backgroundColor: "#000" }]}>
+        {BoatDemoStore.active ? (
+          <DemoSonarView />
+        ) : cam2Connected ? (
+          <Image
+            source={{ uri: `http://${cam2.ip}${cam2.path}?t=${cam2.tick}` }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            onLoad={cam2.onPreviewLoad}
+            onError={cam2.onPreviewError}
+          />
+        ) : (
+          <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
+        )}
+        {!BoatDemoStore.active && cam2Connected && (
+          <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" />
+        )}
+        {renderOverlays(true)}
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.container, { backgroundColor: "#000" }]}>
-      {/* ── Viewfinder — stays mounted in boat mode for silent auto-scan ─────── */}
-      {BoatDemoStore.active ? (
-        <DemoSonarView />
-      ) : cam2Connected ? (
-        <Image
-          source={{ uri: `http://${cam2.ip}${cam2.path}?t=${cam2.tick}` }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-          onLoad={cam2.onPreviewLoad}
-          onError={cam2.onPreviewError}
-        />
-      ) : (
-        <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
-      )}
-      {!BoatDemoStore.active && cam2Connected && (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Tiny camera keeps nativeCamRef warm so boat mode starts instantly */}
+      {Platform.OS !== "web" && !BoatDemoStore.active && (
         <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" />
       )}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingTop: topPad + 12, paddingBottom: botPad + 16, paddingHorizontal: 16, gap: 14 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <HVHeader subtitle="Live Camera" />
 
-      <>
-        {!boatMode && <BarraSketches opacity={cam2Connected ? 0.25 : 0.7} />}
-        {renderOverlays(true)}
-      </>
+        {/* ─── Boat Mode card ───────────────────────────────────────────────── */}
+        <TouchableOpacity
+          style={{ backgroundColor: colors.card, borderRadius: 18, borderWidth: 1.5, borderColor: "#aaff0044", overflow: "hidden" }}
+          onPress={() => setBoatMode(true)}
+          activeOpacity={0.85}
+        >
+          <View style={{ height: 5, backgroundColor: "#aaff00" }} />
+          <View style={{ paddingHorizontal: 18, paddingVertical: 18, gap: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: "#aaff0018", borderWidth: 1, borderColor: "#aaff0055", alignItems: "center", justifyContent: "center" }}>
+                <MaterialCommunityIcons name="ferry" size={27} color="#aaff00" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.foreground, fontSize: 17, fontFamily: "Inter_700Bold" }}>Boat Mode</Text>
+                <Text style={{ color: "#aaff00", fontSize: 12, fontFamily: "Inter_500Medium" }}>Hands-free auto-scan · 45s cycles</Text>
+              </View>
+              <View style={{ backgroundColor: "#aaff00", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 }}>
+                <Text style={{ color: "#0a1628", fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>GO LIVE</Text>
+              </View>
+            </View>
+            <Text style={{ color: colors.mutedForeground, fontSize: 13, lineHeight: 19 }}>
+              Lay phone flat on sonar screen. Silently captures and analyses every 45 seconds — no tapping needed.
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* ─── Scan Sonar panel ─────────────────────────────────────────────── */}
+        <View style={{ backgroundColor: colors.card, borderRadius: 18, borderWidth: 1.5, borderColor: "#00d4aa44", overflow: "hidden" }}>
+          <View style={{ height: 5, backgroundColor: "#00d4aa" }} />
+          <View style={{ paddingHorizontal: 18, paddingVertical: 18, gap: 14 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: "#00d4aa18", borderWidth: 1, borderColor: "#00d4aa55", alignItems: "center", justifyContent: "center" }}>
+                <SonarPulse size={36} active={lsLoading} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.foreground, fontSize: 17, fontFamily: "Inter_700Bold" }}>Scan Sonar</Text>
+                <Text style={{ color: "#00d4aa", fontSize: 12, fontFamily: "Inter_500Medium" }}>GPT-4.1 Vision Analysis</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#00d4aa", borderRadius: 12, paddingVertical: 13 }}
+                onPress={lsPickCamera}
+                disabled={lsLoading}
+                activeOpacity={0.85}
+              >
+                <Feather name="camera" size={17} color="#0a1628" />
+                <Text style={{ color: "#0a1628", fontSize: 14, fontFamily: "Inter_700Bold" }}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.secondary, borderRadius: 12, paddingVertical: 13, borderWidth: 1, borderColor: "#00d4aa55" }}
+                onPress={lsPickGallery}
+                disabled={lsLoading}
+                activeOpacity={0.8}
+              >
+                <Feather name="image" size={17} color="#00d4aa" />
+                <Text style={{ color: "#00d4aa", fontSize: 14, fontFamily: "Inter_600SemiBold" }}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
+
+            {lsUri ? (
+              <View style={{ borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: lsLoading ? "#00d4aa88" : colors.border }}>
+                <Image source={{ uri: lsUri }} style={{ width: "100%", aspectRatio: 4 / 3 }} resizeMode="cover" />
+              </View>
+            ) : null}
+
+            {lsUri && !lsLoading && !lsAnalysis ? (
+              <TouchableOpacity
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14 }}
+                onPress={lsAnalyze}
+                activeOpacity={0.85}
+              >
+                <SonarPulse size={18} active={false} />
+                <Text style={{ color: colors.primaryForeground, fontSize: 16, fontFamily: "Inter_700Bold" }}>Analyze Sonar</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {lsLoading ? (
+              <View style={{ alignItems: "center", gap: 10, paddingVertical: 16 }}>
+                <ActivityIndicator color="#00d4aa" size="large" />
+                <Text style={{ color: "#00d4aa", fontSize: 13, fontFamily: "Inter_500Medium" }}>Analysing sonar…</Text>
+              </View>
+            ) : null}
+
+            {lsError ? (
+              <View style={{ backgroundColor: "#ef444420", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "#ef444455" }}>
+                <Text style={{ color: "#ef4444", fontSize: 13, lineHeight: 18 }}>{lsError}</Text>
+              </View>
+            ) : null}
+
+            {lsAnalysis && !lsLoading ? (
+              <View style={{ gap: 10 }}>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <View style={{ flex: 1, backgroundColor: "#00d4aa15", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
+                    <Text style={{ color: "#00d4aa", fontSize: 26, fontFamily: "Inter_700Bold" }}>{lsAnalysis.fishCount}</Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>FISH</Text>
+                  </View>
+                  <View style={{ flex: 1, backgroundColor: "#00d4aa15", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
+                    <Text style={{ color: "#00d4aa", fontSize: 26, fontFamily: "Inter_700Bold" }}>{lsAnalysis.confidence}%</Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>CONFIDENCE</Text>
+                  </View>
+                  <View style={{ flex: 2, backgroundColor: "#00d4aa15", borderRadius: 10, padding: 12, alignItems: "center", gap: 3 }}>
+                    <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" }} numberOfLines={2}>{lsAnalysis.species}</Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 10, letterSpacing: 0.5 }}>SPECIES</Text>
+                  </View>
+                </View>
+                <View style={{ backgroundColor: colors.secondary, borderRadius: 10, padding: 14, gap: 6 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Depth</Text>
+                    <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>{lsAnalysis.depth}</Text>
+                  </View>
+                  {lsAnalysis.suggestion ? (
+                    <Text style={{ color: colors.mutedForeground, fontSize: 12, lineHeight: 18 }}>{lsAnalysis.suggestion}</Text>
+                  ) : null}
+                </View>
+                {lsAnalysis.crocAlert ? (
+                  <View style={{ backgroundColor: "#ff000022", borderRadius: 10, padding: 12, borderWidth: 1.5, borderColor: "#ff0000aa", flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <Text style={{ fontSize: 22 }}>🐊</Text>
+                    <Text style={{ color: "#ff4444", fontFamily: "Inter_700Bold", fontSize: 14, flex: 1 }}>CROCODILE DETECTED — STAY ALERT</Text>
+                  </View>
+                ) : null}
+                <TouchableOpacity
+                  style={{ alignItems: "center", paddingVertical: 10 }}
+                  onPress={() => { setLsUri(null); setLsB64(null); setLsAnalysis(null); setLsError(null); }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: "#00d4aa", fontSize: 13, fontFamily: "Inter_500Medium" }}>← New scan</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }

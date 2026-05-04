@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSettings } from "@/contexts/SettingsContext";
+import { playBeep, playSiren, speakTest } from "@/hooks/useAudioAlert";
 
 interface CrocGuardConfig {
   thresholds: {
@@ -160,6 +161,34 @@ export default function SettingsScreen() {
             ) : !configError ? (
               <Text style={styles.loadingText}>Loading thresholds…</Text>
             ) : null}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🔊 Test Sounds</Text>
+            <Text style={styles.hint}>
+              Verify the acoustic deterrent works on this device before deploying at the boat ramp.
+            </Text>
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: "#1c3f1c", borderWidth: 1, borderColor: "#22c55e66" }]}
+              onPress={() => { void playBeep(); }}
+            >
+              <Text style={{ fontSize: 16 }}>🔔</Text>
+              <Text style={styles.saveBtnText}>Test Beep  (Orange Alert)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: "#3f1c1c", borderWidth: 1, borderColor: "#ef444466" }]}
+              onPress={() => { void playSiren(); }}
+            >
+              <Text style={{ fontSize: 16 }}>🚨</Text>
+              <Text style={styles.saveBtnText}>Test Siren  (Red Alert)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: "#1c2b3f", borderWidth: 1, borderColor: "#3b82f666" }]}
+              onPress={() => speakTest()}
+            >
+              <Text style={{ fontSize: 16 }}>🗣️</Text>
+              <Text style={styles.saveBtnText}>Test Voice Warning</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.section}>
