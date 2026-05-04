@@ -669,6 +669,7 @@ export default function LiveScreen() {
   const [visionDetecting, setVisionDetecting] = useState(false);
   const [visionTargets, setVisionTargets]   = useState<VisionTarget[]>([]);
   const [visionFrameNote, setVisionFrameNote] = useState("");
+  const [analysisRunning, setAnalysisRunning] = useState(false);
   const visionIntervalRef   = useRef<ReturnType<typeof setInterval>|null>(null);
   const visionDetectingRef  = useRef(false);
   const visionModeTypeRef   = useRef<"face"|"object"|"barra">("barra");
@@ -747,6 +748,7 @@ export default function LiveScreen() {
     setVisionDetecting(false);
     setVisionTargets([]);
     setVisionFrameNote("");
+    setAnalysisRunning(false);
     try { deactivateKeepAwake(); } catch {}
   }, []);
 
@@ -786,13 +788,21 @@ export default function LiveScreen() {
     setVisionTargets([]);
     setVisionFrameNote("");
     activateKeepAwakeAsync().catch(() => {});
+  }, []);
+
+  const startAnalysis = useCallback(() => {
     if (visionIntervalRef.current) clearInterval(visionIntervalRef.current);
-    // Fire first capture almost immediately, then every 3.5 s
-    setTimeout(() => { captureVisionFrameRef.current?.(); }, 600);
+    setAnalysisRunning(true);
+    setTimeout(() => { captureVisionFrameRef.current?.(); }, 400);
     visionIntervalRef.current = setInterval(() => { captureVisionFrameRef.current?.(); }, 3_500);
   }, []);
 
-  // Auto-start: full-screen AI analyzer activates as soon as camera permission is ready
+  const stopAnalysis = useCallback(() => {
+    if (visionIntervalRef.current) { clearInterval(visionIntervalRef.current); visionIntervalRef.current = null; }
+    setAnalysisRunning(false);
+  }, []);
+
+  // Auto-start: open camera when permission granted — user presses START to begin analysis
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (nativePermission?.granted && Platform.OS !== "web") startVisionMode();
@@ -2829,6 +2839,28 @@ export default function LiveScreen() {
           <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
         )}
 
+        {/* Sonar reference grid — 3×3 zone overlay */}
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <View style={{ position: "absolute", left: "33.3%", top: 0, bottom: 0, width: 1, backgroundColor: "#00d4aa22" }} />
+          <View style={{ position: "absolute", left: "66.6%", top: 0, bottom: 0, width: 1, backgroundColor: "#00d4aa22" }} />
+          <View style={{ position: "absolute", top: "33.3%", left: 0, right: 0, height: 1, backgroundColor: "#00d4aa22" }} />
+          <View style={{ position: "absolute", top: "66.6%", left: 0, right: 0, height: 1, backgroundColor: "#00d4aa22" }} />
+          <View style={{ position: "absolute", top: 0, left: 0, width: 22, height: 22, borderTopWidth: 2, borderLeftWidth: 2, borderColor: "#00d4aa88" }} />
+          <View style={{ position: "absolute", top: 0, right: 0, width: 22, height: 22, borderTopWidth: 2, borderRightWidth: 2, borderColor: "#00d4aa88" }} />
+          <View style={{ position: "absolute", bottom: 0, left: 0, width: 22, height: 22, borderBottomWidth: 2, borderLeftWidth: 2, borderColor: "#00d4aa88" }} />
+          <View style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, borderBottomWidth: 2, borderRightWidth: 2, borderColor: "#00d4aa88" }} />
+          <View style={{ position: "absolute", top: "50%", left: "50%", width: 28, height: 28, marginLeft: -14, marginTop: -14, borderWidth: 1.5, borderRadius: 14, borderColor: "#00d4aa44" }} />
+          <View style={{ position: "absolute", right: 5, top: 5 }}>
+            <Text style={{ color: "#00d4aa55", fontSize: 7, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>SURFACE</Text>
+          </View>
+          <View style={{ position: "absolute", right: 5, top: "35%" }}>
+            <Text style={{ color: "#00d4aa44", fontSize: 7, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>MID</Text>
+          </View>
+          <View style={{ position: "absolute", right: 5, top: "68%" }}>
+            <Text style={{ color: "#00d4aa33", fontSize: 7, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>DEEP</Text>
+          </View>
+        </View>
+
         {/* Targeting overlay — bounding boxes */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           {visionTargets.map((t) => {
@@ -2857,7 +2889,7 @@ export default function LiveScreen() {
         <View style={{ position: "absolute", top: insets.top + 4, left: 0, right: 0, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, backgroundColor: "#0a162299", gap: 8 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: visionDetecting ? "#ffd700" : "#00ff88" }} />
           <Text style={{ color: "#fff", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1.2, flex: 1 }}>
-            AI LIVE · 🐟 BARRA · NT{visionDetecting ? " · SCANNING…" : " · READY"}
+            AI LIVE · 🐟 BARRA · NT{analysisRunning ? (visionDetecting ? " · SCANNING…" : " · RUNNING") : " · STANDBY"}
           </Text>
           <Text style={{ color: visionTargets.length > 0 ? "#00d4aa" : "#ffffff55", fontSize: 10, fontFamily: "Inter_700Bold" }}>
             {visionTargets.length > 0 ? `${visionTargets.length} TARGET${visionTargets.length !== 1 ? "S" : ""} LOCKED` : "WATCHING"}
@@ -2872,7 +2904,7 @@ export default function LiveScreen() {
         )}
 
         {/* Analysis status + result — full-width prominent panel */}
-        <View style={{ position: "absolute", bottom: insets.bottom + 52, left: 14, right: 14 }}>
+        <View style={{ position: "absolute", bottom: insets.bottom + 82, left: 14, right: 14 }}>
           {visionDetecting ? (
             <View style={{ backgroundColor: "#0a1628f0", borderRadius: 14, paddingHorizontal: 18, paddingVertical: 16, borderWidth: 1.5, borderColor: "#ffd70088", flexDirection: "row", alignItems: "center", gap: 12 }}>
               <ActivityIndicator color="#ffd700" size="small" />
@@ -2884,17 +2916,33 @@ export default function LiveScreen() {
             </View>
           ) : (
             <View style={{ backgroundColor: "#0a162877", borderRadius: 14, paddingHorizontal: 18, paddingVertical: 14, borderWidth: 1, borderColor: "#ffffff18", alignItems: "center" }}>
-              <Text style={{ color: "#ffffff55", fontSize: 13, fontFamily: "Inter_500Medium" }}>Point camera at water — first scan in 0.6 s</Text>
+              <Text style={{ color: "#ffffff55", fontSize: 13, fontFamily: "Inter_500Medium" }}>Tap START to begin scanning — ANALYZE for a single shot</Text>
             </View>
           )}
         </View>
 
-        {/* Brain badge — bottom */}
-        <View style={{ position: "absolute", bottom: insets.bottom + 16, left: 14, right: 14, alignItems: "center" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-            <MaterialCommunityIcons name="brain" size={11} color="#00d4aa66" />
-            <Text style={{ color: "#00d4aa66", fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>NT REGIONAL BRAIN + BARRA LIBRARY ACTIVE</Text>
-          </View>
+        {/* Control buttons — START · ANALYZE · STOP */}
+        <View style={{ position: "absolute", bottom: insets.bottom + 16, left: 14, right: 14, flexDirection: "row", gap: 8 }}>
+          {!analysisRunning ? (
+            <TouchableOpacity onPress={startAnalysis} style={{ flex: 1, backgroundColor: "#00d4aa", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }} activeOpacity={0.85}>
+              <MaterialCommunityIcons name="play-circle" size={17} color="#0a1628" />
+              <Text style={{ color: "#0a1628", fontSize: 13, fontFamily: "Inter_700Bold" }}>START</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={stopAnalysis} style={{ flex: 1, backgroundColor: "#ff333322", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, borderWidth: 1.5, borderColor: "#ff4444aa" }} activeOpacity={0.85}>
+              <MaterialCommunityIcons name="stop-circle" size={17} color="#ff5555" />
+              <Text style={{ color: "#ff5555", fontSize: 13, fontFamily: "Inter_700Bold" }}>STOP</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={() => captureVisionFrameRef.current?.()}
+            disabled={visionDetecting}
+            style={{ flex: 1, backgroundColor: visionDetecting ? "#0a162888" : "#ffd70022", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, borderWidth: 1.5, borderColor: visionDetecting ? "#ffffff22" : "#ffd70088" }}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons name="radar" size={17} color={visionDetecting ? "#ffffff33" : "#ffd700"} />
+            <Text style={{ color: visionDetecting ? "#ffffff33" : "#ffd700", fontSize: 13, fontFamily: "Inter_700Bold" }}>ANALYZE</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
