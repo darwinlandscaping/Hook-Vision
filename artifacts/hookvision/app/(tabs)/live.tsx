@@ -975,11 +975,11 @@ export default function LiveScreen() {
         const p = await nativeCamRef.current.takePictureAsync({ base64: false, exif: false, skipProcessing: true });
         if (p?.uri) {
           try {
-            const small = await manipulateAsync(p.uri, [{ resize: { width: 320 } }], { compress: 0.15, format: SaveFormat.JPEG, base64: true });
+            const small = await manipulateAsync(p.uri, [{ resize: { width: 320 } }], { compress: 0.35, format: SaveFormat.JPEG, base64: true });
             photos[i] = small.base64 ?? null;
           } catch {
             // expo-image-manipulator native module absent from binary — retake at very low quality
-            const fb = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.02, exif: false, skipProcessing: false });
+            const fb = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.20, exif: false, skipProcessing: false });
             photos[i] = fb?.base64 ?? null;
           }
         } else { photos[i] = null; }
@@ -2957,7 +2957,7 @@ export default function LiveScreen() {
     return (
       <View style={[styles.container, { backgroundColor: "#000" }]}>
         {Platform.OS !== "web" && (
-          <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
+          <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" flash="off" />
         )}
 
         {/* Sonar reference grid — 3×3 zone overlay */}
@@ -3127,10 +3127,10 @@ export default function LiveScreen() {
             onError={cam2.onPreviewError}
           />
         ) : (
-          <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" />
+          <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" flash="off" />
         )}
         {!BoatDemoStore.active && cam2Connected && (
-          <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" />
+          <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" flash="off" />
         )}
         {renderOverlays(true)}
       </View>
@@ -3141,7 +3141,7 @@ export default function LiveScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Tiny camera keeps nativeCamRef warm so boat mode starts instantly */}
       {Platform.OS !== "web" && !BoatDemoStore.active && (
-        <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" />
+        <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" flash="off" />
       )}
       <ScrollView
         style={{ flex: 1 }}

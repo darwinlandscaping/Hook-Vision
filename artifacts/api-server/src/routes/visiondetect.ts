@@ -154,11 +154,18 @@ BARRAMUNDI DETECTION RULES:
 - Subsurface silver shadow or shadow shape consistent with large fish
 - Birds diving aggressively = likely baitfish below = likely barra nearby
 
-CROCODILE DETECTION RULES:
-- Any reptile silhouette, eye-shine, snout, or tail above water = IMMEDIATE ALERT
-- V-wake without visible surface animal = possible submerged croc
-- Dark elongated shape near bank or in shallows = flag as possible croc
-- When in doubt, flag it — false positives are safer than false negatives
+CROCODILE DETECTION RULES — EQUAL PRIORITY TO BARRAMUNDI:
+- COLOUR: Dark olive-green, brown-grey or near-black when wet. Almost always darker than the water.
+- BODY PROFILE: Very long and low — barely above the waterline. Like a log but with texture.
+- HEAD: Broad flat wedge, long narrow snout, ridged brow line. Eyes positioned on TOP of skull.
+- EYE-SHINE: Amber/yellow glow at water surface — especially at low light angles.
+- TAIL: Thick base tapering to a ridged point. Often the only visible part.
+- WAKE: V-wake or bow wave from submerged animal. Crocs push a wave larger than fish.
+- BANK BEHAVIOUR: Motionless like a log near bank, mud flat, or rock ledge = flag it.
+- PARTIAL DETECTION: Half-submerged snout, one visible eye, ridge of spine above surface — all count.
+- SIZE CUE: 1.5 m juvenile to 6 m+ adult. A big croc can be wider than a car tyre.
+- FALSE POSITIVE RULE: When in doubt, ALWAYS flag it. A log that turns out to be a croc kills people.
+- Low-light eye-shine or any glowing dot at water level = treat as croc until proven otherwise.
 
 CONFIDENCE GUIDANCE:
 - 0.9+ = very clear, unambiguous detection
@@ -267,6 +274,12 @@ router.post("/vision-detect", async (req, res) => {
         }
         content.push({ type: "text", text: "━━━ NOW ANALYSE THIS LIVE CAMERA FRAME ━━━" });
       }
+
+      // Always inject croc visual reminder in barra mode — croc detection is safety-critical
+      content.push({
+        type: "text",
+        text: "⚠️ CROCODILE ALERT REMINDER: Scan this frame for ANY of — dark elongated shape barely above waterline, flat wedge-shaped head, amber/yellow eye-shine, V-wake with no visible fish, ridge of armoured spine, motionless log-like shape on bank or in shallows. Flag ALL possible crocs regardless of confidence. Label: 'Saltwater Crocodile'",
+      });
     }
 
     // The live frame itself — use "low" detail for speed (live frames are fast-moving,
