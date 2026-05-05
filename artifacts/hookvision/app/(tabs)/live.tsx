@@ -972,7 +972,7 @@ export default function LiveScreen() {
         const p = await nativeCamRef.current.takePictureAsync({ base64: false, exif: false, skipProcessing: true });
         if (p?.uri) {
           try {
-            const small = await manipulateAsync(p.uri, [{ resize: { width: 480 } }], { compress: 0.25, format: SaveFormat.JPEG, base64: true });
+            const small = await manipulateAsync(p.uri, [{ resize: { width: 320 } }], { compress: 0.15, format: SaveFormat.JPEG, base64: true });
             photos[i] = small.base64 ?? null;
           } catch {
             // expo-image-manipulator native module absent from binary — retake at very low quality
@@ -1018,8 +1018,9 @@ export default function LiveScreen() {
         } else {
           setBurstRows(prev2 => prev2.map((r, idx) => idx === i ? { ...r, status: "error", note: `Server ${resp.status}` } : r));
         }
-      } catch {
-        setBurstRows(prev2 => prev2.map((r, idx) => idx === i ? { ...r, status: "error", note: "Offline" } : r));
+      } catch (err) {
+        const msg = err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 60) : "Offline";
+        setBurstRows(prev2 => prev2.map((r, idx) => idx === i ? { ...r, status: "error", note: msg } : r));
         setIsOffline(true);
       }
     }));
