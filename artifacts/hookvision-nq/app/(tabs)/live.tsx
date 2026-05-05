@@ -784,7 +784,7 @@ export default function LiveScreen() {
         setVisionTargets(data.targets ?? []);
         setVisionFrameNote(data.frameNote ?? "");
       }
-    } catch { /* fail silently — next interval will retry */ } finally {
+    } catch { setVisionFrameNote("No signal — retrying next frame…"); } finally {
       visionDetectingRef.current = false;
       setVisionDetecting(false);
     }
@@ -812,12 +812,18 @@ export default function LiveScreen() {
     setAnalysisRunning(false);
   }, []);
 
-  // Auto-start: open camera + begin GPT-4.1 vision analysis loop immediately
+  // Handles first-time permission grant while tab is already in focus
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (nativePermission?.granted && Platform.OS !== "web") { startVisionMode(); startAnalysis(); }
-    return () => stopVisionMode();
   }, [nativePermission?.granted]);
+
+  // Restart vision analysis EVERY time the Live tab is re-focused (e.g. after tab-switch)
+  useFocusEffect(useCallback(() => {
+    if (nativePermission?.granted && Platform.OS !== "web") { startVisionMode(); startAnalysis(); }
+    return () => stopVisionMode();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nativePermission?.granted]));
 
   // Sonar sweep animation — continuous while camera is live (reanimated v3)
   useEffect(() => {
@@ -2924,7 +2930,7 @@ export default function LiveScreen() {
             </View>
           ) : (
             <View style={{ backgroundColor: "#0a162877", borderRadius: 14, paddingHorizontal: 18, paddingVertical: 14, borderWidth: 1, borderColor: "#ffffff18", alignItems: "center" }}>
-              <Text style={{ color: "#ffffff55", fontSize: 13, fontFamily: "Inter_500Medium" }}>Tap START to begin scanning — ANALYZE for a single shot</Text>
+              <Text style={{ color: "#ffffff55", fontSize: 13, fontFamily: "Inter_500Medium" }}>{analysisRunning ? "Scanning… awaiting first frame result" : "Tap START to begin scanning · ANALYZE for a single shot"}</Text>
             </View>
           )}
         </View>
