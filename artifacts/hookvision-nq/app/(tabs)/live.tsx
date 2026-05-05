@@ -21,6 +21,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
+  cancelAnimation,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
@@ -673,7 +674,13 @@ export default function LiveScreen() {
   const [visionFrameNote, setVisionFrameNote] = useState("");
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const visionIntervalRef   = useRef<ReturnType<typeof setInterval>|null>(null);
-  const visionScanAnim      = useRef(new Animated.Value(0)).current;
+  const visionScanProgress  = useSharedValue(0);
+  const sweepLineStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: visionScanProgress.value * windowHeight }],
+  }));
+  const sweepTrailStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: (visionScanProgress.value * windowHeight) - 80 }],
+  }));
   const visionDetectingRef  = useRef(false);
   const visionModeTypeRef   = useRef<"face"|"object"|"barra">("barra");
 
@@ -812,14 +819,11 @@ export default function LiveScreen() {
     return () => stopVisionMode();
   }, [nativePermission?.granted]);
 
-  // Sonar sweep animation — continuous while camera is live
+  // Sonar sweep animation — continuous while camera is live (reanimated v3)
   useEffect(() => {
-    if (!visionMode) { visionScanAnim.stopAnimation(); visionScanAnim.setValue(0); return; }
-    const loop = Animated.loop(
-      Animated.timing(visionScanAnim, { toValue: 1, duration: 2400, useNativeDriver: true })
-    );
-    loop.start();
-    return () => { loop.stop(); visionScanAnim.setValue(0); };
+    if (!visionMode) { cancelAnimation(visionScanProgress); visionScanProgress.value = 0; return; }
+    visionScanProgress.value = withRepeat(withTiming(1, { duration: 2400 }), -1, false);
+    return () => { cancelAnimation(visionScanProgress); visionScanProgress.value = 0; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visionMode]);
 
@@ -2840,7 +2844,7 @@ export default function LiveScreen() {
         {/* Animated sonar sweep line — continuous top-to-bottom */}
         <Animated.View
           pointerEvents="none"
-          style={{
+          style={[{
             position: "absolute",
             left: 0,
             right: 0,
@@ -2850,31 +2854,19 @@ export default function LiveScreen() {
             shadowOffset: { width: 0, height: 0 },
             shadowRadius: 12,
             shadowOpacity: 1,
-            transform: [{
-              translateY: visionScanAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, windowHeight],
-              }),
-            }],
-          }}
+          }, sweepLineStyle]}
         />
         {/* Sweep glow trail */}
         <Animated.View
           pointerEvents="none"
-          style={{
+          style={[{
             position: "absolute",
             left: 0,
             right: 0,
             height: 80,
             opacity: 0.10,
             backgroundColor: "#00d4aa",
-            transform: [{
-              translateY: visionScanAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [-80, windowHeight - 80],
-              }),
-            }],
-          }}
+          }, sweepTrailStyle]}
         />
 
         {/* Targeting overlay — bounding boxes */}
