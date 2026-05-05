@@ -683,6 +683,8 @@ export default function LiveScreen() {
   }));
   const visionDetectingRef  = useRef(false);
   const visionModeTypeRef   = useRef<"face"|"object"|"barra">("barra");
+  const [burstRows, setBurstRows] = useState<Array<{ num: number; status: string; targets: VisionTarget[]; note: string }>>([]);
+  const burstRunRef         = useRef(false);
 
   // ── Live Scan Panel (non-boat-mode scan) ──────────────────────────────────
   const [lsUri, setLsUri]           = useState<string | null>(null);
@@ -752,6 +754,7 @@ export default function LiveScreen() {
 
   // ── VISION MODE callbacks ─────────────────────────────────────────────────
   const stopVisionMode = useCallback(() => {
+    burstRunRef.current = false;
     if (visionIntervalRef.current) { clearInterval(visionIntervalRef.current); visionIntervalRef.current = null; }
     visionDetectingRef.current = false;
     setVisionMode(false);
@@ -759,6 +762,7 @@ export default function LiveScreen() {
     setVisionTargets([]);
     setVisionFrameNote("");
     setAnalysisRunning(false);
+    setBurstRows([]);
     try { deactivateKeepAwake(); } catch {}
   }, []);
 
@@ -790,8 +794,56 @@ export default function LiveScreen() {
     }
   }, []);
 
-  const captureVisionFrameRef = useRef(captureVisionFrame);
-  useEffect(() => { captureVisionFrameRef.current = captureVisionFrame; }, [captureVisionFrame]);
+  const runBurst = useCallback(async () => {
+    if (!nativeCamRef.current) return;
+    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const baseUrl = domain ? `https://${domain}` : "";
+    const results: Array<{ targets: VisionTarget[]; note: string } | null> = Array(5).fill(null);
+
+    setBurstRows(Array.from({ length: 5 }, (_, i) => ({ num: i + 1, status: "pending", targets: [], note: "" })));
+
+    // Phase 1 — rapid burst capture (5 photos ~350 ms apart)
+    const photos: (string | null)[] = [];
+    for (let i = 0; i < 5; i++) {
+      setBurstRows(prev => prev.map((r, idx) => idx === i ? { ...r, status: "capturing" } : r));
+      try {
+        const p = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.28, skipProcessing: false, exif: false });
+        photos[i] = p?.base64 ?? null;
+      } catch { photos[i] = null; }
+      setBurstRows(prev => prev.map((r, idx) => idx === i ? { ...r, status: photos[i] ? "analyzing" : "error", note: photos[i] ? "" : "Capture failed" } : r));
+      if (i < 4) await new Promise<void>(res => setTimeout(res, 350));
+    }
+
+    // Phase 2 — parallel GPT-4.1 Vision analysis
+    await Promise.all(photos.map(async (b64, i) => {
+      if (!b64) return;
+      try {
+        const resp = await fetch(`${baseUrl}/api/vision-detect`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: b64, region: "nq", mode: visionModeTypeRef.current }),
+          signal: AbortSignal.timeout(20_000),
+        });
+        if (resp.ok) {
+          const data = await resp.json() as { targets: VisionTarget[]; frameNote: string };
+          const tgts = data.targets ?? [];
+          const note = data.frameNote ?? "";
+          results[i] = { targets: tgts, note };
+          const prevResult = results[i - 1];
+          const prevSet = new Set((prevResult?.targets ?? []).map(t => t.label.toLowerCase()));
+          const currSet = new Set(tgts.map(t => t.label.toLowerCase()));
+          const added   = [...currSet].filter(l => !prevSet.has(l)).map(l => `+${l}`);
+          const removed = [...prevSet].filter(l => !currSet.has(l)).map(l => `-${l}`);
+          const delta   = [...added, ...removed].join("  ");
+          const display = tgts.length > 0 ? note : "No targets";
+          setBurstRows(prev2 => prev2.map((r, idx) => idx === i ? { ...r, status: "done", targets: tgts, note: display + (delta ? `  [${delta}]` : "") } : r));
+          if (tgts.length > 0) { setVisionTargets(tgts); setVisionFrameNote(note); }
+        }
+      } catch {
+        setBurstRows(prev2 => prev2.map((r, idx) => idx === i ? { ...r, status: "error", note: "No signal" } : r));
+      }
+    }));
+  }, []);
 
   const startVisionMode = useCallback(() => {
     setVisionMode(true);
@@ -801,13 +853,21 @@ export default function LiveScreen() {
   }, []);
 
   const startAnalysis = useCallback(() => {
-    if (visionIntervalRef.current) clearInterval(visionIntervalRef.current);
+    if (burstRunRef.current) return;
+    burstRunRef.current = true;
     setAnalysisRunning(true);
-    setTimeout(() => { captureVisionFrameRef.current?.(); }, 400);
-    visionIntervalRef.current = setInterval(() => { captureVisionFrameRef.current?.(); }, 3_500);
-  }, []);
+    const loop = async () => {
+      while (burstRunRef.current) {
+        await runBurst();
+        if (burstRunRef.current) await new Promise<void>(res => setTimeout(res, 1500));
+      }
+      setAnalysisRunning(false);
+    };
+    loop();
+  }, [runBurst]);
 
   const stopAnalysis = useCallback(() => {
+    burstRunRef.current = false;
     if (visionIntervalRef.current) { clearInterval(visionIntervalRef.current); visionIntervalRef.current = null; }
     setAnalysisRunning(false);
   }, []);
@@ -2917,46 +2977,58 @@ export default function LiveScreen() {
           </View>
         )}
 
-        {/* Analysis status + result — full-width prominent panel */}
-        <View style={{ position: "absolute", bottom: insets.bottom + 82, left: 14, right: 14 }}>
-          {visionDetecting ? (
-            <View style={{ backgroundColor: "#0a1628f0", borderRadius: 14, paddingHorizontal: 18, paddingVertical: 16, borderWidth: 1.5, borderColor: "#ffd70088", flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <ActivityIndicator color="#ffd700" size="small" />
-              <Text style={{ color: "#ffd700", fontSize: 14, fontFamily: "Inter_700Bold", letterSpacing: 0.8, flex: 1 }}>ANALYZING FRAME…</Text>
+        {/* ── Burst checklist + controls panel ─────────────────────────── */}
+        <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#0a1628f0", borderTopWidth: 1, borderTopColor: "#00d4aa22" }}>
+          {burstRows.length > 0 ? (
+            <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4, gap: 4 }}>
+              {burstRows.map(row => {
+                const s = row.status;
+                const clr = s === "done" && row.targets.length > 0 ? "#00d4aa" : s === "done" ? "#ffffff55" : s === "analyzing" ? "#ffd700" : s === "capturing" ? "#aaff00" : s === "error" ? "#ff5555" : "#ffffff22";
+                const icon = s === "done" ? "●" : s === "analyzing" ? "◌" : s === "capturing" ? "◉" : s === "error" ? "✕" : "○";
+                const txt  = s === "done" ? (row.note || "No targets") : s === "analyzing" ? "Analyzing…" : s === "capturing" ? "Capturing…" : s === "error" ? (row.note || "Failed") : "Waiting";
+                return (
+                  <View key={row.num} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={{ color: clr, fontSize: 10, width: 10 }}>{icon}</Text>
+                    <Text style={{ color: "#ffffff55", fontSize: 10, fontFamily: "Inter_700Bold", width: 28 }}>F{row.num}</Text>
+                    <Text style={{ color: clr, fontSize: 11, fontFamily: "Inter_500Medium", flex: 1 }} numberOfLines={1}>{txt}</Text>
+                    {s === "done" && row.targets.length > 0 && (
+                      <Text style={{ color: "#00d4aa", fontSize: 10, fontFamily: "Inter_700Bold" }}>{row.targets.length}⚑</Text>
+                    )}
+                  </View>
+                );
+              })}
             </View>
           ) : visionFrameNote ? (
-            <View style={{ backgroundColor: "#0a1628f0", borderRadius: 14, paddingHorizontal: 18, paddingVertical: 16, borderWidth: 1.5, borderColor: visionTargets.length > 0 ? "#00d4aa77" : "#ffffff22" }}>
-              <Text style={{ color: visionTargets.length > 0 ? "#00d4aaee" : "#ffffffcc", fontSize: 14, fontFamily: "Inter_500Medium", textAlign: "center", lineHeight: 22 }}>{visionFrameNote}</Text>
+            <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 }}>
+              <Text style={{ color: visionTargets.length > 0 ? "#00d4aaee" : "#ffffffcc", fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center", lineHeight: 20 }}>{visionFrameNote}</Text>
             </View>
           ) : (
-            <View style={{ backgroundColor: "#0a162877", borderRadius: 14, paddingHorizontal: 18, paddingVertical: 14, borderWidth: 1, borderColor: "#ffffff18", alignItems: "center" }}>
-              <Text style={{ color: "#ffffff55", fontSize: 13, fontFamily: "Inter_500Medium" }}>{analysisRunning ? "Scanning… awaiting first frame result" : "Tap START to begin scanning · ANALYZE for a single shot"}</Text>
+            <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4, alignItems: "center" }}>
+              <Text style={{ color: "#ffffff33", fontSize: 12, fontFamily: "Inter_400Regular" }}>{analysisRunning ? "Preparing burst scan…" : "Press START · 5-frame burst · auto-repeats"}</Text>
             </View>
           )}
-        </View>
-
-        {/* Control buttons — START · ANALYZE · STOP */}
-        <View style={{ position: "absolute", bottom: insets.bottom + 16, left: 14, right: 14, flexDirection: "row", gap: 8 }}>
-          {!analysisRunning ? (
-            <TouchableOpacity onPress={startAnalysis} style={{ flex: 1, backgroundColor: "#00d4aa", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }} activeOpacity={0.85}>
-              <MaterialCommunityIcons name="play-circle" size={17} color="#0a1628" />
-              <Text style={{ color: "#0a1628", fontSize: 13, fontFamily: "Inter_700Bold" }}>START</Text>
+          <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingBottom: insets.bottom + 10, paddingTop: 6 }}>
+            {!analysisRunning ? (
+              <TouchableOpacity onPress={startAnalysis} style={{ flex: 1, backgroundColor: "#00d4aa", borderRadius: 12, paddingVertical: 13, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }} activeOpacity={0.85}>
+                <MaterialCommunityIcons name="play-circle" size={17} color="#0a1628" />
+                <Text style={{ color: "#0a1628", fontSize: 13, fontFamily: "Inter_700Bold" }}>START</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={stopAnalysis} style={{ flex: 1, backgroundColor: "#ff333322", borderRadius: 12, paddingVertical: 13, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, borderWidth: 1.5, borderColor: "#ff4444aa" }} activeOpacity={0.85}>
+                <MaterialCommunityIcons name="stop-circle" size={17} color="#ff5555" />
+                <Text style={{ color: "#ff5555", fontSize: 13, fontFamily: "Inter_700Bold" }}>STOP</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={startAnalysis}
+              disabled={analysisRunning}
+              style={{ flex: 1, backgroundColor: analysisRunning ? "#0a162888" : "#ffd70022", borderRadius: 12, paddingVertical: 13, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, borderWidth: 1.5, borderColor: analysisRunning ? "#ffffff22" : "#ffd70088" }}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name="radar" size={17} color={analysisRunning ? "#ffffff33" : "#ffd700"} />
+              <Text style={{ color: analysisRunning ? "#ffffff33" : "#ffd700", fontSize: 13, fontFamily: "Inter_700Bold" }}>ANALYZE</Text>
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={stopAnalysis} style={{ flex: 1, backgroundColor: "#ff333322", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, borderWidth: 1.5, borderColor: "#ff4444aa" }} activeOpacity={0.85}>
-              <MaterialCommunityIcons name="stop-circle" size={17} color="#ff5555" />
-              <Text style={{ color: "#ff5555", fontSize: 13, fontFamily: "Inter_700Bold" }}>STOP</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            onPress={() => captureVisionFrameRef.current?.()}
-            disabled={visionDetecting}
-            style={{ flex: 1, backgroundColor: visionDetecting ? "#0a162888" : "#ffd70022", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, borderWidth: 1.5, borderColor: visionDetecting ? "#ffffff22" : "#ffd70088" }}
-            activeOpacity={0.85}
-          >
-            <MaterialCommunityIcons name="radar" size={17} color={visionDetecting ? "#ffffff33" : "#ffd700"} />
-            <Text style={{ color: visionDetecting ? "#ffffff33" : "#ffd700", fontSize: 13, fontFamily: "Inter_700Bold" }}>ANALYZE</Text>
-          </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
