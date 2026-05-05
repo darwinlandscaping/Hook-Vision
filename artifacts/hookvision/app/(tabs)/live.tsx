@@ -81,7 +81,8 @@ async function fetchRetry(
   let lastErr: unknown;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+      const _ac = new AbortController(); setTimeout(() => _ac.abort(), timeoutMs);
+      return await fetch(url, { ...init, signal: _ac.signal });
     } catch (err) {
       lastErr = err;
       if (attempt === retries - 1) break;
@@ -103,9 +104,10 @@ async function waitForConnectivity(
 ): Promise<boolean> {
   for (let i = 0; i < maxAttempts; i++) {
     try {
+      const _pc = new AbortController(); setTimeout(() => _pc.abort(), 7_000);
       const r = await fetch(`${apiBase}/api/ping`, {
         cache: "no-store",
-        signal: AbortSignal.timeout(7_000),
+        signal: _pc.signal,
       });
       if (r.ok) return true;
     } catch { /* network error — likely a Starlink handoff, will retry */ }
@@ -937,11 +939,12 @@ export default function LiveScreen() {
       if (!photo?.base64) return;
       const domain = process.env.EXPO_PUBLIC_DOMAIN;
       const baseUrl = domain ? `https://${domain}` : "";
+      const _vc = new AbortController(); setTimeout(() => _vc.abort(), 15_000);
       const resp = await fetch(`${baseUrl}/api/vision-detect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64: photo.base64, region: "wa", mode: visionModeTypeRef.current }),
-        signal: AbortSignal.timeout(15_000),
+        signal: _vc.signal,
       });
       if (resp.ok) {
         const data = await resp.json() as { targets: VisionTarget[]; frameNote: string };
