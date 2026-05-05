@@ -827,7 +827,7 @@ export default function LiveScreen() {
             photos[i] = small.base64 ?? null;
           } catch {
             // expo-image-manipulator native module absent from binary — retake at low quality
-            const fb = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.08, exif: false, skipProcessing: false });
+            const fb = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.04, exif: false, skipProcessing: false });
             photos[i] = fb?.base64 ?? null;
           }
         } else { photos[i] = null; }
