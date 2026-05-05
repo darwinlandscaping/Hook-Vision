@@ -803,12 +803,17 @@ export default function LiveScreen() {
     setBurstRows(Array.from({ length: 5 }, (_, i) => ({ num: i + 1, status: "pending", targets: [], note: "" })));
 
     // Phase 1 — rapid burst capture (5 photos ~350 ms apart)
+    // Capture at native res then resize to 640 px wide — keeps payload under 80 KB
+    // so it clears the Replit reverse-proxy body limit and never gets silently dropped.
     const photos: (string | null)[] = [];
     for (let i = 0; i < 5; i++) {
       setBurstRows(prev => prev.map((r, idx) => idx === i ? { ...r, status: "capturing" } : r));
       try {
-        const p = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.28, skipProcessing: false, exif: false });
-        photos[i] = p?.base64 ?? null;
+        const p = await nativeCamRef.current.takePictureAsync({ base64: false, exif: false, skipProcessing: true });
+        if (p?.uri) {
+          const small = await manipulateAsync(p.uri, [{ resize: { width: 640 } }], { compress: 0.4, format: SaveFormat.JPEG, base64: true });
+          photos[i] = small.base64 ?? null;
+        } else { photos[i] = null; }
       } catch { photos[i] = null; }
       setBurstRows(prev => prev.map((r, idx) => idx === i ? { ...r, status: photos[i] ? "analyzing" : "error", note: photos[i] ? "" : "Capture failed" } : r));
       if (i < 4) await new Promise<void>(res => setTimeout(res, 350));
