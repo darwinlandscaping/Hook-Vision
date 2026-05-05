@@ -637,7 +637,7 @@ export default function LiveScreen() {
   const insets   = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const { addEntry } = useHistory();
-  const { character, speak, stop: stopSpeaking, speaking } = useNarrator();
+  const { character, speak, stop: stopSpeaking, speaking, narratePage } = useNarrator();
   useAutoNarrate(() => "AI Live Camera — real-time Barramundi and wildlife detection active. NQ regional brain loaded.");
 
   const [nativePermission, requestNativePermission] =
@@ -691,6 +691,9 @@ export default function LiveScreen() {
   const burstRunRef         = useRef(false);
   const sessionIdRef        = useRef<number | null>(null);
   const burstNumRef         = useRef(0);
+  const prevBurstLabelsRef  = useRef<string[]>([]);
+  const narratePageRef      = useRef(narratePage);
+  narratePageRef.current = narratePage;
   const [isOffline, setIsOffline] = useState(false);
 
   // ── Live Scan Panel (non-boat-mode scan) ──────────────────────────────────
@@ -823,7 +826,7 @@ export default function LiveScreen() {
     for (let i = 0; i < 5; i++) {
       setBurstRows(prev => prev.map((r, idx) => idx === i ? { ...r, status: "capturing" } : r));
       try {
-        const p = await nativeCamRef.current.takePictureAsync({ base64: false, exif: false, skipProcessing: true });
+        const p = await nativeCamRef.current.takePictureAsync({ base64: false, exif: false, skipProcessing: false });
         if (p?.uri) {
           try {
             const small = await manipulateAsync(p.uri, [{ resize: { width: 320 } }], { compress: 0.35, format: SaveFormat.JPEG, base64: true });
@@ -878,6 +881,41 @@ export default function LiveScreen() {
         setIsOffline(true);
       }
     }));
+
+    // ── Burst narrator ──────────────────────────────────────────────────────
+    // Consolidate all 5 frame results → AI narrator → character-voiced TTS
+    {
+      const allBurstTgts = results
+        .filter((r): r is { targets: VisionTarget[]; note: string } => !!r)
+        .flatMap(r => r.targets);
+      const prevLabels = prevBurstLabelsRef.current;
+      const byLabel: Record<string, { count: number; sides: string[] }> = {};
+      for (const t of allBurstTgts) {
+        const side = t.box.x < 0.35 ? "left" : t.box.x > 0.65 ? "right" : "centre";
+        if (!byLabel[t.label]) byLabel[t.label] = { count: 0, sides: [] };
+        byLabel[t.label].count++;
+        if (!byLabel[t.label].sides.includes(side)) byLabel[t.label].sides.push(side);
+      }
+      const currLabels = Object.keys(byLabel);
+      prevBurstLabelsRef.current = currLabels;
+      const detectedParts = currLabels.map(l => {
+        const info = byLabel[l];
+        const pos = info.sides.join(" and ");
+        return info.count > 1 ? `${l} (${info.count} frames, ${pos})` : `${l} (${pos})`;
+      });
+      const contentLines: string[] = [
+        detectedParts.length > 0
+          ? `Detected: ${detectedParts.join(", ")}`
+          : "No targets detected this sweep",
+      ];
+      if (burstNumRef.current > 1 && prevLabels.length > 0) {
+        const newOnes = currLabels.filter(l => !prevLabels.some(p => p.toLowerCase() === l.toLowerCase()));
+        const gone    = prevLabels.filter(p => !currLabels.some(l => l.toLowerCase() === p.toLowerCase()));
+        if (newOnes.length > 0) contentLines.push(`New contact: ${newOnes.join(", ")}`);
+        if (gone.length > 0)    contentLines.push(`No longer visible: ${gone.join(", ")}`);
+      }
+      narratePageRef.current("live burst", contentLines.join(". ")).catch(() => {});
+    }
   }, []);
 
   const startVisionMode = useCallback(() => {
