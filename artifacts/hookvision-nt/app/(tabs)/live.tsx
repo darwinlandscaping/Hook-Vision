@@ -64,6 +64,8 @@ interface VisionTarget {
   confidence: number;
   box: { x: number; y: number; w: number; h: number };
   note?: string;
+  trackId?: string;
+  velocity?: { dx: number; dy: number } | null;
 }
 
 // Retries a fetch through transient network errors (e.g. Starlink handoff dropouts).
@@ -685,6 +687,9 @@ export default function LiveScreen() {
   const visionModeTypeRef   = useRef<"face"|"object"|"barra">("barra");
   const [burstRows, setBurstRows] = useState<Array<{ num: number; status: string; targets: VisionTarget[]; note: string }>>([]);
   const burstRunRef         = useRef(false);
+  const sessionIdRef        = useRef<number | null>(null);
+  const burstNumRef         = useRef(0);
+  const [isOffline, setIsOffline] = useState(false);
 
   // ── Live Scan Panel (non-boat-mode scan) ──────────────────────────────────
   const [lsUri, setLsUri]           = useState<string | null>(null);
@@ -755,6 +760,11 @@ export default function LiveScreen() {
   // ── VISION MODE callbacks ─────────────────────────────────────────────────
   const stopVisionMode = useCallback(() => {
     burstRunRef.current = false;
+    if (sessionIdRef.current) {
+      const sid = sessionIdRef.current; sessionIdRef.current = null;
+      const _d = process.env.EXPO_PUBLIC_DOMAIN; const _b = _d ? `https://${_d}` : "";
+      fetch(`${_b}/api/vision-session/end`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: sid }) }).catch(() => {});
+    }
     if (visionIntervalRef.current) { clearInterval(visionIntervalRef.current); visionIntervalRef.current = null; }
     visionDetectingRef.current = false;
     setVisionMode(false);
@@ -763,6 +773,7 @@ export default function LiveScreen() {
     setVisionFrameNote("");
     setAnalysisRunning(false);
     setBurstRows([]);
+    setIsOffline(false);
     try { deactivateKeepAwake(); } catch {}
   }, []);
 
@@ -820,15 +831,20 @@ export default function LiveScreen() {
     }
 
     // Phase 2 — parallel GPT-4.1 Vision analysis
+    burstNumRef.current += 1;
+    const thisBurst = burstNumRef.current;
     await Promise.all(photos.map(async (b64, i) => {
       if (!b64) return;
       try {
-        const resp = await fetch(`${baseUrl}/api/vision-detect`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: b64, region: "nt", mode: visionModeTypeRef.current }),
-          signal: AbortSignal.timeout(20_000),
-        });
+        const resp = await fetchRetry(
+          `${baseUrl}/api/vision-detect`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64: b64, region: "nt", mode: visionModeTypeRef.current, sessionId: sessionIdRef.current ?? undefined, burstNum: thisBurst, frameNum: i + 1 }),
+          },
+          20_000, 1, 2_000,
+        );
         if (resp.ok) {
           const data = await resp.json() as { targets: VisionTarget[]; frameNote: string };
           const tgts = data.targets ?? [];
@@ -843,9 +859,13 @@ export default function LiveScreen() {
           const display = tgts.length > 0 ? note : "No targets";
           setBurstRows(prev2 => prev2.map((r, idx) => idx === i ? { ...r, status: "done", targets: tgts, note: display + (delta ? `  [${delta}]` : "") } : r));
           if (tgts.length > 0) { setVisionTargets(tgts); setVisionFrameNote(note); }
+          setIsOffline(false);
+        } else {
+          setBurstRows(prev2 => prev2.map((r, idx) => idx === i ? { ...r, status: "error", note: `Server ${resp.status}` } : r));
         }
       } catch {
-        setBurstRows(prev2 => prev2.map((r, idx) => idx === i ? { ...r, status: "error", note: "No signal" } : r));
+        setBurstRows(prev2 => prev2.map((r, idx) => idx === i ? { ...r, status: "error", note: "Offline" } : r));
+        setIsOffline(true);
       }
     }));
   }, []);
@@ -860,7 +880,12 @@ export default function LiveScreen() {
   const startAnalysis = useCallback(() => {
     if (burstRunRef.current) return;
     burstRunRef.current = true;
+    burstNumRef.current = 0;
     setAnalysisRunning(true);
+    setIsOffline(false);
+    const _d = process.env.EXPO_PUBLIC_DOMAIN; const _b = _d ? `https://${_d}` : "";
+    fetch(`${_b}/api/vision-session/start`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ region: "nt" }) })
+      .then(r => r.ok ? r.json() : null).then((d: { sessionId?: number } | null) => { if (d?.sessionId) sessionIdRef.current = d.sessionId; }).catch(() => {});
     const loop = async () => {
       while (burstRunRef.current) {
         await runBurst();
@@ -874,6 +899,11 @@ export default function LiveScreen() {
   const stopAnalysis = useCallback(() => {
     burstRunRef.current = false;
     if (visionIntervalRef.current) { clearInterval(visionIntervalRef.current); visionIntervalRef.current = null; }
+    if (sessionIdRef.current) {
+      const sid = sessionIdRef.current; sessionIdRef.current = null;
+      const _d = process.env.EXPO_PUBLIC_DOMAIN; const _b = _d ? `https://${_d}` : "";
+      fetch(`${_b}/api/vision-session/end`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: sid }) }).catch(() => {});
+    }
     setAnalysisRunning(false);
   }, []);
 
@@ -2994,7 +3024,7 @@ export default function LiveScreen() {
                 <View style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderBottomWidth: 3, borderRightWidth: 3, borderColor: bColor }} />
                 <View style={{ position: "absolute", top: -26, left: -2, flexDirection: "row", alignItems: "center", backgroundColor: bColor + "dd", borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3 }}>
                   <Text style={{ color: "#000", fontSize: 10, fontFamily: "Inter_700Bold" }} numberOfLines={1}>
-                    {isCroc ? "⚠ " : isBarramundi ? "🐟 " : isPerson ? "👤 " : "● "}{t.label} {Math.round(t.confidence * 100)}%
+                    {t.velocity && (Math.abs(t.velocity.dx) > 0.015 || Math.abs(t.velocity.dy) > 0.015) ? (["→","↘","↓","↙","←","↖","↑","↗"][Math.round((Math.atan2(t.velocity.dy, t.velocity.dx) * 180 / Math.PI + 180) / 45) % 8] + " ") : ""}{isCroc ? "⚠ " : isBarramundi ? "🐟 " : isPerson ? "👤 " : "● "}{t.label} {Math.round(t.confidence * 100)}%{t.trackId ? ` #${t.trackId}` : ""}
                   </Text>
                 </View>
               </View>
@@ -3008,9 +3038,13 @@ export default function LiveScreen() {
           <Text style={{ color: "#fff", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1.2, flex: 1 }}>
             AI LIVE · 🐟 BARRA · NT{analysisRunning ? (visionDetecting ? " · SCANNING…" : " · RUNNING") : " · STANDBY"}
           </Text>
-          <Text style={{ color: visionTargets.length > 0 ? "#00d4aa" : "#ffffff55", fontSize: 10, fontFamily: "Inter_700Bold" }}>
-            {visionTargets.length > 0 ? `${visionTargets.length} TARGET${visionTargets.length !== 1 ? "S" : ""} LOCKED` : "WATCHING"}
-          </Text>
+          {isOffline ? (
+            <Text style={{ color: "#ff5555", fontSize: 9, fontFamily: "Inter_700Bold" }}>OFFLINE</Text>
+          ) : (
+            <Text style={{ color: visionTargets.length > 0 ? "#00d4aa" : "#ffffff55", fontSize: 10, fontFamily: "Inter_700Bold" }}>
+              {visionTargets.length > 0 ? `${visionTargets.length} TARGET${visionTargets.length !== 1 ? "S" : ""} LOCKED` : "WATCHING"}
+            </Text>
+          )}
         </View>
 
         {/* Croc alert banner */}

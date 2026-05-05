@@ -29,6 +29,7 @@ import modelsRouter from "./models";
 import boatSessionRouter from "./boatsession";
 import boatAnalyzeRouter from "./boatanalyze";
 import visionDetectRouter from "./visiondetect";
+import visionSessionRouter from "./visionsession";
 
 const router: IRouter = Router();
 
@@ -62,5 +63,6 @@ router.use(modelsRouter);                 // GET  /api/models
 router.use(boatSessionRouter);            // POST /api/boat-session
 router.use(boatAnalyzeRouter);           // POST /api/boat-analyze (fast, non-streaming)
 router.use(visionDetectRouter);          // POST /api/vision-detect (live camera AI detector)
+router.use(visionSessionRouter);         // POST /api/vision-session/start|end, GET /api/vision-session/:id
 
 export default router;

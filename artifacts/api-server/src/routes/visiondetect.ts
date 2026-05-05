@@ -18,6 +18,9 @@ import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getModel } from "../lib/models.js";
 import { getFewShotRefs } from "../lib/barraLibrary.js";
+import { matchOrAssign } from "../lib/targetTracker.js";
+import { db, visionDetections, visionSessions } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -206,10 +209,16 @@ router.post("/vision-detect", async (req, res) => {
     imageBase64,
     region = "wa",
     mode = "barra",
+    sessionId,
+    burstNum = 0,
+    frameNum = 0,
   } = req.body as {
     imageBase64?: string;
     region?: string;
     mode?: "face" | "object" | "barra";
+    sessionId?: number;
+    burstNum?: number;
+    frameNum?: number;
   };
 
   if (!imageBase64) {
@@ -293,17 +302,56 @@ router.post("/vision-detect", async (req, res) => {
     const match = clean.match(/\{[\s\S]*\}/);
     const parsed = match ? JSON.parse(match[0]) : { targets: [], frameNote: "Parse error" };
 
+    const rawTargets: Array<{ id?: string; label: string; confidence: number; box: { x: number; y: number; w: number; h: number }; note?: string }> =
+      Array.isArray(parsed.targets) ? parsed.targets : [];
+
+    // ── Assign persistent track IDs + compute velocity ──────────────────────
+    const enrichedTargets = rawTargets.map((t) => {
+      if (!t.box) return { ...t, trackId: t.id ?? "unknown", velocity: null };
+      const { trackId, velocity } = sessionId
+        ? matchOrAssign(sessionId, burstNum, frameNum, t.label, t.box)
+        : { trackId: t.id ?? t.label.slice(0, 8), velocity: null };
+      return { ...t, trackId, velocity };
+    });
+
     res.json({
-      targets: Array.isArray(parsed.targets) ? parsed.targets : [],
+      targets: enrichedTargets,
       frameNote: parsed.frameNote ?? "",
       region: regionKey,
       mode,
     });
 
     req.log.info(
-      { mode, region: regionKey, targetCount: parsed.targets?.length ?? 0 },
+      { mode, region: regionKey, targetCount: enrichedTargets.length, sessionId, burstNum, frameNum },
       "vision-detect complete"
     );
+
+    // ── Async DB persistence (fire-and-forget — does not block response) ────
+    if (sessionId && enrichedTargets.length > 0) {
+      db.insert(visionDetections)
+        .values(enrichedTargets.map((t) => ({
+          sessionId,
+          burstNum,
+          frameNum,
+          trackId: t.trackId,
+          label: t.label,
+          confidence: t.confidence ?? 0,
+          bboxX: t.box?.x ?? 0,
+          bboxY: t.box?.y ?? 0,
+          bboxW: t.box?.w ?? 0,
+          bboxH: t.box?.h ?? 0,
+          velocityDx: t.velocity?.dx ?? null,
+          velocityDy: t.velocity?.dy ?? null,
+        })))
+        .then(() => {
+          // Increment burst counter on session (best-effort)
+          db.update(visionSessions)
+            .set({ totalBursts: sql`${visionSessions.totalBursts} + 1` })
+            .where(eq(visionSessions.id, sessionId))
+            .catch(() => {});
+        })
+        .catch(() => {});
+    }
   } catch (err) {
     req.log.error({ err }, "vision-detect failed");
     res.status(500).json({ error: "Detection failed", targets: [], frameNote: "" });

@@ -10,3 +10,4 @@ export * from "./bird_references";
 export * from "./crocguard";
 export * from "./visual_logs";
 export * from "./contrast_references";
+export * from "./vision_tracking";
