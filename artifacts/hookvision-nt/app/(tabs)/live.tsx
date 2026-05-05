@@ -3003,7 +3003,7 @@ export default function LiveScreen() {
     return (
       <View style={[styles.container, { backgroundColor: "#000" }]}>
         {Platform.OS !== "web" && (
-          <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" flash="off" />
+          <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" flash="off" animateShutter={false} shutterSound={false} enableTorch={false} />
         )}
 
         {/* Sonar reference grid — 3×3 zone overlay */}
@@ -3173,10 +3173,10 @@ export default function LiveScreen() {
             onError={cam2.onPreviewError}
           />
         ) : (
-          <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" flash="off" />
+          <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" flash="off" animateShutter={false} shutterSound={false} enableTorch={false} />
         )}
         {!BoatDemoStore.active && cam2Connected && (
-          <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" flash="off" />
+          <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" flash="off" animateShutter={false} shutterSound={false} enableTorch={false} />
         )}
         {renderOverlays(true)}
       </View>
@@ -3187,7 +3187,7 @@ export default function LiveScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Tiny camera keeps nativeCamRef warm so boat mode starts instantly */}
       {Platform.OS !== "web" && !BoatDemoStore.active && (
-        <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" flash="off" />
+        <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" flash="off" animateShutter={false} shutterSound={false} enableTorch={false} />
       )}
       <ScrollView
         style={{ flex: 1 }}
