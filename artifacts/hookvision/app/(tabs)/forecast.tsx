@@ -91,8 +91,17 @@ function getWASeason(month: number): {
 }
 
 // ─── CrocGuard types ──────────────────────────────────────────────────────────
-type CrocStatus = "green" | "orange" | "red";
+type CrocStatus      = "green" | "orange" | "red";
+type DeterrentMode   = "off" | "pulse" | "alarm" | "continuous";
+type DeterrentSound  = "siren" | "horn" | "dolphin" | "ultrasonic";
 interface CrocGuardState { status: CrocStatus; confidence: number; alerts24h: number }
+interface DeterrentState {
+  mode:         DeterrentMode;
+  sound:        DeterrentSound;
+  auto_mode:    boolean;
+  triggered_at: string | null;
+  updated_at:   string;
+}
 
 function CrocGuardBadge({ cg, colors }: { cg: CrocGuardState; colors: ReturnType<typeof useColors> }) {
   const cfg: Record<CrocStatus, { bg: string; icon: string; label: string }> = {
@@ -110,6 +119,236 @@ function CrocGuardBadge({ cg, colors }: { cg: CrocGuardState; colors: ReturnType
           <Text style={styles.crocAlertPillText}>{cg.alerts24h} alert{cg.alerts24h > 1 ? "s" : ""} / 24h</Text>
         </View>
       )}
+    </View>
+  );
+}
+
+// ─── CrocGuard Deterrent Control Panel ────────────────────────────────────────
+function CrocGuardPanel({
+  cg, det, baseUrl, onUpdate,
+}: {
+  cg:       CrocGuardState;
+  det:      DeterrentState | null;
+  baseUrl:  string;
+  onUpdate: (d: DeterrentState) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  const crocCfg: Record<CrocStatus, { bg: string; icon: string; label: string }> = {
+    green:  { bg: "#16a34a", icon: "shield-check", label: "CLEAR" },
+    orange: { bg: "#d97706", icon: "shield-alert", label: "CAUTION" },
+    red:    { bg: "#dc2626", icon: "shield-off",   label: "🐊 ALERT" },
+  };
+  const cc = crocCfg[cg.status];
+
+  const modeCfg: Record<DeterrentMode, { label: string; color: string; icon: string }> = {
+    off:        { label: "OFF",        color: "#ffffff44", icon: "volume-off" },
+    pulse:      { label: "PULSE",      color: "#ffd700",   icon: "volume-medium" },
+    alarm:      { label: "ALARM",      color: "#ff6600",   icon: "volume-high" },
+    continuous: { label: "CONTINUOUS", color: "#dc2626",   icon: "volume-vibrate" },
+  };
+  const soundCfg: Record<DeterrentSound, { label: string; emoji: string }> = {
+    siren:      { label: "Siren",      emoji: "🚨" },
+    horn:       { label: "Air Horn",   emoji: "📯" },
+    dolphin:    { label: "Dolphin",    emoji: "🐬" },
+    ultrasonic: { label: "Ultrasonic", emoji: "📡" },
+  };
+
+  const post = async (endpoint: string, body?: object) => {
+    setBusy(true);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10_000);
+    try {
+      const r = await fetch(`${baseUrl}/api/crocguard/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: ctrl.signal,
+      });
+      const d = await r.json();
+      if (d.ok && d.deterrent) onUpdate(d.deterrent);
+    } catch {
+    } finally {
+      clearTimeout(timer);
+      setBusy(false);
+    }
+  };
+
+  const effectiveMode  = det?.mode  ?? "off";
+  const effectiveSound = det?.sound ?? "siren";
+  const autoMode       = det?.auto_mode ?? true;
+
+  return (
+    <View style={{
+      backgroundColor: "#0c1628",
+      borderRadius: 16, borderWidth: 1,
+      borderColor: cg.status === "red" ? "#dc262666" : cg.status === "orange" ? "#d9770644" : "#16a34a33",
+      marginBottom: 8, overflow: "hidden",
+    }}>
+      {/* ── Header ── */}
+      <View style={{
+        flexDirection: "row", alignItems: "center", gap: 10,
+        padding: 14, borderBottomWidth: 1, borderBottomColor: "#ffffff0f",
+        backgroundColor: cg.status === "red" ? "#dc262612" : "#00000000",
+      }}>
+        <MaterialCommunityIcons name={cc.icon as any} size={22} color={cc.bg} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14, letterSpacing: 1 }}>
+            🐊 CROCGUARD
+          </Text>
+          <Text style={{ color: cc.bg, fontSize: 11, fontWeight: "700", letterSpacing: 1.5, marginTop: 1 }}>
+            {cc.label} · {cg.confidence}% confidence
+          </Text>
+        </View>
+        {cg.alerts24h > 0 && (
+          <View style={{ backgroundColor: `${cc.bg}33`, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <Text style={{ color: cc.bg, fontSize: 10, fontWeight: "700" }}>
+              {cg.alerts24h} alert{cg.alerts24h > 1 ? "s" : ""}/24h
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={{ padding: 14, gap: 14 }}>
+        {/* ── Deterrent Section Header ── */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <MaterialCommunityIcons name="speaker-wireless" size={15} color="#00d4aa" />
+          <Text style={{ color: "#00d4aa", fontSize: 11, fontWeight: "700", letterSpacing: 1.5 }}>
+            ACOUSTIC DETERRENT
+          </Text>
+          {busy && <ActivityIndicator size="small" color="#00d4aa" style={{ marginLeft: "auto" }} />}
+        </View>
+
+        {/* ── Mode selector ── */}
+        <View style={{ gap: 6 }}>
+          <Text style={{ color: "#ffffff55", fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>MODE</Text>
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            {(["off", "pulse", "alarm", "continuous"] as DeterrentMode[]).map(m => {
+              const mc = modeCfg[m];
+              const active = effectiveMode === m;
+              return (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => post("deterrent", { mode: m })}
+                  disabled={busy}
+                  style={{
+                    flex: 1, alignItems: "center", justifyContent: "center",
+                    paddingVertical: 8, borderRadius: 8, borderWidth: 1.5,
+                    backgroundColor: active ? `${mc.color}22` : "#ffffff08",
+                    borderColor: active ? `${mc.color}88` : "#ffffff22",
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <MaterialCommunityIcons name={mc.icon as any} size={15} color={active ? mc.color : "#ffffff44"} />
+                  <Text style={{ fontSize: 8, fontWeight: "700", letterSpacing: 0.5, marginTop: 2, color: active ? mc.color : "#ffffff44" }}>
+                    {mc.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ── Sound selector ── */}
+        <View style={{ gap: 6 }}>
+          <Text style={{ color: "#ffffff55", fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>SOUND TYPE</Text>
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            {(["siren", "horn", "dolphin", "ultrasonic"] as DeterrentSound[]).map(s => {
+              const sc = soundCfg[s];
+              const active = effectiveSound === s;
+              return (
+                <TouchableOpacity
+                  key={s}
+                  onPress={() => post("deterrent", { sound: s })}
+                  disabled={busy}
+                  style={{
+                    flex: 1, alignItems: "center", gap: 3,
+                    paddingVertical: 8, borderRadius: 8, borderWidth: 1.5,
+                    backgroundColor: active ? "#00d4aa22" : "#ffffff08",
+                    borderColor: active ? "#00d4aa66" : "#ffffff22",
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <Text style={{ fontSize: 14 }}>{sc.emoji}</Text>
+                  <Text style={{ fontSize: 8, fontWeight: "700", color: active ? "#00d4aa" : "#ffffff44" }}>
+                    {sc.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ── Auto-mode toggle ── */}
+        <TouchableOpacity
+          onPress={() => post("deterrent", { auto_mode: !autoMode })}
+          disabled={busy}
+          style={{
+            flexDirection: "row", alignItems: "center", gap: 10,
+            backgroundColor: autoMode ? "#00d4aa12" : "#ffffff08",
+            borderRadius: 10, borderWidth: 1,
+            borderColor: autoMode ? "#00d4aa44" : "#ffffff22",
+            paddingHorizontal: 12, paddingVertical: 10,
+          }}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name={autoMode ? "robot" : "robot-off"} size={18} color={autoMode ? "#00d4aa" : "#ffffff44"} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: autoMode ? "#00d4aa" : "#ffffff88", fontWeight: "700", fontSize: 12 }}>
+              Auto-Trigger {autoMode ? "ON" : "OFF"}
+            </Text>
+            <Text style={{ color: "#ffffff44", fontSize: 10, marginTop: 1 }}>
+              {autoMode ? "Deterrent fires automatically when croc detected" : "Manual control only"}
+            </Text>
+          </View>
+          <View style={{ width: 36, height: 20, borderRadius: 10, justifyContent: "center", backgroundColor: autoMode ? "#00d4aa" : "#ffffff22" }}>
+            <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: "#fff", marginLeft: autoMode ? 18 : 2 }} />
+          </View>
+        </TouchableOpacity>
+
+        {/* ── Action buttons ── */}
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <TouchableOpacity
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              post("deterrent/trigger");
+            }}
+            disabled={busy}
+            style={{
+              flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center",
+              gap: 8, backgroundColor: "#dc262622", borderRadius: 12,
+              borderWidth: 1.5, borderColor: "#dc262666", paddingVertical: 12,
+              opacity: busy ? 0.5 : 1,
+            }}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="alarm-light" size={18} color="#dc2626" />
+            <Text style={{ color: "#dc2626", fontWeight: "800", fontSize: 13, letterSpacing: 0.5 }}>
+              🔊 TRIGGER NOW
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => post("deterrent/off")}
+            disabled={busy || effectiveMode === "off"}
+            style={{
+              flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+              gap: 6, backgroundColor: "#ffffff08", borderRadius: 12,
+              borderWidth: 1.5, borderColor: "#ffffff22", paddingVertical: 12,
+              opacity: (busy || effectiveMode === "off") ? 0.4 : 1,
+            }}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="volume-off" size={16} color="#ffffff88" />
+            <Text style={{ color: "#ffffff88", fontWeight: "700", fontSize: 12 }}>SILENCE</Text>
+          </TouchableOpacity>
+        </View>
+
+        {det?.triggered_at && (
+          <Text style={{ color: "#ffffff33", fontSize: 10, textAlign: "center" }}>
+            Last fired: {new Date(det.triggered_at).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true })}
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -356,35 +595,38 @@ export default function ForecastScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [crocGuard, setCrocGuard] = useState<CrocGuardState | null>(null);
+  const [deterrent, setDeterrent] = useState<DeterrentState | null>(null);
 
-  // Fetch CrocGuard status on mount and refresh every 30s
+  const domain  = process.env.EXPO_PUBLIC_DOMAIN;
+  const baseUrl = domain ? `https://${domain}` : "";
+
+  // Fetch CrocGuard status + deterrent on mount and refresh every 15s
   useEffect(() => {
-    const domain = process.env.EXPO_PUBLIC_DOMAIN;
-    const baseUrl = domain ? `https://${domain}` : "";
     let cancelled = false;
-    const load = () => {
+    const load = async () => {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 10_000);
-      fetch(`${baseUrl}/api/crocguard/brain-context`, { signal: ctrl.signal })
-        .then(r => r.json())
-        .then(d => {
-          if (!cancelled && d.ok) {
-            setCrocGuard({ status: d.status, confidence: d.confidence, alerts24h: d.alerts_24h ?? 0 });
-          }
-        })
-        .catch(() => {})
-        .finally(() => clearTimeout(t));
+      try {
+        const [brainRes, detRes] = await Promise.all([
+          fetch(`${baseUrl}/api/crocguard/brain-context`, { signal: ctrl.signal }),
+          fetch(`${baseUrl}/api/crocguard/deterrent`, { signal: ctrl.signal }),
+        ]);
+        const brain = await brainRes.json();
+        const det   = await detRes.json();
+        if (!cancelled) {
+          if (brain.ok) setCrocGuard({ status: brain.status, confidence: brain.confidence, alerts24h: brain.alerts_24h ?? 0 });
+          if (det.ok)   setDeterrent(det.deterrent);
+        }
+      } catch {} finally { clearTimeout(t); }
     };
     load();
-    const timer = setInterval(load, 30_000);
+    const timer = setInterval(load, 15_000);
     return () => { cancelled = true; clearInterval(timer); };
-  }, []);
+  }, [baseUrl]);
 
   // Fetch today's tides on mount
   useEffect(() => {
     setTidesError(false);
-    const domain = process.env.EXPO_PUBLIC_DOMAIN;
-    const baseUrl = domain ? `https://${domain}` : "";
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 10_000);
     fetch(`${baseUrl}/api/tides?port=broome&days=2`, { signal: ctrl.signal })
@@ -418,8 +660,6 @@ export default function ForecastScreen() {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 10_000);
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
-      const baseUrl = domain ? `https://${domain}` : "";
       const body = {
         moonPhase: moon.name,
         moonDay: Math.round(moon.day),
@@ -534,6 +774,16 @@ export default function ForecastScreen() {
         <Text style={[styles.seasonBoxEmoji]}>{season.emoji}</Text>
         <Text style={[styles.seasonBoxText, { color: colors.foreground }]}>{season.impact}</Text>
       </View>
+
+      {/* ── CrocGuard Deterrent Control Panel ── */}
+      {crocGuard && (
+        <CrocGuardPanel
+          cg={crocGuard}
+          det={deterrent}
+          baseUrl={baseUrl}
+          onUpdate={setDeterrent}
+        />
+      )}
 
       {/* The Button */}
       <PulseButton onPress={getForecast} loading={loading} />
