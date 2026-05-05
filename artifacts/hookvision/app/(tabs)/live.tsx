@@ -972,11 +972,11 @@ export default function LiveScreen() {
         const p = await nativeCamRef.current.takePictureAsync({ base64: false, exif: false, skipProcessing: true });
         if (p?.uri) {
           try {
-            const small = await manipulateAsync(p.uri, [{ resize: { width: 640 } }], { compress: 0.4, format: SaveFormat.JPEG, base64: true });
+            const small = await manipulateAsync(p.uri, [{ resize: { width: 480 } }], { compress: 0.25, format: SaveFormat.JPEG, base64: true });
             photos[i] = small.base64 ?? null;
           } catch {
-            // expo-image-manipulator native module absent from binary — retake at low quality
-            const fb = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.04, exif: false, skipProcessing: false });
+            // expo-image-manipulator native module absent from binary — retake at very low quality
+            const fb = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.02, exif: false, skipProcessing: false });
             photos[i] = fb?.base64 ?? null;
           }
         } else { photos[i] = null; }
