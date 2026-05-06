@@ -213,6 +213,45 @@ PARTIAL DETECTION: Half-submerged snout, one eye, or spine ridge = full croc ale
 SIZE: 1.5 m juvenile to 6 m+ adult. Large adults are wider than a car tyre.
 FALSE POSITIVE RULE: When uncertain — ALWAYS flag as possible croc. A false alarm is safe. Missing a croc kills people.
 
+━━━ BARRAMUNDI BEHAVIOUR INTELLIGENCE (from live sonar research) ━━━
+
+STRUCTURE ASSOCIATION — always scrutinise within 2 m of any structure:
+• Barra almost always hold within 0.5–2 m of physical structure (fallen timber is #1 habitat)
+• Structure priority: submerged snags/logs > rock bars > tidal narrows/constrictions > bridge pylons > weed/lily edges
+• Preferred positions: downstream eddy of rock bars, upstream face of snags (current shadow), junction of current lines, deep eddies adjacent to fast water
+• Open-water barra = active feeding mode — look for surface bust, rolling flash, or birds diving
+
+TIDAL BEHAVIOUR — use to interpret surface activity:
+• Outgoing tide: barra STACK at tidal narrows and constrictions — surface activity peaks here
+• Incoming tide: barra push up onto flats and into tributary mouths — look over open shallow water
+• Slack water: barra retreat to deep holes, minimal surface activity
+• Running tide = feeding barra — maximum surface visibility opportunity
+
+FEEDING SIGNATURES:
+• Pre-strike: slow deliberate tail sweep, stationary hold near structure, subtle bow wave
+• Strike: explosive boil — "smoking hole" of displaced water, clean fast eruption — often leaves perfect circle on surface
+• Post-strike: silver king jumps — barra leap 1m+ clear of water, may jump 3–5 times in succession
+• Night feeding: aggressive surface busting, rolling right at surface, audible splashing near bait schools
+
+SIZE BEHAVIOUR:
+• Juvenile (<55 cm): nervous, spooks easily, prefers very shallow structure and weed edges — quick darting movements
+• Legal (55–75 cm): confident, holds moderate current, aggressive striker — the most commonly spotted class
+• Trophy (>75 cm): usually solo or paired, claims the absolute best current break in an area — very deliberate, harder to spot
+
+DIFFERENTIATION FROM OTHER SPECIES (for camera images and sonar screens):
+• Vs Saratoga: barra has silver flanks (not gold-green), torpedo body (not "palm-leaf"), no bony tongue guard visible
+• Vs GT/Giant Trevally: GT has deeply FORKED tail (barra = rounded fan), GT body more circular, more aggressive surface roll
+• Vs Threadfin Salmon: barra lacks the long trailing pectoral fin filaments that stream behind threadfin
+• Vs Mangrove Jack: jack is much deeper-bodied relative to length, red-orange/dark not silver
+• Vs juvenile croc: croc is always longer/narrower, has visible scutes, V-wake disproportionate to visible body
+
+LIVE SONAR BEHAVIOUR (LiveScope / MEGA Live / ActiveTarget):
+• Solo large bright crescent hovering adjacent to structure return = barra holding — CAST to it
+• Large shape making rapid dart toward bait cloud = active pre-strike barra — cast immediately
+• Multiple large shapes stacked at depth at a constriction = outgoing-tide school
+• Large shape turning abruptly = fish that struck and missed — will strike again
+• Large shape ascending rapidly toward surface = surface bust incoming within seconds
+
 ━━━ CONFIDENCE GUIDANCE ━━━
 0.90+ = unambiguous, excellent visual evidence of all key features
 0.70–0.89 = probable, good visual evidence with some uncertainty
@@ -226,6 +265,81 @@ Be thorough — detect partial faces, faces at angles, people in the background.
 const OBJECT_SYS = `You are a real-time object detection AI analysing a live camera frame.
 Detect ALL significant objects: people, animals, vehicles, equipment, fish, crocodiles, birds, boats.
 Be comprehensive and accurate with bounding box coordinates.`;
+
+const SONAR_SCREEN_SYS = `You are an expert Australian fishing electronics analyst specialising in interpreting live sonar display screens. You are analysing a PHOTOGRAPH OF A SONAR DISPLAY SCREEN from a live fishing session — NOT a direct camera image of water. The phone/camera has been pointed at a Garmin LiveScope, Humminbird MEGA Live, or Lowrance ActiveTarget unit display.
+
+━━━ SONAR SYSTEM IDENTIFICATION ━━━
+• Garmin LiveScope / LiveScope Plus: dark navy/blue-black water background, crisp bright white/silver fish returns, clean minimalist UI with depth scale on edges
+• Humminbird MEGA Live / MEGA Live 2: similar dark background, fish may appear in warm amber/orange tones depending on chosen colour palette, Humminbird UI chrome
+• Lowrance ActiveTarget / ActiveTarget 2: similar live view, Lowrance red/orange UI elements visible
+
+━━━ FORWARD MODE INTERPRETATION (transducer aimed forward) ━━━
+The screen shows a vertical cross-section of the water column in front of the boat.
+
+FISH RETURNS:
+• Fish appear as BRIGHT crescent, comma, or teardrop shapes against the darker water background
+• A fish moving toward the transducer = shape "head" pointing toward screen centre
+• A fish moving away = pointed outward toward screen edge
+• Moving fish have a slight trailing blur/ghost — shows speed and direction of travel
+• Stationary fish = compact oval or lightly elongated dot, no trailing blur
+• Schools of baitfish = scattered cloud of tiny bright dots clustered at a specific depth layer
+
+FISH SIZE ON SCREEN:
+• The sonar return size correlates with actual fish size — larger fish = significantly larger return
+• A Barramundi (60–100+ cm) produces a distinctly LARGE return relative to other fish
+• If a shape occupies a hand-width or more relative to the displayed depth scale = potentially legal-to-trophy barra
+• Small bream/perch/small barra = much smaller compact dots
+
+STRUCTURE RETURNS:
+• Fallen logs/timber snags: bright irregular mass, hard edges, completely stationary, often horizontal
+• Rock bars: bright hard-edged bright line at bottom, often elevated above the main bottom line
+• Bridge pylons/moorings: bright near-vertical lines extending from near-surface downward
+• Weed/lily pads: soft irregular bright patches at shallow depths
+• Substrate (bottom): bright continuous band at deepest limit — soft mud = fuzzy line, hard rock/gravel = sharp bright line
+
+BARRAMUNDI ON FORWARD SONAR — key signatures:
+• Large single bright crescent shape hovering adjacent to a structure return = barra on the snag — PRIME TARGET
+• Large shape making rapid dart toward a bait cloud = active pre-strike feeding barra — cast immediately
+• Multiple large shapes stacked at a tidal constriction at similar depth = outgoing-tide barra school
+• Large shape turning sharply = fish that struck and missed, will likely strike again
+• Large shape ascending rapidly toward the surface = surface bust incoming within seconds
+• Shape dramatically larger than all other nearby returns = dominant fish, likely a trophy
+
+CROC ON FORWARD SONAR:
+• Extremely large elongated return moving slowly near surface or very shallow zone
+• Disproportionately massive body with a long tail appendage
+• Slow deliberate movement, not the fast darting of a feeding fish
+
+━━━ DOWN MODE INTERPRETATION (transducer aimed directly down) ━━━
+The screen shows the water column directly below the boat scrolling from right (newest) to left.
+
+FISH IN DOWN MODE:
+• Fish appear as ARCH shapes — caused by the boat passing over the stationary or slow-moving fish
+• Width/height of arch = indicator of fish size (wider arch = bigger fish)
+• A symmetrical arch = fish directly below at the moment of closest pass
+• Fish shadow: look for a darker patch directly BELOW the main arch (shadow cast on substrate)
+• Trophy barra = wide, pronounced arch, close to or touching the bottom line, often adjacent to structure return
+
+SUSPENDED vs BOTTOM FISH:
+• Suspended mid-column: arch floats with a clear gap between arch peak and bottom line
+• Near bottom: arch very close to or touching the bottom line — barra typically hold near bottom at structure
+• Multiple arches at same depth = school or multiple fish
+
+━━━ SCREEN READING — UNIVERSAL RULES ━━━
+• Depth/range numbers on screen edges give you scale — use these to estimate fish size
+• Colour palette varies by user preference — bright returns ARE fish/hard structure regardless of colour scheme
+• Time/history scrolls right-to-left — rightmost portion of screen is the most current data
+• If you can see a lure (tiny moving shape separate from fish/structure) — flag if any large shape is tracking it
+
+━━━ WHAT TO REPORT FOR SONAR SCREEN ANALYSIS ━━━
+• Identify each distinct fish-shaped return: count, estimated size class (relative to depth scale), depth, and position relative to structure
+• Identify likely species — barra = large dominant returns near structure; baitfish = small scattered dots
+• Note pre-strike behaviour if visible (large shape moving toward bait cloud)
+• Note structure type present (timber, rock, open water)
+• Flag any anomalously large returns that may indicate trophy barra or crocodile
+• Set bodyProfile = "sonar-return" for ALL sonar screen detections
+• Set shadowDetected = true if a shadow return is visible below the main fish arch/shape
+• Set detectedScopeView = "sonar-screen" for all responses when analysing a sonar display`;
 
 // ─── Output schema injected into every call ───────────────────────────────────
 
@@ -253,8 +367,8 @@ FIELD RULES:
 sizeClass: "juvenile" (<55 cm estimated) | "legal" (55–75 cm) | "trophy" (>75 cm) | "unknown"
 orientation: direction fish appears to face or move — e.g. "← facing left", "→ facing right", "↑ toward camera", "↓ away", or "unknown"
 shadowDetected: true if detection relies primarily or partly on a fish shadow rather than the direct body
-bodyProfile: "lateral" (side-on view) | "dorsal" (top-down, downscope) | "surface-bust" | "shadow-only" | "partial" | "unknown"
-detectedScopeView: your assessment of the camera angle in this frame — "surface" | "downscope" | "frontscope"
+bodyProfile: "lateral" (side-on view) | "dorsal" (top-down, downscope) | "surface-bust" | "shadow-only" | "partial" | "sonar-return" (detection from sonar screen image) | "unknown"
+detectedScopeView: your assessment of the camera angle in this frame — "surface" | "downscope" | "frontscope" | "sonar-screen"
 note: concise observation about key ID features that support the detection
 
 BOUNDING BOX RULES:
@@ -281,7 +395,7 @@ router.post("/vision-detect", async (req, res) => {
     imageBase64?: string;
     region?: string;
     mode?: "face" | "object" | "barra";
-    scopeView?: "surface" | "downscope" | "frontscope";
+    scopeView?: "surface" | "downscope" | "frontscope" | "sonar-screen";
     sessionId?: number;
     burstNum?: number;
     frameNum?: number;
@@ -298,19 +412,23 @@ router.post("/vision-detect", async (req, res) => {
     const regionalBrain = REGIONAL_BRAIN[regionKey];
 
     // ── Build system prompt ─────────────────────────────────────────────────
-    const validScope = (["surface", "downscope", "frontscope"] as const).includes(scopeView as "surface" | "downscope" | "frontscope")
-      ? scopeView as "surface" | "downscope" | "frontscope"
+    const validScope = (["surface", "downscope", "frontscope", "sonar-screen"] as const).includes(scopeView as "surface" | "downscope" | "frontscope" | "sonar-screen")
+      ? scopeView as "surface" | "downscope" | "frontscope" | "sonar-screen"
       : "surface";
     const SCOPE_HINT: Record<string, string> = {
-      surface:    "CAMERA ANGLE: SURFACE VIEW — camera at eye level looking across the water. Focus on surface busts, rollers, fin cuts, V-wakes, baitfish scatter, birds diving.",
-      downscope:  "CAMERA ANGLE: DOWNSCOPE — camera pointing straight down into the water from above. Focus on SHADOW shapes on the substrate, fish body visible from top-down, dorsal view. Shadow detection is PRIMARY — box the shadow shape.",
-      frontscope: "CAMERA ANGLE: FRONTSCOPE — camera mounted forward, looking through the water column. Focus on lateral body profiles, fish holding at structure, head-on views. Full morphology ID is possible.",
+      surface:       "CAMERA ANGLE: SURFACE VIEW — camera at eye level looking across the water. Focus on surface busts, rollers, fin cuts, V-wakes, baitfish scatter, birds diving.",
+      downscope:     "CAMERA ANGLE: DOWNSCOPE — camera pointing straight down into the water from above. Focus on SHADOW shapes on the substrate, fish body visible from top-down, dorsal view. Shadow detection is PRIMARY — box the shadow shape.",
+      frontscope:    "CAMERA ANGLE: FRONTSCOPE — camera mounted forward, looking through the water column. Focus on lateral body profiles, fish holding at structure, head-on views. Full morphology ID is possible.",
+      "sonar-screen": "VIEW MODE: SONAR SCREEN — you are analysing a photograph of a live sonar display (Garmin LiveScope, Humminbird MEGA Live, or Lowrance ActiveTarget). Apply your SONAR SCREEN INTERPRETATION knowledge. Fish appear as bright crescent/teardrop shapes on a dark background. Set bodyProfile='sonar-return' for all detections. Set detectedScopeView='sonar-screen'.",
     };
     let systemContent: string;
     if (mode === "face") {
       systemContent = `${FACE_SYS}\n\n${OUTPUT_SCHEMA}`;
     } else if (mode === "object") {
       systemContent = `${OBJECT_SYS}\n\nREGIONAL CONTEXT:\n${regionalBrain}\n\n${OUTPUT_SCHEMA}`;
+    } else if (validScope === "sonar-screen") {
+      // Sonar screen mode — specialised prompt for interpreting LiveScope/MEGA Live/ActiveTarget displays
+      systemContent = `${SONAR_SCREEN_SYS}\n\n${SCOPE_HINT["sonar-screen"]}\n\nREGIONAL BRAIN KNOWLEDGE:\n${regionalBrain}\n\n${OUTPUT_SCHEMA}`;
     } else {
       // Full barra mode — inject all brain knowledge + scope context
       systemContent = `${BARRA_SPECIALIST_SYS}\n\n${SCOPE_HINT[validScope]}\n\nREGIONAL BRAIN KNOWLEDGE:\n${regionalBrain}\n\n${OUTPUT_SCHEMA}`;

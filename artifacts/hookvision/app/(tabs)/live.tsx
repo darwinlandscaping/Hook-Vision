@@ -840,8 +840,8 @@ export default function LiveScreen() {
   }));
   const visionDetectingRef  = useRef(false);
   const visionModeTypeRef   = useRef<"face"|"object"|"barra">("barra");
-  const [scopeView, setScopeView] = useState<"surface"|"downscope"|"frontscope">("surface");
-  const scopeViewRef = useRef<"surface"|"downscope"|"frontscope">("surface");
+  const [scopeView, setScopeView] = useState<"surface"|"downscope"|"frontscope"|"sonar-screen">("surface");
+  const scopeViewRef = useRef<"surface"|"downscope"|"frontscope"|"sonar-screen">("surface");
   const [burstRows, setBurstRows] = useState<Array<{ num: number; status: string; targets: VisionTarget[]; note: string }>>([]);
   const burstRunRef         = useRef(false);
   const sessionIdRef        = useRef<number | null>(null);
@@ -3138,8 +3138,8 @@ export default function LiveScreen() {
               <Text style={{ color: "#ffffff33", fontSize: 12, fontFamily: "Inter_400Regular" }}>{analysisRunning ? "Preparing burst scan…" : "Press START · 5-frame burst · auto-repeats"}</Text>
             </View>
           )}
-          {/* Scope mode selector — tells AI which camera angle is in use */}
-          <View style={{ flexDirection: "row", gap: 6, paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4 }}>
+          {/* Scope mode selector — tells AI which camera angle / view mode is in use */}
+          <View style={{ flexDirection: "row", gap: 6, paddingHorizontal: 14, paddingTop: 6, paddingBottom: 2 }}>
             <Text style={{ color: "#ffffff55", fontSize: 9, fontFamily: "Inter_700Bold", alignSelf: "center", width: 46 }}>SCOPE:</Text>
             {(["surface","downscope","frontscope"] as const).map(sv => {
               const label = sv === "surface" ? "SURFACE" : sv === "downscope" ? "↓ DOWN" : "→ FRONT";
@@ -3152,6 +3152,10 @@ export default function LiveScreen() {
               );
             })}
           </View>
+          <TouchableOpacity onPress={() => { setScopeView("sonar-screen"); scopeViewRef.current = "sonar-screen"; }}
+            style={{ marginHorizontal: 14, marginBottom: 2, paddingVertical: 6, borderRadius: 8, backgroundColor: scopeView === "sonar-screen" ? "#ffd700" : "#ffd70015", borderWidth: 1, borderColor: scopeView === "sonar-screen" ? "#ffd700" : "#ffd70044", alignItems: "center" }}>
+            <Text style={{ color: scopeView === "sonar-screen" ? "#0a1628" : "#ffd70099", fontSize: 9, fontFamily: "Inter_700Bold" }}>📡 SONAR SCREEN — LiveScope / MEGA Live / ActiveTarget</Text>
+          </TouchableOpacity>
           <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingBottom: insets.bottom + 10, paddingTop: 6 }}>
             {!analysisRunning ? (
               <TouchableOpacity onPress={startAnalysis} style={{ flex: 1, backgroundColor: "#00d4aa", borderRadius: 12, paddingVertical: 13, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }} activeOpacity={0.85}>
