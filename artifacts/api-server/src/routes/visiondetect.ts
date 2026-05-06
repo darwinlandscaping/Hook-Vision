@@ -141,37 +141,83 @@ WHAT TO DETECT: Silver/bronze fish shapes, leaping fish, surface wakes, fin cuts
 
 // ─── Mode system prompts ──────────────────────────────────────────────────────
 
-const BARRA_SPECIALIST_SYS = `You are an expert Australian fishing AI and wildlife safety system specialising in real-time live camera analysis.
-You are processing a LIVE CAMERA FRAME from a fishing boat on Australian waters.
+const BARRA_SPECIALIST_SYS = `You are an expert Australian fishing AI and wildlife safety system specialising in real-time live camera analysis. You are processing a LIVE CAMERA FRAME from a fishing boat on Australian waters.
 
-PRIMARY MISSION: Detect Barramundi fish, crocodiles, humans, and significant wildlife in the frame.
-SECONDARY: Detect any other notable objects (boats, gear, birds diving = fish below).
+PRIMARY MISSION: Detect Barramundi (Lates calcarifer), crocodiles, humans, and significant wildlife.
 
-BARRAMUNDI DETECTION RULES:
-- Look for torpedo-shaped silver/bronze fish at or near the water surface
-- Surface disturbance patterns: circular swirl, V-wake, bow wave, baitfish scatter
-- Leaping or rolling fish silhouettes — even partial glimpse = flag it
-- Subsurface silver shadow or shadow shape consistent with large fish
-- Birds diving aggressively = likely baitfish below = likely barra nearby
+━━━ SCOPE-AWARE DETECTION — ADAPT YOUR STRATEGY TO THE CAMERA ANGLE ━━━
 
-CROCODILE DETECTION RULES — EQUAL PRIORITY TO BARRAMUNDI:
-- COLOUR: Dark olive-green, brown-grey or near-black when wet. Almost always darker than the water.
-- BODY PROFILE: Very long and low — barely above the waterline. Like a log but with texture.
-- HEAD: Broad flat wedge, long narrow snout, ridged brow line. Eyes positioned on TOP of skull.
-- EYE-SHINE: Amber/yellow glow at water surface — especially at low light angles.
-- TAIL: Thick base tapering to a ridged point. Often the only visible part.
-- WAKE: V-wake or bow wave from submerged animal. Crocs push a wave larger than fish.
-- BANK BEHAVIOUR: Motionless like a log near bank, mud flat, or rock ledge = flag it.
-- PARTIAL DETECTION: Half-submerged snout, one visible eye, ridge of spine above surface — all count.
-- SIZE CUE: 1.5 m juvenile to 6 m+ adult. A big croc can be wider than a car tyre.
-- FALSE POSITIVE RULE: When in doubt, ALWAYS flag it. A log that turns out to be a croc kills people.
-- Low-light eye-shine or any glowing dot at water level = treat as croc until proven otherwise.
+DOWNSCOPE (camera pointing straight down into water from above):
+SHADOW DETECTION — PRIMARY CUE (works in any water clarity):
+• Barramundi casts a distinct torpedo-shaped shadow on the substrate below
+• Shadow is sharper when fish is near surface, blurry when deep or water is turbid
+• Shadow shape: elongated oval 3:1 to 4:1 length:width — shadow width ~25–30% of its length
+• Shadow offset direction follows the sun angle — look for fish body + offset shadow pair
+• A 60 cm barra shadow may be 50–70 cm long on the bottom in shallow water
+DIRECT BODY FROM ABOVE — SECONDARY CUE (clear water):
+• Body: silver-bronze metallic oval with intense iridescent sheen — flashes in sunlight
+• Dark stripe down centre = dorsal surface of the lateral line when viewed from above
+• Fan-shaped tail visible at the posterior end — often slightly darker or orange-tinged
+• Pectoral fins: lighter, semi-transparent lateral projections extending from the body
+• Water caustics (refracted sunlight patterns) often surround and reveal the fish shape
+CROC FROM ABOVE: Very long narrow dark rectangle with sinuous tail extension; scute pattern (regular bumps) visible along body; body ratio 6:1 to 8:1 — much longer/narrower than any fish
 
-CONFIDENCE GUIDANCE:
-- 0.9+ = very clear, unambiguous detection
-- 0.7–0.9 = probable, good visual evidence
-- 0.5–0.7 = possible, some evidence, low light or partial view
-- Below 0.5 = uncertain — still report if worth flagging for safety`;
+FRONTSCOPE (camera on bow, pointing forward and down through the water column):
+• Best angle for lateral body profile — ideal for species identification
+• Barramundi lateral profile: concave/dipping forehead above the eye (#1 field ID mark), large protruding lower jaw, torpedo body widest ~30% from head, strong lateral stripe, rounded fan tail
+• Head-on profile: circular mouth, large reflective eye positioned high on skull, oval body cross-section
+• Look for fish holding at structure — timber snags, rock bars, current breaks, tidal constrictions
+
+SURFACE VIEW (camera at eye level looking across the water surface):
+DIRECT SURFACE INDICATORS:
+• Rolling fish: silver flash as barra rolls to feed/breathe — most common live indicator
+• Leaping/jumping: full torpedo silhouette airborne — unmistakable shape
+• Tail-slap: explosive water eruption near structure — barra discipline strike
+• Dorsal fin cutting surface: triangular wake behind a slow-moving fish
+• Bow wave: large submerged animal pushing a surface wave ahead of it
+INDIRECT SURFACE INDICATORS (equally important — always note these):
+• Circular swirl: 30–60 cm diameter ring = legal barra turning below surface
+• V-wake: anything submerged and moving creates this — note size and speed
+• Baitfish scatter eruption: surface explosion of small fish fleeing a predator below
+• Birds diving aggressively: terns/cormorants plunging = baitfish pushed up from below = barra nearby
+• Boil/upwelling: dark upwelling patch where a large fish turned sharply
+
+━━━ BARRAMUNDI MORPHOLOGY — MASTER FIELD GUIDE ━━━
+
+BODY SHAPE: True torpedo — tapered at both ends, never round, never flat; deepest point ~30% from head
+ASPECT RATIO: Length:Height = 3.5:1 to 4:1. Distinctly elongated, not perch-shaped or bream-shaped.
+SCALES: Large, reflective cycloid scales — produce intense silver flash when fish rolls in sunlight
+LATERAL LINE: Dark dashed stripe running from behind gill cover to tail base — always present, never faint
+FOREHEAD: CONCAVE/DIPPING profile above the eye — this is the single most diagnostic Barramundi field mark
+JAW: Large terminal-to-subterminal mouth; lower jaw protrudes slightly; massive gape
+EYE: Large, positioned high on head, golden-red iris
+TAIL: ROUNDED fan shape with convex trailing edge — NOT forked. Orange or red marginal tint in adults.
+DORSAL FIN: Two sections — spiny anterior portion + soft-rayed posterior
+PECTORAL FIN: Large, paddle-shaped, often fanned out when fish is holding position in current
+COLOUR: Silver-bronze flanks; grey-green dorsum; white belly. Appears near-black in turbid/tannin-stained water; gold-bronze in clear tropical rivers; juveniles often olive-silver.
+SIZE CLASSES TO IDENTIFY:
+• Juvenile (<55 cm): slender, less robust body, narrower head, often in shallower structure
+• Legal (55–75 cm): classic torpedo proportions, aggressive feeder, most common target class
+• Trophy (>75 cm): massive disproportionately large head, very deep body, rare — flag prominently
+
+━━━ CROCODILE DETECTION — EQUAL PRIORITY ━━━
+
+COLOUR: Dark olive, grey-brown, near-black when wet — almost always DARKER than the surrounding water
+BODY PROFILE: Very long and low, barely breaking the waterline — logs float higher, crocs sit IN the water
+HEAD: Broad flat wedge; long narrow snout with parallel sides (not tapered); ridged brow; eyes on TOP of skull
+EYE-SHINE: Amber/yellow glow at water level — especially at low light — ALWAYS flag immediately
+TAIL: Thick base tapering to ridged point; often the only visible part; serrated ridge visible on upper surface
+V-WAKE: Crocs push a water wave disproportionate to what is visible above surface
+BANK: Motionless on mud flat, rock ledge, or sand bank — looks exactly like a wet log — ALWAYS flag
+PARTIAL DETECTION: Half-submerged snout, one eye, or spine ridge = full croc alert
+SIZE: 1.5 m juvenile to 6 m+ adult. Large adults are wider than a car tyre.
+FALSE POSITIVE RULE: When uncertain — ALWAYS flag as possible croc. A false alarm is safe. Missing a croc kills people.
+
+━━━ CONFIDENCE GUIDANCE ━━━
+0.90+ = unambiguous, excellent visual evidence of all key features
+0.70–0.89 = probable, good visual evidence with some uncertainty
+0.50–0.69 = possible, partial view, low light, or based on indirect indicators
+<0.50 = uncertain — flag for safety if croc-related, otherwise omit`;
 
 const FACE_SYS = `You are a real-time face and person detection AI analysing a live camera frame.
 Detect ALL visible faces, people, and human figures in the frame.
@@ -192,22 +238,33 @@ RESPOND WITH VALID JSON ONLY — no markdown, no explanation, no text outside th
       "label": "Barramundi",
       "confidence": 0.87,
       "box": { "x": 0.12, "y": 0.35, "w": 0.28, "h": 0.18 },
-      "note": "Large silver fish breaking surface near right bank — strong lateral line visible"
+      "note": "Large silver fish breaking surface — concave forehead and rounded tail clearly visible",
+      "sizeClass": "trophy",
+      "orientation": "← facing left",
+      "shadowDetected": false,
+      "bodyProfile": "lateral"
     }
   ],
-  "frameNote": "One-sentence description of the whole scene"
+  "frameNote": "One-sentence description of the overall scene",
+  "detectedScopeView": "surface"
 }
+
+FIELD RULES:
+sizeClass: "juvenile" (<55 cm estimated) | "legal" (55–75 cm) | "trophy" (>75 cm) | "unknown"
+orientation: direction fish appears to face or move — e.g. "← facing left", "→ facing right", "↑ toward camera", "↓ away", or "unknown"
+shadowDetected: true if detection relies primarily or partly on a fish shadow rather than the direct body
+bodyProfile: "lateral" (side-on view) | "dorsal" (top-down, downscope) | "surface-bust" | "shadow-only" | "partial" | "unknown"
+detectedScopeView: your assessment of the camera angle in this frame — "surface" | "downscope" | "frontscope"
+note: concise observation about key ID features that support the detection
 
 BOUNDING BOX RULES:
 - x, y, w, h are ALL fractions of the full image dimensions (0.0 to 1.0)
-- x = left edge of box ÷ image width
-- y = top edge of box ÷ image height
-- w = box width ÷ image width
-- h = box height ÷ image height
-- Boxes must not exceed 1.0 on any axis
-- Make boxes tight around the actual detected object
+- x = left edge ÷ image width, y = top edge ÷ image height
+- w = box width ÷ image width, h = box height ÷ image height
+- Boxes must not exceed 1.0 on any axis — make them tight around the detected object
+- For shadow-based detections: box the shadow itself, not an imagined fish position
 
-If nothing detected: { "targets": [], "frameNote": "No targets visible in current frame" }`.trim();
+If nothing detected: { "targets": [], "frameNote": "No targets visible in current frame", "detectedScopeView": "surface" }`.trim();
 
 // ─── Route ───────────────────────────────────────────────────────────────────
 
@@ -216,6 +273,7 @@ router.post("/vision-detect", async (req, res) => {
     imageBase64,
     region = "wa",
     mode = "barra",
+    scopeView = "surface",
     sessionId,
     burstNum = 0,
     frameNum = 0,
@@ -223,6 +281,7 @@ router.post("/vision-detect", async (req, res) => {
     imageBase64?: string;
     region?: string;
     mode?: "face" | "object" | "barra";
+    scopeView?: "surface" | "downscope" | "frontscope";
     sessionId?: number;
     burstNum?: number;
     frameNum?: number;
@@ -239,14 +298,22 @@ router.post("/vision-detect", async (req, res) => {
     const regionalBrain = REGIONAL_BRAIN[regionKey];
 
     // ── Build system prompt ─────────────────────────────────────────────────
+    const validScope = (["surface", "downscope", "frontscope"] as const).includes(scopeView as "surface" | "downscope" | "frontscope")
+      ? scopeView as "surface" | "downscope" | "frontscope"
+      : "surface";
+    const SCOPE_HINT: Record<string, string> = {
+      surface:    "CAMERA ANGLE: SURFACE VIEW — camera at eye level looking across the water. Focus on surface busts, rollers, fin cuts, V-wakes, baitfish scatter, birds diving.",
+      downscope:  "CAMERA ANGLE: DOWNSCOPE — camera pointing straight down into the water from above. Focus on SHADOW shapes on the substrate, fish body visible from top-down, dorsal view. Shadow detection is PRIMARY — box the shadow shape.",
+      frontscope: "CAMERA ANGLE: FRONTSCOPE — camera mounted forward, looking through the water column. Focus on lateral body profiles, fish holding at structure, head-on views. Full morphology ID is possible.",
+    };
     let systemContent: string;
     if (mode === "face") {
       systemContent = `${FACE_SYS}\n\n${OUTPUT_SCHEMA}`;
     } else if (mode === "object") {
       systemContent = `${OBJECT_SYS}\n\nREGIONAL CONTEXT:\n${regionalBrain}\n\n${OUTPUT_SCHEMA}`;
     } else {
-      // Full barra mode — inject all brain knowledge
-      systemContent = `${BARRA_SPECIALIST_SYS}\n\nREGIONAL BRAIN KNOWLEDGE:\n${regionalBrain}\n\n${OUTPUT_SCHEMA}`;
+      // Full barra mode — inject all brain knowledge + scope context
+      systemContent = `${BARRA_SPECIALIST_SYS}\n\n${SCOPE_HINT[validScope]}\n\nREGIONAL BRAIN KNOWLEDGE:\n${regionalBrain}\n\n${OUTPUT_SCHEMA}`;
     }
 
     // ── Build user message content ──────────────────────────────────────────

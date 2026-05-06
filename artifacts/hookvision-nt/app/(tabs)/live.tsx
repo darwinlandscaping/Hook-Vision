@@ -66,6 +66,10 @@ interface VisionTarget {
   note?: string;
   trackId?: string;
   velocity?: { dx: number; dy: number } | null;
+  sizeClass?: "juvenile" | "legal" | "trophy" | "unknown";
+  orientation?: string;
+  shadowDetected?: boolean;
+  bodyProfile?: string;
 }
 
 // Retries a fetch through transient network errors (e.g. Starlink handoff dropouts).
@@ -687,6 +691,8 @@ export default function LiveScreen() {
   }));
   const visionDetectingRef  = useRef(false);
   const visionModeTypeRef   = useRef<"face"|"object"|"barra">("barra");
+  const [scopeView, setScopeView] = useState<"surface"|"downscope"|"frontscope">("surface");
+  const scopeViewRef = useRef<"surface"|"downscope"|"frontscope">("surface");
   const [burstRows, setBurstRows] = useState<Array<{ num: number; status: string; targets: VisionTarget[]; note: string }>>([]);
   const burstRunRef         = useRef(false);
   const sessionIdRef        = useRef<number | null>(null);
@@ -797,7 +803,7 @@ export default function LiveScreen() {
       const resp = await fetch(`${baseUrl}/api/vision-detect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: photo.base64, region: "nt", mode: visionModeTypeRef.current }),
+        body: JSON.stringify({ imageBase64: photo.base64, region: "nt", mode: visionModeTypeRef.current, scopeView: scopeViewRef.current }),
         signal: _vc.signal,
       });
       if (resp.ok) {
@@ -829,11 +835,11 @@ export default function LiveScreen() {
         const p = await nativeCamRef.current.takePictureAsync({ base64: false, exif: false, skipProcessing: false });
         if (p?.uri) {
           try {
-            const small = await manipulateAsync(p.uri, [{ resize: { width: 320 } }], { compress: 0.35, format: SaveFormat.JPEG, base64: true });
+            const small = await manipulateAsync(p.uri, [{ resize: { width: 480 } }], { compress: 0.42, format: SaveFormat.JPEG, base64: true });
             photos[i] = small.base64 ?? null;
           } catch {
             // expo-image-manipulator native module absent from binary — retake at very low quality
-            const fb = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.20, exif: false, skipProcessing: false });
+            const fb = await nativeCamRef.current.takePictureAsync({ base64: true, quality: 0.28, exif: false, skipProcessing: false });
             photos[i] = fb?.base64 ?? null;
           }
         } else { photos[i] = null; }
@@ -853,7 +859,7 @@ export default function LiveScreen() {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64: b64, region: "nt", mode: visionModeTypeRef.current, sessionId: sessionIdRef.current ?? undefined, burstNum: thisBurst, frameNum: i + 1 }),
+            body: JSON.stringify({ imageBase64: b64, region: "nt", mode: visionModeTypeRef.current, scopeView: scopeViewRef.current, sessionId: sessionIdRef.current ?? undefined, burstNum: thisBurst, frameNum: i + 1 }),
           },
           20_000, 1, 2_000,
         );
@@ -3070,10 +3076,18 @@ export default function LiveScreen() {
                 <View style={{ position: "absolute", top: -2, right: -2, width: 14, height: 14, borderTopWidth: 3, borderRightWidth: 3, borderColor: bColor }} />
                 <View style={{ position: "absolute", bottom: -2, left: -2, width: 14, height: 14, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: bColor }} />
                 <View style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderBottomWidth: 3, borderRightWidth: 3, borderColor: bColor }} />
-                <View style={{ position: "absolute", top: -26, left: -2, flexDirection: "row", alignItems: "center", backgroundColor: bColor + "dd", borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3 }}>
+                <View style={{ position: "absolute", top: -56, left: -2, backgroundColor: bColor + "dd", borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3, maxWidth: 220 }}>
                   <Text style={{ color: "#000", fontSize: 10, fontFamily: "Inter_700Bold" }} numberOfLines={1}>
-                    {t.velocity && (Math.abs(t.velocity.dx) > 0.015 || Math.abs(t.velocity.dy) > 0.015) ? (["→","↘","↓","↙","←","↖","↑","↗"][Math.round((Math.atan2(t.velocity.dy, t.velocity.dx) * 180 / Math.PI + 180) / 45) % 8] + " ") : ""}{isCroc ? "⚠ " : isBarramundi ? "🐟 " : isPerson ? "👤 " : "● "}{t.label} {Math.round(t.confidence * 100)}%{t.trackId ? ` #${t.trackId}` : ""}
+                    {t.velocity && (Math.abs(t.velocity.dx) > 0.015 || Math.abs(t.velocity.dy) > 0.015) ? (["→","↘","↓","↙","←","↖","↑","↗"][Math.round((Math.atan2(t.velocity.dy, t.velocity.dx) * 180 / Math.PI + 180) / 45) % 8] + " ") : ""}{isCroc ? "⚠ " : isBarramundi ? "🐟 " : isPerson ? "👤 " : "● "}{t.label} {Math.round(t.confidence * 100)}%{t.sizeClass && t.sizeClass !== "unknown" ? (t.sizeClass === "trophy" ? " 🏆" : t.sizeClass === "legal" ? " ✓" : " ~") + t.sizeClass : ""}{t.trackId ? ` #${t.trackId}` : ""}
                   </Text>
+                  {(t.shadowDetected || (t.bodyProfile && t.bodyProfile !== "unknown")) && (
+                    <Text style={{ color: "#00000099", fontSize: 8, fontFamily: "Inter_400Regular" }} numberOfLines={1}>
+                      {t.shadowDetected ? "shadow" : ""}{t.shadowDetected && t.bodyProfile && t.bodyProfile !== "unknown" ? " · " : ""}{t.bodyProfile && t.bodyProfile !== "unknown" ? t.bodyProfile : ""}
+                    </Text>
+                  )}
+                  {!!t.note && (
+                    <Text style={{ color: "#000000bb", fontSize: 8, fontFamily: "Inter_400Regular" }} numberOfLines={2}>{t.note}</Text>
+                  )}
                 </View>
               </View>
             );
@@ -3132,6 +3146,20 @@ export default function LiveScreen() {
               <Text style={{ color: "#ffffff33", fontSize: 12, fontFamily: "Inter_400Regular" }}>{analysisRunning ? "Preparing burst scan…" : "Press START · 5-frame burst · auto-repeats"}</Text>
             </View>
           )}
+          {/* Scope mode selector — tells AI which camera angle is in use */}
+          <View style={{ flexDirection: "row", gap: 6, paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4 }}>
+            <Text style={{ color: "#ffffff55", fontSize: 9, fontFamily: "Inter_700Bold", alignSelf: "center", width: 46 }}>SCOPE:</Text>
+            {(["surface","downscope","frontscope"] as const).map(sv => {
+              const label = sv === "surface" ? "SURFACE" : sv === "downscope" ? "↓ DOWN" : "→ FRONT";
+              const active = scopeView === sv;
+              return (
+                <TouchableOpacity key={sv} onPress={() => { setScopeView(sv); scopeViewRef.current = sv; }}
+                  style={{ flex: 1, paddingVertical: 6, borderRadius: 8, backgroundColor: active ? "#00d4aa" : "#00d4aa15", borderWidth: 1, borderColor: active ? "#00d4aa" : "#00d4aa44", alignItems: "center" }}>
+                  <Text style={{ color: active ? "#0a1628" : "#00d4aa99", fontSize: 9, fontFamily: "Inter_700Bold" }}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
           <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingBottom: insets.bottom + 10, paddingTop: 6 }}>
             {!analysisRunning ? (
               <TouchableOpacity onPress={startAnalysis} style={{ flex: 1, backgroundColor: "#00d4aa", borderRadius: 12, paddingVertical: 13, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }} activeOpacity={0.85}>
