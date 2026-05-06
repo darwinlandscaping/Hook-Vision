@@ -364,7 +364,9 @@ export async function loadDemoReferences(): Promise<void> {
         logger.warn({ err: compErr, demo: i }, "Thumbnail compression failed — using full PNG");
       }
 
-      _demoRefs.push({ num: i, base64, thumbBase64, label: meta.label, brand: meta.brand, model: meta.model });
+      // Store thumbnail as base64 — all callers use detail:"low" so OpenAI rescales
+      // to 512×512 regardless; keeping the full PNG (up to 1.8 MB per ref) wastes RAM.
+      _demoRefs.push({ num: i, base64: thumbBase64, thumbBase64, label: meta.label, brand: meta.brand, model: meta.model });
     } catch (err) {
       logger.warn({ err, demo: i, filePath }, "Failed to load demo reference image — ID accuracy will be reduced");
     }
