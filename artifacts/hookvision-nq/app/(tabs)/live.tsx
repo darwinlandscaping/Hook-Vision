@@ -962,7 +962,7 @@ export default function LiveScreen() {
     const loop = async () => {
       while (burstRunRef.current) {
         await runBurst();
-        if (burstRunRef.current) await new Promise<void>(res => setTimeout(res, 1500));
+        if (burstRunRef.current) await new Promise<void>(res => setTimeout(res, 10_000));
       }
       setAnalysisRunning(false);
     };
