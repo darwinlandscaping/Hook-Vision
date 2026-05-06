@@ -17,6 +17,7 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { Audio } from "expo-av";
 import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -31,6 +32,33 @@ import Animated, {
 
 import { HVHeader } from "@/components/HVHeader";
 import { SonarPulse } from "@/components/SonarPulse";
+
+// ── Background ambient music ─────────────────────────────────────────────────
+// Replace MUSIC_URL with a licensed Dire Straits track (e.g. bundle local MP3)
+const MUSIC_URL = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3";
+const MUSIC_VOL = 0.38;
+const DUCK_VOL  = 0.08;
+let _bgSound: Audio.Sound | null = null;
+
+async function bgMusicStart(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true, staysActiveInBackground: false });
+    if (!_bgSound) {
+      const { sound } = await Audio.Sound.createAsync({ uri: MUSIC_URL }, { shouldPlay: true, isLooping: true, volume: MUSIC_VOL });
+      _bgSound = sound;
+    } else {
+      await _bgSound.setVolumeAsync(MUSIC_VOL);
+      await _bgSound.playAsync();
+    }
+  } catch {}
+}
+async function bgMusicStop(): Promise<void> {
+  try { await _bgSound?.stopAsync(); } catch {}
+}
+async function bgMusicVol(v: number): Promise<void> {
+  try { await _bgSound?.setVolumeAsync(v); } catch {}
+}
 
 interface BoatCycleResponse {
   fishCount?: number;
@@ -793,6 +821,10 @@ export default function LiveScreen() {
   const { character, speak, stop: stopSpeaking, speaking, narratePage } = useNarrator();
   useAutoNarrate(() => "AI Live Camera — real-time Barramundi and wildlife detection active. WA regional brain loaded.");
 
+  // ── Music: start/stop on focus, duck while narrator speaks ──────────────────
+  useFocusEffect(useCallback(() => { bgMusicStart(); return () => { bgMusicStop(); }; }, []));
+  useEffect(() => { bgMusicVol(speaking ? DUCK_VOL : MUSIC_VOL); }, [speaking]);
+
   const [nativePermission, requestNativePermission] =
     useCameraPermissions ? useCameraPermissions() : [null, null];
 
@@ -980,6 +1012,8 @@ export default function LiveScreen() {
     // Phase 1 — rapid burst capture (5 photos ~350 ms apart)
     // Capture at native res then resize to 640 px wide — keeps payload under 80 KB
     // so it clears the Replit reverse-proxy body limit and never gets silently dropped.
+    // allowsRecordingIOS:true puts iOS into recording mode, suppressing camera shutter sound
+    if (Platform.OS !== "web") { try { await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true, staysActiveInBackground: false }); } catch {} }
     const photos: (string | null)[] = [];
     for (let i = 0; i < 5; i++) {
       setBurstRows(prev => prev.map((r, idx) => idx === i ? { ...r, status: "capturing" } : r));
@@ -999,6 +1033,7 @@ export default function LiveScreen() {
       setBurstRows(prev => prev.map((r, idx) => idx === i ? { ...r, status: photos[i] ? "analyzing" : "error", note: photos[i] ? "" : "Capture failed" } : r));
       if (i < 4) await new Promise<void>(res => setTimeout(res, 350));
     }
+    if (Platform.OS !== "web") { try { await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true, staysActiveInBackground: false }); } catch {} }
 
     // Phase 2 — parallel GPT-4.1 Vision analysis
     burstNumRef.current += 1;
@@ -3134,8 +3169,8 @@ export default function LiveScreen() {
             const isBarramundi = t.label.toLowerCase().includes("barra") || t.label.toLowerCase().includes("lates");
             const isCroc = t.label.toLowerCase().includes("croc") || t.label.toLowerCase().includes("crocodile");
             const isPerson = t.label.toLowerCase().includes("person") || t.label.toLowerCase().includes("face") || t.label.toLowerCase().includes("human");
-            const bColor = isCroc ? "#ff3030" : isBarramundi ? "#00d4aa" : isPerson ? "#ffffff" : "#ffd700";
-            const bgColor = isCroc ? "#ff303018" : isBarramundi ? "#00d4aa18" : isPerson ? "#ffffff10" : "#ffd70012";
+            const bColor = isCroc ? "#ff3030" : isBarramundi ? "#00ff44" : isPerson ? "#ffffff" : "#ffd700";
+            const bgColor = isCroc ? "#ff303018" : isBarramundi ? "#00ff4418" : isPerson ? "#ffffff10" : "#ffd70012";
             return (
               <View key={t.id} style={{ position: "absolute", left: `${Math.max(0, Math.min(t.box.x, 0.98)) * 100}%` as any, top: `${Math.max(0, Math.min(t.box.y, 0.98)) * 100}%` as any, width: `${Math.max(0.04, Math.min(t.box.w, 1 - t.box.x)) * 100}%` as any, height: `${Math.max(0.04, Math.min(t.box.h, 1 - t.box.y)) * 100}%` as any, borderWidth: 2, borderColor: bColor, backgroundColor: bgColor, borderRadius: 4 }}>
                 <View style={{ position: "absolute", top: -2, left: -2, width: 14, height: 14, borderTopWidth: 3, borderLeftWidth: 3, borderColor: bColor }} />

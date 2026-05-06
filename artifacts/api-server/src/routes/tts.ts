@@ -62,11 +62,24 @@ const LANG_FALLBACK_VOICE: Record<string, string> = {
   "pt-BR": "pt-BR-AntonioNeural",
 };
 
+// ─── Australian fishing pronunciation fixes ───────────────────────────────────
+// "Barra" → "Barrah" so Azure TTS doesn't say "Barrow"
+// "Barramundi" → "Barramundee" so the final 'i' sounds like 'ee' not 'eye'
+function fixPronunciation(text: string): string {
+  return text
+    .replace(/\bBarramundi\b/g, "Barramundee")
+    .replace(/\bbarramundi\b/g, "barramundee")
+    .replace(/\bBARRAMUNDI\b/g, "BARRAMUNDEE")
+    .replace(/\bBarra\b/g, "Barrah")
+    .replace(/\bbarra\b/g, "barrah")
+    .replace(/\bBARRA\b/g, "BARRAH");
+}
+
 // ─── Build SSML with prosody ──────────────────────────────────────────────────
 function buildSSML(text: string, voice: string, ratePct: number, pitchHz: number): string {
   const rateStr  = ratePct === 0 ? "0%"  : ratePct  > 0 ? `+${ratePct}%`  : `${ratePct}%`;
   const pitchStr = pitchHz === 0 ? "0Hz" : pitchHz > 0 ? `+${pitchHz}Hz` : `${pitchHz}Hz`;
-  const safe = text
+  const safe = fixPronunciation(text)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
