@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -7,11 +7,14 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Vibration,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
+import * as Speech from "expo-speech";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -124,6 +127,35 @@ function CrocGuardBadge({ cg, colors }: { cg: CrocGuardState; colors: ReturnType
   );
 }
 
+// ─── Deterrent local audio ────────────────────────────────────────────────────
+const DETERRENT_SIREN_LOCAL  = require("../../assets/sounds/siren.wav") as number;
+const DETERRENT_SIREN_REMOTE = "https://www.soundjay.com/mechanical/sounds/alarm-01a.mp3";
+let deterrentSoundRef: Audio.Sound | null = null;
+
+async function playDeterrentLocally() {
+  try {
+    if (deterrentSoundRef) {
+      await deterrentSoundRef.unloadAsync().catch(() => {});
+      deterrentSoundRef = null;
+    }
+    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true });
+    let sound: Audio.Sound;
+    try {
+      ({ sound } = await Audio.Sound.createAsync(DETERRENT_SIREN_LOCAL, { shouldPlay: true, volume: 1.0 }));
+    } catch {
+      ({ sound } = await Audio.Sound.createAsync({ uri: DETERRENT_SIREN_REMOTE }, { shouldPlay: true, volume: 1.0 }));
+    }
+    deterrentSoundRef = sound;
+    sound.setOnPlaybackStatusUpdate((s) => {
+      if (s.isLoaded && s.didJustFinish) sound.unloadAsync().catch(() => {});
+    });
+    Vibration.vibrate([0, 400, 200, 400, 200, 400]);
+    setTimeout(() => {
+      try { Speech.speak("Crocodile deterrent activated. Stay out of the water.", { language: "en-AU", rate: 0.9, onError: () => {} }); } catch {}
+    }, 1500);
+  } catch { /* vibration still fires */ }
+}
+
 // ─── CrocGuard Deterrent Control Panel ────────────────────────────────────────
 function CrocGuardPanel({
   cg, det, baseUrl, onUpdate,
@@ -134,6 +166,16 @@ function CrocGuardPanel({
   onUpdate: (d: DeterrentState) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const prevCrocStatusRef = useRef<CrocStatus | null>(null);
+
+  // Auto-trigger: play sound locally when status escalates to red with auto-mode on
+  useEffect(() => {
+    const isAutoOn = det?.auto_mode ?? true;
+    if (isAutoOn && cg.status === "red" && prevCrocStatusRef.current !== "red") {
+      playDeterrentLocally().catch(() => {});
+    }
+    prevCrocStatusRef.current = cg.status;
+  }, [cg.status, det?.auto_mode]);
 
   const crocCfg: Record<CrocStatus, { bg: string; icon: string; label: string }> = {
     green:  { bg: "#16a34a", icon: "shield-check", label: "CLEAR" },
@@ -330,6 +372,7 @@ function CrocGuardPanel({
           <TouchableOpacity
             onPress={() => {
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              playDeterrentLocally().catch(() => {});
               post("deterrent/trigger");
             }}
             disabled={busy}

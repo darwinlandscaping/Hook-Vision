@@ -3,7 +3,8 @@ import * as Speech from "expo-speech";
 import { useEffect, useRef } from "react";
 import { Vibration } from "react-native";
 
-const SIREN_URL = "https://www.soundjay.com/mechanical/sounds/alarm-01a.mp3";
+const SIREN_LOCAL  = require("../assets/sounds/siren.wav") as number;
+const SIREN_REMOTE = "https://www.soundjay.com/mechanical/sounds/alarm-01a.mp3";
 const CROC_WARNING = "Warning: crocodile detected. Stay out of the water.";
 
 let crocSoundRef: Audio.Sound | null = null;
@@ -15,10 +16,12 @@ async function playCrocSiren() {
       crocSoundRef = null;
     }
     await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true });
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: SIREN_URL },
-      { shouldPlay: true, volume: 1.0 }
-    );
+    let sound: Audio.Sound;
+    try {
+      ({ sound } = await Audio.Sound.createAsync(SIREN_LOCAL, { shouldPlay: true, volume: 1.0 }));
+    } catch {
+      ({ sound } = await Audio.Sound.createAsync({ uri: SIREN_REMOTE }, { shouldPlay: true, volume: 1.0 }));
+    }
     crocSoundRef = sound;
     sound.setOnPlaybackStatusUpdate((s) => {
       if (s.isLoaded && s.didJustFinish) sound.unloadAsync().catch(() => {});
