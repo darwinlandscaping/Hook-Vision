@@ -889,36 +889,55 @@ export default function LiveScreen() {
     }));
 
     // ── Burst narrator ──────────────────────────────────────────────────────
-    // Consolidate all 5 frame results → AI narrator → character-voiced TTS
+    // Consolidate all 5 frame results → rich sonar content → AI narrator → character-voiced TTS
     {
-      const allBurstTgts = results
-        .filter((r): r is { targets: VisionTarget[]; note: string } => !!r)
-        .flatMap(r => r.targets);
-      const prevLabels = prevBurstLabelsRef.current;
-      const byLabel: Record<string, { count: number; sides: string[] }> = {};
+      const validResults = results.filter((r): r is { targets: VisionTarget[]; note: string } => !!r);
+      const allBurstTgts = validResults.flatMap(r => r.targets);
+      const frameNotes = [...new Set(
+        validResults.map(r => r.note).filter(n => n && !n.toLowerCase().includes("no targets"))
+      )].slice(0, 2);
+
+      const byLabel: Record<string, {
+        count: number; sides: string[]; sizeClasses: string[];
+        notes: string[]; shadowDetected: boolean; bodyProfile: string;
+      }> = {};
       for (const t of allBurstTgts) {
         const side = t.box.x < 0.35 ? "left" : t.box.x > 0.65 ? "right" : "centre";
-        if (!byLabel[t.label]) byLabel[t.label] = { count: 0, sides: [] };
+        if (!byLabel[t.label]) byLabel[t.label] = { count: 0, sides: [], sizeClasses: [], notes: [], shadowDetected: false, bodyProfile: "unknown" };
         byLabel[t.label].count++;
         if (!byLabel[t.label].sides.includes(side)) byLabel[t.label].sides.push(side);
+        if (t.sizeClass && t.sizeClass !== "unknown" && !byLabel[t.label].sizeClasses.includes(t.sizeClass)) byLabel[t.label].sizeClasses.push(t.sizeClass);
+        if (t.note && !byLabel[t.label].notes.includes(t.note)) byLabel[t.label].notes.push(t.note);
+        if (t.shadowDetected) byLabel[t.label].shadowDetected = true;
+        if (t.bodyProfile && t.bodyProfile !== "unknown") byLabel[t.label].bodyProfile = t.bodyProfile;
       }
+
       const currLabels = Object.keys(byLabel);
+      const prevLabels = prevBurstLabelsRef.current;
       prevBurstLabelsRef.current = currLabels;
-      const detectedParts = currLabels.map(l => {
-        const info = byLabel[l];
-        const pos = info.sides.join(" and ");
-        return info.count > 1 ? `${l} (${info.count} frames, ${pos})` : `${l} (${pos})`;
-      });
-      const contentLines: string[] = [
-        detectedParts.length > 0
-          ? `Detected: ${detectedParts.join(", ")}`
-          : "No targets detected this sweep",
-      ];
-      if (burstNumRef.current > 1 && prevLabels.length > 0) {
-        const newOnes = currLabels.filter(l => !prevLabels.some(p => p.toLowerCase() === l.toLowerCase()));
-        const gone    = prevLabels.filter(p => !currLabels.some(l => l.toLowerCase() === p.toLowerCase()));
-        if (newOnes.length > 0) contentLines.push(`New contact: ${newOnes.join(", ")}`);
-        if (gone.length > 0)    contentLines.push(`No longer visible: ${gone.join(", ")}`);
+
+      const contentLines: string[] = [];
+      contentLines.push(`Sonar view mode: ${scopeViewRef.current}`);
+      if (frameNotes.length > 0) contentLines.push(`AI scene read: ${frameNotes.join(" | ")}`);
+
+      if (currLabels.length > 0) {
+        for (const label of currLabels) {
+          const info = byLabel[label];
+          const pos = info.sides.join(" and ");
+          const size = info.sizeClasses.length > 0 ? `, ${info.sizeClasses.join("/")} class` : "";
+          const shadow = info.shadowDetected ? ", shadow on substrate" : "";
+          const profile = info.bodyProfile !== "unknown" ? `, ${info.bodyProfile} view` : "";
+          const bestNote = info.notes[0] ?? "";
+          contentLines.push(`${label} — ${info.count}/5 frames${size}${shadow}${profile}, position: ${pos}${bestNote ? ". Sonar detail: " + bestNote : ""}`);
+        }
+        if (burstNumRef.current > 1) {
+          const newOnes = currLabels.filter(l => !prevLabels.some(p => p.toLowerCase() === l.toLowerCase()));
+          const gone    = prevLabels.filter(p => !currLabels.some(l => l.toLowerCase() === p.toLowerCase()));
+          if (newOnes.length > 0) contentLines.push(`New contact this sweep: ${newOnes.join(", ")}`);
+          if (gone.length > 0)    contentLines.push(`Dropped off scope: ${gone.join(", ")}`);
+        }
+      } else {
+        contentLines.push("Clean scope — no fish marks this sweep");
       }
       narratePageRef.current("live burst", contentLines.join(". ")).catch(() => {});
     }
