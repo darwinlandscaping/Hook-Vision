@@ -1031,10 +1031,11 @@ export default function LiveScreen() {
             td.note ? `Sonar detail: ${td.note}` : "",
             `CAST INSTRUCTION MODE: Give Damo immediate precise cast directions — which side to cast (${td.position}), how far, how many seconds to count while the lure sinks to reach the fish depth, and how to work it back past the structure. Be urgent and specific. This is the fish of the session.`,
           ].filter(Boolean).join(" ");
-          narratePageRef.current("trophy cast", castContent).catch(() => {});
+          // Await narrator — next burst won't start until Blue finishes the call-out
+          await narratePageRef.current("trophy cast", castContent).catch(() => {});
 
-          // 10-second casting window — angler casts + lure sinks
-          await new Promise<void>(res => setTimeout(res, 10_000));
+          // 15-second casting window after narrator finishes — angler casts + lure sinks to depth
+          await new Promise<void>(res => setTimeout(res, 15_000));
           if (!burstRunRef.current) { setTrophyMode(false); break; }
 
           // Follow-up tracking burst — watching for the hook-up
