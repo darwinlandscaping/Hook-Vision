@@ -701,6 +701,9 @@ export default function LiveScreen() {
   const narratePageRef      = useRef(narratePage);
   narratePageRef.current = narratePage;
   const [isOffline, setIsOffline] = useState(false);
+  const trophyDetectedRef   = useRef(false);
+  const trophyBestTargetRef = useRef<{ label: string; sizeClass: string; position: string; note: string } | null>(null);
+  const [trophyMode, setTrophyMode] = useState(false);
 
   // ── Live Scan Panel (non-boat-mode scan) ──────────────────────────────────
   const [lsUri, setLsUri]           = useState<string | null>(null);
@@ -916,6 +919,23 @@ export default function LiveScreen() {
       const prevLabels = prevBurstLabelsRef.current;
       prevBurstLabelsRef.current = currLabels;
 
+      // ── Trophy detection — flag for tracking mode in burst loop ───────────
+      const trophyTgt     = allBurstTgts.find(t => t.sizeClass === "trophy");
+      const legalBarraTgt = !trophyTgt
+        ? allBurstTgts.find(t => t.sizeClass === "legal" && /barra/i.test(t.label))
+        : null;
+      const bigFishTgt = trophyTgt ?? legalBarraTgt;
+      if (bigFishTgt) {
+        const fi = byLabel[bigFishTgt.label];
+        trophyDetectedRef.current = true;
+        trophyBestTargetRef.current = {
+          label: bigFishTgt.label,
+          sizeClass: bigFishTgt.sizeClass ?? "legal",
+          position: fi?.sides[0] ?? "centre",
+          note: bigFishTgt.note ?? "",
+        };
+      }
+
       const contentLines: string[] = [];
       contentLines.push(`Sonar view mode: ${scopeViewRef.current}`);
       if (frameNotes.length > 0) contentLines.push(`AI scene read: ${frameNotes.join(" | ")}`);
@@ -961,8 +981,40 @@ export default function LiveScreen() {
       .then(r => r.ok ? r.json() : null).then((d: { sessionId?: number } | null) => { if (d?.sessionId) sessionIdRef.current = d.sessionId; }).catch(() => {});
     const loop = async () => {
       while (burstRunRef.current) {
+        trophyDetectedRef.current = false;
+        trophyBestTargetRef.current = null;
         await runBurst();
-        if (burstRunRef.current) await new Promise<void>(res => setTimeout(res, 10_000));
+        if (!burstRunRef.current) break;
+
+        if (trophyDetectedRef.current && trophyBestTargetRef.current) {
+          // ── TROPHY TRACKING MODE — lock, instruct, follow-up ─────────────
+          const td = trophyBestTargetRef.current;
+          setTrophyMode(true);
+          const castContent = [
+            `TROPHY TRACKING MODE — ${td.sizeClass === "trophy" ? "TROPHY" : "LEGAL"} ${td.label} LOCKED ON SCOPE.`,
+            `Fish position: ${td.position} side of frame.`,
+            td.note ? `Sonar detail: ${td.note}` : "",
+            `CAST INSTRUCTION MODE: Give Damo immediate precise cast directions — which side to cast (${td.position}), how far, how many seconds to count while the lure sinks to reach the fish depth, and how to work it back past the structure. Be urgent and specific. This is the fish of the session.`,
+          ].filter(Boolean).join(" ");
+          narratePageRef.current("trophy cast", castContent).catch(() => {});
+
+          // 10-second casting window — angler casts + lure sinks
+          await new Promise<void>(res => setTimeout(res, 10_000));
+          if (!burstRunRef.current) { setTrophyMode(false); break; }
+
+          // Follow-up tracking burst — watching for the hook-up
+          trophyDetectedRef.current = false;
+          trophyBestTargetRef.current = null;
+          await runBurst();
+          if (!burstRunRef.current) { setTrophyMode(false); break; }
+
+          setTrophyMode(false);
+          // Short recovery gap before resuming normal scanning
+          await new Promise<void>(res => setTimeout(res, 5_000));
+        } else {
+          // Normal inter-burst gap
+          await new Promise<void>(res => setTimeout(res, 10_000));
+        }
       }
       setAnalysisRunning(false);
     };
@@ -3094,6 +3146,14 @@ export default function LiveScreen() {
         {visionTargets.some(t => t.label.toLowerCase().includes("croc")) && (
           <View style={{ position: "absolute", top: insets.top + 52, left: 14, right: 14, backgroundColor: "#ff2222ee", borderRadius: 12, padding: 12, borderWidth: 2, borderColor: "#ff4444", alignItems: "center" }}>
             <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_700Bold", letterSpacing: 0.8 }}>⚠ CROCODILE DETECTED — STAY IN THE BOAT</Text>
+          </View>
+        )}
+
+        {/* Trophy tracking mode banner */}
+        {trophyMode && (
+          <View style={{ position: "absolute", top: insets.top + 52, left: 14, right: 14, backgroundColor: "#ffd700f0", borderRadius: 12, padding: 10, borderWidth: 2.5, borderColor: "#ffaa00", alignItems: "center", gap: 2 }}>
+            <Text style={{ color: "#0a1628", fontSize: 14, fontFamily: "Inter_700Bold", letterSpacing: 0.8 }}>🏆 TROPHY LOCKED — CAST NOW DAMO</Text>
+            <Text style={{ color: "#0a162888", fontSize: 10, fontFamily: "Inter_500Medium" }}>Live tracking · follow-up burst incoming</Text>
           </View>
         )}
 
