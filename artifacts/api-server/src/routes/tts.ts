@@ -107,11 +107,19 @@ async function handleTTS(
     const { audioStream } = await tts.rawToStream(ssml);
 
     const chunks: Buffer[] = [];
-    await new Promise<void>((resolve, reject) => {
-      audioStream.on("data", (c: Buffer) => chunks.push(c));
-      audioStream.on("end", resolve);
-      audioStream.on("error", reject);
-    });
+    // 30 s hard ceiling — Edge TTS WebSocket can hang silently if the
+    // Microsoft endpoint has issues; a timeout converts a hung proxy-502
+    // into a fast 500 the client can retry.
+    await Promise.race([
+      new Promise<void>((resolve, reject) => {
+        audioStream.on("data", (c: Buffer) => chunks.push(c));
+        audioStream.on("end", resolve);
+        audioStream.on("error", reject);
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("TTS stream timeout after 30 s")), 30_000)
+      ),
+    ]);
 
     const combined = Buffer.concat(chunks);
     if (combined.length === 0) throw new Error("Empty audio response from Edge TTS");

@@ -8,6 +8,22 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// ── Global request timeout — 55 s hard ceiling ────────────────────────────────
+// Replit's reverse-proxy times out at 60 s and returns a 502. By destroying
+// the socket at 55 s we give the client a clean connection reset instead, which
+// the app can catch and retry rather than showing an opaque "Server error 502".
+app.use((req, res, next) => {
+  const timer = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(503).json({ error: "Request timed out — please retry" });
+    }
+    req.socket?.destroy();
+  }, 55_000);
+  res.on("finish", () => clearTimeout(timer));
+  res.on("close",  () => clearTimeout(timer));
+  next();
+});
+
 app.use(
   pinoHttp({
     logger,

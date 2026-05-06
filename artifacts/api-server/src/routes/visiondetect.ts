@@ -300,6 +300,8 @@ router.post("/vision-detect", async (req, res) => {
     content.push({ type: "text", text: instruction });
 
     // ── Call GPT-4.1 Vision ─────────────────────────────────────────────────
+    // 45 s hard ceiling — Replit proxy times out at 60 s, so we abort early
+    // and return a structured error rather than letting the proxy 502 the client.
     const completion = await openai.chat.completions.create({
       model: getModel("top"),
       max_completion_tokens: 400,
@@ -308,7 +310,7 @@ router.post("/vision-detect", async (req, res) => {
         { role: "system", content: systemContent },
         { role: "user", content },
       ],
-    });
+    }, { signal: AbortSignal.timeout(45_000) });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const clean = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();

@@ -90,6 +90,7 @@ Content to narrate:
 ${content}`;
 
   try {
+    // 25 s hard ceiling — narration should be fast; abort before proxy 502s.
     const response = await openai.chat.completions.create({
       model: getModel("fast"),
       max_completion_tokens: 300,
@@ -97,7 +98,7 @@ ${content}`;
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-    });
+    }, { signal: AbortSignal.timeout(25_000) });
     const text = response.choices[0]?.message?.content?.trim() ?? "";
     res.json({ text });
   } catch (err) {
