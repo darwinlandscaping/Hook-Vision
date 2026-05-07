@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "export NODE_ENV=development && pnpm run build && while true; do node --enable-source-maps --max-old-space-size=768 ./dist/index.mjs; echo 'API server exited — restarting in 3s…'; sleep 3; done",
+    "dev": "export NODE_ENV=development && pnpm run build && while true; do node --enable-source-maps --max-old-space-size=768 ./dist/index.mjs; echo 'API server exited — restarting in 1s…'; sleep 1; done",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps --max-old-space-size=768 ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"

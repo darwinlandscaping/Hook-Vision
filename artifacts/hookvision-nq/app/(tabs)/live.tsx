@@ -899,7 +899,7 @@ export default function LiveScreen() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ imageBase64: b64, region: "nq", mode: visionModeTypeRef.current, scopeView: scopeViewRef.current, sessionId: sessionIdRef.current ?? undefined, burstNum: thisBurst, frameNum: i + 1 }),
           },
-          20_000, 1, 2_000,
+          20_000, 3, 2_000,
         );
         if (resp.ok) {
           const data = await resp.json() as { targets: VisionTarget[]; frameNote: string };
