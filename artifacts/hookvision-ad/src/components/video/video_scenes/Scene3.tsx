@@ -1,134 +1,65 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { sceneTransitions } from '@/lib/video/animations';
-import { StarField, WaterSurface, GlowOrb, DataParticles } from '../Particles';
-import { BoatSilhouette } from '../BoatSilhouette';
+import { StarField, GlowOrb, DataParticles } from '../Particles';
+import { BarramundiFish } from '../BarramundiFish';
+import { ARBubble, ARTrackingLine } from '../ARBubble';
+import type { RegionConfig } from '@/lib/region';
 
-interface LockBoxProps {
-  x: string;
-  y: string;
-  label: string;
-  sublabel: string;
-  color: string;
-  delay: number;
-  visible: boolean;
-}
+interface Props { region: RegionConfig }
 
-function LockBox({ x, y, label, sublabel, color, delay, visible }: LockBoxProps) {
+function SonarOverlay({ color }: { color: string }) {
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          className="absolute"
-          style={{ left: x, top: y, transform: 'translate(-50%, -50%)' }}
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.5 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 22, delay }}
-        >
-          {/* Corner brackets */}
-          {[
-            { top: 0, left: 0, borderT: true, borderL: true },
-            { top: 0, right: 0, borderT: true, borderR: true },
-            { bottom: 0, left: 0, borderB: true, borderL: true },
-            { bottom: 0, right: 0, borderB: true, borderR: true },
-          ].map((corner, i) => (
-            <div
-              key={i}
-              className="absolute w-4 h-4"
-              style={{
-                top: corner.top,
-                left: (corner as any).left,
-                right: (corner as any).right,
-                bottom: corner.bottom,
-                borderTop: corner.borderT ? `2px solid ${color}` : undefined,
-                borderLeft: corner.borderL ? `2px solid ${color}` : undefined,
-                borderRight: corner.borderR ? `2px solid ${color}` : undefined,
-                borderBottom: corner.borderB ? `2px solid ${color}` : undefined,
-              }}
-            />
-          ))}
-
-          {/* Inner pulse */}
-          <motion.div
-            className="absolute inset-0 rounded-sm"
-            style={{ background: color, opacity: 0.05 }}
-            animate={{ opacity: [0.05, 0.12, 0.05] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          />
-
-          {/* Label */}
-          <div
-            className="px-10 py-6 font-mono text-center"
-          >
-            <div className="text-xs tracking-widest mb-1" style={{ color }}>
-              TARGET LOCKED
-            </div>
-            <div className="text-lg font-bold text-white">{label}</div>
-            <div className="text-xs mt-1" style={{ color: 'rgba(200,215,230,0.6)' }}>{sublabel}</div>
-          </div>
-
-          {/* Ping ring */}
-          <motion.div
-            className="absolute inset-0 rounded-sm border"
-            style={{ borderColor: color }}
-            animate={{ scale: [1, 1.4], opacity: [0.6, 0] }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut' }}
-          />
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-function AIDataStream() {
-  const lines = [
-    'DEPTH: 4.2m → STRIKE ZONE ACTIVE',
-    'TEMP: 28.4°C → OPTIMAL BARRA RANGE',
-    'CURRENT: 0.3kn SW → BAIT DRIFT CALC',
-    'AI CONFIDENCE: 94% → CAST NOW',
-    'SPECIES: BARRAMUNDI 85-105cm',
-  ];
-  return (
-    <div
-      className="absolute right-[3vw] top-1/2 -translate-y-1/2 font-mono space-y-2"
-      style={{ width: '22vw' }}
-    >
-      {lines.map((line, i) => (
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+      {[15, 28, 42, 56, 70].map((r, i) => (
         <motion.div
           key={i}
-          className="text-xs px-3 py-1.5 rounded border"
+          className="absolute rounded-full border"
           style={{
-            borderColor: 'rgba(0,201,167,0.25)',
-            background: 'rgba(0,201,167,0.04)',
-            color: 'rgba(0,201,167,0.75)',
+            width: `${r}%`,
+            height: `${r}%`,
+            borderColor: `${color}${Math.round((0.06 + i * 0.02) * 255).toString(16).padStart(2, '0')}`,
           }}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 1.5 + i * 0.18, duration: 0.4 }}
-        >
-          <motion.span
-            animate={{ opacity: [1, 0.5, 1] }}
-            transition={{ duration: 2, delay: i * 0.3, repeat: Infinity }}
-          >
-            {line}
-          </motion.span>
-        </motion.div>
+        />
       ))}
+      {/* Sweep arm */}
+      <motion.div
+        className="absolute top-1/2 left-1/2 origin-left"
+        style={{ height: 1, width: '36%' }}
+        animate={{ rotate: [0, 360] }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: 'linear' }}
+      >
+        <div
+          style={{
+            height: '100%',
+            background: `linear-gradient(to right, ${color}cc, transparent)`,
+          }}
+        />
+      </motion.div>
+      {/* Grid */}
+      <div
+        className="absolute inset-0 opacity-[0.04]"
+        style={{
+          backgroundImage: `
+            linear-gradient(${color} 1px, transparent 1px),
+            linear-gradient(90deg, ${color} 1px, transparent 1px)`,
+          backgroundSize: '8% 8%',
+        }}
+      />
     </div>
   );
 }
 
-export function Scene3() {
+export function Scene3({ region }: Props) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 400),
-      setTimeout(() => setPhase(2), 1200),
-      setTimeout(() => setPhase(3), 2200),
-      setTimeout(() => setPhase(4), 3400),
-      setTimeout(() => setPhase(5), 5000),
+      setTimeout(() => setPhase(1), 300),
+      setTimeout(() => setPhase(2), 900),
+      setTimeout(() => setPhase(3), 1800),
+      setTimeout(() => setPhase(4), 2800),
+      setTimeout(() => setPhase(5), 4200),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -137,102 +68,154 @@ export function Scene3() {
     <motion.div
       className="absolute inset-0 w-full h-full overflow-hidden"
       {...sceneTransitions.morphExpand}
-      style={{ background: 'linear-gradient(180deg, #020c16 0%, #040f1e 50%, #061525 100%)' }}
+      style={{ background: 'linear-gradient(180deg, #020c18 0%, #030f1e 50%, #020a14 100%)' }}
     >
-      {/* Atmosphere */}
-      <StarField count={80} seed={21} />
-      <GlowOrb x="30%" y="40%" size="60vw" color="#00C9A7" opacity={0.06} />
-      <GlowOrb x="70%" y="60%" size="40vw" color="#FF6B00" opacity={0.05} />
-      <DataParticles count={25} seed={9} color="#00C9A7" />
+      <StarField count={60} seed={33} />
+      <DataParticles count={20} seed={11} color={region.secondaryColor} />
+      <GlowOrb x="50%" y="50%" size="70vw" color={region.secondaryColor} opacity={0.05} />
+      <GlowOrb x="30%" y="70%" size="40vw" color={region.primaryColor} opacity={0.04} />
 
-      {/* Horizon */}
-      <div
-        className="absolute inset-x-0"
-        style={{
-          top: '56%',
-          height: '1px',
-          background: 'linear-gradient(90deg, transparent, rgba(0,201,167,0.3), rgba(255,107,0,0.2), rgba(0,201,167,0.3), transparent)',
-        }}
-      />
-
-      {/* Water */}
-      <div
-        className="absolute inset-x-0 bottom-0"
-        style={{ height: '44%', background: 'linear-gradient(180deg, #041320 0%, #020c16 100%)' }}
-      >
-        <WaterSurface className="absolute inset-0" />
-      </div>
-
-      {/* Boat + sonar */}
+      {/* Sonar UI background */}
       <motion.div
-        className="absolute"
-        style={{ left: '50%', bottom: '40%', transform: 'translateX(-50%)' }}
-        initial={{ opacity: 0, y: 40 }}
-        animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
-        transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+        className="absolute inset-0 opacity-30"
+        initial={{ opacity: 0 }}
+        animate={phase >= 1 ? { opacity: 0.3 } : { opacity: 0 }}
+        transition={{ duration: 1 }}
       >
-        <BoatSilhouette width={380} sonar sonarColor="#00C9A7" bobAmplitude={4} />
+        <img
+          src={`${import.meta.env.BASE_URL}sonar/sonar-demo-3.png`}
+          alt=""
+          className="w-full h-full object-cover"
+          style={{ filter: `hue-rotate(${region.id === 'nq' ? '60deg' : '0deg'}) saturate(0.6)` }}
+        />
       </motion.div>
 
-      {/* Lock boxes */}
-      <LockBox
-        x="38%" y="52%"
-        label="98cm BARRA"
-        sublabel="DEPTH 3.8m"
-        color="#00C9A7"
-        delay={0}
-        visible={phase >= 2}
-      />
-      <LockBox
-        x="62%" y="64%"
-        label="SCHOOL × 7"
-        sublabel="DEPTH 5.2m"
-        color="#FF6B00"
-        delay={0.15}
+      <SonarOverlay color={region.secondaryColor} />
+
+      {/* BARRAMUNDI FISH SWIMMING IN */}
+      <AnimatePresence>
+        {phase >= 2 && (
+          <motion.div
+            className="absolute"
+            style={{ left: '12%', top: '35%' }}
+            initial={{ opacity: 0, x: '-15vw' }}
+            animate={{ opacity: 0.85, x: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <BarramundiFish
+              width={220}
+              color="#8ac8e0"
+              glowColor={region.secondaryColor}
+              swimAmplitude={7}
+              swimDuration={3}
+            />
+          </motion.div>
+        )}
+        {phase >= 2 && (
+          <motion.div
+            className="absolute"
+            style={{ left: '55%', top: '55%' }}
+            initial={{ opacity: 0, x: '15vw' }}
+            animate={{ opacity: 0.75, x: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.9, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <BarramundiFish
+              width={160}
+              color="#6ab0c8"
+              glowColor={region.primaryColor}
+              flip
+              swimAmplitude={9}
+              swimDuration={2.6}
+              swimDelay={0.4}
+            />
+          </motion.div>
+        )}
+        {phase >= 3 && (
+          <motion.div
+            className="absolute"
+            style={{ left: '34%', top: '60%' }}
+            initial={{ opacity: 0, y: '8vh' }}
+            animate={{ opacity: 0.6, y: 0 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <BarramundiFish
+              width={120}
+              color="#5098b0"
+              glowColor={region.secondaryColor}
+              swimAmplitude={5}
+              swimDuration={3.5}
+              swimDelay={0.8}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* AR TRACKING LINES */}
+      <ARTrackingLine x1="24%" y1="42%" x2="34%" y2="48%" color={region.secondaryColor} visible={phase >= 3} delay={0} />
+      <ARTrackingLine x1="63%" y1="60%" x2="55%" y2="52%" color={region.primaryColor} visible={phase >= 3} delay={0.15} />
+
+      {/* AR BUBBLES */}
+      <ARBubble
+        label="BARRAMUNDI 104cm"
+        sublabel="DEPTH 2.8m · TROPHY GRADE"
+        confidence={97}
+        x="34%" y="40%"
+        color={region.secondaryColor}
         visible={phase >= 3}
+        delay={0}
+      />
+      <ARBubble
+        label="BARRAMUNDI 82cm"
+        sublabel="DEPTH 4.1m · GOOD EATING"
+        confidence={91}
+        x="68%" y="54%"
+        color={region.primaryColor}
+        visible={phase >= 3}
+        delay={0.2}
       />
 
-      {/* AI data stream */}
-      {phase >= 3 && <AIDataStream />}
-
-      {/* HUD grid overlay */}
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(0,201,167,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,201,167,0.025) 1px, transparent 1px)',
-          backgroundSize: '8vw 8vh',
-        }}
-        initial={{ opacity: 0 }}
-        animate={phase >= 2 ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 1 }}
-      />
-
-      {/* Central headline */}
+      {/* Depth strike zone box */}
       <AnimatePresence>
         {phase >= 4 && (
           <motion.div
-            className="absolute left-[4vw] top-1/2 -translate-y-1/2"
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
+            className="absolute border font-mono text-xs px-3 py-2"
+            style={{
+              left: '44%',
+              top: '44%',
+              borderColor: `${region.primaryColor}60`,
+              background: `${region.primaryColor}08`,
+              color: region.primaryColor,
+            }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+          >
+            ⚡ STRIKE ZONE 2–5m
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Headline */}
+      <AnimatePresence>
+        {phase >= 5 && (
+          <motion.div
+            className="absolute top-8 left-8 right-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className="block font-mono text-xs tracking-widest mb-3" style={{ color: '#FF6B00' }}>
-              AI VISION ACTIVE
+            <span className="font-mono text-xs tracking-widest" style={{ color: region.primaryColor }}>
+              AI SONAR VISION
             </span>
             <h2
-              className="text-[5vw] font-display leading-[0.9] text-white"
-              style={{ textShadow: '0 0 50px rgba(0,201,167,0.35)' }}
+              className="text-[5vw] font-display text-white leading-[0.9] mt-2"
+              style={{ textShadow: `0 0 50px ${region.secondaryColor}50` }}
             >
               HOOKVISION<br />
-              <span style={{ color: '#00C9A7' }}>SEES WHAT<br />YOU MISS</span>
+              <span style={{ color: region.secondaryColor }}>SEES WHAT<br />YOU MISS</span>
             </h2>
-            <motion.div
-              className="mt-4 h-[2px] bg-gradient-to-r from-[#00C9A7] to-transparent"
-              initial={{ width: 0 }}
-              animate={{ width: '80%' }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-            />
           </motion.div>
         )}
       </AnimatePresence>
