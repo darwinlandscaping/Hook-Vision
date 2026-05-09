@@ -23,6 +23,7 @@ import { GoldenHourOverlay } from "@/components/GoldenHourOverlay";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { HistoryProvider } from "@/context/HistoryContext";
 import { NarratorProvider } from "@/context/NarratorContext";
+import { RiverScanProvider } from "@/context/RiverScanContext";
 import { setBaseUrl } from "@workspace/api-client-react";
 
 if (process.env.EXPO_PUBLIC_DOMAIN) {
@@ -87,7 +88,9 @@ export default function RootLayout() {
             <GestureHandlerRootView style={styles.root}>
               <NarratorProvider>
                 <HistoryProvider>
-                  <RootLayoutNav />
+                  <RiverScanProvider>
+                    <RootLayoutNav />
+                  </RiverScanProvider>
                 </HistoryProvider>
               </NarratorProvider>
             </GestureHandlerRootView>
