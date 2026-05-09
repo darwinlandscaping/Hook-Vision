@@ -330,6 +330,18 @@ uri = "file://artifacts/hookvision-nq/assets/images/splash-coral.png"
 type = "image"
 title = "coral reef gulf country nq"
 
+[[generated]]
+id = "5Ar1ZdCVFkmRVvzZJzc7F"
+uri = "file://artifacts/hookvision-ad/public/images/sonar-ai-texture.png"
+type = "image"
+title = "sonar AI overlay texture"
+
+[[generated]]
+id = "6z9ZF_0Un3-ubSumgirpo"
+uri = "file://artifacts/hookvision-ad/public/images/underwater-barra.png"
+type = "image"
+title = "underwater barramundi"
+
 [[outputs]]
 id = "56ji2_AK1cz0SSgKggKpF"
 uri = "file://hookvision-qr.png"
