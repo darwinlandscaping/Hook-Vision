@@ -88,7 +88,7 @@ export function BarramundiFish({
         />
 
         {/* Scale pattern (subtle) */}
-        {[0.3, 0.45, 0.6].map((x) =>
+        {[0.3, 0.45, 0.6].flatMap((x) =>
           [0.3, 0.45, 0.6].map((y) => (
             <ellipse
               key={`${x}-${y}`}
