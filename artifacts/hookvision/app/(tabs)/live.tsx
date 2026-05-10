@@ -179,6 +179,7 @@ import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { useColors } from "@/hooks/useColors";
 import { useHistory } from "@/context/HistoryContext";
+import { useRiverScans } from "@/context/RiverScanContext";
 import { CHARACTERS, useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
 import { LiveScanStore } from "@/stores/LiveScanStore";
 import { BoatDemoStore } from "@/stores/BoatDemoStore";
@@ -818,6 +819,7 @@ export default function LiveScreen() {
   const insets   = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const { addEntry } = useHistory();
+  const { startAutoScan, feedDepthReading, endAutoScan } = useRiverScans();
   const { character, speak, stop: stopSpeaking, speaking, narratePage } = useNarrator();
   useAutoNarrate(() => "AI Live Camera — real-time Barramundi and wildlife detection active. WA regional brain loaded.");
 
@@ -1163,6 +1165,7 @@ export default function LiveScreen() {
     burstNumRef.current = 0;
     setAnalysisRunning(true);
     setIsOffline(false);
+    startAutoScan();
     const _d = process.env.EXPO_PUBLIC_DOMAIN; const _b = _d ? `https://${_d}` : "";
     fetch(`${_b}/api/vision-session/start`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ region: "wa" }) })
       .then(r => r.ok ? r.json() : null).then((d: { sessionId?: number } | null) => { if (d?.sessionId) sessionIdRef.current = d.sessionId; }).catch(() => {});
@@ -1211,6 +1214,7 @@ export default function LiveScreen() {
 
   const stopAnalysis = useCallback(() => {
     burstRunRef.current = false;
+    endAutoScan();
     if (visionIntervalRef.current) { clearInterval(visionIntervalRef.current); visionIntervalRef.current = null; }
     if (sessionIdRef.current) {
       const sid = sessionIdRef.current; sessionIdRef.current = null;
@@ -1577,6 +1581,7 @@ export default function LiveScreen() {
       addEntry({ id: `boat-${cycleNum}-${Date.now()}`, timestamp: Date.now(), imageUri: frames.at(-1)?.uri ?? "",
         species: cycleResult.species, fishCount: cycleResult.fishCount, depth: cycleResult.depth,
         suggestion: cycleResult.suggestion });
+      feedDepthReading(cycleResult.depth, cycleResult.fishCount ?? 0);
     }
 
     {
