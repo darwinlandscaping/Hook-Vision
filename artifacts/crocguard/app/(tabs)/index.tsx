@@ -60,6 +60,27 @@ export default function StatusScreen() {
   const status = data?.status ?? "green";
   const cfg = STATUS_CONFIG[status];
 
+  // Push croc status to HookVision HUD when danger level changes
+  useEffect(() => {
+    if (status === "green") return;
+    const base = settings.apiBaseUrl?.replace(/\/$/, "") ?? "";
+    const hudBase = base || (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}` : "");
+    fetch(`${hudBase}/api/hud/update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        species: "—", fishCount: 0, depth: "—", confidence: 0, suggestion: "",
+        crocAlert:   status === "red",
+        crocWarning: status === "red"
+          ? "Crocodile confirmed — stay out of water immediately"
+          : status === "orange"
+            ? "Possible crocodile activity detected — remain alert"
+            : null,
+        source: "live",
+      }),
+    }).catch(() => {});
+  }, [status, settings.apiBaseUrl]);
+
   // Pulse animation for orange/red
   const pulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {

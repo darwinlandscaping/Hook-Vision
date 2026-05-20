@@ -1115,4 +1115,456 @@ showPanel(0);
 </html>`);
 });
 
+// ─── GET /hud/glasses — full-screen casting arrow + narration overlay ─────────
+router.get("/hud/glasses", (_req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>HookVision Glasses</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:#050d1c;color:#fff;font-family:system-ui,-apple-system,"SF Pro Display",sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;height:100%}
+
+/* ── Waiting ────────────────────────────────────────────────────────── */
+#waiting{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px}
+#waiting.hidden{display:none}
+.spinner{width:36px;height:36px;border:3px solid #ffffff10;border-top-color:#00d4aa;border-radius:50%;animation:spin 1s linear infinite}
+#w-title{font-size:14px;font-weight:900;letter-spacing:3px;color:rgba(255,255,255,0.45);text-transform:uppercase}
+#w-sub{font-size:12px;color:rgba(255,255,255,0.25);text-align:center;line-height:1.6}
+
+/* ── Main HUD ───────────────────────────────────────────────────────── */
+#hud{display:none;flex-direction:column;height:100%}
+#hud.show{display:flex}
+
+/* ── Top bar ────────────────────────────────────────────────────────── */
+#top{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 8px;border-bottom:1px solid rgba(255,255,255,0.06);gap:10px;flex-shrink:0}
+#species{font-size:22px;font-weight:900;letter-spacing:0.5px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+#conf-row{display:flex;align-items:center;gap:6px;margin-top:3px}
+#conf-track{flex:1;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;width:80px}
+#conf-bar{height:100%;background:#00d4aa;border-radius:2px;transition:width 0.6s ease;width:0%}
+#conf-pct{font-size:11px;font-weight:800;color:#00d4aa;min-width:28px}
+#right-info{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+#fish-badge{font-size:18px;font-weight:900;color:#00d4aa;line-height:1}
+#depth-badge{font-size:13px;font-weight:700;color:#00a8ff;line-height:1}
+
+/* ── Status controls row ────────────────────────────────────────────── */
+#controls{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;flex-shrink:0}
+#live-dot{width:7px;height:7px;border-radius:50%;background:#ffffff18;transition:background 0.5s}
+#live-dot.on{background:#00d4aa;box-shadow:0 0 6px #00d4aa;animation:pulse 2s infinite}
+#time-disp{font-size:10px;color:rgba(255,255,255,0.3);font-variant-numeric:tabular-nums}
+#mute-btn{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:3px 10px;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer}
+#mute-btn.muted{color:rgba(255,255,255,0.25);text-decoration:line-through}
+
+/* ── Center: Arrow ──────────────────────────────────────────────────── */
+#center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:8px 16px;min-height:0}
+#arrow-canvas{display:block;flex-shrink:0}
+#cast-instruction{font-size:20px;font-weight:900;letter-spacing:2px;color:#00d4aa;text-transform:uppercase;text-align:center;line-height:1.2;opacity:0.4;transition:opacity 0.4s,color 0.3s;text-shadow:0 0 20px rgba(0,212,170,0.4)}
+#cast-instruction.active{opacity:1}
+#cast-instruction.croc-mode{color:#ff3b30;text-shadow:0 0 20px rgba(255,59,48,0.5)}
+
+/* ── Bottom bar ─────────────────────────────────────────────────────── */
+#bottom{display:flex;align-items:center;gap:8px;padding:8px 14px 12px;border-top:1px solid rgba(255,255,255,0.06);flex-shrink:0;flex-wrap:wrap}
+#tide-text{font-size:11px;font-weight:600;color:rgba(255,255,255,0.55);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lure-text{font-size:11px;font-weight:700;color:#ffd700;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.urgency-tag{font-size:10px;font-weight:900;letter-spacing:1.5px;padding:3px 9px;border-radius:20px;border:1.5px solid;flex-shrink:0}
+.urgency-tag.now{color:#34c759;border-color:#34c759;background:rgba(52,199,89,0.12)}
+.urgency-tag.soon{color:#ffb300;border-color:#ffb300;background:rgba(255,179,0,0.1)}
+.urgency-tag.later{color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.05)}
+
+/* ── Croc alert overlay ─────────────────────────────────────────────── */
+#croc{display:none;position:fixed;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:32px;background:rgba(180,10,10,0.92);animation:crocFlash 1.2s infinite}
+#croc-icon{font-size:64px;animation:crocBounce 0.8s infinite alternate}
+#croc-title{font-size:26px;font-weight:900;letter-spacing:3px;color:#fff;text-align:center}
+#croc-warning{font-size:14px;font-weight:600;color:rgba(255,255,255,0.85);text-align:center;line-height:1.6;max-width:280px}
+#croc-action{font-size:16px;font-weight:900;color:#fff;letter-spacing:2px;text-align:center;margin-top:8px;padding:10px 24px;border:2px solid rgba(255,255,255,0.4);border-radius:12px}
+
+/* ── Animations ─────────────────────────────────────────────────────── */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes crocFlash{0%,100%{background:rgba(180,10,10,0.92)}50%{background:rgba(220,20,20,0.97)}}
+@keyframes crocBounce{from{transform:scale(1)}to{transform:scale(1.15)}}
+</style>
+</head>
+<body>
+
+<!-- Waiting for first data -->
+<div id="waiting">
+  <div class="spinner"></div>
+  <div id="w-title">HookVision Glasses</div>
+  <div id="w-sub">Waiting for sonar scan&hellip;<br>Open HookVision &amp; start scanning on the Live tab</div>
+</div>
+
+<!-- Main HUD -->
+<div id="hud">
+
+  <!-- Top: species + conf + fish + depth -->
+  <div id="top">
+    <div style="flex:1;min-width:0">
+      <div id="species">SCANNING&hellip;</div>
+      <div id="conf-row">
+        <div id="conf-track"><div id="conf-bar"></div></div>
+        <div id="conf-pct">0%</div>
+      </div>
+    </div>
+    <div id="right-info">
+      <div id="fish-badge">0 FISH</div>
+      <div id="depth-badge">&mdash;</div>
+    </div>
+  </div>
+
+  <!-- Status row -->
+  <div id="controls">
+    <div id="live-dot"></div>
+    <div id="time-disp">--:--:--</div>
+    <button id="mute-btn" onclick="toggleMute()">&#128264; AUDIO ON</button>
+  </div>
+
+  <!-- Center: cast direction arrow canvas -->
+  <div id="center">
+    <canvas id="arrow-canvas"></canvas>
+    <div id="cast-instruction">WAITING FOR SCAN&hellip;</div>
+  </div>
+
+  <!-- Bottom: tide + lure + urgency -->
+  <div id="bottom">
+    <div id="tide-text">&mdash;</div>
+    <div id="lure-text">&mdash;</div>
+    <span id="urgency-tag" class="urgency-tag soon">SOON</span>
+  </div>
+
+</div>
+
+<!-- Croc overlay -->
+<div id="croc">
+  <div id="croc-icon">&#x1F40A;</div>
+  <div id="croc-title">&#x26A0; CROCODILE ALERT</div>
+  <div id="croc-warning">Stay away from water&apos;s edge</div>
+  <div id="croc-action">MOVE AWAY FROM WATER</div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+var S = null;
+var lastUpdatedAt = 0;
+var speechEnabled = true;
+var lastSpokenAt  = 0;
+var crocActive    = false;
+var arrowAngle    = 0;
+var targetAngle   = null;
+var rafId         = null;
+
+// ─── Clock ────────────────────────────────────────────────────────────────────
+setInterval(function() {
+  document.getElementById("time-disp").textContent = new Date().toLocaleTimeString([], { hour12: false });
+}, 1000);
+
+// ─── Canvas setup ─────────────────────────────────────────────────────────────
+var canvas = document.getElementById("arrow-canvas");
+var ctx    = canvas.getContext("2d");
+
+function sizeCanvas() {
+  var center = document.getElementById("center");
+  var avail  = Math.min(center.clientWidth - 32, center.clientHeight - 80, 320);
+  var size   = Math.max(160, avail);
+  canvas.width  = size;
+  canvas.height = size;
+}
+sizeCanvas();
+window.addEventListener("resize", function() { sizeCanvas(); drawArrow(); });
+
+// ─── Cast angle / distance parser ─────────────────────────────────────────────
+function parseCastAngle(text) {
+  if (!text) return null;
+  var t = text.toLowerCase();
+  var m = t.match(/(\\d+)\\s*o[\\u2019'\\s-]*clock/);
+  if (m) { var h = parseInt(m[1]) % 12; return (h / 12) * 360; }
+  if (/straight\\s*ahead|directly\\s*ahead/.test(t)) return 0;
+  if (/sharp\\s*right|hard\\s*right|far\\s*right/.test(t)) return 75;
+  if (/right/.test(t)) return 50;
+  if (/sharp\\s*left|hard\\s*left|far\\s*left/.test(t)) return -75;
+  if (/left/.test(t)) return -50;
+  return null;
+}
+
+function parseCastDist(text) {
+  if (!text) return null;
+  var m = text.match(/(\\d+)\\s*m(?:etres?|eters?)?(?:[\\s,.]|$)/i);
+  return m ? parseInt(m[1]) : null;
+}
+
+function castLabel(text) {
+  if (!text) return "";
+  var t   = text.toLowerCase();
+  var hrs = (t.match(/(\\d+)\\s*o[\\u2019'\\s-]*clock/) || [])[1];
+  var dist = parseCastDist(text);
+  var label = "";
+  if (hrs) {
+    label = "CAST " + hrs + " O'CLOCK";
+  } else if (/sharp\\s*right|hard\\s*right/.test(t)) {
+    label = "CAST HARD RIGHT";
+  } else if (/right/.test(t)) {
+    label = "CAST RIGHT";
+  } else if (/sharp\\s*left|hard\\s*left/.test(t)) {
+    label = "CAST HARD LEFT";
+  } else if (/left/.test(t)) {
+    label = "CAST LEFT";
+  } else if (/straight|ahead/.test(t)) {
+    label = "CAST STRAIGHT AHEAD";
+  }
+  if (dist) label += " \\u00B7 " + dist + "m";
+  return label || (text.length > 36 ? text.substring(0, 36) + "\\u2026" : text).toUpperCase();
+}
+
+// ─── Arrow drawing ────────────────────────────────────────────────────────────
+function drawArrow() {
+  var W  = canvas.width, H = canvas.height;
+  var cx = W / 2, cy = H / 2;
+  var r  = Math.min(W, H) / 2 - 8;
+
+  ctx.clearRect(0, 0, W, H);
+
+  var noData = (targetAngle === null);
+
+  // Outer compass ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = noData ? "rgba(255,255,255,0.06)" : "rgba(0,212,170,0.12)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Clock tick marks
+  for (var i = 0; i < 12; i++) {
+    var a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    var major = (i % 3 === 0);
+    var inner = major ? r - 13 : r - 7;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * (r - 1), cy + Math.sin(a) * (r - 1));
+    ctx.lineTo(cx + Math.cos(a) * inner,   cy + Math.sin(a) * inner);
+    ctx.strokeStyle = major ? "rgba(0,212,170,0.45)" : "rgba(255,255,255,0.12)";
+    ctx.lineWidth   = major ? 2 : 1;
+    ctx.stroke();
+  }
+
+  // Clock numbers at major ticks (12, 3, 6, 9)
+  var clockNums = [[0,12],[3,3],[6,6],[9,9]];
+  ctx.font = "bold " + Math.round(r * 0.12) + "px system-ui";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (var ci = 0; ci < clockNums.length; ci++) {
+    var tick = clockNums[ci][0];
+    var num  = clockNums[ci][1];
+    var ca   = (tick / 12) * Math.PI * 2 - Math.PI / 2;
+    var nr   = r - 22;
+    ctx.fillStyle = "rgba(0,212,170,0.35)";
+    ctx.fillText(String(num), cx + Math.cos(ca) * nr, cy + Math.sin(ca) * nr);
+  }
+
+  if (noData) {
+    // Idle crosshair
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,212,170,0.25)";
+    ctx.fill();
+    return;
+  }
+
+  var ang = arrowAngle;
+  var rad = (ang - 90) * Math.PI / 180;
+
+  // Cast zone arc (±25° highlight behind the arrow)
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 5, rad - Math.PI / 7.2, rad + Math.PI / 7.2);
+  ctx.strokeStyle = crocActive ? "rgba(255,59,48,0.35)" : "rgba(0,212,170,0.35)";
+  ctx.lineWidth   = 10;
+  ctx.lineCap     = "round";
+  ctx.stroke();
+  ctx.restore();
+
+  // Navigation arrow (Google Maps chevron style)
+  var arrowLen  = r * 0.60;
+  var backLen   = r * 0.22;
+  var halfWidth = r * 0.18;
+
+  var tipX  = cx + Math.cos(rad) * arrowLen;
+  var tipY  = cy + Math.sin(rad) * arrowLen;
+  var backX = cx - Math.cos(rad) * backLen;
+  var backY = cy - Math.sin(rad) * backLen;
+  var perp  = rad + Math.PI / 2;
+  var midR  = (arrowLen - backLen) * 0.3;
+  var midX  = cx + Math.cos(rad) * midR;
+  var midY  = cy + Math.sin(rad) * midR;
+
+  ctx.save();
+  ctx.shadowColor = crocActive ? "#ff3b30" : "#00d4aa";
+  ctx.shadowBlur  = 16;
+
+  ctx.beginPath();
+  ctx.moveTo(tipX, tipY);
+  ctx.lineTo(midX + Math.cos(perp) * halfWidth, midY + Math.sin(perp) * halfWidth);
+  ctx.lineTo(backX + Math.cos(perp) * halfWidth * 0.55, backY + Math.sin(perp) * halfWidth * 0.55);
+  ctx.lineTo(backX, backY);
+  ctx.lineTo(backX - Math.cos(perp) * halfWidth * 0.55, backY - Math.sin(perp) * halfWidth * 0.55);
+  ctx.lineTo(midX - Math.cos(perp) * halfWidth, midY - Math.sin(perp) * halfWidth);
+  ctx.closePath();
+
+  ctx.fillStyle = crocActive ? "#ff3b30" : "#00d4aa";
+  ctx.fill();
+  ctx.restore();
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.fill();
+}
+
+// ─── Smooth arrow rotation (RAF loop) ─────────────────────────────────────────
+function animLoop() {
+  if (targetAngle !== null) {
+    var diff = targetAngle - arrowAngle;
+    if (diff >  180) diff -= 360;
+    if (diff < -180) diff += 360;
+    if (Math.abs(diff) > 0.4) {
+      arrowAngle += diff * 0.10;
+    } else {
+      arrowAngle = targetAngle;
+    }
+  }
+  drawArrow();
+  rafId = requestAnimationFrame(animLoop);
+}
+animLoop();
+
+// ─── Speech synthesis ─────────────────────────────────────────────────────────
+function speak(text) {
+  if (!speechEnabled) return;
+  if (!window.speechSynthesis) return;
+  var now = Date.now();
+  if (now - lastSpokenAt < 7000) return;
+  lastSpokenAt = now;
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.92; u.pitch = 1.0; u.volume = 1.0;
+  window.speechSynthesis.speak(u);
+}
+
+function toggleMute() {
+  speechEnabled = !speechEnabled;
+  var btn = document.getElementById("mute-btn");
+  btn.textContent = speechEnabled ? "\\u{1F504} AUDIO ON" : "\\u{1F507} MUTED";
+  btn.classList.toggle("muted", !speechEnabled);
+  if (speechEnabled) speak("Audio on.");
+}
+
+// ─── Apply SSE state ──────────────────────────────────────────────────────────
+function applyState(d) {
+  if (!d) return;
+  var isNew = (d.updatedAt > lastUpdatedAt) || (d.brainUpdatedAt > lastUpdatedAt);
+  if (d.updatedAt     > lastUpdatedAt) lastUpdatedAt = d.updatedAt;
+  if (d.brainUpdatedAt > lastUpdatedAt) lastUpdatedAt = d.brainUpdatedAt;
+
+  // Show HUD
+  document.getElementById("waiting").classList.add("hidden");
+  document.getElementById("hud").classList.add("show");
+  document.getElementById("live-dot").classList.add("on");
+
+  // Croc alert
+  var hasCroc = !!(d.scan && d.scan.crocAlert);
+  if (hasCroc !== crocActive) {
+    crocActive = hasCroc;
+    document.getElementById("croc").style.display = hasCroc ? "flex" : "none";
+    if (hasCroc) {
+      var warn = (d.scan && d.scan.crocWarning) || "Crocodile detected";
+      document.getElementById("croc-warning").textContent = warn;
+      speak("Crocodile alert. Move away from water immediately.");
+    }
+  }
+
+  // Top bar
+  if (d.scan) {
+    var sp = d.scan.species || "\\u2014";
+    document.getElementById("species").textContent = sp.toUpperCase();
+    document.getElementById("fish-badge").textContent = (d.scan.fishCount || 0) + " FISH";
+    document.getElementById("depth-badge").textContent = d.scan.depth || "\\u2014";
+    var conf = Math.round((d.scan.confidence || 0) * 100);
+    document.getElementById("conf-bar").style.width  = conf + "%";
+    document.getElementById("conf-pct").textContent = conf + "%";
+    document.getElementById("conf-bar").style.background = conf > 70 ? "#00d4aa" : conf > 40 ? "#ffb300" : "#ff3b30";
+  }
+
+  // Cast direction arrow
+  var castZone = (d.brain && d.brain.castZone) || "";
+  var angle    = parseCastAngle(castZone);
+  if (angle !== null) targetAngle = angle;
+
+  var label = castLabel(castZone);
+  var castEl = document.getElementById("cast-instruction");
+  if (label) {
+    castEl.textContent = label;
+    castEl.className   = "active" + (hasCroc ? " croc-mode" : "");
+  }
+
+  // Bottom bar
+  if (d.tide) {
+    var phase = (d.tide.phase || "").split("\\u2014")[0].split("\\u2013")[0].trim();
+    document.getElementById("tide-text").textContent = phase || "\\u2014";
+  }
+  if (d.brain) {
+    document.getElementById("lure-text").textContent = d.brain.targetLure || "\\u2014";
+    var urg    = (d.brain.urgency || "SOON").toLowerCase();
+    var urgEl  = document.getElementById("urgency-tag");
+    urgEl.textContent = d.brain.urgency || "SOON";
+    urgEl.className   = "urgency-tag " + urg;
+  }
+
+  // Narration (new data only, not croc — croc has its own speech)
+  if (isNew && !hasCroc && d.scan) {
+    var fish = d.scan.fishCount || 0;
+    var narr = "";
+    if (fish > 0) {
+      narr = fish + " " + (d.scan.species || "fish") + (d.scan.depth ? " at " + d.scan.depth : "");
+      if (d.brain && d.brain.castZone) {
+        var hrs = (d.brain.castZone.match(/(\\d+)\\s*o[\\u2019'\\s-]*clock/) || [])[1];
+        if (hrs) narr += ". Cast " + hrs + " o'clock";
+      }
+    } else {
+      narr = "No fish this cycle." + (d.brain && d.brain.castZone ? " Target: " + d.brain.castZone : "");
+    }
+    if (narr) speak(narr);
+  }
+}
+
+// ─── SSE connection ───────────────────────────────────────────────────────────
+function connectSSE() {
+  var es = new EventSource("/api/hud/events");
+  es.onmessage = function(e) {
+    try { applyState(JSON.parse(e.data)); } catch(ex) {}
+  };
+  es.onerror = function() {
+    es.close();
+    setTimeout(connectSSE, 3000);
+  };
+}
+connectSSE();
+
+// Poll fallback every 6s
+setInterval(function() {
+  fetch("/api/hud/data").then(function(r){ return r.json(); }).then(applyState).catch(function(){});
+}, 6000);
+
+// Draw idle state immediately
+drawArrow();
+</script>
+</body>
+</html>`);
+});
+
 export default router;

@@ -188,7 +188,7 @@ import { useInsta360Context } from "@/contexts/Insta360Context";
 import { useCamera2, DEFAULT_CAM2_IP, DEFAULT_CAM2_PATH } from "@/hooks/useCamera2";
 import { useCameraScanner, type DiscoveredCamera } from "@/hooks/useCameraScanner";
 import { useCrocSound } from "@/hooks/useCrocSound";
-import { HUD_PAGE_URL } from "@/hooks/useHudStream";
+import { HUD_PAGE_URL, HUD_GLASSES_URL } from "@/hooks/useHudStream";
 import { Insta360PipelineCard } from "@/components/Insta360PipelineCard";
 import { polarFilter } from "@/utils/polarFilter";
 
@@ -2558,31 +2558,31 @@ export default function LiveScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Description */}
-              <Text style={{ color: "#ffffffaa", fontSize: 13, lineHeight: 20 }}>
-                Every scan result is pushed to the HUD page in real-time. Open the URL below on your smart glasses browser — results update automatically after each SCAN.
-              </Text>
-
-              {/* HUD URL display */}
-              <View style={{ backgroundColor: "#ffd70012", borderRadius: 10, borderWidth: 1, borderColor: "#ffd70033", padding: 14, gap: 6 }}>
-                <Text style={{ color: "#ffd700", fontSize: 10, fontWeight: "700", letterSpacing: 2 }}>HUD URL</Text>
-                <Text style={{ color: "#fff", fontSize: 12, fontFamily: "Inter_400Regular", letterSpacing: 0.3 }} selectable>
-                  {HUD_PAGE_URL}
+              {/* ── GLASSES MODE (primary) ──────────────────────────────── */}
+              <View style={{ backgroundColor: "#00d4aa0f", borderRadius: 12, borderWidth: 1.5, borderColor: "#00d4aa44", padding: 14, gap: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Text style={{ fontSize: 18 }}>🎯</Text>
+                  <Text style={{ color: "#00d4aa", fontSize: 12, fontWeight: "900", letterSpacing: 2 }}>GLASSES MODE — CAST ARROW</Text>
+                </View>
+                <Text style={{ color: "#ffffffcc", fontSize: 12, lineHeight: 19 }}>
+                  Open this URL on your Android phone (your HUD display). Shows a full-screen casting direction arrow — like GPS navigation, pointing exactly where to cast after every sonar cycle. Includes audio narration + croc alerts.
                 </Text>
-                <Text style={{ color: "#ffffff55", fontSize: 10 }}>
-                  Point glasses browser at this address · updates live via SSE
+                <Text style={{ color: "#00d4aa", fontSize: 11, fontFamily: "Inter_400Regular", letterSpacing: 0.3 }} selectable>
+                  {HUD_GLASSES_URL}
+                </Text>
+                <Text style={{ color: "#ffffff44", fontSize: 10 }}>
+                  🎣 Cast arrow · 🐊 Croc flash overlay · 🔊 Voice narration · Live SSE
                 </Text>
               </View>
 
-              {/* What the HUD shows */}
-              <View style={{ backgroundColor: "#ffffff0a", borderRadius: 10, padding: 12, gap: 6 }}>
-                <Text style={{ color: "#ffd700", fontSize: 11, fontWeight: "700", letterSpacing: 1 }}>HUD DISPLAYS</Text>
-                <Text style={{ color: "#ffffffbb", fontSize: 12, lineHeight: 18 }}>
-                  🐟 Species identified + confidence bar{"\n"}
-                  📏 Fish count · depth · arch count · water temp{"\n"}
-                  💡 Lure suggestion strip{"\n"}
-                  🐊 Croc alerts · 🐦 bird activity · 🎣 Barra %{"\n"}
-                  🕐 Live clock · source badge (Live / Boat / Cam 2)
+              {/* ── Brain Dashboard (secondary) ─────────────────────────── */}
+              <View style={{ backgroundColor: "#ffd70008", borderRadius: 10, borderWidth: 1, borderColor: "#ffd70022", padding: 12, gap: 6 }}>
+                <Text style={{ color: "#ffd700", fontSize: 10, fontWeight: "700", letterSpacing: 2 }}>BRAIN DASHBOARD (8 rotating panels)</Text>
+                <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Inter_400Regular", letterSpacing: 0.3 }} selectable>
+                  {HUD_PAGE_URL}
+                </Text>
+                <Text style={{ color: "#ffffff44", fontSize: 10 }}>
+                  Sonar · Barra Profile · Tides · Birds · Croc · Water · Community · AI Target
                 </Text>
               </View>
 
@@ -2590,8 +2590,7 @@ export default function LiveScreen() {
               <View style={{ backgroundColor: "#ffffff0a", borderRadius: 10, padding: 12, gap: 4 }}>
                 <Text style={{ color: "#ffd700", fontSize: 11, fontWeight: "700", letterSpacing: 1 }}>AUDIO / EARPHONES</Text>
                 <Text style={{ color: "#ffffffbb", fontSize: 12, lineHeight: 18 }}>
-                  The AI voice narrator already plays through any connected Bluetooth device — including earphones in your glasses.{"\n\n"}
-                  Connect glasses earphones as a Bluetooth audio device in Android settings. Audio from Barra Brain, Croc Brain, and boat-mode narration routes automatically.
+                  Glasses Mode speaks every scan result aloud — species, depth, cast direction. Connect Bluetooth earphones in Android settings for hands-free audio.
                 </Text>
               </View>
 
