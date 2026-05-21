@@ -15,8 +15,8 @@ import { Insta360Provider } from "@/contexts/Insta360Context";
 // Ordered list of all tab route names (must match Tabs.Screen order below)
 // insta360 is hidden from tab bar (accessed via Live tab chip) to keep Brain visible
 const TAB_ROUTES = [
-  "live", "home", "barra", "buff", "tides", "species",
-  "zones", "forecast", "catchid", "demo", "history", "community", "smartlife", "cameras", "hud",
+  "live", "home", "barra", "buff", "tides", "species", "hud",
+  "zones", "forecast", "catchid", "demo", "history", "community", "smartlife", "cameras",
 ] as const;
 
 function tabPath(name: string) {
@@ -50,6 +50,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "fish", selected: "fish.fill" }} />
         <Label>Species</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="hud">
+        <Icon sf={{ default: "arrow.up.circle.fill", selected: "arrow.up.circle.fill" }} />
+        <Label>Cast HUD</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="zones">
         <Icon sf={{ default: "chart.bar.fill", selected: "chart.bar.fill" }} />
         <Label>Zones</Label>
@@ -81,10 +85,6 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="cameras">
         <Icon sf={{ default: "camera.on.rectangle", selected: "camera.on.rectangle.fill" }} />
         <Label>360° Cams</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="hud">
-        <Icon sf={{ default: "arrow.up.circle.fill", selected: "arrow.up.circle.fill" }} />
-        <Label>Cast HUD</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -235,6 +235,18 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="hud"
+        options={{
+          title: "Cast HUD",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="arrow.up.circle.fill" tintColor={color} size={22} />
+            ) : (
+              <MaterialCommunityIcons name="compass-rose" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
         name="zones"
         options={{
           title: "Zones",
@@ -331,18 +343,6 @@ function ClassicTabLayout() {
               <SymbolView name="camera.on.rectangle" tintColor={color} size={22} />
             ) : (
               <MaterialCommunityIcons name="rotate-360" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="hud"
-        options={{
-          title: "Cast HUD",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="arrow.up.circle.fill" tintColor={color} size={22} />
-            ) : (
-              <MaterialCommunityIcons name="compass-rose" size={22} color={color} />
             ),
         }}
       />

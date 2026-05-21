@@ -10,7 +10,7 @@ import {
 import { WebView } from "react-native-webview";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import { HUD_GLASSES_URL } from "@/hooks/useHudStream";
+import { HUD_PAGE_URL } from "@/hooks/useHudStream";
 
 export default function HudTab() {
   const insets = useSafeAreaInsets();
@@ -54,7 +54,7 @@ export default function HudTab() {
       ) : (
         <WebView
           key={key}
-          source={{ uri: HUD_GLASSES_URL }}
+          source={{ uri: HUD_PAGE_URL }}
           style={styles.webview}
           onLoadStart={() => { setLoading(true); setError(false); }}
           onLoadEnd={() => setLoading(false)}
