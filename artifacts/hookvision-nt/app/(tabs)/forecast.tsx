@@ -723,7 +723,7 @@ export default function ForecastScreen() {
     setForecast(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 10_000);
+    const timer = setTimeout(() => ctrl.abort(), 65_000);
     try {
       const body = {
         moonPhase: moon.name,

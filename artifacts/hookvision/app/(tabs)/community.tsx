@@ -449,7 +449,7 @@ export default function CommunityScreen() {
   // ── fetch hotspots ─────────────────────────────────────────────────────────
   const fetchHotspots = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE_URL}/api/community/hotspots`);
+      const res = await fetch(`${BASE_URL}/api/community/hotspots`, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) return;
       const data = await res.json();
       const spots: Hotspot[] = data.hotspots ?? [];
@@ -466,7 +466,7 @@ export default function CommunityScreen() {
   // ── fetch live feed ────────────────────────────────────────────────────────
   const fetchFeed = useCallback(async (silent = true) => {
     try {
-      const res  = await fetch(`${BASE_URL}/api/community/feed?limit=20`);
+      const res  = await fetch(`${BASE_URL}/api/community/feed?limit=20`, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) return;
       const json = await res.json() as { reports: FeedReport[]; total: number };
       setFeed(json.reports);
@@ -487,7 +487,7 @@ export default function CommunityScreen() {
   const fetchInsights = useCallback(async (showSpinner = false) => {
     if (showSpinner) { setLoadingInsights(true); setInsightsError(null); }
     try {
-      const res  = await fetch(`${BASE_URL}/api/community/insights`);
+      const res  = await fetch(`${BASE_URL}/api/community/insights`, { signal: AbortSignal.timeout(15_000) });
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const json = await res.json() as Insights;
       setInsights(json);
@@ -502,7 +502,7 @@ export default function CommunityScreen() {
   const fetchBrainStats = useCallback(async () => {
     setLoadingBrain(true);
     try {
-      const res = await fetch(`${BASE_URL}/api/brain/stats`);
+      const res = await fetch(`${BASE_URL}/api/brain/stats`, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) return;
       const data = await res.json() as BrainStats & { ok: boolean };
       setBrainStats(data);

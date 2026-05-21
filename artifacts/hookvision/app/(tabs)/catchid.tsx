@@ -1402,6 +1402,7 @@ export default function CatchIdScreen() {
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
+    const acTimer = setTimeout(() => ac.abort(), 40_000);
 
     setBarraCheck(null);
     setFullResult(null);
@@ -1457,6 +1458,7 @@ export default function CatchIdScreen() {
       });
 
     await Promise.allSettled([stage1, stage2]);
+    clearTimeout(acTimer);
   }, []);
 
   const pickImage = useCallback(async (source: "camera" | "gallery") => {
