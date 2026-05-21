@@ -2908,6 +2908,27 @@ export default function LiveScreen() {
             </Text>
           </TouchableOpacity>
 
+          {/* ── Smart Glass HUD button — always visible in bottom bar ── */}
+          <TouchableOpacity
+            style={[styles.boatModeBtn, {
+              backgroundColor: hudPanel ? "#ffd70018" : "#ffffff08",
+              borderColor: hudPanel ? "#ffd70088" : "#ffffff22",
+            }]}
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setInsta360Panel(false);
+              setCam2Panel(false);
+              setSmartlifePanel(false);
+              setHudPanel((v) => !v);
+            }}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons name="glasses" size={20} color={hudPanel ? "#ffd700" : "#ffffff88"} />
+            <Text style={[styles.boatModeBtnText, { color: hudPanel ? "#ffd700" : "#ffffff88" }]}>
+              🎯 CAST HUD — Glasses Mode
+            </Text>
+          </TouchableOpacity>
+
           <Text style={[styles.hint, { color: "#ffffffcc" }]}>
             {boatMode
               ? boatLive
