@@ -1941,30 +1941,6 @@ export default function LiveScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* ── Smart Glass HUD chip ─────────────────────────────────── */}
-              <TouchableOpacity
-                style={[
-                  styles.chip,
-                  hudPanel
-                    ? { backgroundColor: "#ffd70022", borderColor: "#ffd70088" }
-                    : { backgroundColor: "#ffffff11", borderColor: "#ffffff33" },
-                ]}
-                onPress={() => {
-                  setInsta360Panel(false);
-                  setCam2Panel(false);
-                  setSmartlifePanel(false);
-                  setHudPanel((v) => !v);
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="glasses"
-                  size={14}
-                  color={hudPanel ? "#ffd700" : "#ffffff88"}
-                />
-                <Text style={[styles.chipText, { color: hudPanel ? "#ffd700" : "#ffffff88" }]}>
-                  HUD
-                </Text>
-              </TouchableOpacity>
 
               <NarratorSettingsTrigger />
             </View>
@@ -3556,6 +3532,29 @@ export default function LiveScreen() {
               <MaterialCommunityIcons name="play-circle" size={16} color="#0a1628" />
               <Text style={{ color: "#0a1628", fontSize: 13, fontFamily: "Inter_700Bold" }}>
                 {result ? "NEW AUTO-SCAN" : "START AUTO-SCAN"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* ── Smart Glass HUD button ───────────────────────────────────── */}
+            <TouchableOpacity
+              style={{
+                flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+                backgroundColor: hudPanel ? "#ffd70018" : "#ffffff08",
+                borderRadius: 12, paddingVertical: 13,
+                borderWidth: 1.5,
+                borderColor: hudPanel ? "#ffd70088" : "#ffffff22",
+              }}
+              onPress={() => {
+                setInsta360Panel(false);
+                setCam2Panel(false);
+                setSmartlifePanel(false);
+                setHudPanel((v) => !v);
+              }}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons name="glasses" size={18} color={hudPanel ? "#ffd700" : "#ffffff88"} />
+              <Text style={{ color: hudPanel ? "#ffd700" : "#ffffff88", fontSize: 13, fontFamily: "Inter_700Bold", letterSpacing: 0.5 }}>
+                🎯 CAST HUD — Glasses Mode
               </Text>
             </TouchableOpacity>
 
