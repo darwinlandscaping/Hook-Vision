@@ -111,7 +111,7 @@ router.post("/boat-session", async (req, res) => {
         },
         { role: "user", content: userPrompt },
       ],
-    });
+    }, { signal: AbortSignal.timeout(45_000) });
 
     const narration =
       completion.choices[0]?.message?.content ??

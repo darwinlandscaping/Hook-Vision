@@ -139,7 +139,7 @@ router.post("/insta360/croc-vision", async (req, res) => {
           ] as Parameters<typeof openai.chat.completions.create>[0]["messages"][0]["content"],
         },
       ],
-    });
+    }, { signal: AbortSignal.timeout(25_000) });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     let parsed: any = {};

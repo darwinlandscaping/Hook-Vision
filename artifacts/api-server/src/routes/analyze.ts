@@ -84,7 +84,7 @@ router.post("/analyze", async (req, res) => {
         { role: "system", content: 'Sonar detector. JSON only: {"species":"string","fishCount":int,"confidence":float 0-1,"quickRead":"≤10 words"}' },
         { role: "user", content: [imgLow, { type: "text", text: "Quick read." }] },
       ],
-    });
+    }, { signal: AbortSignal.timeout(12_000) });
 
     // Build few-shot reference blocks — inject confirmed reference images before user's sonar image
     // so the model has visual examples of barra (positive), jack (negative), threadfin (negative) etc.
@@ -129,7 +129,7 @@ router.post("/analyze", async (req, res) => {
             { type: "text" as const, text: OUT },
           ] as any },
       ],
-    });
+    }, { signal: AbortSignal.timeout(50_000) });
 
     // ── Wait for both to be ready (flash done + stream connection open) ────
     // This guarantees flash is written BEFORE any turbo content.

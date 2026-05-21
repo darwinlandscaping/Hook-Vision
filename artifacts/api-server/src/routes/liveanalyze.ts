@@ -456,7 +456,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
           ]
         }
       ]
-    });
+    }, { signal: AbortSignal.timeout(12_000) });
 
     // ── Build reference package (few-shot visual grounding) ──────────────────
     // Order mirrors the 2D analyze route's proven injection pattern:
@@ -527,7 +527,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content },
       ]
-    });
+    }, { signal: AbortSignal.timeout(50_000) });
 
     // Open streaming headers
     res.setHeader("Content-Type", "text/plain; charset=utf-8");

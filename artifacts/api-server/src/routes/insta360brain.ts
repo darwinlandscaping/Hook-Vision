@@ -134,7 +134,7 @@ router.post("/insta360/brain/stream", async (req, res) => {
         { role: "system", content: SYSTEM },
         { role: "user",   content },
       ],
-    });
+    }, { signal: AbortSignal.timeout(25_000) });
 
     let full = "";
     let tokenCount = 0;
@@ -206,7 +206,7 @@ router.post("/insta360/brain", async (req, res) => {
         { role: "system", content: SYSTEM },
         { role: "user",   content },
       ],
-    });
+    }, { signal: AbortSignal.timeout(25_000) });
 
     const raw     = completion.choices[0]?.message?.content?.trim() ?? "{}";
     const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");

@@ -318,7 +318,7 @@ Rules:
       max_completion_tokens: 500,
       response_format: { type: "json_object" },
       messages: [{ role: "user", content: prompt }],
-    });
+    }, { signal: AbortSignal.timeout(40_000) });
 
     let parsed: Record<string, unknown> = {};
     try { parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}"); } catch {}

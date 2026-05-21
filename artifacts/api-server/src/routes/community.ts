@@ -211,7 +211,7 @@ Rules:
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 1200,
       response_format: { type: "json_object" },
-    });
+    }, { signal: AbortSignal.timeout(40_000) });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     let parsed: Record<string, unknown>;
@@ -347,7 +347,7 @@ router.get("/community/compare", async (req, res) => {
           content: `Compare the sonar signatures of ${a} vs ${b}. Why might a sonar AI identify one when the other is expected?`,
         },
       ],
-    });
+    }, { signal: AbortSignal.timeout(30_000) });
     const explanation = completion.choices[0]?.message?.content?.trim() ?? "";
     res.json({ explanation });
   } catch (err) {

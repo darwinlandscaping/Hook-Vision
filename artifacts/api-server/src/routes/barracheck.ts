@@ -182,9 +182,10 @@ router.post("/barra-check", async (req, res) => {
     };
 
     // ── Dual-scan consensus: 2 independent parallel calls ────────────────
+    const barracheckSig = AbortSignal.timeout(25_000);
     const [res1, res2] = await Promise.all([
-      openai.chat.completions.create(callOpts),
-      openai.chat.completions.create(callOpts),
+      openai.chat.completions.create(callOpts, { signal: barracheckSig }),
+      openai.chat.completions.create(callOpts, { signal: barracheckSig }),
     ]);
 
     function parseResult(r: typeof res1): Record<string, unknown> {

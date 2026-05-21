@@ -90,7 +90,7 @@ router.post("/sonar-validate", async (req, res) => {
           ],
         },
       ],
-    });
+    }, { signal: AbortSignal.timeout(20_000) });
 
     const raw   = completion.choices[0]?.message?.content ?? "{}";
     const clean = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();

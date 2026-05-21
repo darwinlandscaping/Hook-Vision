@@ -188,7 +188,7 @@ Based on these exact conditions and the depth zone database, tell me exactly whe
         { role: "system", content: getBarraPrompt(region) },
         { role: "user", content: conditionsSummary },
       ],
-    });
+    }, { signal: AbortSignal.timeout(55_000) });
 
     const raw = response.choices[0]?.message?.content ?? "{}";
     const cleaned = raw.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();

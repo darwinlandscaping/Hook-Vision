@@ -316,7 +316,7 @@ Based on these exact conditions, give me the 3 best ${label} fishing spots right
         { role: "system", content: getPrompt(region) },
         { role: "user", content: conditionsSummary },
       ],
-    });
+    }, { signal: AbortSignal.timeout(55_000) });
 
     const raw = response.choices[0]?.message?.content ?? "{}";
     const cleaned = raw.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();

@@ -316,9 +316,10 @@ router.post("/sonar-barra-check", async (req, res) => {
     };
 
     // ── Dual-scan consensus: 2 independent parallel calls ────────────────
+    const sonarCheckSig = AbortSignal.timeout(25_000);
     const [res1, res2] = await Promise.all([
-      openai.chat.completions.create(callOpts),
-      openai.chat.completions.create(callOpts),
+      openai.chat.completions.create(callOpts, { signal: sonarCheckSig }),
+      openai.chat.completions.create(callOpts, { signal: sonarCheckSig }),
     ]);
 
     function parseResult(r: typeof res1): Record<string, unknown> {

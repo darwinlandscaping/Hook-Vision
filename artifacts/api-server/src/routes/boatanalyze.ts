@@ -53,7 +53,7 @@ router.post("/boat-analyze", async (req, res) => {
         { role: "system", content: SINGLE_SYS },
         { role: "user", content },
       ],
-    });
+    }, { signal: AbortSignal.timeout(20_000) });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const clean = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
@@ -210,7 +210,7 @@ router.post("/boat-cycle", async (req, res) => {
         { role: "system", content: CYCLE_SYS },
         { role: "user", content },
       ],
-    });
+    }, { signal: AbortSignal.timeout(50_000) });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const clean = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();

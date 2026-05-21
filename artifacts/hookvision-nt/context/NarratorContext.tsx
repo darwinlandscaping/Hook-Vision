@@ -454,6 +454,7 @@ export function NarratorProvider({ children }: { children: React.ReactNode }) {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body:    JSON.stringify({ content, character, language, pageType }),
+          signal:  AbortSignal.timeout(30_000),
         });
         if (!resp.ok) throw new Error(`Narrate HTTP ${resp.status}`);
         const { text } = await resp.json();
