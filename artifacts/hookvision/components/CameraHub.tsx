@@ -2,22 +2,25 @@
  * CameraHub — zero-setup live camera section.
  *
  * Insta360 (ONE X3 / X4 / RS / Go 3):
- *   - Auto-connects via context on app start (no button press).
- *   - When connected, sends camera.startPreview via OSC, then plays the
- *     live RTSP stream at rtsp://192.168.42.1/live/preview via expo-video.
- *   - If RTSP fails (model mismatch / firewall), falls back to 6-s snapshot.
+ *   Full Open Platform SDK control via WiFi OSC API:
+ *   • Auto-connects, sends camera.startPreview, plays live RTSP stream.
+ *   • Battery, storage, temperature status bar.
+ *   • VIDEO / PHOTO mode tabs + big record / capture button.
+ *   • Resolution, FPS, EV, stabilisation, white balance settings.
+ *   • On-camera file browser with delete.
+ *   • Falls back → snapshot polling if RTSP fails.
  *   → connect phone to "Insta360 X4-XXXXXX" WiFi hotspot.
  *
  * SmartLife / Tuya IP cameras:
- *   - Auto-scans all known Tuya IPs on mount.
- *   - Shows live MJPEG via WebView; falls back to 2-s snapshot polling.
+ *   • Auto-scans all known Tuya IPs on mount.
+ *   • Shows live MJPEG via WebView; falls back to 2-s snapshot polling.
  *   → connect phone to "SmartLife_XXXX" hotspot or home LAN.
  */
 import React, {
   useCallback, useEffect, useRef, useState,
 } from "react";
 import {
-  Animated, Image, Platform, StyleSheet, Text,
+  Animated, Image, StyleSheet, Text,
   TouchableOpacity, View,
 } from "react-native";
 import { WebView } from "react-native-webview";
@@ -25,12 +28,13 @@ import { VideoView, useVideoPlayer } from "expo-video";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useInsta360Context } from "@/contexts/Insta360Context";
 import { useCameraScanner, type DiscoveredCamera } from "@/hooks/useCameraScanner";
+import { Insta360ControlPanel } from "@/components/Insta360ControlPanel";
 
-// ─── Insta360 RTSP URLs to try (in order) ────────────────────────────────────
+// ─── Insta360 RTSP candidates ─────────────────────────────────────────────────
 const RTSP_CANDIDATES = [
-  "rtsp://192.168.42.1/live/preview",   // ONE X3 / X4
-  "rtsp://192.168.42.1/live",           // some RS / older firmware
-  "rtsp://192.168.42.1:8554/live",      // alternate port
+  "rtsp://192.168.42.1/live/preview",  // ONE X3 / X4 — primary
+  "rtsp://192.168.42.1/live",          // RS / older firmware
+  "rtsp://192.168.42.1:8554/live",     // alternate port
 ];
 
 const C = {
@@ -47,7 +51,7 @@ const C = {
   dim:    "rgba(255,255,255,0.72)",
 };
 
-// ─── Pulsing status dot ───────────────────────────────────────────────────────
+// ─── Pulsing dot ──────────────────────────────────────────────────────────────
 function PulseDot({ color }: { color: string }) {
   const anim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -61,22 +65,14 @@ function PulseDot({ color }: { color: string }) {
   return <Animated.View style={[S.dot, { backgroundColor: color, opacity: anim }]} />;
 }
 
-// ─── RTSP live player (separate component — useVideoPlayer must be called
-//     unconditionally per React hook rules) ────────────────────────────────────
-function RtspPlayer({
-  url,
-  onError,
-}: {
-  url: string;
-  onError: () => void;
-}) {
+// ─── RTSP player (separate component — useVideoPlayer must be unconditional) ──
+function RtspPlayer({ url, onError }: { url: string; onError: () => void }) {
   const player = useVideoPlayer(url, (p) => {
-    p.loop = true;
+    p.loop  = true;
     p.muted = true;
     p.play();
   });
 
-  // Detect error via status polling — expo-video fires status events
   useEffect(() => {
     const sub = player.addListener("statusChange", ({ status, error }) => {
       if (status === "error" || error) onError();
@@ -99,39 +95,30 @@ function RtspPlayer({
 type InstaMode = "idle" | "starting" | "rtsp" | "rtsp-error" | "snapshot";
 
 function Insta360Card() {
-  const { camera, pipelines } = useInsta360Context();
+  const { camera, pipelines, osc } = useInsta360Context();
   const { status, cameraInfo, connectionHint, activeBaseUrl } = camera;
 
   const isConnected = status === "connected";
   const isSearching = status === "searching";
 
-  const [mode, setMode]           = useState<InstaMode>("idle");
-  const [rtspUrl, setRtspUrl]     = useState(RTSP_CANDIDATES[0]);
-  const [rtspAttempt, setAttempt] = useState(0);
-  const prevConnected             = useRef(false);
-  const pipelineStarted           = useRef(false);
+  const [mode,       setMode]       = useState<InstaMode>("idle");
+  const [rtspUrl,    setRtspUrl]    = useState(RTSP_CANDIDATES[0]);
+  const [rtspAttempt, setAttempt]   = useState(0);
+  const prevConnected               = useRef(false);
+  const pipelineStarted             = useRef(false);
 
-  // ── Send camera.startPreview via OSC, then activate RTSP player ──────────
+  // ── Send camera.startPreview → activate RTSP player ──────────────────────
   const startPreview = useCallback(async (baseUrl: string) => {
     setMode("starting");
-    try {
-      await fetch(`${baseUrl}/osc/commands/execute`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ name: "camera.startPreview" }),
-        signal:  AbortSignal.timeout(5000),
-      });
-    } catch {
-      // startPreview may return non-200 on some firmware — still try RTSP
-    }
-    // Give the camera 1.5 s to open the stream before the player connects
+    // Use the full OSC SDK to start preview with proper params
+    const rtspUrlResult = await osc.startPreview({ resolution: "1280x720", bitrateBps: 2_000_000 });
     await new Promise((r) => setTimeout(r, 1500));
-    setRtspUrl(RTSP_CANDIDATES[0]);
+    setRtspUrl(rtspUrlResult ?? RTSP_CANDIDATES[0]);
     setAttempt(0);
     setMode("rtsp");
-  }, []);
+  }, [osc]);
 
-  // ── When camera first connects, kick off preview sequence ─────────────────
+  // ── Connect / disconnect ──────────────────────────────────────────────────
   useEffect(() => {
     if (isConnected && !prevConnected.current) {
       prevConnected.current = true;
@@ -143,7 +130,7 @@ function Insta360Card() {
     }
   }, [isConnected, activeBaseUrl, startPreview]);
 
-  // ── Auto-start pipelines for snapshot fallback / AI detections ───────────
+  // ── Auto-start pipelines for snapshot fallback / AI ───────────────────────
   useEffect(() => {
     if (isConnected && !pipelineStarted.current) {
       pipelineStarted.current = true;
@@ -152,7 +139,7 @@ function Insta360Card() {
     if (!isConnected) pipelineStarted.current = false;
   }, [isConnected]);
 
-  // ── RTSP error → try next candidate or fall back to snapshot ─────────────
+  // ── RTSP error → try next candidate ──────────────────────────────────────
   const handleRtspError = useCallback(() => {
     const next = rtspAttempt + 1;
     if (next < RTSP_CANDIDATES.length) {
@@ -163,17 +150,17 @@ function Insta360Card() {
     }
   }, [rtspAttempt]);
 
-  // ── Use snapshot mode as fallback ─────────────────────────────────────────
   const useSnapshot = useCallback(() => setMode("snapshot"), []);
   const retryRtsp   = useCallback(() => {
     setAttempt(0);
-    setRtspUrl(RTSP_CANDIDATES[0]);
     startPreview(activeBaseUrl);
   }, [activeBaseUrl, startPreview]);
 
   const dotColor   = isConnected ? C.green : isSearching ? C.gold : C.mute;
   const statusText = isConnected
-    ? mode === "rtsp" ? "LIVE · RTSP" : mode === "snapshot" ? "LIVE · SNAPSHOT" : "CONNECTING…"
+    ? mode === "rtsp"     ? "LIVE · RTSP"
+    : mode === "snapshot" ? "LIVE · SNAPSHOT"
+    :                       "CONNECTING…"
     : isSearching ? "SEARCHING…" : "OFFLINE";
 
   return (
@@ -192,7 +179,7 @@ function Insta360Card() {
       </View>
 
       {/* Feed area */}
-      {isConnected && (mode === "starting") && (
+      {isConnected && mode === "starting" && (
         <View style={[S.feedContainer, S.feedWaiting]}>
           <MaterialCommunityIcons name="access-point" size={32} color={C.purple + "88"} />
           <Text style={S.waitText}>Starting live preview…</Text>
@@ -277,6 +264,9 @@ function Insta360Card() {
         </View>
       )}
 
+      {/* Full SDK control panel — battery, storage, mode, record, settings, files */}
+      {isConnected && <Insta360ControlPanel osc={osc} />}
+
       {/* AI detection chips */}
       {isConnected && (pipelines.surface?.activity || pipelines.croc?.detected) && (
         <View style={S.detectRow}>
@@ -319,39 +309,28 @@ function SmartLifeStream({ baseUrl }: { baseUrl: string }) {
   <div id="msg">connecting…</div>
   <script>
     var BASE  = ${JSON.stringify(baseUrl)};
-    var PATHS = [
-      "/videostream.cgi",
-      "/cgi-bin/videostream.cgi",
-      "/mjpeg.cgi",
-      "/stream",
-      "/video",
-    ];
+    var PATHS = ["/videostream.cgi","/cgi-bin/videostream.cgi","/mjpeg.cgi","/stream","/video"];
     var SNAP  = "/snapshot.cgi";
     var img   = document.getElementById("f");
     var msg   = document.getElementById("msg");
-    var tried = 0;
-    var tick  = 0;
-
+    var tried = 0, tick = 0;
     function loadMjpeg(path) {
       img.onerror = function() {
         tried++;
-        if (tried < PATHS.length) { loadMjpeg(PATHS[tried]); }
+        if (tried < PATHS.length) loadMjpeg(PATHS[tried]);
         else { msg.textContent = "LIVE · snapshot"; startSnap(); }
       };
       img.onload = function() { msg.textContent = "LIVE · stream"; };
       img.src = BASE + path;
     }
-
     function startSnap() {
       function refresh() {
-        img.onerror = null;
-        img.onload  = null;
+        img.onerror = null; img.onload = null;
         img.src = BASE + SNAP + "?_=" + (++tick);
       }
       refresh();
       setInterval(refresh, 2000);
     }
-
     loadMjpeg(PATHS[0]);
   </script>
 </body>
@@ -394,8 +373,7 @@ function SmartLifeCard() {
   const isScanning = scanner.scanning && !cam;
   const dotColor   = isLive ? C.green : isScanning ? C.gold : C.mute;
   const statusText = isLive ? "LIVE" : isScanning ? "SCANNING…" : "OFFLINE";
-
-  const rescan = useCallback(() => { setCam(null); scanner.scan("SmartLife"); }, [scanner]);
+  const rescan     = useCallback(() => { setCam(null); scanner.scan("SmartLife"); }, [scanner]);
 
   return (
     <View style={[S.camCard, { borderColor: isLive ? C.teal2 + "66" : C.border }]}>
@@ -505,11 +483,7 @@ const S = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.8,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
+  dot: { width: 6, height: 6, borderRadius: 3 },
 
   rescanBtn: { padding: 4 },
 
@@ -523,20 +497,11 @@ const S = StyleSheet.create({
     borderWidth: 1,
     backgroundColor: "transparent",
   },
-  actionBtnText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-  },
+  actionBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
-  feedContainer: {
-    borderTopWidth: 1,
-    borderTopColor: C.border,
-  },
-  streamView: {
-    width: "100%",
-    height: 220,
-    backgroundColor: "#000",
-  },
+  feedContainer: { borderTopWidth: 1, borderTopColor: C.border },
+  streamView:    { width: "100%", height: 220, backgroundColor: "#000" },
+
   feedWaiting: {
     height: 160,
     alignItems: "center",
@@ -555,8 +520,7 @@ const S = StyleSheet.create({
 
   scanOverlay: {
     position: "absolute",
-    top: 8,
-    right: 8,
+    top: 8, right: 8,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
@@ -565,11 +529,7 @@ const S = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
-  scanOverlayText: {
-    color: C.teal,
-    fontSize: 9,
-    fontFamily: "Inter_600SemiBold",
-  },
+  scanOverlayText: { color: C.teal, fontSize: 9, fontFamily: "Inter_600SemiBold" },
 
   frameFooter: {
     flexDirection: "row",
@@ -581,27 +541,12 @@ const S = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: C.border,
   },
-  frameFooterText: {
-    fontSize: 9,
-    fontFamily: "Inter_400Regular",
-    color: C.mute,
-  },
+  frameFooterText: { fontSize: 9, fontFamily: "Inter_400Regular", color: C.mute },
 
-  waitText: {
-    color: C.mute,
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
-  waitSub: {
-    color: "#ffffff22",
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-  },
-  offlineTitle: {
-    color: "#ffffff55",
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
+  waitText: { color: C.mute, fontSize: 12, fontFamily: "Inter_500Medium" },
+  waitSub:  { color: "#ffffff22", fontSize: 10, fontFamily: "Inter_400Regular" },
+
+  offlineTitle: { color: "#ffffff55", fontSize: 13, fontFamily: "Inter_600SemiBold" },
   offlineInstr: {
     color: "#ffffff33",
     fontSize: 11,
@@ -635,8 +580,5 @@ const S = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  detectChipText: {
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
-  },
+  detectChipText: { fontSize: 10, fontFamily: "Inter_700Bold" },
 });
