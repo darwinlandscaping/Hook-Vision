@@ -18,6 +18,7 @@ import { useColors } from "@/hooks/useColors";
 import { LilyPadCard } from "@/components/LilyPadCard";
 import { NarratorButton } from "@/components/NarratorButton";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
+import { CameraHub } from "@/components/CameraHub";
 
 const HV_LOGO = require("@/assets/images/hv-logo2-nobg.png");
 
@@ -108,6 +109,8 @@ export default function HomeScreen() {
   const colors  = useColors();
   const insets  = useSafeAreaInsets();
   const topPad  = Platform.OS === "web" ? 0 : insets.top;
+  const domain  = process.env["EXPO_PUBLIC_DOMAIN"];
+  const apiBase = domain ? `https://${domain}` : "";
 
   // WA clock ticks every minute so golden hour updates live
   const [darwin, setDarwin] = useState(getDarwinTime);
@@ -381,6 +384,10 @@ export default function HomeScreen() {
           </LilyPadCard>
         </>
       )}
+
+      {/* ── LIVE CAMERAS ── */}
+      <Text style={[S.sectionHead, { color: colors.mutedForeground }]}>LIVE CAMERAS</Text>
+      <CameraHub apiBase={apiBase} />
 
       <NarratorButton
         pageType="home"
