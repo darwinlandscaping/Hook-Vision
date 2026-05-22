@@ -27,6 +27,7 @@ import { useColors } from "@/hooks/useColors";
 import { NarratorButton } from "@/components/NarratorButton";
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 // ─── Moon phase ────────────────────────────────────────────────────────────────
 function getMoonPhase(date: Date): { name: string; day: number; tideType: string; emoji: string } {
@@ -579,7 +580,7 @@ function BarraScreenInner() {
   })();
 
   const [nextTide, setNextTide] = useState<(TideEntry & { minutesUntil: number }) | null>(null);
-  const [isOffline, setIsOffline] = useState(false);
+  const { isOnline } = useNetworkStatus();
   const [tidesError, setTidesError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [result,   setResult]   = useState<BarraResult | null>(null);
@@ -600,13 +601,13 @@ function BarraScreenInner() {
     fetch(`${baseUrl}/api/tides?port=darwin&days=2`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((d) => {
-        setIsOffline(false);
+
         const all: TideEntry[] = [];
         if (d.data) for (const day of d.data) for (const t of day.tides) all.push(t);
         const nowMs = Date.now();
         const next = all.filter((t) => t.timestamp > nowMs - 30 * 60000).sort((a, b) => a.timestamp - b.timestamp)[0];
         if (next) setNextTide({ ...next, minutesUntil: Math.round((next.timestamp - nowMs) / 60000) });
-      }).catch((e: unknown) => { setTidesError(true); if (e instanceof TypeError) setIsOffline(true); })
+      }).catch(() => { setTidesError(true); })
       .finally(() => clearTimeout(timer));
   }, [retryCount]);
 
@@ -644,7 +645,7 @@ function BarraScreenInner() {
     >
       <HVHeader subtitle="Savage Barra Nation — NT's Barramundi Hub" />
 
-      {isOffline && (
+      {!isOnline && (
         <View style={{ backgroundColor: "#ff8c00", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 10, flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Text style={{ fontSize: 15 }}>📶</Text>
           <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13, flex: 1 }}>No connection — live data unavailable. Connect to Wi-Fi or mobile data.</Text>

@@ -29,6 +29,7 @@ import { useColors } from "@/hooks/useColors";
 import { NarratorButton } from "@/components/NarratorButton";
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 // ─── Moon Phase Calculation ───────────────────────────────────────────────────
 function getMoonPhase(date: Date): {
@@ -637,6 +638,7 @@ export default function ForecastScreen() {
   const [forecast, setForecast] = useState<ForecastResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isOnline } = useNetworkStatus();
   const [crocGuard, setCrocGuard] = useState<CrocGuardState | null>(null);
   const [deterrent, setDeterrent] = useState<DeterrentState | null>(null);
 
@@ -760,6 +762,14 @@ export default function ForecastScreen() {
       showsVerticalScrollIndicator={false}
     >
       <HVHeader subtitle="Here Fishy Fishy" />
+
+      {!isOnline && (
+        <View style={{ backgroundColor: "#ff8c00", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 4, flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text style={{ fontSize: 15 }}>📶</Text>
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13, flex: 1 }}>AI server offline — forecasts unavailable. Will recover automatically.</Text>
+        </View>
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>

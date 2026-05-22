@@ -41,6 +41,7 @@ import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { getVision, quickScan, visionStatusSync, type MobileSonarScan } from "@/services/vision";
 import { LiveScanStore } from "@/stores/LiveScanStore";
 import { useHudStream } from "@/hooks/useHudStream";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 interface FishAnalysis {
   fishCount: number;
@@ -739,6 +740,7 @@ export default function HomeScreen() {
   const { addEntry } = useHistory();
   const { autoSpeak, speak, character, stop: stopSpeaking } = useNarrator();
   const hud = useHudStream();
+  const { isOnline } = useNetworkStatus();
   const scrollViewRef = useRef<ScrollView>(null);
 
   useAutoNarrate(() => imageUri ? "" : "Sonar Analyser. Load a photo of your sonar screen, or tap the camera button to scan and get instant AI fish detection.");
@@ -2034,6 +2036,13 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
     >
       <HVHeader subtitle="NQ Gulf Country Fishing" />
+
+      {!isOnline && (
+        <View style={{ backgroundColor: "#ff8c00", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 4, flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text style={{ fontSize: 15 }}>📶</Text>
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13, flex: 1 }}>AI server offline — will retry automatically when back online.</Text>
+        </View>
+      )}
 
       {/* ── HERO CARD 1: Scan Sonar ── */}
       <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: "#00d4aa55" }]}>
