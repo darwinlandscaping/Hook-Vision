@@ -110,7 +110,6 @@ export default function HomeScreen() {
   const insets  = useSafeAreaInsets();
   const topPad  = Platform.OS === "web" ? 0 : insets.top;
   const domain  = process.env["EXPO_PUBLIC_DOMAIN"];
-  const apiBase = domain ? `https://${domain}` : "";
 
   // Darwin clock ticks every minute so golden hour updates live
   const [darwin, setDarwin] = useState(getDarwinTime);
@@ -383,7 +382,7 @@ export default function HomeScreen() {
 
       {/* ── LIVE CAMERAS ── */}
       <Text style={[S.sectionHead, { color: colors.mutedForeground }]}>LIVE CAMERAS</Text>
-      <CameraHub apiBase={apiBase} />
+      <CameraHub />
 
       <NarratorButton
         pageType="home"
