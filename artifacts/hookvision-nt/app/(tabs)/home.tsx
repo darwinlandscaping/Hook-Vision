@@ -18,7 +18,6 @@ import { useColors } from "@/hooks/useColors";
 import { LilyPadCard } from "@/components/LilyPadCard";
 import { NarratorButton } from "@/components/NarratorButton";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
-import { CameraHub } from "@/components/CameraHub";
 
 const HV_LOGO = require("@/assets/images/hv-logo2-nobg.png");
 
@@ -65,7 +64,6 @@ const TILES = [
   { label: "Species\nGuide",  emoji: "🐟", route: "/(tabs)/species",      border: "#4caf5055" },
   { label: "Fishy\nForecast", emoji: "🎣", route: "/(tabs)/forecast",     border: "#ffd70055" },
   { label: "Strike\nZones",   emoji: "🗺️",  route: "/(tabs)/zones",        border: "#ff980055" },
-  { label: "360°\nCamera",    emoji: "📷", route: "/(tabs)/insta360",     border: "#a855f755" },
   { label: "Subscribe\n⭐ Pro", emoji: "💳", route: "/(tabs)/subscription", border: "#ffd70055" },
   { label: "Scan\nHistory",   emoji: "📖", route: "/(tabs)/history",      border: "#e91e6355" },
   { label: "Demo\nScans",     emoji: "🖼️", route: "/(tabs)/demo",         border: "#7986cb55" },
@@ -379,10 +377,6 @@ export default function HomeScreen() {
           </LilyPadCard>
         </>
       )}
-
-      {/* ── LIVE CAMERAS ── */}
-      <Text style={[S.sectionHead, { color: colors.mutedForeground }]}>LIVE CAMERAS</Text>
-      <CameraHub />
 
       <NarratorButton
         pageType="home"

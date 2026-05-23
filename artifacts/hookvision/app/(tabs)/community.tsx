@@ -501,12 +501,16 @@ export default function CommunityScreen() {
   // ── fetch brain stats ─────────────────────────────────────────────────────
   const fetchBrainStats = useCallback(async () => {
     setLoadingBrain(true);
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10_000);
     try {
-      const res = await fetch(`${BASE_URL}/api/brain/stats`, { signal: AbortSignal.timeout(10_000) });
+      const res = await fetch(`${BASE_URL}/api/brain/stats`, { signal: ctrl.signal });
+      clearTimeout(timer);
       if (!res.ok) return;
       const data = await res.json() as BrainStats & { ok: boolean };
       setBrainStats(data);
     } catch { /* silent */ } finally {
+      clearTimeout(timer);
       setLoadingBrain(false);
     }
   }, []);
