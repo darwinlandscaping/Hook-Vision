@@ -20,7 +20,7 @@ import React, {
   useCallback, useEffect, useRef, useState,
 } from "react";
 import {
-  Animated, Image, StyleSheet, Text,
+  Animated, Image, Linking, StyleSheet, Text,
   TouchableOpacity, View,
 } from "react-native";
 import { WebView } from "react-native-webview";
@@ -251,16 +251,24 @@ function Insta360Card() {
 
       {!isConnected && (
         <View style={[S.feedContainer, S.feedOffline]}>
-          <MaterialCommunityIcons name="wifi-off" size={32} color={C.mute} />
-          <Text style={S.offlineTitle}>Not connected</Text>
+          <MaterialCommunityIcons name="rotate-360" size={36} color={C.purple + "66"} />
+          <Text style={S.offlineTitle}>Camera not connected</Text>
           <Text style={S.offlineInstr}>
-            Turn on your Insta360{"\n"}Connect phone WiFi to:{"\n"}
+            Turn on your Insta360, then connect your phone WiFi to the camera's hotspot —
+            it looks like{" "}
             <Text style={{ color: C.purple, fontWeight: "700" }}>Insta360 X4-XXXXXX</Text>
-            {"\n"}(your camera's hotspot name)
+            {" "}in your WiFi list.{"\n"}The app will connect automatically.
           </Text>
           {!!connectionHint && (
-            <Text style={S.hintText} numberOfLines={3}>{connectionHint}</Text>
+            <Text style={S.hintText}>{connectionHint}</Text>
           )}
+          <TouchableOpacity
+            style={[S.actionBtn, { borderColor: C.purple + "88", marginTop: 10 }]}
+            onPress={() => Linking.openSettings()}
+          >
+            <MaterialCommunityIcons name="wifi" size={13} color={C.purple} />
+            <Text style={[S.actionBtnText, { color: C.purple }]}>Open WiFi Settings</Text>
+          </TouchableOpacity>
         </View>
       )}
 
