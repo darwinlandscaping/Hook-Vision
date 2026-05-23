@@ -14,22 +14,14 @@ import { HUD_PAGE_URL } from "@/hooks/useHudStream";
 
 export default function HudTab() {
   const insets = useSafeAreaInsets();
-  const [key, setKey]         = useState(0);
+  const [key, setKey]       = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(false);
-  const [stopped, setStopped] = useState(false);
+  const [error, setError]   = useState(false);
 
   const reload = useCallback(() => {
     setError(false);
     setLoading(true);
-    setStopped(false);
     setKey((k) => k + 1);
-  }, []);
-
-  const stop = useCallback(() => {
-    setStopped(true);
-    setLoading(false);
-    setError(false);
   }, []);
 
   return (
@@ -39,50 +31,16 @@ export default function HudTab() {
         <View style={styles.headerLeft}>
           <MaterialCommunityIcons name="glasses" size={20} color="#ffd700" />
           <Text style={styles.headerTitle}>CAST HUD</Text>
-          {!stopped && (
-            <>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveLabel}>LIVE</Text>
-            </>
-          )}
-          {stopped && (
-            <View style={styles.stoppedBadge}>
-              <Text style={styles.stoppedBadgeText}>STOPPED</Text>
-            </View>
-          )}
+          <View style={styles.liveDot} />
+          <Text style={styles.liveLabel}>LIVE</Text>
         </View>
-        <View style={styles.headerRight}>
-          {!stopped && (
-            <TouchableOpacity onPress={stop} style={styles.stopBtn} hitSlop={12}>
-              <Feather name="square" size={16} color="#ff4400" />
-              <Text style={styles.stopBtnText}>Stop</Text>
-            </TouchableOpacity>
-          )}
-          {!stopped && (
-            <TouchableOpacity onPress={reload} style={styles.refreshBtn} hitSlop={12}>
-              <Feather name="refresh-cw" size={18} color="#ffffff88" />
-            </TouchableOpacity>
-          )}
-        </View>
+        <TouchableOpacity onPress={reload} style={styles.refreshBtn} hitSlop={12}>
+          <Feather name="refresh-cw" size={18} color="#ffffff88" />
+        </TouchableOpacity>
       </View>
 
-      {/* ── Stopped screen ────────────────────────────────────────────────── */}
-      {stopped && (
-        <View style={styles.stoppedBox}>
-          <MaterialCommunityIcons name="pause-circle-outline" size={64} color="#ffffff22" />
-          <Text style={styles.stoppedTitle}>HUD Stopped</Text>
-          <Text style={styles.stoppedSub}>
-            The HUD stream has been stopped.{"\n"}Tap Resume to reconnect.
-          </Text>
-          <TouchableOpacity style={styles.resumeBtn} onPress={reload}>
-            <Feather name="play" size={15} color="#ffd700" />
-            <Text style={styles.resumeText}>Resume HUD</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* ── WebView ───────────────────────────────────────────────────────── */}
-      {!stopped && error && (
+      {error ? (
         <View style={styles.errorBox}>
           <MaterialCommunityIcons name="wifi-off" size={48} color="#ffffff33" />
           <Text style={styles.errorTitle}>HUD Offline</Text>
@@ -93,9 +51,7 @@ export default function HudTab() {
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
-      )}
-
-      {!stopped && !error && (
+      ) : (
         <WebView
           key={key}
           source={{ uri: HUD_PAGE_URL }}
@@ -147,11 +103,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
   headerTitle: {
     color: "#fff",
     fontWeight: "700",
@@ -171,37 +122,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 1.5,
   },
-  stoppedBadge: {
-    backgroundColor: "#ff440022",
-    borderRadius: 5,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: "#ff440055",
-    marginLeft: 4,
-  },
-  stoppedBadgeText: {
-    color: "#ff4400",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-  },
-  stopBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: "#ff440018",
-    borderWidth: 1,
-    borderColor: "#ff440055",
-  },
-  stopBtnText: {
-    color: "#ff4400",
-    fontSize: 12,
-    fontWeight: "700",
-  },
   refreshBtn: {
     padding: 4,
   },
@@ -219,44 +139,6 @@ const styles = StyleSheet.create({
   loadingText: {
     color: "#ffffff88",
     fontSize: 13,
-  },
-  stoppedBox: {
-    flex: 1,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 14,
-    paddingHorizontal: 32,
-  },
-  stoppedTitle: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "700",
-    marginTop: 4,
-  },
-  stoppedSub: {
-    color: "#ffffff55",
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  resumeBtn: {
-    marginTop: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 28,
-    paddingVertical: 13,
-    backgroundColor: "#ffd70022",
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: "#ffd70066",
-  },
-  resumeText: {
-    color: "#ffd700",
-    fontWeight: "700",
-    fontSize: 15,
-    letterSpacing: 0.3,
   },
   errorBox: {
     flex: 1,
