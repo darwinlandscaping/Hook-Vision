@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getModel } from "../lib/models.js";
-import { getBirdFewShotRefs } from "../lib/birdLibrary.js";
+import { getBirdFewShotRefs, recordUserBirdSighting } from "../lib/birdLibrary.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
@@ -101,6 +102,29 @@ router.post("/bird-id", async (req, res) => {
     } catch {
       res.status(500).json({ error: "AI parse error", raw });
       return;
+    }
+
+    // ── Feed successful detection into the brain (fire-and-forget) ──────────
+    // Only store confident, real detections — skip if species is missing/unknown.
+    const species         = typeof parsed.species         === "string" ? parsed.species         : "";
+    const scientificName  = typeof parsed.scientificName  === "string" ? parsed.scientificName  : "";
+    const behavior        = typeof parsed.behavior        === "string" ? parsed.behavior        : "other";
+    const confidence      = typeof parsed.confidence      === "number" ? parsed.confidence      : 0;
+    const fishingIndicator     = typeof parsed.fishingIndicator     === "string" ? parsed.fishingIndicator     : "NONE";
+    const fishingSignificance  = typeof parsed.fishingSignificance  === "string" ? parsed.fishingSignificance  : "";
+    const description          = typeof parsed.description          === "string" ? parsed.description          : "";
+
+    if (species && species.toLowerCase() !== "unknown" && confidence >= 30) {
+      recordUserBirdSighting({
+        imageBase64,
+        species,
+        taxonName:   scientificName,
+        behavior,
+        confidence,
+        fishingIndicator,
+        fishingSignificance,
+        description,
+      }).catch((err) => logger.warn({ err: String(err) }, "recordUserBirdSighting error"));
     }
 
     res.json({ ...parsed, refPhotosUsed: refs.length });

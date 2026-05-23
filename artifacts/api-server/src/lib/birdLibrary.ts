@@ -33,7 +33,7 @@
 import { db, birdReferences } from "@workspace/db";
 import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { logger } from "./logger.js";
-import { makeThumbnailFromUrl } from "./imageUtils.js";
+import { makeThumbnailFromUrl, makeThumbnailFromBase64 } from "./imageUtils.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getModel } from "./models.js";
 
@@ -401,6 +401,73 @@ export function getBirdFewShotRefs(count = 3): BirdCachedRef[] {
   }
 
   return result.slice(0, count);
+}
+
+/**
+ * Record a live user bird detection from the Bird Detector feature.
+ * Compresses the photo to a thumbnail, inserts into birdReferences
+ * (source = "user_detection"), and force-rebuilds the in-memory cache
+ * so the new sighting is immediately available as few-shot context.
+ *
+ * Called fire-and-forget from /api/bird-id — never blocks the response.
+ */
+export async function recordUserBirdSighting(params: {
+  imageBase64:         string;
+  species:             string;
+  taxonName:           string;
+  behavior:            string;
+  confidence:          number;
+  fishingIndicator:    string;
+  fishingSignificance: string;
+  description:         string;
+}): Promise<void> {
+  try {
+    // Compress to a small thumbnail (256 px, quality 60) for fast few-shot injection
+    const thumb = await makeThumbnailFromBase64(params.imageBase64, 256, 60);
+
+    // Map behavior to poseType vocabulary
+    const poseMap: Record<string, string> = {
+      diving: "diving",
+      aerial: "aerial",
+      perched: "perched",
+      water: "water",
+      other: "perched",
+    };
+    const poseType = poseMap[params.behavior] ?? "aerial";
+
+    // Unique placeholder URL so photoUrl NOT NULL constraint is satisfied
+    const placeholderUrl = `user_detection:${Date.now()}:${params.species.replace(/\s+/g, "_")}`;
+
+    await db.insert(birdReferences).values({
+      source:       "user_detection",
+      species:      params.species.slice(0, 128),
+      taxonName:    params.taxonName.slice(0, 128),
+      photoUrl:     placeholderUrl,
+      thumbBase64:  thumb ?? undefined,
+      qualityGrade: "user_detected",
+      description:  `${params.fishingSignificance} [${params.fishingIndicator} indicator, ${params.confidence}% confidence]`.slice(0, 500),
+      poseType,
+      votes:        0,
+      active:       true,
+    });
+
+    // Force cache rebuild so this sighting is immediately usable as few-shot context
+    lastFetch = 0;
+    await rebuildCache();
+
+    logger.info(
+      {
+        species:          params.species,
+        confidence:       params.confidence,
+        fishingIndicator: params.fishingIndicator,
+        poseType,
+        hasThumb:         !!thumb,
+      },
+      "Bird sighting recorded to brain",
+    );
+  } catch (err) {
+    logger.warn({ err: String(err) }, "Failed to record bird sighting to brain — non-fatal");
+  }
 }
 
 /**
