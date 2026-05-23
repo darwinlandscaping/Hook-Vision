@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -64,37 +64,113 @@ const BEHAVIOR_LABEL: Record<string, string> = {
   other:   "· OTHER",
 };
 
+// ─── Lazy CameraView (web-safe) ───────────────────────────────────────────────
+let CameraView: React.ComponentType<any> | null = null;
+if (Platform.OS !== "web") {
+  try { CameraView = (require("expo-camera") as { CameraView: React.ComponentType<any> }).CameraView; } catch {}
+}
+
 // ─── Bird Detector Section ────────────────────────────────────────────────────
 function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> }) {
-  const [photo,   setPhoto]   = useState<string | null>(null);
-  const [result,  setResult]  = useState<BirdResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [photo,     setPhoto]     = useState<string | null>(null);
+  const [result,    setResult]    = useState<BirdResult | null>(null);
+  const [loading,   setLoading]   = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
+  const [liveMode,  setLiveMode]  = useState(false);
+  const [scanning,  setScanning]  = useState(false);
+  const [liveCount, setLiveCount] = useState(0);
+  const camRef        = useRef<any>(null);
+  const intervalRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scanActiveRef = useRef(false);
   const { speak, stop, speaking } = useVoice();
+
+  // Cleanup on unmount
+  useEffect(() => () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+  }, []);
+
+  const stopLive = useCallback(() => {
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    scanActiveRef.current = false;
+    setLiveMode(false);
+    setScanning(false);
+  }, []);
+
+  const runLiveScan = useCallback(async () => {
+    if (scanActiveRef.current || !camRef.current) return;
+    try {
+      scanActiveRef.current = true;
+      setScanning(true);
+      const pic = await (camRef.current as any).takePictureAsync({
+        base64: true, quality: 0.4, skipProcessing: true,
+      }) as { base64?: string; uri: string } | null;
+      if (!pic?.uri) return;
+      const compressed = await manipulateAsync(
+        pic.uri,
+        [{ resize: { width: 640 } }],
+        { format: SaveFormat.JPEG, compress: 0.65, base64: true },
+      );
+      const b64 = compressed.base64 ?? pic.base64 ?? "";
+      if (!b64) return;
+      const resp = await fetch(`${getBaseUrl()}/api/bird-id`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: b64 }),
+      });
+      if (!resp.ok) return;
+      const data: BirdResult = await resp.json();
+      setResult(data);
+      setLiveCount((n) => n + 1);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      // Push live sighting to HUD glasses
+      if (data.species && data.species.toLowerCase() !== "unknown" && data.confidence >= 30) {
+        fetch(`${getBaseUrl()}/api/hud/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            birdAlert:    `${data.species} — ${data.fishingIndicator} indicator`,
+            birdActivity: data.narration,
+            source:       "bird_live",
+          }),
+        }).catch(() => {});
+      }
+    } catch { /* non-fatal */ } finally {
+      scanActiveRef.current = false;
+      setScanning(false);
+    }
+  }, []);
+
+  const toggleLive = useCallback(async () => {
+    if (liveMode) { stopLive(); return; }
+    if (Platform.OS === "web" || !CameraView) {
+      setError("Live mode requires the mobile app.");
+      return;
+    }
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) { setError("Camera permission required for live mode."); return; }
+    setPhoto(null);
+    setError(null);
+    setResult(null);
+    setLiveMode(true);
+    setLiveCount(0);
+    setTimeout(runLiveScan, 800);
+    intervalRef.current = setInterval(runLiveScan, 6000);
+  }, [liveMode, stopLive, runLiveScan]);
 
   const openCamera = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setResult(null);
     setError(null);
-
+    stopLive();
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      setError("Camera permission required.");
-      return;
-    }
-
+    if (!perm.granted) { setError("Camera permission required."); return; }
     const picked = await ImagePicker.launchCameraAsync({
-      mediaTypes: "images",
-      allowsEditing: false,
-      quality: 0.9,
+      mediaTypes: "images", allowsEditing: false, quality: 0.9,
     });
-
     if (picked.canceled || !picked.assets[0]) return;
-
     const uri = picked.assets[0].uri;
     setPhoto(uri);
     setLoading(true);
-
     try {
       const { base64 } = await toJpeg(uri);
       const resp = await fetch(`${getBaseUrl()}/api/bird-id`, {
@@ -112,31 +188,22 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [stopLive]);
 
   const openLibrary = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setResult(null);
     setError(null);
-
+    stopLive();
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      setError("Photo library permission required.");
-      return;
-    }
-
+    if (!perm.granted) { setError("Photo library permission required."); return; }
     const picked = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: "images",
-      allowsEditing: false,
-      quality: 0.9,
+      mediaTypes: "images", allowsEditing: false, quality: 0.9,
     });
-
     if (picked.canceled || !picked.assets[0]) return;
-
     const uri = picked.assets[0].uri;
     setPhoto(uri);
     setLoading(true);
-
     try {
       const { base64 } = await toJpeg(uri);
       const resp = await fetch(`${getBaseUrl()}/api/bird-id`, {
@@ -154,7 +221,7 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [stopLive]);
 
   const indStyle = result ? (INDICATOR_STYLE[result.fishingIndicator] ?? INDICATOR_STYLE.NONE) : null;
 
@@ -164,6 +231,11 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
       <View style={BD.sectionHead}>
         <MaterialCommunityIcons name="bird" size={18} color={colors.primary} />
         <Text style={[BD.sectionTitle, { color: colors.primary }]}>BIRD DETECTOR</Text>
+        {liveMode && (
+          <View style={BD.liveDot}>
+            <Text style={BD.liveDotText}>● LIVE</Text>
+          </View>
+        )}
       </View>
       <Text style={[BD.sectionSub, { color: colors.mutedForeground }]}>
         Point camera at any bird — AI identifies species and live fishing significance
@@ -175,25 +247,74 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
           style={[BD.cameraBtn, { backgroundColor: colors.primary, flex: 1 }]}
           onPress={openCamera}
           activeOpacity={0.82}
-          disabled={loading}
+          disabled={loading || liveMode}
         >
           <Feather name="camera" size={20} color="#fff" />
-          <Text style={BD.cameraBtnText}>Take Photo</Text>
+          <Text style={BD.cameraBtnText}>Photo</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[BD.cameraBtn, { backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, flex: 0.7 }]}
           onPress={openLibrary}
           activeOpacity={0.82}
-          disabled={loading}
+          disabled={loading || liveMode}
         >
           <Feather name="image" size={18} color={colors.foreground} />
           <Text style={[BD.cameraBtnText, { color: colors.foreground }]}>Library</Text>
         </TouchableOpacity>
+
+        {/* LIVE button */}
+        <TouchableOpacity
+          style={[BD.cameraBtn, {
+            flex: 0.8,
+            backgroundColor: liveMode ? "#ff3b3020" : colors.secondary,
+            borderWidth: 1,
+            borderColor: liveMode ? "#ff3b30" : colors.border,
+          }]}
+          onPress={toggleLive}
+          activeOpacity={0.82}
+          disabled={loading}
+        >
+          <MaterialCommunityIcons
+            name={liveMode ? "stop-circle" : "broadcast"}
+            size={18}
+            color={liveMode ? "#ff3b30" : colors.foreground}
+          />
+          <Text style={[BD.cameraBtnText, { color: liveMode ? "#ff3b30" : colors.foreground }]}>
+            {liveMode ? "Stop" : "Live"}
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Photo preview + loading */}
-      {photo && (
+      {/* Live camera view */}
+      {liveMode && CameraView && (
+        <View style={BD.liveContainer}>
+          <CameraView
+            ref={camRef}
+            style={BD.liveCamera}
+            facing="back"
+            mode="picture"
+            flash="off"
+            animateShutter={false}
+            shutterSound={false}
+          />
+          <View style={BD.liveOverlay}>
+            <View style={BD.scanningPill}>
+              {scanning ? (
+                <ActivityIndicator size="small" color="#00ff88" />
+              ) : (
+                <View style={BD.livePulseDot} />
+              )}
+              <Text style={BD.scanningText}>
+                {scanning ? "Scanning…" : liveCount > 0 ? `${liveCount} scan${liveCount !== 1 ? "s" : ""}` : "Warming up…"}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Photo preview + loading (non-live) */}
+      {!liveMode && photo && (
         <View style={BD.previewBox}>
           <Image source={{ uri: photo }} style={BD.previewImg} resizeMode="cover" />
           {loading && (
@@ -213,9 +334,15 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
         </View>
       )}
 
-      {/* Result card */}
+      {/* Result card (photo and live mode) */}
       {result && !loading && (
-        <View style={[BD.resultCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[BD.resultCard, { backgroundColor: colors.card, borderColor: liveMode ? "#ff3b3055" : colors.border }]}>
+          {liveMode && (
+            <View style={BD.liveResultBadge}>
+              <View style={BD.livePulseDot} />
+              <Text style={BD.liveResultText}>LIVE DETECTION · HUD UPDATED</Text>
+            </View>
+          )}
           {/* Species header */}
           <View style={BD.resultHeader}>
             <View style={{ flex: 1 }}>
@@ -608,6 +735,17 @@ const BD = StyleSheet.create({
   narrateBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
   narrateBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   refNote:        { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center" },
+  // Live mode
+  liveDot:         { flexDirection: "row", alignItems: "center", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: "#ff3b3022", marginLeft: 4 },
+  liveDotText:     { fontSize: 10, fontFamily: "Inter_700Bold", color: "#ff3b30" },
+  liveContainer:   { borderRadius: 12, overflow: "hidden", height: 240, position: "relative" },
+  liveCamera:      { flex: 1 },
+  liveOverlay:     { position: "absolute", bottom: 10, left: 10 },
+  scanningPill:    { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: "#000000bb" },
+  scanningText:    { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#ffffff" },
+  livePulseDot:    { width: 8, height: 8, borderRadius: 4, backgroundColor: "#ff3b30" },
+  liveResultBadge: { flexDirection: "row", alignItems: "center", gap: 6 },
+  liveResultText:  { fontSize: 10, fontFamily: "Inter_700Bold", color: "#ff3b30", letterSpacing: 0.5 },
 });
 
 // ─── Species list styles ──────────────────────────────────────────────────────
