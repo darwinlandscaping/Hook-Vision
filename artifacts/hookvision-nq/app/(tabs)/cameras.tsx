@@ -234,7 +234,7 @@ function BrainRow({ icon, label, value, color }: { icon: string; label: string; 
 }
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
-export default function CamerasScreen() {
+function CamerasScreen({ embedded = false }: { embedded?: boolean }) {
   const insets  = useSafeAreaInsets();
   const { camera, pipelines } = useInsta360Context();
   const { status, activeBaseUrl, startSearchAt, stopSearch } = camera;
@@ -528,12 +528,7 @@ export default function CamerasScreen() {
     return () => anim.stop();
   }, []);
 
-  return (
-    <View style={[S.root, { backgroundColor: C.bg }]}>
-      <ScrollView contentContainerStyle={[S.scroll, { paddingTop: topPad + 8, paddingBottom: botPad }]}
-        showsVerticalScrollIndicator={false}>
-
-        <HVHeader subtitle="Camera Hub · WiFi + Bluetooth" />
+  const cameraContent = (<>
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={S.headerRow}>
@@ -778,10 +773,25 @@ export default function CamerasScreen() {
           )}
         </View>
 
+  </>);
+
+  if (embedded) {
+    return <View style={{ gap: 10, paddingHorizontal: 14 }}>{cameraContent}</View>;
+  }
+
+  return (
+    <View style={[S.root, { backgroundColor: C.bg }]}>
+      <ScrollView contentContainerStyle={[S.scroll, { paddingTop: topPad + 8, paddingBottom: botPad }]}
+        showsVerticalScrollIndicator={false}>
+        <HVHeader subtitle="Camera Hub · WiFi + Bluetooth" />
+        {cameraContent}
       </ScrollView>
     </View>
   );
 }
+
+export default CamerasScreen;
+export function CamerasContent() { return <CamerasScreen embedded />; }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({

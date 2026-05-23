@@ -16,7 +16,7 @@ import { Insta360Provider } from "@/contexts/Insta360Context";
 // insta360 is hidden from tab bar (accessed via Live tab chip)
 const TAB_ROUTES = [
   "live", "home", "buff", "tides", "species", "hud",
-  "barra", "zones", "forecast", "catchid", "demo", "history", "community", "smartlife", "cameras",
+  "barra", "zones", "forecast", "catchid", "demo", "history", "community", "smartlife",
 ] as const;
 
 function tabPath(name: string) {
@@ -81,10 +81,6 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="smartlife">
         <Icon sf={{ default: "video.badge.waveform", selected: "video.badge.waveform.fill" }} />
         <Label>SmartCam</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="cameras">
-        <Icon sf={{ default: "camera.fill", selected: "camera.fill" }} />
-        <Label>Camera</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -334,18 +330,8 @@ function ClassicTabLayout() {
             ),
         }}
       />
-      <Tabs.Screen
-        name="cameras"
-        options={{
-          title: "Camera",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="camera.fill" tintColor={color} size={22} />
-            ) : (
-              <MaterialCommunityIcons name="rotate-360" size={22} color={color} />
-            ),
-        }}
-      />
+      {/* cameras screen kept for route registration; content embedded in home tab */}
+      <Tabs.Screen name="cameras" options={{ href: null }} />
       {/* Hidden screens */}
       <Tabs.Screen name="web" options={{ href: null }} />
       <Tabs.Screen name="map" options={{ href: null }} />

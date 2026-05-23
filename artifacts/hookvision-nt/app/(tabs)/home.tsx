@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { useColors } from "@/hooks/useColors";
+import { CamerasContent } from "./cameras";
 import { LilyPadCard } from "@/components/LilyPadCard";
 import { NarratorButton } from "@/components/NarratorButton";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
@@ -377,6 +378,10 @@ export default function HomeScreen() {
           </LilyPadCard>
         </>
       )}
+
+      {/* ── CAMERA HUB ── */}
+      <Text style={[S.sectionHead, { color: colors.mutedForeground }]}>CAMERA HUB</Text>
+      <CamerasContent />
 
       <NarratorButton
         pageType="home"
