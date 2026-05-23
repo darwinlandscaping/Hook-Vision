@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   Platform,
@@ -11,12 +12,273 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import * as Haptics from "expo-haptics";
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { useFishImage } from "@/hooks/useFishImage";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
+import { useVoice } from "@/hooks/useVoice";
 import { WA_SPECIES, CATEGORIES, type WASpecies, type FishCategory } from "@/data/ntSpecies";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getBaseUrl(): string {
+  const d = process.env.EXPO_PUBLIC_DOMAIN;
+  return d ? `https://${d}` : "";
+}
+
+async function toJpeg(uri: string): Promise<{ base64: string }> {
+  const r = await manipulateAsync(uri, [{ resize: { width: 1024 } }], {
+    format: SaveFormat.JPEG, compress: 0.8, base64: true,
+  });
+  return { base64: r.base64 ?? "" };
+}
+
+// ─── Bird result types ────────────────────────────────────────────────────────
+interface BirdResult {
+  species:             string;
+  scientificName:      string;
+  confidence:          number;
+  behavior:            "diving" | "aerial" | "perched" | "other";
+  fishingIndicator:    "VERY HIGH" | "HIGH" | "MODERATE" | "LOW" | "NONE";
+  fishingSignificance: string;
+  description:         string;
+  narration:           string;
+  refPhotosUsed:       number;
+}
+
+// ─── Indicator colour mapping ─────────────────────────────────────────────────
+const INDICATOR_STYLE: Record<string, { color: string; bg: string }> = {
+  "VERY HIGH": { color: "#00ff66", bg: "#00c85020" },
+  HIGH:        { color: "#00d4aa", bg: "#00d4aa18" },
+  MODERATE:    { color: "#ffd700", bg: "#ffd70018" },
+  LOW:         { color: "#ff8800", bg: "#ff880018" },
+  NONE:        { color: "#666666", bg: "#66666612" },
+};
+
+const BEHAVIOR_LABEL: Record<string, string> = {
+  diving:  "🔽 DIVING",
+  aerial:  "🌀 AERIAL",
+  perched: "🪺 PERCHED",
+  other:   "· OTHER",
+};
+
+// ─── Bird Detector Section ────────────────────────────────────────────────────
+function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> }) {
+  const [photo,   setPhoto]   = useState<string | null>(null);
+  const [result,  setResult]  = useState<BirdResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+  const { speak, stop, speaking } = useVoice();
+
+  const openCamera = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setResult(null);
+    setError(null);
+
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      setError("Camera permission required.");
+      return;
+    }
+
+    const picked = await ImagePicker.launchCameraAsync({
+      mediaTypes: "images",
+      allowsEditing: false,
+      quality: 0.9,
+    });
+
+    if (picked.canceled || !picked.assets[0]) return;
+
+    const uri = picked.assets[0].uri;
+    setPhoto(uri);
+    setLoading(true);
+
+    try {
+      const { base64 } = await toJpeg(uri);
+      const resp = await fetch(`${getBaseUrl()}/api/bird-id`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data: BirdResult = await resp.json();
+      setResult(data);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } catch (err) {
+      setError(`Analysis failed: ${String(err)}`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const openLibrary = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setResult(null);
+    setError(null);
+
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      setError("Photo library permission required.");
+      return;
+    }
+
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsEditing: false,
+      quality: 0.9,
+    });
+
+    if (picked.canceled || !picked.assets[0]) return;
+
+    const uri = picked.assets[0].uri;
+    setPhoto(uri);
+    setLoading(true);
+
+    try {
+      const { base64 } = await toJpeg(uri);
+      const resp = await fetch(`${getBaseUrl()}/api/bird-id`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data: BirdResult = await resp.json();
+      setResult(data);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } catch (err) {
+      setError(`Analysis failed: ${String(err)}`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const indStyle = result ? (INDICATOR_STYLE[result.fishingIndicator] ?? INDICATOR_STYLE.NONE) : null;
+
+  return (
+    <View style={BD.wrapper}>
+      {/* Section header */}
+      <View style={BD.sectionHead}>
+        <MaterialCommunityIcons name="bird" size={18} color={colors.primary} />
+        <Text style={[BD.sectionTitle, { color: colors.primary }]}>BIRD DETECTOR</Text>
+      </View>
+      <Text style={[BD.sectionSub, { color: colors.mutedForeground }]}>
+        Point camera at any bird — AI identifies species and live fishing significance
+      </Text>
+
+      {/* Buttons row */}
+      <View style={BD.btnRow}>
+        <TouchableOpacity
+          style={[BD.cameraBtn, { backgroundColor: colors.primary, flex: 1 }]}
+          onPress={openCamera}
+          activeOpacity={0.82}
+          disabled={loading}
+        >
+          <Feather name="camera" size={20} color="#fff" />
+          <Text style={BD.cameraBtnText}>Take Photo</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[BD.cameraBtn, { backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, flex: 0.7 }]}
+          onPress={openLibrary}
+          activeOpacity={0.82}
+          disabled={loading}
+        >
+          <Feather name="image" size={18} color={colors.foreground} />
+          <Text style={[BD.cameraBtnText, { color: colors.foreground }]}>Library</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Photo preview + loading */}
+      {photo && (
+        <View style={BD.previewBox}>
+          <Image source={{ uri: photo }} style={BD.previewImg} resizeMode="cover" />
+          {loading && (
+            <View style={BD.previewOverlay}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[BD.scanLabel, { color: colors.primary }]}>Identifying bird…</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Error */}
+      {error && !loading && (
+        <View style={[BD.errorBox, { backgroundColor: `${colors.destructive}18`, borderColor: `${colors.destructive}55` }]}>
+          <Feather name="alert-triangle" size={14} color={colors.destructive} />
+          <Text style={[BD.errorText, { color: colors.destructive }]}>{error}</Text>
+        </View>
+      )}
+
+      {/* Result card */}
+      {result && !loading && (
+        <View style={[BD.resultCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* Species header */}
+          <View style={BD.resultHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[BD.speciesName, { color: colors.foreground }]}>{result.species}</Text>
+              <Text style={[BD.sciName, { color: colors.mutedForeground }]}>{result.scientificName}</Text>
+            </View>
+            <View style={[BD.confBadge, { backgroundColor: `${colors.primary}22`, borderColor: `${colors.primary}55` }]}>
+              <Text style={[BD.confText, { color: colors.primary }]}>{result.confidence}%</Text>
+            </View>
+          </View>
+
+          {/* Behaviour + indicator row */}
+          <View style={BD.badgeRow}>
+            <View style={[BD.behavBadge, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+              <Text style={[BD.behavText, { color: colors.mutedForeground }]}>
+                {BEHAVIOR_LABEL[result.behavior] ?? result.behavior.toUpperCase()}
+              </Text>
+            </View>
+            {indStyle && (
+              <View style={[BD.indicatorBadge, { backgroundColor: indStyle.bg, borderColor: indStyle.color + "66" }]}>
+                <Text style={[BD.indicatorLabel, { color: indStyle.color }]}>
+                  🎣 {result.fishingIndicator} INDICATOR
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Visual ID description */}
+          <Text style={[BD.descText, { color: colors.mutedForeground }]}>{result.description}</Text>
+
+          {/* Fishing significance */}
+          <View style={[BD.sigBox, { backgroundColor: `${colors.primary}0e`, borderColor: `${colors.primary}33` }]}>
+            <MaterialCommunityIcons name="fish" size={13} color={colors.primary} />
+            <Text style={[BD.sigText, { color: colors.foreground }]}>{result.fishingSignificance}</Text>
+          </View>
+
+          {/* Narration text */}
+          <Text style={[BD.narrationText, { color: colors.mutedForeground }]}>"{result.narration}"</Text>
+
+          {/* Narrate button */}
+          <TouchableOpacity
+            style={[BD.narrateBtn, { backgroundColor: speaking ? colors.secondary : `${colors.primary}22`, borderColor: speaking ? colors.border : `${colors.primary}55` }]}
+            onPress={() => speaking ? stop() : speak(result.narration)}
+            activeOpacity={0.8}
+          >
+            <Feather name={speaking ? "volume-x" : "volume-2"} size={15} color={speaking ? colors.mutedForeground : colors.primary} />
+            <Text style={[BD.narrateBtnText, { color: speaking ? colors.mutedForeground : colors.primary }]}>
+              {speaking ? "Stop" : "Narrate"}
+            </Text>
+          </TouchableOpacity>
+
+          {result.refPhotosUsed > 0 && (
+            <Text style={[BD.refNote, { color: colors.mutedForeground }]}>
+              Identified using {result.refPhotosUsed} reference photo{result.refPhotosUsed !== 1 ? "s" : ""} from the bird library
+            </Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Eating stars ─────────────────────────────────────────────────────────────
 function EatingStars({ rating, colors }: { rating: number; colors: ReturnType<typeof useColors> }) {
   return (
     <View style={styles.stars}>
@@ -299,6 +561,7 @@ export default function SpeciesScreen() {
           </View>
         </View>
       }
+      ListFooterComponent={<BirdDetectorSection colors={colors} />}
       ListEmptyComponent={
         <View style={styles.emptyState}>
           <Feather name="search" size={36} color={colors.mutedForeground} />
@@ -312,6 +575,42 @@ export default function SpeciesScreen() {
   );
 }
 
+// ─── Bird Detector Styles ─────────────────────────────────────────────────────
+const BD = StyleSheet.create({
+  wrapper:        { marginTop: 20, marginBottom: 8, gap: 10 },
+  sectionHead:    { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionTitle:   { fontSize: 13, fontFamily: "Inter_700Bold", letterSpacing: 1.2 },
+  sectionSub:     { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  btnRow:         { flexDirection: "row", gap: 10 },
+  cameraBtn:      { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 14 },
+  cameraBtnText:  { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  previewBox:     { width: "100%", height: 220, borderRadius: 12, overflow: "hidden", position: "relative" },
+  previewImg:     { width: "100%", height: "100%" },
+  previewOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "#000c", alignItems: "center", justifyContent: "center", gap: 12 },
+  scanLabel:      { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  errorBox:       { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 12, borderRadius: 10, borderWidth: 1 },
+  errorText:      { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
+  resultCard:     { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
+  resultHeader:   { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  speciesName:    { fontSize: 18, fontFamily: "Inter_700Bold" },
+  sciName:        { fontSize: 12, fontFamily: "Inter_400Regular", fontStyle: "italic" },
+  confBadge:      { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  confText:       { fontSize: 13, fontFamily: "Inter_700Bold" },
+  badgeRow:       { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  behavBadge:     { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
+  behavText:      { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  indicatorBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
+  indicatorLabel: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  descText:       { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  sigBox:         { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, borderRadius: 8, borderWidth: 1 },
+  sigText:        { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", lineHeight: 18 },
+  narrationText:  { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19, fontStyle: "italic" },
+  narrateBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
+  narrateBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  refNote:        { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center" },
+});
+
+// ─── Species list styles ──────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 16 },
   headerBlock: { gap: 12, marginBottom: 12 },

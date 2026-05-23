@@ -31,6 +31,7 @@ import boatAnalyzeRouter from "./boatanalyze";
 import visionDetectRouter from "./visiondetect";
 import visionSessionRouter from "./visionsession";
 import rtspRouter from "./rtsp";
+import birdIdRouter from "./bird-id";
 
 const router: IRouter = Router();
 
@@ -66,5 +67,6 @@ router.use(boatAnalyzeRouter);           // POST /api/boat-analyze (fast, non-st
 router.use(visionDetectRouter);          // POST /api/vision-detect (live camera AI detector)
 router.use(visionSessionRouter);         // POST /api/vision-session/start|end, GET /api/vision-session/:id
 router.use(rtspRouter);                  // POST /api/rtsp/start, GET /api/rtsp/hls/:id/:file, DELETE /api/rtsp/stop/:id
+router.use(birdIdRouter);               // POST /api/bird-id
 
 export default router;
