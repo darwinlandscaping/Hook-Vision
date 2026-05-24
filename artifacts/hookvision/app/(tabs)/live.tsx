@@ -855,7 +855,7 @@ export default function LiveScreen() {
   const [crocAlertActive, setCrocAlertActive]       = useState(false);
   useCrocSound(crocAlertActive);
   const _soundApiBase = (() => { const d = process.env.EXPO_PUBLIC_DOMAIN; return d ? `https://${d}` : ""; })();
-  const { isListening: soundListening, isAnalyzing: soundAnalyzing, alert: soundAlert, startListening: soundStart, stopListening: soundStop, clearAlert: soundClear } = useSoundDetection({
+  const { isMonitoring: soundMonitoring, isListening: soundListening, isAnalyzing: soundAnalyzing, alert: soundAlert, startMonitoring: soundStart, stopMonitoring: soundStop, clearAlert: soundClear } = useSoundDetection({
     screenType:   "sonar",
     context:      { region: "WA Kimberley" },
     apiBase:      _soundApiBase,
@@ -3646,10 +3646,11 @@ export default function LiveScreen() {
       </ScrollView>
       {Platform.OS !== "web" && (
         <SoundFAB
+          isMonitoring={soundMonitoring}
           isListening={soundListening}
           isAnalyzing={soundAnalyzing}
           screenType="sonar"
-          onPress={soundListening ? soundStop : soundStart}
+          onPress={soundMonitoring ? soundStop : soundStart}
         />
       )}
       {soundAlert && (

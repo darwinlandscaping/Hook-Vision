@@ -10,17 +10,17 @@ import {
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import type { SoundAlert } from "@/hooks/useSoundDetection";
 
-// ─── Sonar (barra) colour palette ─────────────────────────────────────────────
-const SONAR_COLOR   = "#ffd700";
-const SONAR_BG      = "#ffd70018";
-const SONAR_BORDER  = "#ffd70055";
+const SONAR_COLOR  = "#ffd700";
+const SONAR_BG     = "#ffd70018";
+const SONAR_BORDER = "#ffd70055";
+const BIRD_COLOR   = "#00d4aa";
+const BIRD_BG      = "#00d4aa14";
+const BIRD_BORDER  = "#00d4aa55";
+const STOP_COLOR   = "#ff3b30";
+const STOP_BG      = "#ff3b3022";
+const STOP_BORDER  = "#ff3b30";
 
-// ─── Bird colour palette ───────────────────────────────────────────────────────
-const BIRD_COLOR    = "#00d4aa";
-const BIRD_BG       = "#00d4aa14";
-const BIRD_BORDER   = "#00d4aa55";
-
-const INDICATOR_COLOUR: Record<string, string> = {
+export const INDICATOR_COLOUR: Record<string, string> = {
   "VERY HIGH": "#00ff66",
   "HIGH":      "#00d4aa",
   "MODERATE":  "#ffd700",
@@ -35,7 +35,7 @@ interface SoundAlertOverlayProps {
 }
 
 export function SoundAlertOverlay({ alert, screenType, onDismiss }: SoundAlertOverlayProps) {
-  const slideY = useRef(new Animated.Value(300)).current;
+  const slideY  = useRef(new Animated.Value(300)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   const accentColor  = screenType === "sonar" ? SONAR_COLOR  : BIRD_COLOR;
@@ -44,8 +44,8 @@ export function SoundAlertOverlay({ alert, screenType, onDismiss }: SoundAlertOv
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(slideY,  { toValue: 0,   useNativeDriver: true, tension: 70, friction: 10 }),
-      Animated.timing(opacity, { toValue: 1,   useNativeDriver: true, duration: 200 }),
+      Animated.spring(slideY,  { toValue: 0, useNativeDriver: true, tension: 70, friction: 10 }),
+      Animated.timing(opacity, { toValue: 1, useNativeDriver: true, duration: 200 }),
     ]).start();
   }, [slideY, opacity]);
 
@@ -56,29 +56,22 @@ export function SoundAlertOverlay({ alert, screenType, onDismiss }: SoundAlertOv
     ]).start(onDismiss);
   };
 
-  const icon     = screenType === "sonar" ? "fish" : "bird";
+  const icon         = screenType === "sonar" ? "fish" : "bird";
   const speciesLabel = (alert.species ?? "Unknown").toUpperCase();
   const eventLabel   = (alert.event ?? alert.behavior ?? "DETECTED").toUpperCase().replace(/_/g, " ");
   const confidence   = alert.confidence ?? 0;
 
   return (
     <Animated.View
-      style={[
-        S.container,
-        { backgroundColor: "#0a1628f5", borderColor: accentBorder, transform: [{ translateY: slideY }], opacity },
-      ]}
+      style={[S.container, { backgroundColor: "#0a1628f5", borderColor: accentBorder, transform: [{ translateY: slideY }], opacity }]}
       pointerEvents="box-none"
     >
-      {/* Top accent bar */}
       <View style={[S.accentBar, { backgroundColor: accentColor }]} />
-
       <View style={S.inner}>
-        {/* Header row */}
         <View style={S.headerRow}>
           <View style={[S.iconBubble, { backgroundColor: `${accentColor}18`, borderColor: `${accentColor}44` }]}>
             <MaterialCommunityIcons name={icon as any} size={22} color={accentColor} />
           </View>
-
           <View style={S.headerText}>
             <View style={S.headerTop}>
               <Text style={[S.micLabel, { color: accentColor }]}>🎙 SOUND DETECTED</Text>
@@ -94,13 +87,11 @@ export function SoundAlertOverlay({ alert, screenType, onDismiss }: SoundAlertOv
               <Text style={[S.eventName, { color: accentColor }]}>{eventLabel}</Text>
             </Text>
           </View>
-
           <TouchableOpacity onPress={dismiss} style={S.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Feather name="x" size={18} color="#ffffff66" />
           </TouchableOpacity>
         </View>
 
-        {/* Direction + distance strip */}
         {(alert.direction || alert.distance) && (
           <View style={[S.locationStrip, { backgroundColor: accentBg, borderColor: accentBorder }]}>
             {alert.direction && (
@@ -125,12 +116,8 @@ export function SoundAlertOverlay({ alert, screenType, onDismiss }: SoundAlertOv
           </View>
         )}
 
-        {/* Narration */}
-        {!!alert.narration && (
-          <Text style={S.narration}>"{alert.narration}"</Text>
-        )}
+        {!!alert.narration && <Text style={S.narration}>"{alert.narration}"</Text>}
 
-        {/* Plan */}
         {!!alert.plan && (
           <View style={[S.planBox, { borderLeftColor: accentColor }]}>
             <Text style={[S.planLabel, { color: accentColor }]}>🎯 CAST PLAN</Text>
@@ -142,41 +129,44 @@ export function SoundAlertOverlay({ alert, screenType, onDismiss }: SoundAlertOv
   );
 }
 
-// ─── Floating mic button ───────────────────────────────────────────────────────
 interface SoundFABProps {
+  isMonitoring: boolean;
   isListening:  boolean;
   isAnalyzing:  boolean;
   screenType:   "sonar" | "bird";
   onPress:      () => void;
 }
 
-export function SoundFAB({ isListening, isAnalyzing, screenType, onPress }: SoundFABProps) {
+export function SoundFAB({ isMonitoring, isListening, isAnalyzing, screenType, onPress }: SoundFABProps) {
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (isListening) {
+    if (isMonitoring) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(pulse, { toValue: 1.25, useNativeDriver: true, duration: 500 }),
-          Animated.timing(pulse, { toValue: 1.0,  useNativeDriver: true, duration: 500 }),
+          Animated.timing(pulse, { toValue: 1.18, useNativeDriver: true, duration: 600 }),
+          Animated.timing(pulse, { toValue: 1.0,  useNativeDriver: true, duration: 600 }),
         ])
       ).start();
     } else {
       pulse.stopAnimation();
       Animated.timing(pulse, { toValue: 1, useNativeDriver: true, duration: 150 }).start();
     }
-  }, [isListening, pulse]);
+  }, [isMonitoring, pulse]);
 
   const accentColor = screenType === "sonar" ? SONAR_COLOR : BIRD_COLOR;
-  const fabBg       = isListening ? "#ff3b3022"
-                    : isAnalyzing ? "#ffffff11"
-                    : `${accentColor}18`;
-  const fabBorder   = isListening ? "#ff3b30"
-                    : isAnalyzing ? "#ffffff33"
-                    : `${accentColor}55`;
-  const iconColor   = isListening ? "#ff3b30"
-                    : isAnalyzing ? "#ffffff66"
-                    : accentColor;
+
+  const fabBg     = isMonitoring ? STOP_BG     : `${accentColor}18`;
+  const fabBorder = isMonitoring ? STOP_BORDER  : `${accentColor}55`;
+  const iconColor = isMonitoring ? STOP_COLOR   : accentColor;
+
+  const iconName = isMonitoring
+    ? (isListening ? "microphone" : isAnalyzing ? "microphone-settings" : "stop-circle")
+    : "microphone-outline";
+
+  const label = isMonitoring
+    ? (isListening ? "REC" : isAnalyzing ? "…" : "STOP")
+    : "HEAR";
 
   if (Platform.OS === "web") return null;
 
@@ -186,50 +176,52 @@ export function SoundFAB({ isListening, isAnalyzing, screenType, onPress }: Soun
         style={[S.fabInner, { backgroundColor: fabBg, borderColor: fabBorder }]}
         onPress={onPress}
         activeOpacity={0.8}
-        disabled={isAnalyzing}
       >
-        <MaterialCommunityIcons
-          name={isListening ? "microphone" : isAnalyzing ? "microphone-off" : "microphone-outline"}
-          size={20}
-          color={iconColor}
-        />
-        <Text style={[S.fabLabel, { color: iconColor }]}>
-          {isListening ? "REC" : isAnalyzing ? "…" : "HEAR"}
-        </Text>
+        <MaterialCommunityIcons name={iconName as any} size={20} color={iconColor} />
+        <Text style={[S.fabLabel, { color: iconColor }]}>{label}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
 }
 
-// ─── Mic button for inline button rows (species screen) ───────────────────────
 interface SoundMicButtonProps {
+  isMonitoring: boolean;
   isListening:  boolean;
   isAnalyzing:  boolean;
   onPress:      () => void;
   style?:       object;
 }
 
-export function SoundMicButton({ isListening, isAnalyzing, onPress, style }: SoundMicButtonProps) {
+export function SoundMicButton({ isMonitoring, isListening, isAnalyzing, onPress, style }: SoundMicButtonProps) {
   if (Platform.OS === "web") return null;
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (isListening) {
+    if (isMonitoring) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(pulse, { toValue: 1.15, useNativeDriver: true, duration: 400 }),
-          Animated.timing(pulse, { toValue: 1.0,  useNativeDriver: true, duration: 400 }),
+          Animated.timing(pulse, { toValue: 1.1,  useNativeDriver: true, duration: 700 }),
+          Animated.timing(pulse, { toValue: 1.0,  useNativeDriver: true, duration: 700 }),
         ])
       ).start();
     } else {
       pulse.stopAnimation();
       Animated.timing(pulse, { toValue: 1, useNativeDriver: true, duration: 150 }).start();
     }
-  }, [isListening, pulse]);
+  }, [isMonitoring, pulse]);
 
-  const bg     = isListening ? "#ff3b3022" : "#00d4aa18";
-  const border = isListening ? "#ff3b30"   : "#00d4aa55";
-  const color  = isListening ? "#ff3b30"   : isAnalyzing ? "#ffffff44" : "#00d4aa";
+  const TEAL = "#00d4aa";
+  const bg     = isMonitoring ? STOP_BG     : `${TEAL}18`;
+  const border = isMonitoring ? STOP_BORDER  : `${TEAL}55`;
+  const color  = isMonitoring ? STOP_COLOR   : TEAL;
+
+  const iconName = isMonitoring
+    ? (isListening ? "microphone" : isAnalyzing ? "microphone-settings" : "stop-circle")
+    : "microphone-outline";
+
+  const label = isMonitoring
+    ? (isListening ? "● REC" : isAnalyzing ? "…" : "⏹ STOP")
+    : "🎙 HEAR";
 
   return (
     <Animated.View style={[{ transform: [{ scale: pulse }] }, style]}>
@@ -237,16 +229,9 @@ export function SoundMicButton({ isListening, isAnalyzing, onPress, style }: Sou
         style={[S.micBtn, { backgroundColor: bg, borderColor: border }]}
         onPress={onPress}
         activeOpacity={0.8}
-        disabled={isAnalyzing}
       >
-        <MaterialCommunityIcons
-          name={isListening ? "microphone" : "microphone-outline"}
-          size={18}
-          color={color}
-        />
-        <Text style={[S.micBtnLabel, { color }]}>
-          {isListening ? "REC" : isAnalyzing ? "…" : "Hear"}
-        </Text>
+        <MaterialCommunityIcons name={iconName as any} size={16} color={color} />
+        <Text style={[S.micBtnLabel, { color }]}>{label}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -254,19 +239,11 @@ export function SoundMicButton({ isListening, isAnalyzing, onPress, style }: Sou
 
 const S = StyleSheet.create({
   container: {
-    position:     "absolute",
-    bottom:       90,
-    left:         12,
-    right:        12,
-    borderRadius: 18,
-    borderWidth:  1.5,
-    overflow:     "hidden",
-    zIndex:       999,
-    elevation:    10,
-    shadowColor:  "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius:  16,
+    position: "absolute", bottom: 90, left: 12, right: 12,
+    borderRadius: 18, borderWidth: 1.5, overflow: "hidden",
+    zIndex: 999, elevation: 10,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45, shadowRadius: 16,
   },
   accentBar: { height: 4 },
   inner:     { padding: 16, gap: 12 },
@@ -285,61 +262,33 @@ const S = StyleSheet.create({
   closeBtn:   { padding: 4, marginTop: -2 },
 
   locationStrip: {
-    flexDirection:  "row",
-    flexWrap:       "wrap",
-    gap:            12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius:   10,
-    borderWidth:    1,
+    flexDirection: "row", flexWrap: "wrap", gap: 12,
+    paddingVertical: 8, paddingHorizontal: 12,
+    borderRadius: 10, borderWidth: 1,
   },
   locationItem: { flexDirection: "row", alignItems: "center", gap: 5 },
   locationText: { fontSize: 12, fontFamily: "Oswald_700Bold", letterSpacing: 1 },
 
   narration: {
-    fontSize:    14,
-    fontFamily:  "Inter_400Regular",
-    color:       "#ffffffaa",
-    fontStyle:   "italic",
-    lineHeight:  21,
+    fontSize: 14, fontFamily: "Inter_400Regular",
+    color: "#ffffffaa", fontStyle: "italic", lineHeight: 21,
   },
+  planBox:  { borderLeftWidth: 3, paddingLeft: 12, gap: 3 },
+  planLabel:{ fontSize: 10, fontFamily: "Oswald_700Bold", letterSpacing: 1.5 },
+  planText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#ffffffcc", lineHeight: 19 },
 
-  planBox: {
-    borderLeftWidth: 3,
-    paddingLeft:     12,
-    gap:             3,
-  },
-  planLabel: { fontSize: 10, fontFamily: "Oswald_700Bold", letterSpacing: 1.5 },
-  planText:  { fontSize: 13, fontFamily: "Inter_500Medium", color: "#ffffffcc", lineHeight: 19 },
-
-  // FAB
-  fab: {
-    position: "absolute",
-    bottom:   104,
-    right:    16,
-    zIndex:   100,
-  },
+  fab: { position: "absolute", bottom: 104, right: 16, zIndex: 100 },
   fabInner: {
-    flexDirection:   "row",
-    alignItems:      "center",
-    gap:             6,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius:    24,
-    borderWidth:     1.5,
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 24, borderWidth: 1.5,
   },
   fabLabel: { fontSize: 11, fontFamily: "Oswald_700Bold", letterSpacing: 1.2 },
 
-  // inline mic button
   micBtn: {
-    flexDirection: "row",
-    alignItems:    "center",
-    justifyContent: "center",
-    gap:           5,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius:  12,
-    borderWidth:   1,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5,
+    paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 12, borderWidth: 1,
   },
   micBtnLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 });

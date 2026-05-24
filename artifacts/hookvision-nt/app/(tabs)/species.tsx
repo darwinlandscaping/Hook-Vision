@@ -18,7 +18,7 @@ import * as Haptics from "expo-haptics";
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
 import { useSoundDetection } from "@/hooks/useSoundDetection";
-import { SoundMicButton } from "@/components/SoundAlertOverlay";
+import { SoundMicButton, INDICATOR_COLOUR } from "@/components/SoundAlertOverlay";
 import { useFishImage } from "@/hooks/useFishImage";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { useVoice } from "@/hooks/useVoice";
@@ -86,18 +86,14 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
   const scanActiveRef = useRef(false);
   const { speak, stop, speaking } = useVoice();
   const _birdApiBase = getBaseUrl();
-  const { isListening: birdListening, isAnalyzing: birdAnalyzing, alert: birdAlert, startListening: birdStart, stopListening: birdStop, clearAlert: birdClear } = useSoundDetection({
-    screenType: "bird",
-    apiBase:    _birdApiBase,
+  const { isMonitoring: birdMonitoring, isListening: birdListening, isAnalyzing: birdAnalyzing, detections: birdDetections, startMonitoring: birdStart, stopMonitoring: birdStop } = useSoundDetection({
+    screenType:  "bird",
+    apiBase:     _birdApiBase,
+    onDetection: (d) => {
+      const text = [d.narration, d.plan].filter(Boolean).join(". ");
+      if (text) speak(text);
+    },
   });
-
-  // Auto-narrate bird call alert
-  useEffect(() => {
-    if (birdAlert?.detected && birdAlert.narration) {
-      const text = [birdAlert.narration, birdAlert.plan].filter(Boolean).join(". ");
-      speak(text);
-    }
-  }, [birdAlert]);
 
   useEffect(() => () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -296,42 +292,49 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
         </TouchableOpacity>
         {/* HEAR — ambient bird sound detection */}
         <SoundMicButton
+          isMonitoring={birdMonitoring}
           isListening={birdListening}
           isAnalyzing={birdAnalyzing}
-          onPress={birdListening ? birdStop : birdStart}
+          onPress={birdMonitoring ? birdStop : birdStart}
           style={{ flex: 0.7 }}
         />
       </View>
 
-      {/* Inline sound detection result */}
-      {birdAlert?.detected && (
-        <View style={[BD.soundCard, { borderColor: "#00d4aa55", backgroundColor: "#00d4aa0a" }]}>
-          <View style={BD.soundCardHeader}>
-            <MaterialCommunityIcons name="microphone" size={15} color="#00d4aa" />
-            <Text style={BD.soundCardLabel}>🎙 SOUND DETECTED</Text>
-            {!!birdAlert.confidence && <Text style={BD.soundCardConf}>{birdAlert.confidence}%</Text>}
-            {!!birdAlert.fishingIndicator && (
-              <View style={[BD.soundIndBadge, { borderColor: "#00d4aa55" }]}>
-                <Text style={[BD.soundIndText, { color: "#00d4aa" }]}>{birdAlert.fishingIndicator}</Text>
-              </View>
-            )}
+      {/* Live bird radar — active while monitoring */}
+      {birdMonitoring && (
+        <View style={BD.birdRadar}>
+          <View style={BD.birdRadarHeader}>
+            <View style={BD.birdRadarDot} />
+            <Text style={BD.birdRadarTitle}>🎙 LIVE BIRD RADAR</Text>
+            {birdListening && <Text style={BD.birdRadarStatus}>● REC</Text>}
+            {birdAnalyzing && <Text style={[BD.birdRadarStatus, { color: "#ffd700" }]}>AI…</Text>}
           </View>
-          <Text style={BD.soundSpecies}>{(birdAlert.species ?? "Unknown").toUpperCase()}</Text>
-          {!!(birdAlert.direction || birdAlert.distance) && (
-            <Text style={BD.soundLocation}>
-              {[birdAlert.direction?.toUpperCase(), birdAlert.distance].filter(Boolean).join("  ·  ")}
-            </Text>
+          {birdDetections.length === 0 ? (
+            <Text style={BD.birdRadarEmpty}>Scanning for bird calls…</Text>
+          ) : (
+            birdDetections.map((d) => {
+              const ago = Math.round((Date.now() - d.ts) / 1000);
+              const agoStr = ago < 60 ? `${ago}s ago` : `${Math.floor(ago / 60)}m ago`;
+              return (
+                <View key={d.id} style={BD.birdRadarRow}>
+                  <View style={BD.birdRadarLeft}>
+                    <Text style={BD.birdRadarSpecies}>{(d.species ?? "Unknown").toUpperCase()}</Text>
+                    {!!d.direction && <Text style={BD.birdRadarDir}>{d.direction.toUpperCase()}</Text>}
+                  </View>
+                  <View style={BD.birdRadarRight}>
+                    {!!d.fishingIndicator && (
+                      <View style={[BD.birdRadarIndBadge, { borderColor: (INDICATOR_COLOUR[d.fishingIndicator] ?? "#00d4aa") + "88" }]}>
+                        <Text style={[BD.birdRadarIndText, { color: INDICATOR_COLOUR[d.fishingIndicator] ?? "#00d4aa" }]}>
+                          {d.fishingIndicator}
+                        </Text>
+                      </View>
+                    )}
+                    <Text style={BD.birdRadarAgo}>{agoStr}</Text>
+                  </View>
+                </View>
+              );
+            })
           )}
-          {!!birdAlert.narration && <Text style={BD.soundNarration}>"{birdAlert.narration}"</Text>}
-          {!!birdAlert.plan && (
-            <View style={BD.soundPlanBox}>
-              <Text style={BD.soundPlanLabel}>🎯 PLAN</Text>
-              <Text style={BD.soundPlanText}>{birdAlert.plan}</Text>
-            </View>
-          )}
-          <TouchableOpacity onPress={birdClear} style={BD.soundDismiss}>
-            <Text style={BD.soundDismissText}>Dismiss ×</Text>
-          </TouchableOpacity>
         </View>
       )}
 
@@ -799,6 +802,20 @@ const BD = StyleSheet.create({
   soundPlanText:    { fontSize: 13, fontFamily: "Inter_500Medium", color: "#ffffffcc", lineHeight: 18 },
   soundDismiss:     { alignSelf: "flex-end", paddingVertical: 4, paddingHorizontal: 8 },
   soundDismissText: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#ffffff44" },
+  birdRadar:        { borderRadius: 14, borderWidth: 1, borderColor: "#00d4aa33", backgroundColor: "#00d4aa08", padding: 12, gap: 8, marginTop: 6 },
+  birdRadarHeader:  { flexDirection: "row", alignItems: "center", gap: 8 },
+  birdRadarDot:     { width: 8, height: 8, borderRadius: 4, backgroundColor: "#ff3b30" },
+  birdRadarTitle:   { fontSize: 11, fontFamily: "Oswald_700Bold", letterSpacing: 1.5, color: "#00d4aa", flex: 1 },
+  birdRadarStatus:  { fontSize: 10, fontFamily: "Inter_700Bold", color: "#ff3b30" },
+  birdRadarEmpty:   { fontSize: 12, fontFamily: "Inter_400Regular", color: "#ffffff44", fontStyle: "italic", paddingVertical: 4 },
+  birdRadarRow:     { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 7, borderTopWidth: 1, borderTopColor: "#00d4aa18" },
+  birdRadarLeft:    { flex: 1, gap: 2 },
+  birdRadarSpecies: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#ffffffee" },
+  birdRadarDir:     { fontSize: 10, fontFamily: "Oswald_700Bold", letterSpacing: 1, color: "#00d4aa88" },
+  birdRadarRight:   { alignItems: "flex-end", gap: 4 },
+  birdRadarIndBadge:{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
+  birdRadarIndText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  birdRadarAgo:     { fontSize: 10, fontFamily: "Inter_400Regular", color: "#ffffff33" },
 });
 
 // ─── Species list styles ──────────────────────────────────────────────────────
