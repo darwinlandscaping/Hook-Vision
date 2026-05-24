@@ -713,6 +713,13 @@ export default function LiveScreen() {
     onRecordStart: () => bgMusicVol(0.02),
     onRecordEnd:   () => bgMusicVol(speaking ? DUCK_VOL : MUSIC_VOL),
   });
+  // Auto-narrate barra surface sound alert
+  useEffect(() => {
+    if (soundAlert?.detected && soundAlert.narration) {
+      const text = [soundAlert.narration, soundAlert.plan].filter(Boolean).join(". ");
+      speak(text);
+    }
+  }, [soundAlert]);
   const [fishTrackingText, setFishTrackingText]     = useState<string|null>(null);
   const [polarOn, setPolarOn]           = useState(true);   // polarised-lens filter
   const [polarising, setPolarising]     = useState(false);  // filter in progress

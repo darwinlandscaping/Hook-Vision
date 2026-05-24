@@ -91,6 +91,14 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
     apiBase:    _birdApiBase,
   });
 
+  // Auto-narrate bird call alert
+  useEffect(() => {
+    if (birdAlert?.detected && birdAlert.narration) {
+      const text = [birdAlert.narration, birdAlert.plan].filter(Boolean).join(". ");
+      speak(text);
+    }
+  }, [birdAlert]);
+
   // Cleanup on unmount
   useEffect(() => () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
