@@ -336,6 +336,54 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
         />
       </View>
 
+      {/* ── Birds Heard Log — visible from first press, persists after stop ── */}
+      {(birdMonitoring || heardLog.length > 0) && (
+        <View style={BD.heardLog}>
+          <View style={BD.heardLogHeader}>
+            <MaterialCommunityIcons name="ear-hearing" size={13} color="#00d4aa" />
+            <Text style={BD.heardLogTitle}>BIRDS HEARD</Text>
+            <Text style={BD.heardLogTally}>
+              {birdListening ? "● REC" : birdAnalyzing ? "AI…" : heardLog.length > 0 ? `${heardLog.length} SPECIES` : "LISTENING…"}
+            </Text>
+            {heardLog.length > 0 && (
+              <TouchableOpacity onPress={clearHeardLog} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={BD.heardLogClear}>Clear</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {heardLog.length === 0 ? (
+            <Text style={BD.birdRadarEmpty}>Recording 6-second clips — any bird call will appear here and be narrated…</Text>
+          ) : (
+            heardLog.map(({ detection: d, count }) => {
+              const call     = BIRD_CALLS[d.species ?? ""] ?? null;
+              const t        = new Date(d.ts);
+              const timeStr  = `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}`;
+              const indColor = INDICATOR_COLOUR[d.fishingIndicator ?? ""] ?? "#00d4aa";
+              return (
+                <View key={d.species} style={BD.heardLogRow}>
+                  <View style={BD.heardLogLeft}>
+                    <View style={BD.heardLogNameRow}>
+                      <Text style={BD.heardLogSpecies}>{(d.species ?? "Unknown").toUpperCase()}</Text>
+                      {count > 1 && <Text style={BD.heardLogCountBadge}>×{count}</Text>}
+                    </View>
+                    {call      && <Text style={BD.heardLogCall}>{call}</Text>}
+                    {d.narration && <Text style={BD.heardLogNarration}>"{d.narration}"</Text>}
+                  </View>
+                  <View style={BD.heardLogRight}>
+                    {d.fishingIndicator && (
+                      <View style={[BD.heardLogBadge, { borderColor: indColor + "66" }]}>
+                        <Text style={[BD.heardLogBadgeText, { color: indColor }]}>{d.fishingIndicator}</Text>
+                      </View>
+                    )}
+                    <Text style={BD.heardLogTime}>{timeStr}</Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </View>
+      )}
+
       {/* Live bird radar — active while monitoring */}
       {birdMonitoring && (
         <View style={BD.birdRadar}>
@@ -490,45 +538,6 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
         </View>
       )}
 
-      {/* Birds Heard Today — persistent reference log (survives monitoring stop) */}
-      {heardLog.length > 0 && (
-        <View style={BD.heardLog}>
-          <View style={BD.heardLogHeader}>
-            <MaterialCommunityIcons name="ear-hearing" size={13} color="#00d4aa" />
-            <Text style={BD.heardLogTitle}>BIRDS HEARD TODAY</Text>
-            <Text style={BD.heardLogTally}>{heardLog.length} SPECIES</Text>
-            <TouchableOpacity onPress={clearHeardLog} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Text style={BD.heardLogClear}>Clear</Text>
-            </TouchableOpacity>
-          </View>
-          {heardLog.map(({ detection: d, count }) => {
-            const call     = BIRD_CALLS[d.species ?? ""] ?? null;
-            const t        = new Date(d.ts);
-            const timeStr  = `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}`;
-            const indColor = INDICATOR_COLOUR[d.fishingIndicator ?? ""] ?? "#00d4aa";
-            return (
-              <View key={d.species} style={BD.heardLogRow}>
-                <View style={BD.heardLogLeft}>
-                  <View style={BD.heardLogNameRow}>
-                    <Text style={BD.heardLogSpecies}>{(d.species ?? "Unknown").toUpperCase()}</Text>
-                    {count > 1 && <Text style={BD.heardLogCountBadge}>×{count}</Text>}
-                  </View>
-                  {call     && <Text style={BD.heardLogCall}>{call}</Text>}
-                  {d.narration && <Text style={BD.heardLogNarration}>"{d.narration}"</Text>}
-                </View>
-                <View style={BD.heardLogRight}>
-                  {d.fishingIndicator && (
-                    <View style={[BD.heardLogBadge, { borderColor: indColor + "66" }]}>
-                      <Text style={[BD.heardLogBadgeText, { color: indColor }]}>{d.fishingIndicator}</Text>
-                    </View>
-                  )}
-                  <Text style={BD.heardLogTime}>{timeStr}</Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
     </View>
   );
 }

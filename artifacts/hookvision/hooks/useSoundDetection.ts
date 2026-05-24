@@ -125,7 +125,7 @@ export function useSoundDetection({
 
           if (resp.ok) {
             const data: SoundAlert = await resp.json();
-            if (data.detected && (data.confidence ?? 0) >= 35) {
+            if (data.detected && (data.confidence ?? 0) >= 20) {
               const det: SoundDetection = {
                 ...data,
                 id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
