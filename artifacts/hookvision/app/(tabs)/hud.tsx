@@ -636,12 +636,11 @@ const styles = StyleSheet.create({
   reasoningCard: {
     borderLeftWidth: 3,
     borderLeftColor: "#ffd700",
-    borderRadius: 2,
+    borderRadius: 4,
     backgroundColor: "#ffd7000a",
     paddingVertical: 9,
     paddingHorizontal: 12,
     gap: 4,
-    borderRadius: 4,
   },
   reasoningLabel: {
     color: "#ffd700",
