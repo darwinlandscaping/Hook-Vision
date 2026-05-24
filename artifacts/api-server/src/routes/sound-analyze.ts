@@ -44,6 +44,10 @@ You are listening to ambient audio captured near tropical Australian water. Iden
 • Little Black Cormorant — low guttural croaking — MODERATE fishing indicator
 • Silver Gull / Seagull — screeching "mew-mew" — LOW (scavenger)
 • Welcome Swallow — rapid twittering — NONE (insect hunter)
+• Kookaburra — iconic laughing crescendo "koo-koo-kaa-kaa-kaa-haa-haa" — LOW (riparian woodland; signals vegetated riverbank habitat)
+• Azure Kingfisher — thin piping "tseet" or sharp "peep-peep" diving call — HIGH (dives for small fish near bank = fish actively present)
+• White-bellied Sea-Eagle — loud barking "hank-hank" or high yelping — HIGH (apex fish predator; fish in area)
+• Black Kite — high mewing whistle — LOW (scavenger, opportunist)
 
 For direction, estimate from audio cues. Clock-face: 12 = ahead, 3 = right, 9 = left, 6 = behind.
 
@@ -94,7 +98,7 @@ router.post("/sound/analyze", async (req, res) => {
     const file = new File([audioBuffer], `audio.${audioFormat}`, { type: mimeType });
 
     const whisperPrompt = screenType === "bird"
-      ? "Audio near tropical Australian water. Note any bird calls — frigatebird, tern, booby, osprey, kite, pelican, cormorant, gull."
+      ? "Audio near tropical Australian water. Note any bird calls — frigatebird, tern, booby, osprey, kite, pelican, cormorant, gull, kookaburra, kingfisher, sea-eagle."
       : "Audio from boat on tropical Australian water. Note any water sounds — splashing, surface strikes, fish jumping, boiling water.";
 
     const result = await openai.audio.transcriptions.create({

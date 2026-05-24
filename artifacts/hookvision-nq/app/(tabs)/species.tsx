@@ -79,6 +79,10 @@ const BIRD_CALLS: Record<string, string> = {
   "Silver Gull":            'Screeching "mew-mew"',
   "Seagull":                'Screeching "mew-mew"',
   "Welcome Swallow":        'Rapid twittering',
+  "Kookaburra":             'Iconic laughing crescendo "koo-koo-kaa-kaa-kaa-haa-haa"',
+  "Azure Kingfisher":       'Thin piping "tseet" or sharp "peep-peep"',
+  "White-bellied Sea-Eagle":'Loud barking "hank-hank" or high yelping',
+  "Black Kite":             'High mewing whistle',
 };
 
 // ─── Lazy CameraView (web-safe) ───────────────────────────────────────────────
