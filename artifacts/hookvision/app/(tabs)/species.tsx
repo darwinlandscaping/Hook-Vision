@@ -17,6 +17,8 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import * as Haptics from "expo-haptics";
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
+import { useSoundDetection } from "@/hooks/useSoundDetection";
+import { SoundAlertOverlay, SoundMicButton } from "@/components/SoundAlertOverlay";
 import { useFishImage } from "@/hooks/useFishImage";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { useVoice } from "@/hooks/useVoice";
@@ -83,6 +85,11 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
   const intervalRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const scanActiveRef = useRef(false);
   const { speak, stop, speaking } = useVoice();
+  const _birdApiBase = getBaseUrl();
+  const { isListening: birdListening, isAnalyzing: birdAnalyzing, alert: birdAlert, startListening: birdStart, stopListening: birdStop, clearAlert: birdClear } = useSoundDetection({
+    screenType: "bird",
+    apiBase:    _birdApiBase,
+  });
 
   // Cleanup on unmount
   useEffect(() => () => {
@@ -284,7 +291,50 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
             {liveMode ? "Stop" : "Live"}
           </Text>
         </TouchableOpacity>
+        {/* HEAR — ambient bird sound detection */}
+        <SoundMicButton
+          isListening={birdListening}
+          isAnalyzing={birdAnalyzing}
+          onPress={birdListening ? birdStop : birdStart}
+          style={{ flex: 0.7 }}
+        />
       </View>
+
+      {/* Inline sound detection result */}
+      {birdAlert?.detected && (
+        <View style={[BD.soundCard, { borderColor: "#00d4aa55", backgroundColor: "#00d4aa0a" }]}>
+          <View style={BD.soundCardHeader}>
+            <MaterialCommunityIcons name="microphone" size={15} color="#00d4aa" />
+            <Text style={BD.soundCardLabel}>🎙 SOUND DETECTED</Text>
+            {!!birdAlert.confidence && (
+              <Text style={BD.soundCardConf}>{birdAlert.confidence}%</Text>
+            )}
+            {!!birdAlert.fishingIndicator && (
+              <View style={[BD.soundIndBadge, { borderColor: "#00d4aa55" }]}>
+                <Text style={[BD.soundIndText, { color: "#00d4aa" }]}>{birdAlert.fishingIndicator}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={BD.soundSpecies}>{(birdAlert.species ?? "Unknown").toUpperCase()}</Text>
+          {!!(birdAlert.direction || birdAlert.distance) && (
+            <Text style={BD.soundLocation}>
+              {[birdAlert.direction?.toUpperCase(), birdAlert.distance].filter(Boolean).join("  ·  ")}
+            </Text>
+          )}
+          {!!birdAlert.narration && (
+            <Text style={BD.soundNarration}>"{birdAlert.narration}"</Text>
+          )}
+          {!!birdAlert.plan && (
+            <View style={BD.soundPlanBox}>
+              <Text style={BD.soundPlanLabel}>🎯 PLAN</Text>
+              <Text style={BD.soundPlanText}>{birdAlert.plan}</Text>
+            </View>
+          )}
+          <TouchableOpacity onPress={birdClear} style={BD.soundDismiss}>
+            <Text style={BD.soundDismissText}>Dismiss ×</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Live camera view */}
       {liveMode && CameraView && (
@@ -746,6 +796,21 @@ const BD = StyleSheet.create({
   livePulseDot:    { width: 8, height: 8, borderRadius: 4, backgroundColor: "#ff3b30" },
   liveResultBadge: { flexDirection: "row", alignItems: "center", gap: 6 },
   liveResultText:  { fontSize: 10, fontFamily: "Inter_700Bold", color: "#ff3b30", letterSpacing: 0.5 },
+  // Sound detection card
+  soundCard:        { borderRadius: 12, borderWidth: 1, padding: 14, gap: 8, marginTop: 4 },
+  soundCardHeader:  { flexDirection: "row", alignItems: "center", gap: 8 },
+  soundCardLabel:   { fontSize: 10, fontFamily: "Oswald_700Bold", letterSpacing: 1.5, color: "#00d4aa" },
+  soundCardConf:    { fontSize: 10, fontFamily: "Inter_700Bold", color: "#00d4aa" },
+  soundIndBadge:    { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
+  soundIndText:     { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  soundSpecies:     { fontSize: 16, fontFamily: "Inter_700Bold", color: "#ffffffee" },
+  soundLocation:    { fontSize: 12, fontFamily: "Oswald_700Bold", letterSpacing: 1, color: "#00d4aa" },
+  soundNarration:   { fontSize: 13, fontFamily: "Inter_400Regular", color: "#ffffffaa", fontStyle: "italic", lineHeight: 19 },
+  soundPlanBox:     { borderLeftWidth: 3, borderLeftColor: "#00d4aa", paddingLeft: 10, gap: 3 },
+  soundPlanLabel:   { fontSize: 10, fontFamily: "Oswald_700Bold", letterSpacing: 1.5, color: "#00d4aa" },
+  soundPlanText:    { fontSize: 13, fontFamily: "Inter_500Medium", color: "#ffffffcc", lineHeight: 18 },
+  soundDismiss:     { alignSelf: "flex-end", paddingVertical: 4, paddingHorizontal: 8 },
+  soundDismissText: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#ffffff44" },
 });
 
 // ─── Species list styles ──────────────────────────────────────────────────────

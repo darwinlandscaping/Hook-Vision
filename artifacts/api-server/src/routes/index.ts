@@ -32,6 +32,7 @@ import visionDetectRouter from "./visiondetect";
 import visionSessionRouter from "./visionsession";
 import rtspRouter from "./rtsp";
 import birdIdRouter from "./bird-id";
+import soundAnalyzeRouter from "./sound-analyze";
 
 const router: IRouter = Router();
 
@@ -68,5 +69,6 @@ router.use(visionDetectRouter);          // POST /api/vision-detect (live camera
 router.use(visionSessionRouter);         // POST /api/vision-session/start|end, GET /api/vision-session/:id
 router.use(rtspRouter);                  // POST /api/rtsp/start, GET /api/rtsp/hls/:id/:file, DELETE /api/rtsp/stop/:id
 router.use(birdIdRouter);               // POST /api/bird-id
+router.use(soundAnalyzeRouter);         // POST /api/sound/analyze
 
 export default router;

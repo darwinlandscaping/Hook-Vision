@@ -191,6 +191,8 @@ import { useCrocSound } from "@/hooks/useCrocSound";
 import { HUD_PAGE_URL, HUD_GLASSES_URL } from "@/hooks/useHudStream";
 import { Insta360PipelineCard } from "@/components/Insta360PipelineCard";
 import { polarFilter } from "@/utils/polarFilter";
+import { useSoundDetection } from "@/hooks/useSoundDetection";
+import { SoundAlertOverlay, SoundFAB } from "@/components/SoundAlertOverlay";
 
 // ─── Conditional IntentLauncher (Android only) ────────────────────────────────
 let IntentLauncher: any = null;
@@ -703,6 +705,14 @@ export default function LiveScreen() {
   const [boatSummaryNarration, setBoatSummaryNarration] = useState<string|null>(null);
   const [crocAlertActive, setCrocAlertActive]       = useState(false);
   useCrocSound(crocAlertActive);
+  const _soundApiBase = (() => { const d = process.env.EXPO_PUBLIC_DOMAIN; return d ? `https://${d}` : ""; })();
+  const { isListening: soundListening, isAnalyzing: soundAnalyzing, alert: soundAlert, startListening: soundStart, stopListening: soundStop, clearAlert: soundClear } = useSoundDetection({
+    screenType:   "sonar",
+    context:      { region: "North Queensland" },
+    apiBase:      _soundApiBase,
+    onRecordStart: () => bgMusicVol(0.02),
+    onRecordEnd:   () => bgMusicVol(speaking ? DUCK_VOL : MUSIC_VOL),
+  });
   const [fishTrackingText, setFishTrackingText]     = useState<string|null>(null);
   const [polarOn, setPolarOn]           = useState(true);   // polarised-lens filter
   const [polarising, setPolarising]     = useState(false);  // filter in progress
@@ -3594,6 +3604,21 @@ export default function LiveScreen() {
           </View>
         </View>
       </ScrollView>
+      {Platform.OS !== "web" && (
+        <SoundFAB
+          isListening={soundListening}
+          isAnalyzing={soundAnalyzing}
+          screenType="sonar"
+          onPress={soundListening ? soundStop : soundStart}
+        />
+      )}
+      {soundAlert && (
+        <SoundAlertOverlay
+          alert={soundAlert}
+          screenType="sonar"
+          onDismiss={soundClear}
+        />
+      )}
     </View>
   );
 }
