@@ -17,7 +17,7 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import * as Haptics from "expo-haptics";
 import { HVHeader } from "@/components/HVHeader";
 import { useColors } from "@/hooks/useColors";
-import { useSoundDetection } from "@/hooks/useSoundDetection";
+import { useSoundDetection, type SoundDetection } from "@/hooks/useSoundDetection";
 import { SoundMicButton, INDICATOR_COLOUR } from "@/components/SoundAlertOverlay";
 import { useFishImage } from "@/hooks/useFishImage";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
@@ -66,6 +66,21 @@ const BEHAVIOR_LABEL: Record<string, string> = {
   other:   "· OTHER",
 };
 
+const BIRD_CALLS: Record<string, string> = {
+  "Frigatebird":            'Harsh rattling "kraaaak" or "wok-wok-wok"',
+  "Crested Tern":           'Sharp "kirri-kirri" or "kree-kree"',
+  "Little Tern":            'Rapid high "kik-kik-kik"',
+  "Brown Booby":            'Guttural grunts "urrk" or "uh-uh-uh"',
+  "Masked Booby":           'Deep grunts similar to Brown Booby',
+  "Osprey":                 'High-pitched whistling "kyew-kyew-kyew"',
+  "Brahminy Kite":          'Squealing mewing "peeee-ah" or "pee-ah-wee"',
+  "Australian Pelican":     'Deep low grunts, mostly silent',
+  "Little Black Cormorant": 'Low guttural croaking',
+  "Silver Gull":            'Screeching "mew-mew"',
+  "Seagull":                'Screeching "mew-mew"',
+  "Welcome Swallow":        'Rapid twittering',
+};
+
 // ─── Lazy CameraView (web-safe) ───────────────────────────────────────────────
 let CameraView: React.ComponentType<any> | null = null;
 if (Platform.OS !== "web") {
@@ -86,12 +101,24 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
   const scanActiveRef = useRef(false);
   const { speak, stop, speaking } = useVoice();
   const _birdApiBase = getBaseUrl();
+  const [heardLog, setHeardLog] = useState<Array<{ detection: SoundDetection; count: number }>>([]);
+  const clearHeardLog = useCallback(() => setHeardLog([]), []);
+
   const { isMonitoring: birdMonitoring, isListening: birdListening, isAnalyzing: birdAnalyzing, detections: birdDetections, startMonitoring: birdStart, stopMonitoring: birdStop } = useSoundDetection({
     screenType:  "bird",
     apiBase:     _birdApiBase,
     onDetection: (d) => {
       const text = [d.narration, d.plan].filter(Boolean).join(". ");
       if (text) speak(text);
+      setHeardLog(prev => {
+        const idx = prev.findIndex(e => e.detection.species === d.species);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { detection: d, count: next[idx].count + 1 };
+          return next;
+        }
+        return [...prev, { detection: d, count: 1 }];
+      });
     },
   });
 
@@ -441,6 +468,46 @@ function BirdDetectorSection({ colors }: { colors: ReturnType<typeof useColors> 
               Identified using {result.refPhotosUsed} reference photo{result.refPhotosUsed !== 1 ? "s" : ""} from the bird library
             </Text>
           )}
+        </View>
+      )}
+
+      {/* Birds Heard Today — persistent reference log (survives monitoring stop) */}
+      {heardLog.length > 0 && (
+        <View style={BD.heardLog}>
+          <View style={BD.heardLogHeader}>
+            <MaterialCommunityIcons name="ear-hearing" size={13} color="#00d4aa" />
+            <Text style={BD.heardLogTitle}>BIRDS HEARD TODAY</Text>
+            <Text style={BD.heardLogTally}>{heardLog.length} SPECIES</Text>
+            <TouchableOpacity onPress={clearHeardLog} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={BD.heardLogClear}>Clear</Text>
+            </TouchableOpacity>
+          </View>
+          {heardLog.map(({ detection: d, count }) => {
+            const call     = BIRD_CALLS[d.species ?? ""] ?? null;
+            const t        = new Date(d.ts);
+            const timeStr  = `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}`;
+            const indColor = INDICATOR_COLOUR[d.fishingIndicator ?? ""] ?? "#00d4aa";
+            return (
+              <View key={d.species} style={BD.heardLogRow}>
+                <View style={BD.heardLogLeft}>
+                  <View style={BD.heardLogNameRow}>
+                    <Text style={BD.heardLogSpecies}>{(d.species ?? "Unknown").toUpperCase()}</Text>
+                    {count > 1 && <Text style={BD.heardLogCountBadge}>×{count}</Text>}
+                  </View>
+                  {call     && <Text style={BD.heardLogCall}>{call}</Text>}
+                  {d.narration && <Text style={BD.heardLogNarration}>"{d.narration}"</Text>}
+                </View>
+                <View style={BD.heardLogRight}>
+                  {d.fishingIndicator && (
+                    <View style={[BD.heardLogBadge, { borderColor: indColor + "66" }]}>
+                      <Text style={[BD.heardLogBadgeText, { color: indColor }]}>{d.fishingIndicator}</Text>
+                    </View>
+                  )}
+                  <Text style={BD.heardLogTime}>{timeStr}</Text>
+                </View>
+              </View>
+            );
+          })}
         </View>
       )}
     </View>
@@ -816,6 +883,22 @@ const BD = StyleSheet.create({
   birdRadarIndBadge:{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
   birdRadarIndText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
   birdRadarAgo:     { fontSize: 10, fontFamily: "Inter_400Regular", color: "#ffffff33" },
+  heardLog:          { borderRadius: 14, borderWidth: 1, borderColor: "#00d4aa22", backgroundColor: "#00d4aa05", padding: 12, marginTop: 6 },
+  heardLogHeader:    { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
+  heardLogTitle:     { fontSize: 11, fontFamily: "Oswald_700Bold", letterSpacing: 1.5, color: "#00d4aa", flex: 1 },
+  heardLogTally:     { fontSize: 10, fontFamily: "Inter_700Bold", color: "#00d4aa88" },
+  heardLogClear:     { fontSize: 10, fontFamily: "Inter_400Regular", color: "#ffffff33" },
+  heardLogRow:       { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingVertical: 9, borderTopWidth: 1, borderTopColor: "#00d4aa12", gap: 8 },
+  heardLogLeft:      { flex: 1, gap: 3 },
+  heardLogNameRow:   { flexDirection: "row", alignItems: "center", gap: 8 },
+  heardLogSpecies:   { fontSize: 13, fontFamily: "Inter_700Bold", color: "#ffffffee" },
+  heardLogCountBadge:{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#00d4aa" },
+  heardLogCall:      { fontSize: 11, fontFamily: "Inter_400Regular", color: "#ffffff88", fontStyle: "italic", lineHeight: 16 },
+  heardLogNarration: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#ffffff55", fontStyle: "italic", lineHeight: 16 },
+  heardLogRight:     { alignItems: "flex-end", gap: 4, paddingTop: 1 },
+  heardLogBadge:     { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, borderWidth: 1 },
+  heardLogBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  heardLogTime:      { fontSize: 10, fontFamily: "Inter_400Regular", color: "#ffffff33" },
 });
 
 // ─── Species list styles ──────────────────────────────────────────────────────
