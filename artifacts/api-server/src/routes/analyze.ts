@@ -11,6 +11,10 @@ const router = Router();
 const _analyzeCache = new Map<string, { result: string; expiresAt: number }>();
 const CACHE_TTL_MS = 60_000;
 
+const _recentScans: Array<{ species: string; fishCount: number; depth: string; confidence: number; ts: number }> = [];
+const MAX_RECENT_SCANS = 3;
+const RECENT_SCAN_TTL_MS = 5 * 60_000;
+
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of _analyzeCache) {
@@ -115,6 +119,16 @@ router.post("/analyze", async (req, res) => {
     const cvContext = cvScan ? formatCvContext(cvScan) : null;
     const conditionsCtx = getConditionsContext();
 
+    const now = Date.now();
+    const validRecent = _recentScans.filter(s => now - s.ts < RECENT_SCAN_TTL_MS);
+    let crossScanCtx: string | null = null;
+    if (validRecent.length > 0) {
+      const lines = validRecent.map((s, i) =>
+        `  Scan ${i + 1} (${Math.round((now - s.ts) / 1000)}s ago): ${s.species}, ${s.fishCount} fish at ${s.depth}, conf ${s.confidence}%`
+      );
+      crossScanCtx = `═══ RECENT SCAN HISTORY (${validRecent.length} prior scans in last 5 min) ═══\n${lines.join("\n")}\nUse this context to track movement: same species deeper = fish dropping. New species = population shift. Same count = holding pattern.`;
+    }
+
     // Build few-shot reference blocks — inject confirmed reference images before user's sonar image
     // so the model has visual examples of barra (positive), jack (negative), threadfin (negative) etc.
     // This is the most critical fix for Barra vs Jack confusion — previously ZERO references were sent.
@@ -158,6 +172,7 @@ router.post("/analyze", async (req, res) => {
             ] : []),
             ...(cvContext ? [{ type: "text" as const, text: cvContext }] : []),
             ...(conditionsCtx ? [{ type: "text" as const, text: conditionsCtx }] : []),
+            ...(crossScanCtx ? [{ type: "text" as const, text: crossScanCtx }] : []),
             { type: "text" as const, text: OUT },
           ] as any },
       ],
@@ -205,6 +220,24 @@ router.post("/analyze", async (req, res) => {
 
     res.end();
     _analyzeCache.set(imgHash, { result: raw, expiresAt: Date.now() + CACHE_TTL_MS });
+
+    try {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        const now = Date.now();
+        _recentScans.push({
+          species: parsed.species ?? "Unknown",
+          fishCount: parsed.fishCount ?? 0,
+          depth: parsed.depth ?? "unknown",
+          confidence: parsed.confidence ?? 0,
+          ts: now,
+        });
+        while (_recentScans.length > MAX_RECENT_SCANS) _recentScans.shift();
+        while (_recentScans.length > 0 && now - _recentScans[0].ts > RECENT_SCAN_TTL_MS) _recentScans.shift();
+      }
+    } catch { /* non-fatal — cross-scan history update failed */ }
+
     req.log.info({ chars: raw.length }, "Turbo analysis complete");
   } catch (err) {
     req.log.error({ err }, "OpenAI analyze request failed");

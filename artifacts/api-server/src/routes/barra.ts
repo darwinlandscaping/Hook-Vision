@@ -181,48 +181,40 @@ Based on these exact conditions and the depth zone database, tell me exactly whe
   `.trim();
 
   try {
-    const response = await openai.chat.completions.create({
+    const stream = await openai.chat.completions.create({
       model: getModel("top"),
       temperature: 0.7,
       max_completion_tokens: 1200,
+      stream: true,
       messages: [
         { role: "system", content: getBarraPrompt(region) },
         { role: "user", content: conditionsSummary },
       ],
     }, { signal: AbortSignal.timeout(55_000) });
 
-    const raw = response.choices[0]?.message?.content ?? "{}";
-    const cleaned = raw.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
-    let jsonStr = cleaned;
-    if (!jsonStr.startsWith("{")) {
-      const match = jsonStr.match(/\{[\s\S]*\}/);
-      if (match) jsonStr = match[0];
-    }
-    let parsed: Record<string, unknown>;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    const heartbeat = setInterval(() => { try { res.write("\n"); } catch {} }, 4000);
+    let raw = "";
     try {
-      parsed = JSON.parse(jsonStr);
-    } catch (parseErr) {
-      req.log.error({ parseErr, jsonStr: jsonStr.slice(0, 200) }, "Barra JSON parse failed — returning fallback");
-      return res.json({
-        isFallback: true,
-        bigPictureRead: "AI data temporarily unavailable. Fish the tidal change on your nearest barra system — run-out into the main channel is always a safe bet.",
-        topDepth: "2–4m",
-        topTechnique: "Slow roll deep-diver along the bottom structure",
-        predictions: [
-          {
-            rank: 1, river: "Local estuary", spot: "River mouth channel",
-            targetDepth: "2–3m", why: "Tidal movement pushes barra to ambush points at river mouths",
-            lure: "Hard-body 80mm", rig: "60lb leader, 4/0 hook",
-            technique: "Cast across current, slow roll back along bottom",
-            confidence: "LOW", windowHours: 3,
-            windowNote: "Fish the 90 min either side of the tide change",
-          },
-        ],
-      });
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content ?? "";
+        if (delta) {
+          if (raw === "") clearInterval(heartbeat);
+          raw += delta;
+          res.write(delta);
+        }
+      }
+    } finally {
+      clearInterval(heartbeat);
     }
-    res.json(parsed);
+    res.end();
+    req.log.info({ chars: raw.length }, "Barra prediction streamed");
   } catch (err) {
     req.log.error({ err }, "Barra prediction failed — returning fallback");
+    if (res.headersSent) { try { res.end(); } catch {} return; }
     return res.json({
       isFallback: true,
       bigPictureRead: "AI data temporarily unavailable. Fish the tidal change on your nearest barra system — run-out into the main channel is always a safe bet.",

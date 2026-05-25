@@ -309,27 +309,40 @@ Based on these exact conditions, give me the 3 best ${label} fishing spots right
   `.trim();
 
   try {
-    const response = await openai.chat.completions.create({
+    const stream = await openai.chat.completions.create({
       model: getModel("top"),
       temperature: 0.7,
       max_completion_tokens: 1000,
+      stream: true,
       messages: [
         { role: "system", content: getPrompt(region) },
         { role: "user", content: conditionsSummary },
       ],
     }, { signal: AbortSignal.timeout(55_000) });
 
-    const raw = response.choices[0]?.message?.content ?? "{}";
-    const cleaned = raw.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
-    let jsonStr = cleaned;
-    if (!jsonStr.startsWith("{")) {
-      const match = jsonStr.match(/\{[\s\S]*\}/);
-      if (match) jsonStr = match[0];
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    const heartbeat = setInterval(() => { try { res.write("\n"); } catch {} }, 4000);
+    let raw = "";
+    try {
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content ?? "";
+        if (delta) {
+          if (raw === "") clearInterval(heartbeat);
+          raw += delta;
+          res.write(delta);
+        }
+      }
+    } finally {
+      clearInterval(heartbeat);
     }
-    const parsed = JSON.parse(jsonStr);
-    res.json(parsed);
+    res.end();
+    req.log.info({ chars: raw.length }, "Forecast streamed");
   } catch (err) {
     req.log.error({ err }, "Forecast request failed");
+    if (res.headersSent) { try { res.end(); } catch {} return; }
     res.status(500).json({ error: "Could not generate fishing forecast. Try again." });
   }
 });
