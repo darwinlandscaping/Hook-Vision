@@ -333,6 +333,21 @@ export default function HudTab() {
             </View>
           ) : null}
 
+          {/* ── Season note ── */}
+          {data.brain?.seasonNote ? (
+            <View style={styles.infoRow}>
+              <MaterialCommunityIcons name="weather-partly-cloudy" size={14} color="#00d4aa" />
+              <Text style={styles.infoText}>{data.brain.seasonNote}</Text>
+            </View>
+          ) : null}
+          {/* ── Community note ── */}
+          {data.brain?.communityNote ? (
+            <View style={styles.infoRow}>
+              <MaterialCommunityIcons name="account-group" size={14} color="#00e5ff" />
+              <Text style={styles.infoText}>{data.brain.communityNote}</Text>
+            </View>
+          ) : null}
+
           {/* ── Sonar row ── */}
           {scan && (
             <View style={styles.sonarRow}>
@@ -653,6 +668,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontWeight: "500",
+  },
+
+  /* Info row (season / community notes) */
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  infoText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    fontWeight: "500",
+    flex: 1,
+    lineHeight: 18,
   },
 
   /* Sonar strip */

@@ -1462,7 +1462,7 @@ export default function LiveScreen() {
       fetch(`${apiBase}/api/hud/update`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ species: r.species, fishCount: r.fishCount, depth: r.depth,
-          confidence: r.confidence, suggestion: r.suggestion, lure: r.lure ?? "",
+          confidence: (r.confidence ?? 0) / 100, suggestion: r.suggestion, lure: r.lure ?? "",
           crocAlert: r.crocAlert ?? false, crocWarning: r.crocWarning ?? null,
           birdAlert: r.birdAlert ?? null, region: "nt", source: "boat" }),
       }).catch(() => {});

@@ -1285,6 +1285,9 @@ export default function HomeScreen() {
         lure:       data.lure,
         crocAlert:  data.crocAlert  ?? false,
         crocWarning:data.crocWarning ?? null,
+        archCount:  sonarBarraResult?.archCount ?? undefined,
+        barraPct:   sonarBarraResult?.confidence ?? undefined,
+        region:     "nt",
         source:     LiveScanStore.boatActive ? "boat" : "live",
       });
       // Fire-and-forget: contribute to community data bank (with real location)

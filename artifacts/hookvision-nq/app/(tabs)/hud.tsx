@@ -305,6 +305,19 @@ export default function HudTab() {
             </View>
           ) : null}
 
+          {data.brain?.seasonNote ? (
+            <View style={styles.infoRow}>
+              <MaterialCommunityIcons name="weather-partly-cloudy" size={14} color="#00d4aa" />
+              <Text style={styles.infoText}>{data.brain.seasonNote}</Text>
+            </View>
+          ) : null}
+          {data.brain?.communityNote ? (
+            <View style={styles.infoRow}>
+              <MaterialCommunityIcons name="account-group" size={14} color="#00e5ff" />
+              <Text style={styles.infoText}>{data.brain.communityNote}</Text>
+            </View>
+          ) : null}
+
           {scan && (
             <View style={styles.sonarRow}>
               {[
@@ -395,6 +408,8 @@ const styles = StyleSheet.create({
   reasoningCard:   { borderLeftWidth: 3, borderLeftColor: "#ffd700", backgroundColor: "#ffd7000a", paddingVertical: 9, paddingHorizontal: 12, gap: 4, borderRadius: 4 },
   reasoningLabel:  { color: "#ffd700", fontSize: 9, fontWeight: "800", letterSpacing: 1.8 },
   reasoningText:   { color: "#ffffffcc", fontSize: 12, lineHeight: 18, fontWeight: "500" },
+  infoRow:         { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 4 },
+  infoText:        { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "500", flex: 1, lineHeight: 18 },
   sonarRow:        { flexDirection: "row", gap: 8 },
   sonarBox:        { flex: 1, backgroundColor: "#ffffff07", borderWidth: 1, borderColor: "#ffffff10", borderRadius: 10, padding: 10, alignItems: "center", gap: 2 },
   sonarVal:        { fontSize: 17, fontWeight: "900", lineHeight: 20 },

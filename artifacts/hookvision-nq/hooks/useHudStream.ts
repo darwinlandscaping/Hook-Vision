@@ -36,6 +36,7 @@ export interface HudPayload {
   crocWarning?: string | null;
   birdAlert?:   string | null;
   barraPct?:    number | null;
+  region?:      "wa" | "nt" | "nq" | null;
   source?:      "live" | "boat" | "cam2";
 }
 
