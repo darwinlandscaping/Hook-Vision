@@ -83,6 +83,7 @@ router.post("/bird-id", async (req, res) => {
     const response = await openai.chat.completions.create(
       {
         model:                 getModel("top"),
+        temperature:           0.2,
         max_completion_tokens: 350,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },

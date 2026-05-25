@@ -180,6 +180,7 @@ Rules:
 
   const completion = await openai.chat.completions.create({
     model:  getModel("mid"),
+    temperature: 0.7,
     messages: [{ role: "user", content: prompt }],
     max_completion_tokens: 1200,
     response_format: { type: "json_object" },
@@ -374,6 +375,7 @@ router.get("/community/compare", async (req, res) => {
   try {
     const completion = await openai.chat.completions.create({
       model: getModel("top"),
+      temperature: 0.7,
       max_completion_tokens: 250,
       messages: [
         {

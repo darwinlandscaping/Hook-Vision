@@ -102,6 +102,7 @@ router.post("/analyze", async (req, res) => {
     // Flash: nano + low detail, 60 tokens, non-streaming.  Arrives ~400-600ms.
     const flashPromise = openai.chat.completions.create({
       model: getModel("fast"),
+      temperature: 0.4,
       max_completion_tokens: 60,
       stream: false,
       messages: [
@@ -143,6 +144,7 @@ router.post("/analyze", async (req, res) => {
     // High detail lets the model see fish arch shapes, brightness tiers, and shadow voids clearly.
     const turboPromise = openai.chat.completions.create({
       model: getModel("mid"),
+      temperature: 0.4,
       max_completion_tokens: 600,
       stream: true,
       messages: [

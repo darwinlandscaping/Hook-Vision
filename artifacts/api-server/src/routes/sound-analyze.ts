@@ -127,6 +127,7 @@ router.post("/sound/analyze", async (req, res) => {
     const response = await openai.chat.completions.create(
       {
         model: getModel("top"),
+        temperature: 0.7,
         max_completion_tokens: 250,
         messages: [
           { role: "system", content: systemPrompt },

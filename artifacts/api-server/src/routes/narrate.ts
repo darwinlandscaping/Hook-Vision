@@ -141,6 +141,7 @@ ${content}`;
     // 25 s hard ceiling — narration should be fast; abort before proxy 502s.
     const response = await openai.chat.completions.create({
       model: getModel("fast"),
+      temperature: 0.7,
       max_completion_tokens: 300,
       messages: [
         { role: "system", content: systemPrompt },

@@ -311,6 +311,7 @@ Based on these exact conditions, give me the 3 best ${label} fishing spots right
   try {
     const response = await openai.chat.completions.create({
       model: getModel("top"),
+      temperature: 0.7,
       max_completion_tokens: 1000,
       messages: [
         { role: "system", content: getPrompt(region) },

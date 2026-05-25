@@ -128,6 +128,7 @@ router.post("/insta360/brain/stream", async (req, res) => {
     const content = buildContent(images, query, sonarContext);
     const stream  = await openai.chat.completions.create({
       model:                 getModel("fast"),
+      temperature:           0.4,
       max_completion_tokens: 250,
       stream:                true,
       messages: [
@@ -201,6 +202,7 @@ router.post("/insta360/brain", async (req, res) => {
     const content    = buildContent(images, query, sonarContext);
     const completion = await openai.chat.completions.create({
       model:                 getModel("fast"),
+      temperature:           0.4,
       max_completion_tokens: 250,
       messages: [
         { role: "system", content: SYSTEM },

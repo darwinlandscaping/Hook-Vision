@@ -85,7 +85,7 @@ router.post("/boat-session", async (req, res) => {
       ].filter(Boolean).join("\n");
 
   try {
-    const model = await getModel("gpt-4.1");
+    const model = getModel("top");
 
     const userPrompt = noData
       ? `Ten sonar frames were captured in ${region.toUpperCase()} but none returned fish analysis data. ` +
@@ -100,6 +100,7 @@ router.post("/boat-session", async (req, res) => {
 
     const completion = await openai.chat.completions.create({
       model,
+      temperature: 0.4,
       max_tokens: 350,
       messages: [
         {

@@ -47,6 +47,7 @@ router.post("/boat-analyze", async (req, res) => {
 
     const completion = await openai.chat.completions.create({
       model: getModel("fast"),
+      temperature: 0.4,
       max_completion_tokens: 160,
       stream: false,
       messages: [
@@ -204,6 +205,7 @@ router.post("/boat-cycle", async (req, res) => {
 
     const completion = await openai.chat.completions.create({
       model: getModel("top"),
+      temperature: 0.4,
       max_completion_tokens: 1200,
       stream: false,
       messages: [

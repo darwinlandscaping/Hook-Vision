@@ -489,6 +489,7 @@ router.post("/vision-detect", async (req, res) => {
     // and return a structured error rather than letting the proxy 502 the client.
     const completion = await openai.chat.completions.create({
       model: getModel("top"),
+      temperature: 0.4,
       max_completion_tokens: 400,
       stream: false,
       messages: [

@@ -221,6 +221,7 @@ async function classifyAngles(): Promise<void> {
   try {
     const resp = await openai.chat.completions.create({
       model:       getModel("mid"),
+      temperature: 0.2,
       max_completion_tokens:  300,
       messages:    [{ role: "user", content: content as Parameters<typeof openai.chat.completions.create>[0]["messages"][0]["content"] }],
     });

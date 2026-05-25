@@ -381,6 +381,7 @@ Write 2–3 punchy sentences covering: what conditions are doing to fish behavio
 
     const response = await openai.chat.completions.create({
       model: getModel("mid"),
+      temperature: 0.7,
       max_completion_tokens: 120,
       messages: [{ role: "user", content: prompt }],
     });
