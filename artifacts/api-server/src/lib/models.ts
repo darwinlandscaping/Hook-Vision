@@ -1,44 +1,66 @@
 /**
- * AI Model Config — HARDCODED to gpt-4.1 family.
- *
- * gpt-4.1 (top), gpt-4.1-mini (mid), gpt-4.1-nano (fast) are the ONLY
- * confirmed-working models on Replit's AI proxy. Do NOT change these to
- * gpt-4.5 or gpt-5.x — those return empty responses on this proxy.
- *
- * Update manually here when a newer model is confirmed to work end-to-end.
+ * AI Model Config — auto-selects best available models on startup.
+ * Falls back to hardcoded gpt-4.1 family if auto-detect fails.
  */
+
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 export type Tier = "top" | "mid" | "fast";
 
-const MODELS: Record<Tier, string> = {
+const FALLBACK_MODELS: Record<Tier, string> = {
   top:  "gpt-4.1",
   mid:  "gpt-4.1-mini",
   fast: "gpt-4.1-nano",
 };
 
-/**
- * Returns the model for the given tier.
- * Always returns a hardcoded gpt-4.1 family model — no auto-selection.
- */
+const TIER_PREFERENCES: Record<Tier, string[]> = {
+  top:  ["gpt-4.1", "gpt-4o", "gpt-4-turbo"],
+  mid:  ["gpt-4.1-mini", "gpt-4o-mini"],
+  fast: ["gpt-4.1-nano", "gpt-4o-mini"],
+};
+
+let _models: Record<Tier, string> = { ...FALLBACK_MODELS };
+let _lastRefreshMs = 0;
+let _mode: "hardcoded" | "auto-detected" = "hardcoded";
+
 export function getModel(tier: Tier): string {
-  return MODELS[tier];
+  return _models[tier];
 }
 
-/**
- * No-op — kept for backward compatibility with startup call in index.ts.
- */
 export async function initModels(): Promise<void> {
-  // Nothing to initialise — models are hardcoded.
+  try {
+    const resp = await openai.models.list();
+    const available = new Set<string>();
+    for await (const model of resp) {
+      available.add(model.id);
+    }
+
+    for (const tier of ["top", "mid", "fast"] as Tier[]) {
+      for (const candidate of TIER_PREFERENCES[tier]) {
+        if (available.has(candidate)) {
+          _models[tier] = candidate;
+          break;
+        }
+      }
+    }
+
+    _mode = "auto-detected";
+    _lastRefreshMs = Date.now();
+    console.log(`[models] auto-detected: top=${_models.top} mid=${_models.mid} fast=${_models.fast}`);
+  } catch (err) {
+    console.warn("[models] auto-detect failed, using hardcoded fallbacks:", (err as Error).message);
+    _mode = "hardcoded";
+    _lastRefreshMs = Date.now();
+  }
 }
 
-/**
- * Returns a status snapshot for the /api/models endpoint.
- */
 export function modelsStatus() {
   return {
-    selected:      { ...MODELS },
-    mode:          "hardcoded",
-    note:          "Models are hardcoded to gpt-4.1 family. Update models.ts manually to change.",
-    lastRefreshMs: 0,
+    selected: { ..._models },
+    mode: _mode,
+    note: _mode === "auto-detected"
+      ? "Models auto-selected from available OpenAI models."
+      : "Auto-detect failed; using hardcoded gpt-4.1 family fallbacks.",
+    lastRefreshMs: _lastRefreshMs,
   };
 }

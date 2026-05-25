@@ -7,6 +7,7 @@
  */
 
 import { Router } from "express";
+import { createHash } from "crypto";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { db, communityInsights } from "@workspace/db";
 import { desc } from "drizzle-orm";
@@ -276,6 +277,7 @@ Based on ALL of the above, give ONE precise predictive fishing target. Respond O
   try {
     const completion = await openai.chat.completions.create({
       model:    getModel("mid"),
+      temperature: 0.7,
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 450,
       response_format: { type: "json_object" },
@@ -325,6 +327,7 @@ function broadcastFull(state: BrainHudState) {
 // ─── Brain loop (every 20 seconds) ───────────────────────────────────────────
 
 let isCompiling = false;
+let _lastBrainHash = "";
 
 async function runBrainLoop() {
   if (isCompiling) return;
@@ -340,6 +343,19 @@ async function runBrainLoop() {
 
     if (tide)      tideCache      = tide;
     if (community) communityCache = community;
+
+    const inputSnapshot = JSON.stringify({
+      species: latest?.species, fishCount: latest?.fishCount, depth: latest?.depth,
+      confidence: latest?.confidence, crocAlert: latest?.crocAlert, barraPct: latest?.barraPct,
+      tideState: tideCache?.state, tidePhase: tideCache?.phase,
+      season: env.season, timeOfDay: env.timeOfDay, moonPhase: env.moonPhase,
+    });
+    const inputHash = createHash("md5").update(inputSnapshot).digest("hex");
+    if (inputHash === _lastBrainHash && brainState) {
+      broadcastFull(buildFullState());
+      return;
+    }
+    _lastBrainHash = inputHash;
 
     const brain = await compileBrain(latest, tideCache, communityCache, env);
     if (brain) brainState = brain;

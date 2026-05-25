@@ -16,9 +16,8 @@ const MODEL_PATH = path.join(__dirname, "../../models/yolov8n.onnx");
 const INPUT_SIZE = 640;
 const ANIMAL_CLASSES = new Set([14, 15, 16, 17, 18, 19, 20, 21, 22, 23]);
 
-// Vision enrichment is opt-in for edge deployments where network latency matters.
-// Set CROCGUARD_VISION_ENABLED=true to enable OpenAI croc-specific scoring.
-const VISION_ENABLED = process.env["CROCGUARD_VISION_ENABLED"] === "true";
+// Vision enrichment is enabled by default; set CROCGUARD_VISION_ENABLED=false to disable.
+const VISION_ENABLED = process.env["CROCGUARD_VISION_ENABLED"] !== "false";
 
 let session: ort.InferenceSession | null = null;
 
@@ -196,6 +195,7 @@ async function enrichWithVision(camId: number, buf: Buffer) {
     }));
     const resp = await openai.chat.completions.create({
       model: getModel("mid"),
+      temperature: 0.2,
       max_completion_tokens: 60,
       messages: [{
         role: "user",

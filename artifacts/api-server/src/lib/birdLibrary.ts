@@ -250,6 +250,7 @@ async function classifyBatch(
 
   const resp = await openai.chat.completions.create({
     model:       getModel("mid"),
+    temperature: 0.2,
     max_completion_tokens:  100,
     messages:    [{ role: "user", content: content as Parameters<typeof openai.chat.completions.create>[0]["messages"][0]["content"] }],
   });
@@ -269,12 +270,22 @@ async function classifyPoses(): Promise<void> {
   const allResults: Array<{ idx: number; pose: string }> = [];
   let divingCount = 0;
 
+  const batches: { batch: BirdCachedRef[]; offset: number }[] = [];
   for (let i = 0; i < unclassified.length; i += CLASSIFY_BATCH) {
-    const batch = unclassified.slice(i, i + CLASSIFY_BATCH);
-    try {
-      const results = await classifyBatch(batch, i);
-      allResults.push(...results);
-      for (const { idx, pose } of results) {
+    batches.push({ batch: unclassified.slice(i, i + CLASSIFY_BATCH), offset: i });
+  }
+
+  const PARALLEL_BATCHES = 3;
+  for (let i = 0; i < batches.length; i += PARALLEL_BATCHES) {
+    const batchGroup = batches.slice(i, i + PARALLEL_BATCHES);
+    const settled = await Promise.allSettled(batchGroup.map(({ batch, offset }) => classifyBatch(batch, offset)));
+    for (const result of settled) {
+      if (result.status !== "fulfilled") {
+        logger.warn({ err: String((result as PromiseRejectedResult).reason) }, "Bird pose batch classification failed, skipping batch");
+        continue;
+      }
+      allResults.push(...result.value);
+      for (const { idx, pose } of result.value) {
         const ref = unclassified[idx];
         if (!ref) continue;
         if (VALID_POSES.includes(pose as any)) {
@@ -282,8 +293,6 @@ async function classifyPoses(): Promise<void> {
           if (pose === "diving") divingCount++;
         }
       }
-    } catch (err) {
-      logger.warn({ batchStart: i, err: String(err) }, "Bird pose batch classification failed, skipping batch");
     }
   }
 

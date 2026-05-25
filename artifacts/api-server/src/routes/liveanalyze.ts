@@ -21,6 +21,7 @@ import { getCrocFewShotRefs } from "../lib/crocLibrary.js";
 import { getLiveSonarDemoRefs } from "../lib/liveSonarBrain.js";
 import { getModel } from "../lib/models.js";
 import { MODE_IDENTIFICATION, CROC_GUIDE } from "../lib/liveSonarKnowledge.js";
+import { getStatus as getCrocStatus } from "../lib/crocguardStatus.js";
 
 const router = Router();
 
@@ -427,6 +428,14 @@ router.post("/live-sonar-analyze", async (req, res) => {
   const mimeType = detectMime(imageBase64);
 
   try {
+    let crocStatusLine = "";
+    try {
+      const crocSnap = getCrocStatus();
+      if (crocSnap.status !== "green") {
+        crocStatusLine = `\n⚠️ CROCGUARD LIVE: Status ${crocSnap.status.toUpperCase()} — crocodile activity detected ${crocSnap.confidence > 50 ? "HIGH confidence" : "moderate confidence"}. Flag ANY large near-surface returns as potential croc.`;
+      }
+    } catch {}
+
     const analysisPrompt = `Analyse this live sonar image.${region ? ` Region focus: ${region}.` : ""}
 
 Follow the procedure in the system prompt exactly:
@@ -436,14 +445,15 @@ STEP C — Detect and measure all fish targets (body shape, shadow, movement)
 STEP D — Identify species using the Decision Matrix
 STEP E — Return the complete JSON response
 
-Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportions, acoustic shadow length/direction, and structure proximity.`;
+Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportions, acoustic shadow length/direction, and structure proximity.${crocStatusLine}`;
 
     // ── Fire both API calls simultaneously ────────────────────────────────────
     // Flash (~400ms) and deep stream both start at the same instant.
     // We await flash first, emit it so the client sees brand/mode immediately,
     // then drain the already-in-flight main stream.
     const flashPromise = openai.chat.completions.create({
-      model: getModel("mid"),
+      model: getModel("fast"),
+      temperature: 0.4,
       max_completion_tokens: 120,
       stream: false,
       messages: [
@@ -521,6 +531,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
 
     const streamPromise = openai.chat.completions.create({
       model: getModel("mid"),
+      temperature: 0.4,
       max_completion_tokens: 500,
       stream: true,
       messages: [

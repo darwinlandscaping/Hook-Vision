@@ -17,6 +17,7 @@ import { getFewShotRefs, addCommunityReference } from "../lib/barraLibrary.js";
 import { makeThumbnailFromBase64 } from "../lib/imageUtils.js";
 import { getModel } from "../lib/models.js";
 import { getAsianSeaBassContext } from "../lib/asianSeaBassKnowledge.js";
+import { getConditionsContext } from "../lib/dailyBriefing.js";
 
 const router = Router();
 
@@ -122,6 +123,7 @@ router.post("/barra-check", async (req, res) => {
 
   try {
     const mime = detectMime(imageBase64);
+    const conditionsCtx = getConditionsContext();
     // When caller hints top-view, prioritise dorsal reference images
     const refs = getFewShotRefs(2, topViewHint === true);
 
@@ -169,48 +171,29 @@ router.post("/barra-check", async (req, res) => {
           ? `Compare against the ${refs.length} reference specimens above. Return JSON only.`
           : "Return JSON only.",
       },
+      ...(conditionsCtx ? [{ type: "text" as const, text: `Current conditions: ${conditionsCtx}` }] : []),
     ];
 
-    const callOpts = {
-      model:                getModel("mid"),
+    // ── Single top-tier call (replaces dual mid-tier consensus) ────────────
+    const barracheckSig = AbortSignal.timeout(25_000);
+    const result = await openai.chat.completions.create({
+      model:                getModel("top"),
+      temperature:          0.2,
       max_completion_tokens: 200,
       stream:               false as const,
       messages: [
         { role: "system" as const, content: BARRA_SYSTEM },
         { role: "user" as const, content: userContent as any },
       ],
-    };
+    }, { signal: barracheckSig });
 
-    // ── Dual-scan consensus: 2 independent parallel calls ────────────────
-    const barracheckSig = AbortSignal.timeout(25_000);
-    const [res1, res2] = await Promise.all([
-      openai.chat.completions.create(callOpts, { signal: barracheckSig }),
-      openai.chat.completions.create(callOpts, { signal: barracheckSig }),
-    ]);
-
-    function parseResult(r: typeof res1): Record<string, unknown> {
-      const raw   = r.choices[0]?.message?.content ?? "{}";
-      const clean = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
-      try { return JSON.parse(clean); } catch { return {}; }
-    }
-
-    const p1 = parseResult(res1);
-    const p2 = parseResult(res2);
-
-    const agreed = (p1.isBarra === p2.isBarra);
+    const raw   = result.choices[0]?.message?.content ?? "{}";
+    const clean = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
     let parsed: Record<string, unknown>;
+    try { parsed = JSON.parse(clean); } catch { parsed = {}; }
 
-    if (agreed) {
-      // Both scans agree — use average confidence (boosted by 5 for consensus)
-      const avgConf = Math.round(((Number(p1.confidence) + Number(p2.confidence)) / 2) + 5);
-      parsed = { ...p1, confidence: Math.min(99, avgConf) };
-    } else {
-      // Scans disagree — use the more conservative result (lower confidence)
-      parsed = Number(p1.confidence) <= Number(p2.confidence) ? p1 : p2;
-    }
-
-    parsed.consensusScans   = 2;
-    parsed.consensusAgreed  = agreed;
+    parsed.consensusScans   = 1;
+    parsed.consensusAgreed  = true;
     parsed.refPhotosUsed    = refs.length;
     parsed.refSourceDetails = refs.map((r: { location: string }) => r.location);
 

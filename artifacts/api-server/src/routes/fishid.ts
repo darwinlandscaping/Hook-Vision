@@ -4,8 +4,8 @@ import { getModel } from "../lib/models.js";
 
 const router = Router();
 
-// ─── WA Fish Regulations Reference ────────────────────────────────────────────
-const NT_REGULATIONS = `
+// ─── Regional Fish Regulations References ─────────────────────────────────────
+const WA_REGULATIONS = `
 WA FISHING REGULATIONS (Recreational, Kimberley/North WA, current as of 2025):
 BARRAMUNDI: Min 55cm. Bag limit 3/person/day. Season open year-round in Kimberley — check WA Fisheries for any current closures.
 MANGROVE JACK: Min 35cm. Bag limit 10/person/day.
@@ -27,15 +27,69 @@ SAWFISHES (all): PROTECTED — release immediately.
 GENERAL: Keep fish alive until filleting; return undersized fish carefully; use circle hooks near structured habitat to reduce gut hooking; wet hands before handling for release.
 `;
 
-const SYSTEM_PROMPT = `You are an expert fish identification specialist for Western Australia (Kimberley region). You identify fish from photographs — a caught fish being held, lying on a surface, in a bucket, or photographed in water.
+const NT_REGULATIONS = `
+NT FISHING REGULATIONS (Recreational, NT/Top End, current as of 2025):
+BARRAMUNDI: Min 55cm. Bag limit 5/person/day. CLOSED 1 Oct – 31 Jan (inclusive) in tidal waters.
+MANGROVE JACK: Min 35cm. Bag limit 5/person/day.
+GOLDEN SNAPPER (Fingermark): Min 30cm. Bag limit 5/person/day.
+THREADFIN SALMON (Blue Salmon): Min 60cm. Bag limit 5/person/day.
+BLACK JEWFISH (Mulloway): Min 60cm. Bag limit 5/person/day.
+GIANT TREVALLY (GT): No minimum. Bag limit 5/person/day.
+MUD CRAB: Min 130mm carapace. Males only. Bag limit 10/person/day.
+FRESHWATER SAWFISH: PROTECTED.
+NORTHERN RIVER SHARK: PROTECTED.
+SPEARTOOTH SHARK: PROTECTED.
+`;
+
+const NQ_REGULATIONS = `
+NQ FISHING REGULATIONS (Recreational, QLD Gulf Country/Far North, current as of 2025):
+BARRAMUNDI: Min 58cm, Max 120cm (slot limit). Bag limit 5/person/day. CLOSED Nov–Feb in some waters.
+MANGROVE JACK: Min 35cm. Bag limit 5/person/day.
+FINGERMARK (Golden Snapper): Min 40cm. Bag limit 8/person/day combined reef fish.
+THREADFIN SALMON (King Salmon): Min 60cm. Bag limit 5/person/day.
+BLACK JEWFISH (Mulloway): Min 75cm. Bag limit 1/person/day.
+GIANT TREVALLY (GT): No minimum in QLD. Bag limit 5/person/day.
+CORAL TROUT: Min 38cm. Bag limit 7/person/day.
+MUD CRAB: Min 150mm carapace. Males only. Bag limit 7/person/day.
+FRESHWATER SAWFISH: PROTECTED.
+`;
+
+function getRegulations(region?: string): string {
+  switch (region) {
+    case "wa": return WA_REGULATIONS;
+    case "nt": return NT_REGULATIONS;
+    case "nq": return NQ_REGULATIONS;
+    default:   return NT_REGULATIONS;
+  }
+}
+
+const REGION_NAMES: Record<string, string> = {
+  wa: "Western Australia (Kimberley region)",
+  nt: "Northern Territory (Top End)",
+  nq: "Far North Queensland (Gulf Country)",
+};
+
+const REGION_FISHERIES: Record<string, string> = {
+  wa: "WA Fisheries",
+  nt: "NT Fisheries",
+  nq: "QLD Fisheries",
+};
+
+function getSystemPrompt(region?: string): string {
+  const r = region ?? "nt";
+  const regionName = REGION_NAMES[r] ?? "Northern Australia";
+  const fisheriesName = REGION_FISHERIES[r] ?? "local Fisheries";
+  const regulations = getRegulations(r);
+
+  return `You are an expert fish identification specialist for ${regionName}. You identify fish from photographs — a caught fish being held, lying on a surface, in a bucket, or photographed in water.
 
 Your knowledge covers:
-• All WA/Kimberley species visual features: lateral line pattern, fin shape/position, jaw profile, body depth, scale size, colour pattern, eye colour, caudal fin shape
+• All ${regionName} species visual features: lateral line pattern, fin shape/position, jaw profile, body depth, scale size, colour pattern, eye colour, caudal fin shape
 • Size estimation from hand/arm/rod references in the photo (average adult male hand span ~22cm, forearm ~45cm, standard barra rod ~2.1m)
-• WA Fisheries regulations — bag limits, size limits, protected species
-• Catch-and-release handling best practice for WA tropical species
+• ${fisheriesName} regulations — bag limits, size limits, protected species
+• Catch-and-release handling best practice for tropical species
 
-${NT_REGULATIONS}
+${regulations}
 
 IDENTIFICATION METHOD (apply in order):
 1. BODY SHAPE: depth ratio (deep-bodied vs slender), length, overall silhouette
@@ -70,10 +124,11 @@ OUTPUT: valid JSON only — no markdown, no explanation outside the JSON:
   "handling": "handling advice for this specific species",
   "releaseTip": "release method if applicable, else null",
   "isProtected": false,
-  "habitat": "brief WA/Kimberley habitat description",
-  "season": "peak season note for WA/Kimberley",
-  "funFact": "one interesting fact about this species in WA/Kimberley"
+  "habitat": "brief ${regionName} habitat description",
+  "season": "peak season note for ${regionName}",
+  "funFact": "one interesting fact about this species in ${regionName}"
 }`;
+}
 
 function detectMimeType(b64: string): string {
   const prefix = b64.slice(0, 12);
@@ -83,7 +138,7 @@ function detectMimeType(b64: string): string {
 }
 
 router.post("/fish-id", async (req, res) => {
-  const { imageBase64 } = req.body as { imageBase64?: string };
+  const { imageBase64, region } = req.body as { imageBase64?: string; region?: string };
   if (!imageBase64) {
     res.status(400).json({ error: "imageBase64 required" });
     return;
@@ -91,12 +146,14 @@ router.post("/fish-id", async (req, res) => {
 
   try {
     const mimeType = detectMimeType(imageBase64);
+    const fisheriesName = REGION_FISHERIES[region ?? "nt"] ?? "local Fisheries";
     const response = await openai.chat.completions.create({
       model: getModel("mid"),
+      temperature: 0.2,
       max_completion_tokens: 400,
       stream: false,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: getSystemPrompt(region) },
         {
           role: "user",
           content: [
@@ -106,7 +163,7 @@ router.post("/fish-id", async (req, res) => {
             },
             {
               type: "text",
-              text: "Identify this fish. Assess legal status for WA Fisheries. Return JSON only.",
+              text: `Identify this fish. Assess legal status for ${fisheriesName}. Return JSON only.`,
             },
           ],
         },
