@@ -9,6 +9,8 @@ const router = Router();
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
+let _insightsRegenerating = false;
+
 // ─── Depth bucketing helper ──────────────────────────────────────────────────
 function depthBucket(depthStr: string): string {
   const match = depthStr.match(/(\d+(?:\.\d+)?)/);
@@ -101,79 +103,49 @@ router.get("/community/feed", async (req, res) => {
   }
 });
 
-// ─── GET /api/community/insights  (AI analysis, cached 6 hours) ──────────────
-router.get("/community/insights", async (req, res) => {
-  try {
-    const latest = await db
-      .select()
-      .from(communityInsights)
-      .orderBy(desc(communityInsights.generatedAt))
-      .limit(1);
+// ─── Insights regeneration (extracted for async fire-and-forget) ──────────────
+async function regenerateInsights() {
+  const reports = await db
+    .select()
+    .from(communityReports)
+    .orderBy(desc(communityReports.submittedAt))
+    .limit(300);
 
-    const now = Date.now();
-    const isStale =
-      latest.length === 0 ||
-      now - new Date(latest[0].generatedAt).getTime() > SIX_HOURS_MS;
+  if (reports.length === 0) return;
 
-    if (!isStale) {
-      res.json(latest[0]);
-      return;
+  const speciesCounts: Record<string, number> = {};
+  const depthCounts:   Record<string, number> = {};
+  const locationSet:   Set<string>            = new Set();
+  const lureSnippets:  string[]               = [];
+
+  for (const r of reports) {
+    if (r.species && r.species !== "No fish detected") {
+      const sp = r.species.toLowerCase().replace(/^\w/, c => c.toUpperCase());
+      speciesCounts[sp] = (speciesCounts[sp] ?? 0) + 1;
     }
-
-    const reports = await db
-      .select()
-      .from(communityReports)
-      .orderBy(desc(communityReports.submittedAt))
-      .limit(300);
-
-    if (reports.length === 0) {
-      res.json({
-        reportCount: 0,
-        hotSpecies:  [],
-        hotDepths:   [],
-        hotTimes:    [],
-        hotLocations: [],
-        tips: ["Be the first to submit a scan and build the community brain!"],
-        summary: "No community data yet. Start scanning to contribute!",
-        generatedAt: new Date().toISOString(),
-      });
-      return;
+    if (r.depth) {
+      const bucket = depthBucket(r.depth);
+      depthCounts[bucket] = (depthCounts[bucket] ?? 0) + 1;
     }
-
-    // ── Pre-aggregate on the server to keep the prompt compact ────────────────
-    const speciesCounts: Record<string, number> = {};
-    const depthCounts:   Record<string, number> = {};
-    const locationSet:   Set<string>            = new Set();
-    const lureSnippets:  string[]               = [];
-
-    for (const r of reports) {
-      if (r.species && r.species !== "No fish detected") {
-        const sp = r.species.toLowerCase().replace(/^\w/, c => c.toUpperCase());
-        speciesCounts[sp] = (speciesCounts[sp] ?? 0) + 1;
-      }
-      if (r.depth) {
-        const bucket = depthBucket(r.depth);
-        depthCounts[bucket] = (depthCounts[bucket] ?? 0) + 1;
-      }
-      if (r.locationName) locationSet.add(r.locationName);
-      if (r.lureSuggestion && lureSnippets.length < 20) {
-        lureSnippets.push(r.lureSuggestion.slice(0, 120));
-      }
+    if (r.locationName) locationSet.add(r.locationName);
+    if (r.lureSuggestion && lureSnippets.length < 20) {
+      lureSnippets.push(r.lureSuggestion.slice(0, 120));
     }
+  }
 
-    const topSpecies = Object.entries(speciesCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([sp, count]) => `${sp} (${count} reports)`);
+  const topSpecies = Object.entries(speciesCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([sp, count]) => `${sp} (${count} reports)`);
 
-    const topDepths = Object.entries(depthCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([range, count]) => `${range}: ${count} reports`);
+  const topDepths = Object.entries(depthCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([range, count]) => `${range}: ${count} reports`);
 
-    const topLocations = [...locationSet].slice(0, 15);
+  const topLocations = [...locationSet].slice(0, 15);
 
-    const prompt = `You are the HookVision Brain — the AI intelligence engine for WA (Kimberley/Pilbara), NQ (Far North Queensland) and NT (Top End) fishing.
+  const prompt = `You are the HookVision Brain — the AI intelligence engine for WA (Kimberley/Pilbara), NQ (Far North Queensland) and NT (Top End) fishing.
 
 Analyse this aggregated fishing intelligence from ${reports.length} HookVision community scans and expert knowledge entries:
 
@@ -206,32 +178,101 @@ Rules:
 - tips must be specific: name the species, location type, lure, and technique
 - Respond ONLY with valid JSON — no markdown, no explanation`;
 
-    const completion = await openai.chat.completions.create({
-      model:  getModel("mid"),
-      messages: [{ role: "user", content: prompt }],
-      max_completion_tokens: 1200,
-      response_format: { type: "json_object" },
-    }, { signal: AbortSignal.timeout(40_000) });
+  const completion = await openai.chat.completions.create({
+    model:  getModel("mid"),
+    messages: [{ role: "user", content: prompt }],
+    max_completion_tokens: 1200,
+    response_format: { type: "json_object" },
+  }, { signal: AbortSignal.timeout(40_000) });
 
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    let parsed: Record<string, unknown>;
-    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+  const raw = completion.choices[0]?.message?.content ?? "{}";
+  let parsed: Record<string, unknown>;
+  try { parsed = JSON.parse(raw); } catch { parsed = {}; }
 
-    const insight = await db
-      .insert(communityInsights)
-      .values({
-        reportCount:  reports.length,
-        hotSpecies:   parsed.hotSpecies   ?? [],
-        hotDepths:    parsed.hotDepths    ?? [],
-        hotTimes:     parsed.hotTimes     ?? [],
-        hotLocations: parsed.hotLocations ?? [],
-        tips:         parsed.tips         ?? [],
-        summary: typeof parsed.summary === "string" ? parsed.summary : "",
-      })
-      .returning();
+  await db
+    .insert(communityInsights)
+    .values({
+      reportCount:  reports.length,
+      hotSpecies:   parsed.hotSpecies   ?? [],
+      hotDepths:    parsed.hotDepths    ?? [],
+      hotTimes:     parsed.hotTimes     ?? [],
+      hotLocations: parsed.hotLocations ?? [],
+      tips:         parsed.tips         ?? [],
+      summary: typeof parsed.summary === "string" ? parsed.summary : "",
+    });
 
-    logger.info({ reportCount: reports.length }, "Community insights refreshed");
-    res.json(insight[0]);
+  logger.info({ reportCount: reports.length }, "Community insights refreshed");
+}
+
+// ─── GET /api/community/insights  (AI analysis, cached 6 hours) ──────────────
+router.get("/community/insights", async (req, res) => {
+  try {
+    const latest = await db
+      .select()
+      .from(communityInsights)
+      .orderBy(desc(communityInsights.generatedAt))
+      .limit(1);
+
+    const now = Date.now();
+    const isStale =
+      latest.length === 0 ||
+      now - new Date(latest[0].generatedAt).getTime() > SIX_HOURS_MS;
+
+    if (!isStale) {
+      res.json(latest[0]);
+      return;
+    }
+
+    if (isStale && latest.length > 0 && !_insightsRegenerating) {
+      _insightsRegenerating = true;
+      regenerateInsights().finally(() => { _insightsRegenerating = false; });
+      res.json(latest[0]);
+      return;
+    }
+
+    const reports = await db
+      .select()
+      .from(communityReports)
+      .orderBy(desc(communityReports.submittedAt))
+      .limit(300);
+
+    if (reports.length === 0) {
+      res.json({
+        reportCount: 0,
+        hotSpecies:  [],
+        hotDepths:   [],
+        hotTimes:    [],
+        hotLocations: [],
+        tips: ["Be the first to submit a scan and build the community brain!"],
+        summary: "No community data yet. Start scanning to contribute!",
+        generatedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const insight = await regenerateInsights().then(async () => {
+      const rows = await db
+        .select()
+        .from(communityInsights)
+        .orderBy(desc(communityInsights.generatedAt))
+        .limit(1);
+      return rows[0] ?? null;
+    });
+
+    if (insight) {
+      res.json(insight);
+    } else {
+      res.json({
+        reportCount: 0,
+        hotSpecies:  [],
+        hotDepths:   [],
+        hotTimes:    [],
+        hotLocations: [],
+        tips: ["Be the first to submit a scan and build the community brain!"],
+        summary: "No community data yet. Start scanning to contribute!",
+        generatedAt: new Date().toISOString(),
+      });
+    }
   } catch (err) {
     logger.error({ err }, "Failed to generate community insights");
     res.status(500).json({ error: "Failed to generate insights" });

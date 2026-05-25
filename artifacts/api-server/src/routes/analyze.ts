@@ -1,9 +1,22 @@
 import { Router } from "express";
+import { createHash } from "crypto";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getModel } from "../lib/models.js";
 import { getSonarFewShotRefs } from "../lib/sonarBrain.js";
+import { getConditionsContext } from "../lib/dailyBriefing.js";
+import { analyzeSonarImage, formatCvContext } from "../lib/vision.js";
 
 const router = Router();
+
+const _analyzeCache = new Map<string, { result: string; expiresAt: number }>();
+const CACHE_TTL_MS = 60_000;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _analyzeCache) {
+    if (v.expiresAt < now) _analyzeCache.delete(k);
+  }
+}, 120_000);
 
 // ─── SYSTEM PROMPT ────────────────────────────────────────────────────────────
 const SYS = `Expert barramundi sonar AI. Identify sonar type first, then apply the matching ruleset.
@@ -67,12 +80,23 @@ router.post("/analyze", async (req, res) => {
   const { imageBase64, cropBase64 } = req.body as { imageBase64?: string; cropBase64?: string };
   if (!imageBase64) { res.status(400).json({ error: "imageBase64 is required" }); return; }
 
+  const imgHash = createHash("sha256").update(imageBase64.slice(0, 2000)).digest("hex");
+  const cached = _analyzeCache.get(imgHash);
+  if (cached && cached.expiresAt > Date.now()) {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("X-Cache", "HIT");
+    res.send(cached.result);
+    return;
+  }
+
   try {
     const mime = detectMimeType(imageBase64);
     // Flash uses low detail (fast, cheap — just a quick read)
     const imgLow  = { type: "image_url" as const, image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low"  as const } };
     // Turbo uses high detail so small fish arches are visible in the tile grid
     const imgHigh = { type: "image_url" as const, image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "high" as const } };
+
+    const cvPromise = analyzeSonarImage(imageBase64).catch(() => null);
 
     // ── FIRE BOTH SIMULTANEOUSLY — flash and turbo start at time 0 ────────
     // Flash: nano + low detail, 60 tokens, non-streaming.  Arrives ~400-600ms.
@@ -85,6 +109,10 @@ router.post("/analyze", async (req, res) => {
         { role: "user", content: [imgLow, { type: "text", text: "Quick read." }] },
       ],
     }, { signal: AbortSignal.timeout(12_000) });
+
+    const cvScan = await cvPromise;
+    const cvContext = cvScan ? formatCvContext(cvScan) : null;
+    const conditionsCtx = getConditionsContext();
 
     // Build few-shot reference blocks — inject confirmed reference images before user's sonar image
     // so the model has visual examples of barra (positive), jack (negative), threadfin (negative) etc.
@@ -126,6 +154,8 @@ router.post("/analyze", async (req, res) => {
               { type: "image_url" as const, image_url: { url: `data:${detectMimeType(cropBase64)};base64,${cropBase64}`, detail: "high" as const } },
               { type: "text" as const, text: "↑ CENTER ZOOM CROP of the same frame — use this for detecting smaller or partially visible fish shapes near the centre." },
             ] : []),
+            ...(cvContext ? [{ type: "text" as const, text: cvContext }] : []),
+            ...(conditionsCtx ? [{ type: "text" as const, text: conditionsCtx }] : []),
             { type: "text" as const, text: OUT },
           ] as any },
       ],
@@ -172,6 +202,7 @@ router.post("/analyze", async (req, res) => {
     }
 
     res.end();
+    _analyzeCache.set(imgHash, { result: raw, expiresAt: Date.now() + CACHE_TTL_MS });
     req.log.info({ chars: raw.length }, "Turbo analysis complete");
   } catch (err) {
     req.log.error({ err }, "OpenAI analyze request failed");
