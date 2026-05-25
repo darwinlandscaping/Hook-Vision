@@ -327,6 +327,7 @@ function broadcastFull(state: BrainHudState) {
 // ─── Brain loop (every 20 seconds) ───────────────────────────────────────────
 
 let isCompiling = false;
+let _pendingRecompile = false;
 let _lastBrainHash = "";
 
 async function runBrainLoop() {
@@ -366,6 +367,10 @@ async function runBrainLoop() {
     logger.warn({ err }, "HUD brain loop error");
   } finally {
     isCompiling = false;
+    if (_pendingRecompile) {
+      _pendingRecompile = false;
+      setTimeout(() => { runBrainLoop().catch(() => {}); }, 500);
+    }
   }
 }
 
@@ -376,32 +381,57 @@ setInterval(() => { runBrainLoop().catch(() => {}); }, 20000);
 // ─── POST /api/hud/update ─────────────────────────────────────────────────────
 router.post("/hud/update", (req, res) => {
   const body = req.body as Partial<HudData>;
-  latest = {
-    species:      body.species      ?? "—",
-    fishCount:    body.fishCount    ?? 0,
-    depth:        body.depth        ?? "—",
-    confidence:   body.confidence   ?? 0,
-    suggestion:   body.suggestion   ?? "",
-    archCount:    body.archCount,
-    archShape:    body.archShape    ?? null,
-    sonarMode:    body.sonarMode    ?? null,
-    waterTemp:    body.waterTemp,
-    bottomType:   body.bottomType,
-    lure:         body.lure,
-    crocAlert:    body.crocAlert    ?? false,
-    crocWarning:  body.crocWarning  ?? null,
-    birdAlert:    body.birdAlert    ?? null,
-    birdActivity: body.birdActivity ?? null,
-    barraPct:     body.barraPct     ?? null,
-    baitSchool:   body.baitSchool   ?? null,
-    waterClarity: body.waterClarity ?? null,
-    region:       body.region       ?? null,
-    source:       body.source       ?? "live",
-    updatedAt:    Date.now(),
-  };
-  // Trigger immediate brain compilation after a new scan
+  if (!latest) {
+    latest = {
+      species:      body.species      ?? "—",
+      fishCount:    body.fishCount    ?? 0,
+      depth:        body.depth        ?? "—",
+      confidence:   body.confidence   ?? 0,
+      suggestion:   body.suggestion   ?? "",
+      archCount:    body.archCount,
+      archShape:    body.archShape    ?? null,
+      sonarMode:    body.sonarMode    ?? null,
+      waterTemp:    body.waterTemp,
+      bottomType:   body.bottomType,
+      lure:         body.lure,
+      crocAlert:    body.crocAlert    ?? false,
+      crocWarning:  body.crocWarning  ?? null,
+      birdAlert:    body.birdAlert    ?? null,
+      birdActivity: body.birdActivity ?? null,
+      barraPct:     body.barraPct     ?? null,
+      baitSchool:   body.baitSchool   ?? null,
+      waterClarity: body.waterClarity ?? null,
+      region:       body.region       ?? null,
+      source:       body.source       ?? "live",
+      updatedAt:    Date.now(),
+    };
+  } else {
+    if (body.species !== undefined)      latest.species      = body.species;
+    if (body.fishCount !== undefined)    latest.fishCount    = body.fishCount;
+    if (body.depth !== undefined)        latest.depth        = body.depth;
+    if (body.confidence !== undefined)   latest.confidence   = body.confidence;
+    if (body.suggestion !== undefined)   latest.suggestion   = body.suggestion;
+    if (body.archCount !== undefined)    latest.archCount    = body.archCount;
+    if (body.archShape !== undefined)    latest.archShape    = body.archShape;
+    if (body.sonarMode !== undefined)    latest.sonarMode    = body.sonarMode;
+    if (body.waterTemp !== undefined)    latest.waterTemp    = body.waterTemp;
+    if (body.bottomType !== undefined)   latest.bottomType   = body.bottomType;
+    if (body.lure !== undefined)         latest.lure         = body.lure;
+    if (body.crocAlert !== undefined)    latest.crocAlert    = body.crocAlert;
+    if (body.crocWarning !== undefined)  latest.crocWarning  = body.crocWarning;
+    if (body.birdAlert !== undefined)    latest.birdAlert    = body.birdAlert;
+    if (body.birdActivity !== undefined) latest.birdActivity = body.birdActivity;
+    if (body.barraPct !== undefined)     latest.barraPct     = body.barraPct;
+    if (body.baitSchool !== undefined)   latest.baitSchool   = body.baitSchool;
+    if (body.waterClarity !== undefined) latest.waterClarity = body.waterClarity;
+    if (body.region !== undefined)       latest.region       = body.region;
+    if (body.source !== undefined)       latest.source       = body.source;
+    latest.updatedAt = Date.now();
+  }
   if (!isCompiling) {
     setTimeout(() => { runBrainLoop().catch(() => {}); }, 300);
+  } else {
+    _pendingRecompile = true;
   }
   res.json({ ok: true });
 });
@@ -433,7 +463,10 @@ router.get("/hud/events", (req, res) => {
 
   res.write(`data: ${JSON.stringify(buildFullState())}\n\n`);
   sseClients.add(res);
-  req.on("close", () => sseClients.delete(res));
+  const heartbeat = setInterval(() => {
+    try { res.write(":heartbeat\n\n"); } catch { clearInterval(heartbeat); sseClients.delete(res); }
+  }, 30_000);
+  req.on("close", () => { clearInterval(heartbeat); sseClients.delete(res); });
 });
 
 // ─── GET /hud — smart-glass HUD HTML ──────────────────────────────────────────

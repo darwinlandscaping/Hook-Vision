@@ -13,6 +13,9 @@ const app: Express = express();
 // the socket at 55 s we give the client a clean connection reset instead, which
 // the app can catch and retry rather than showing an opaque "Server error 502".
 app.use((req, res, next) => {
+  if (req.path === "/hud/events" || req.path === "/api/hud/events") {
+    return next();
+  }
   const timer = setTimeout(() => {
     if (!res.headersSent) {
       res.status(503).json({ error: "Request timed out — please retry" });
