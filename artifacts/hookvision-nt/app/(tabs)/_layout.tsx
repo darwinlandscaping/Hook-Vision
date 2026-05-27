@@ -15,7 +15,7 @@ import { Insta360Provider } from "@/contexts/Insta360Context";
 // Ordered list of all tab route names (must match Tabs.Screen order below)
 // insta360 is hidden from tab bar (accessed via Live tab chip) to keep Brain visible
 const TAB_ROUTES = [
-  "live", "home", "barra", "buff", "tides", "species", "hud",
+  "index", "live", "home", "barra", "buff", "tides", "species", "hud",
   "zones", "forecast", "catchid", "demo", "history", "community", "smartlife",
 ] as const;
 
@@ -26,6 +26,10 @@ function tabPath(name: string) {
 function NativeTabLayout() {
   return (
     <NativeTabs>
+      <NativeTabs.Trigger name="index">
+        <Icon sf={{ default: "dot.radiowaves.left.and.right", selected: "dot.radiowaves.left.and.right" }} />
+        <Label>Scan</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="live">
         <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
         <Label>Live</Label>
