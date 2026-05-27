@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - preview
+      - cursor/expo-auto-publish-4e6f
   workflow_dispatch:
     inputs:
       eas_branch:
