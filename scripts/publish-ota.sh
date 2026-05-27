@@ -1,11 +1,24 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 MSG="${1:-AI optimizations + HUD glasses pipeline fixes}"
 BRANCH="${2:-preview}"
 
-if [ -z "$EXPO_TOKEN" ]; then
+if [ -z "${EXPO_TOKEN:-}" ]; then
   echo "❌ EXPO_TOKEN not set. Add it in Secrets panel or export it."
+  exit 1
+fi
+
+if command -v eas >/dev/null 2>&1; then
+  EAS_CMD=(eas)
+elif command -v pnpm >/dev/null 2>&1; then
+  # Fallback keeps CI and cloud agents working without a global EAS install.
+  EAS_CMD=(pnpm dlx eas-cli@latest)
+else
+  echo "❌ Could not find eas or pnpm on PATH."
   exit 1
 fi
 
@@ -22,7 +35,7 @@ echo ""
 for i in "${!APPS[@]}"; do
   APP="${APPS[$i]}"
   LABEL="${LABELS[$i]}"
-  DIR="/workspace/artifacts/$APP"
+  DIR="$REPO_ROOT/artifacts/$APP"
 
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "📱 Publishing: $LABEL ($APP)"
@@ -31,7 +44,7 @@ for i in "${!APPS[@]}"; do
   cd "$DIR"
 
   CI=1 EXPO_TOKEN="$EXPO_TOKEN" EAS_SKIP_AUTO_FINGERPRINT=1 EAS_NO_VCS=1 METRO_MAX_WORKERS=1 \
-    eas update --branch "$BRANCH" --platform all --message "$MSG" --non-interactive 2>&1 | tee /tmp/eas-update-$APP.log
+    "${EAS_CMD[@]}" update --branch "$BRANCH" --platform all --message "$MSG" --non-interactive 2>&1 | tee "/tmp/eas-update-$APP.log"
 
   PROJECT_ID=$(grep -o '"projectId"[[:space:]]*:[[:space:]]*"[^"]*"' app.json | head -1 | grep -o '"[^"]*"$' | tr -d '"')
 
