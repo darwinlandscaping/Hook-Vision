@@ -1,5 +1,19 @@
+const configuredDomain = import.meta.env.VITE_EXPO_DEV_DOMAIN?.trim();
+
+function getExpoDomain() {
+  if (configuredDomain) {
+    return configuredDomain;
+  }
+
+  if (typeof window !== "undefined" && window.location.hostname) {
+    return window.location.hostname;
+  }
+
+  return "localhost";
+}
+
 export default function GetApps() {
-  const domain = "898f5a0e-eba6-4a78-b40d-d78f0539d56e-00-o6803yqna0ig.expo.spock.replit.dev";
+  const domain = getExpoDomain();
 
   const apps = [
     {
@@ -64,6 +78,12 @@ export default function GetApps() {
           <br /><br />
           <strong style={{ color: "#fff" }}>Expo Go must be installed</strong> on the phone.
           If prompted to open in Expo Go, tap <strong style={{ color: "#4ade80" }}>Open</strong>.
+          <br /><br />
+          These links use <strong style={{ color: "#fff" }}>{domain}</strong>. Override it with
+          {" "}
+          <code style={{ color: "#4ade80" }}>VITE_EXPO_DEV_DOMAIN</code>
+          {" "}
+          if your phone should target a different live Expo host.
         </p>
       </div>
     </div>

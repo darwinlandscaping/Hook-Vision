@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 MSG="${1:-AI optimizations + HUD glasses pipeline fixes}"
 BRANCH="${2:-preview}"
@@ -7,6 +7,14 @@ BRANCH="${2:-preview}"
 if [ -z "$EXPO_TOKEN" ]; then
   echo "❌ EXPO_TOKEN not set. Add it in Secrets panel or export it."
   exit 1
+fi
+
+if pnpm exec eas --version >/dev/null 2>&1; then
+  EAS_BIN=(pnpm exec eas)
+elif command -v eas >/dev/null 2>&1; then
+  EAS_BIN=(eas)
+else
+  EAS_BIN=(npx --yes eas-cli@latest)
 fi
 
 APPS=("hookvision" "hookvision-nt" "hookvision-nq")
@@ -17,6 +25,8 @@ echo "╔═══════════════════════�
 echo "║  HookVision OTA Publish → branch: $BRANCH           ║"
 echo "║  Message: $MSG                                       ║"
 echo "╚══════════════════════════════════════════════════════╝"
+echo ""
+echo "Including local uncommitted changes via EAS_NO_VCS=1."
 echo ""
 
 for i in "${!APPS[@]}"; do
@@ -31,7 +41,7 @@ for i in "${!APPS[@]}"; do
   cd "$DIR"
 
   CI=1 EXPO_TOKEN="$EXPO_TOKEN" EAS_SKIP_AUTO_FINGERPRINT=1 EAS_NO_VCS=1 METRO_MAX_WORKERS=1 \
-    eas update --branch "$BRANCH" --platform all --message "$MSG" --non-interactive 2>&1 | tee /tmp/eas-update-$APP.log
+    "${EAS_BIN[@]}" update --branch "$BRANCH" --platform all --message "$MSG" --non-interactive 2>&1 | tee /tmp/eas-update-$APP.log
 
   PROJECT_ID=$(grep -o '"projectId"[[:space:]]*:[[:space:]]*"[^"]*"' app.json | head -1 | grep -o '"[^"]*"$' | tr -d '"')
 

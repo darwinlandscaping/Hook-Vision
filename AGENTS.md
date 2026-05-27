@@ -41,6 +41,23 @@ export PORT=25355 BASE_PATH="/"
 pnpm --filter @workspace/hookvision-web run dev
 ```
 
+**Mobile apps (Expo Go preview):**
+```
+pnpm --filter @workspace/hookvision run dev
+pnpm --filter @workspace/hookvision-nq run dev
+pnpm --filter @workspace/hookvision-nt run dev
+pnpm --filter @workspace/crocguard run dev
+```
+
+**Preview uncommitted mobile changes in Expo Go with OTA:**
+```
+export EXPO_TOKEN="..."
+pnpm mobile:preview
+pnpm mobile:preview:watch
+```
+
+Outside Replit, the mobile `dev` scripts automatically fall back to Expo tunnel mode so the QR code works from Expo Go without needing a commit.
+
 ### Key gotchas
 
 - The API server's `dev` script runs in an infinite restart loop (`while true; do node ...; done`). For one-shot testing, use `build` then `start` separately.
@@ -48,6 +65,7 @@ pnpm --filter @workspace/hookvision-web run dev
 - The `pnpm install` may show "Ignored build scripts" warnings for `better-sqlite3`, `esbuild`, and `msedge-tts`. The esbuild binary is bundled and works without its postinstall. `better-sqlite3` needs manual compilation (see above). `msedge-tts` has no native build to run.
 - `pnpm run typecheck` has pre-existing type errors in `lib/integrations-openai-ai-server` (missing `@types/node` dependency and OpenAI SDK type issues). The API server still builds and runs fine since it uses esbuild.
 - PostgreSQL must be started (`sudo pg_ctlcluster 16 main start`) before running the API server or DB schema push.
+- Expo Go phone testing has two distinct modes: live Metro (`pnpm --filter @workspace/<app> run dev`) and OTA preview (`pnpm mobile:preview`). OTA publishes now include uncommitted changes via `EAS_NO_VCS=1`.
 
 ### Useful commands
 
