@@ -90,7 +90,7 @@ export function CrocTabBar({ state, navigation }: BottomTabBarProps) {
 
   // Strip routes that are hidden from the tab bar (href: null in layout)
   const HIDDEN = new Set(["fishy", "map", "cameras", "insta360", "subscription", "web"]);
-  const visibleRoutes = routes.filter((route) => !HIDDEN.has(route.name));
+  const visibleRoutes = routes.filter((route: (typeof routes)[number]) => !HIDDEN.has(route.name));
   const topRowCount = Math.ceil(visibleRoutes.length / 2);
   const bottomRowCount = Math.max(visibleRoutes.length - topRowCount, 0);
   const columnCount = Math.max(topRowCount, bottomRowCount, 1);
@@ -264,8 +264,8 @@ export function CrocTabBar({ state, navigation }: BottomTabBarProps) {
         <Rect x="0" y="0" width={windowWidth} height={1.5} fill="#050805" />
       </Svg>
 
-      {row1.map((route, col) => renderTab(route, col, row1Y, rowOffset(row1.length)))}
-      {row2.map((route, col) => renderTab(route, col, row2Y, rowOffset(row2.length)))}
+      {row1.map((route: (typeof routes)[number], col: number) => renderTab(route, col, row1Y, rowOffset(row1.length)))}
+      {row2.map((route: (typeof routes)[number], col: number) => renderTab(route, col, row2Y, rowOffset(row2.length)))}
     </View>
   );
 }
