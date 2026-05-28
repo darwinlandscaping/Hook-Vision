@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Waves, Target, Camera, CloudSun, Users, ArrowRight, TrendingUp } from "lucide-react";
+import { Waves, Target, Camera, CloudSun, Users, ArrowRight, TrendingUp, Smartphone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const REGIONS = [
@@ -66,8 +65,6 @@ function TideCard({ region }: { region: typeof REGIONS[0] }) {
 }
 
 export default function Home() {
-  const [selectedRegion, setSelectedRegion] = useState("wa");
-
   return (
     <div className="space-y-6">
       <div>
@@ -78,6 +75,37 @@ export default function Home() {
           AI fishing intelligence for northern Australia — WA, NQ, NT
         </p>
       </div>
+
+      <Link
+        href="/get-apps"
+        data-testid="link-phone-launcher"
+        className="group flex items-center justify-between rounded-xl p-4 transition-colors"
+        style={{
+          background: "linear-gradient(135deg, hsl(168 100% 42% / 0.18), hsl(216 56% 13%))",
+          border: "1px solid hsl(168 100% 42% / 0.35)",
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center"
+            style={{ backgroundColor: "hsl(168 100% 42% / 0.18)" }}
+          >
+            <Smartphone size={20} style={{ color: "hsl(168 100% 42%)" }} />
+          </div>
+          <div>
+            <div
+              className="text-sm font-bold uppercase tracking-wide"
+              style={{ color: "hsl(195 44% 94%)", fontFamily: "'Oswald', sans-serif" }}
+            >
+              Phone launcher
+            </div>
+            <div className="text-xs" style={{ color: "hsl(195 44% 60%)" }}>
+              Open a tap-to-launch page for Expo Go instead of scanning QR codes
+            </div>
+          </div>
+        </div>
+        <ArrowRight size={18} className="opacity-70 group-hover:opacity-100 transition-opacity" style={{ color: "hsl(168 100% 42%)" }} />
+      </Link>
 
       <div>
         <div className="flex items-center gap-2 mb-3">

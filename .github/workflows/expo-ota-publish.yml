@@ -1,0 +1,60 @@
+name: Expo OTA Publish
+
+on:
+  push:
+    branches:
+      - main
+      - preview
+      - cursor/expo-auto-publish-4e6f
+  workflow_dispatch:
+    inputs:
+      eas_branch:
+        description: EAS branch/channel to publish to
+        required: false
+        default: preview
+      message:
+        description: Optional OTA message override
+        required: false
+
+concurrency:
+  group: expo-ota-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Check Expo token
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "EXPO_TOKEN secret is not configured."
+            echo "Add it in repository settings before relying on auto-publish."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish preview OTA updates
+        env:
+          OTA_MESSAGE: ${{ github.event.inputs.message || format('Auto OTA publish from {0} ({1})', github.ref_name, github.sha) }}
+          OTA_BRANCH: ${{ github.event.inputs.eas_branch || 'preview' }}
+        run: bash scripts/publish-ota.sh "$OTA_MESSAGE" "$OTA_BRANCH"
