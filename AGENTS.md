@@ -57,6 +57,7 @@ pnpm mobile:preview:watch
 ```
 
 Outside Replit, the mobile `dev` scripts automatically fall back to Expo tunnel mode so the QR code works from Expo Go without needing a commit.
+Run `pnpm mobile:status` to print the current Expo Go URL for any running mobile dev server, and `pnpm mobile:changes` to list the mobile-relevant files changed on the current branch.
 
 ### Key gotchas
 

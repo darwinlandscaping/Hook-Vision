@@ -7,7 +7,9 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "mobile:changes": "node scripts/mobile-changes.mjs",
     "mobile:preview": "bash scripts/publish-ota.sh",
+    "mobile:status": "node scripts/mobile-status.mjs",
     "mobile:preview:watch": "node scripts/watch-mobile-preview.mjs"
   },
   "private": true,
