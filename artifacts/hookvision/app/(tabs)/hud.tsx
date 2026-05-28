@@ -357,17 +357,17 @@ export default function HudTab() {
           ) : null}
 
           {/* ── Season note ── */}
-          {data.brain?.seasonNote ? (
+          {brain?.seasonNote ? (
             <View style={styles.infoRow}>
               <MaterialCommunityIcons name="weather-partly-cloudy" size={14} color="#00d4aa" />
-              <Text style={styles.infoText}>{data.brain.seasonNote}</Text>
+              <Text style={styles.infoText}>{brain.seasonNote}</Text>
             </View>
           ) : null}
           {/* ── Community note ── */}
-          {data.brain?.communityNote ? (
+          {brain?.communityNote ? (
             <View style={styles.infoRow}>
               <MaterialCommunityIcons name="account-group" size={14} color="#00e5ff" />
-              <Text style={styles.infoText}>{data.brain.communityNote}</Text>
+              <Text style={styles.infoText}>{brain.communityNote}</Text>
             </View>
           ) : null}
 
