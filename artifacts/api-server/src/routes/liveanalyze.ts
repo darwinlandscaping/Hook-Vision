@@ -423,6 +423,8 @@ type LiveFlashRead = {
   liveMode?: string;
 };
 
+const compactLiveReferenceCache = new Map<string, Array<ImagePart | TextPart>>();
+
 function parseLiveFlashRead(raw: string): LiveFlashRead | null {
   const cleaned = raw
     .replace(/^```json\s*/i, "")
@@ -475,6 +477,66 @@ async function createLiveFlashRead(imageBase64: string): Promise<LiveFlashRead> 
   }
 
   return parsed;
+}
+
+type ImagePart = { type: "image_url"; image_url: { url: string; detail: "high" | "low" } };
+type TextPart  = { type: "text"; text: string };
+
+function buildCompactLiveReferenceContent(
+  barraRefs: ReturnType<typeof getBarraBodyRefs>,
+  crocRefs: ReturnType<typeof getCrocFewShotRefs>,
+  liveSonarRefs: ReturnType<typeof getLiveSonarDemoRefs>,
+): Array<ImagePart | TextPart> {
+  const cacheKey = [
+    ...barraRefs.map((ref) => `barra:${ref.location}:${ref.votes}`),
+    ...crocRefs.map((ref) => `croc:${ref.location}:${ref.viewingAngle ?? "any"}`),
+    ...liveSonarRefs.map((ref) => `live:${ref.demoNum}:${ref.brand}`),
+  ].join("|");
+
+  const cached = compactLiveReferenceCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const content: Array<ImagePart | TextPart> = [];
+  const hasRefs = barraRefs.length > 0 || crocRefs.length > 0 || liveSonarRefs.length > 0;
+
+  if (hasRefs) {
+    content.push({ type: "text", text: "LIVE SONAR BRAIN — compact reference package:" });
+
+    if (barraRefs.length > 0) {
+      const bp = barraRefs[0]!;
+      content.push({ type: "text", text: `STEP 1 — BARRAMUNDI BODY ANATOMY (${bp.location}): bright elongated oval + long acoustic shadow = barramundi.` });
+      if (bp.thumbBase64) {
+        content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${bp.thumbBase64}`, detail: "low" } });
+      }
+      content.push({ type: "text", text: `CONFIRMED BARRAMUNDI body — ${bp.location} (${bp.votes} expert votes).` });
+    }
+
+    if (crocRefs.length > 0) {
+      content.push({ type: "text", text: "STEP 2 — SALTWATER CROCODILE SHAPE: wide near-surface blob, no swim-bladder shadow signature." });
+      for (const cr of crocRefs) {
+        if (!cr.thumbBase64) continue;
+        const angleNote = cr.viewingAngle === "top" ? " [TOP VIEW — matches live sonar overhead perspective mode]"
+          : cr.viewingAngle === "side" ? " [SIDE VIEW — matches live sonar forward/down mode]" : "";
+        content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${cr.thumbBase64}`, detail: "low" } });
+        content.push({ type: "text", text: `CONFIRMED SALTWATER CROCODILE — ${cr.location}${angleNote}.` });
+      }
+    }
+
+    if (liveSonarRefs.length > 0) {
+      content.push({ type: "text", text: `STEP 3 — LIVE SONAR DISPLAY REFERENCES (${liveSonarRefs.length} screens): use these for brand chrome and target layout calibration.` });
+      for (const ref of liveSonarRefs) {
+        content.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
+        content.push({ type: "text", text: `${ref.brand} live sonar reference (Demo ${ref.demoNum}). ${ref.label.split('\n')[0]}` });
+      }
+    }
+
+    content.push({ type: "text", text: "STEP 4 — ANALYSE THE USER'S LIVE SONAR IMAGE BELOW." });
+  }
+
+  compactLiveReferenceCache.set(cacheKey, content);
+  return content;
 }
 
 router.post("/live-sonar-analyze/flash", async (req, res) => {
@@ -539,55 +601,10 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     //   STEP 2: Croc body shape (cross-modal bridge: croc silhouette → live sonar blob)
     //   STEP 3: Live sonar display demos (brand UI + fish body shape references)
     //   STEP 4: User's actual live sonar image for analysis
-    type ImagePart = { type: "image_url"; image_url: { url: string; detail: "high" | "low" } };
-    type TextPart  = { type: "text"; text: string };
-    const content: Array<ImagePart | TextPart> = [];
-
     const barraRefs     = getBarraBodyRefs(1);
     const crocRefs      = getCrocFewShotRefs(1);
     const liveSonarRefs = getLiveSonarDemoRefs().slice(0, 2);
-
-    const hasRefs = barraRefs.length > 0 || crocRefs.length > 0 || liveSonarRefs.length > 0;
-
-    if (hasRefs) {
-      content.push({ type: "text", text: "LIVE SONAR BRAIN — reference package (study all before analysing the target image):" });
-
-      // Step 1: Barramundi body anatomy — cross-modal bridge body → live sonar silhouette
-      // Only inject image if base64 thumbnail is available — never pass raw external URLs
-      // to OpenAI (Wikimedia/iNat URLs can be blocked and would cause a 400 crash)
-      if (barraRefs.length > 0) {
-        const bp = barraRefs[0]!;
-        content.push({ type: "text", text: `STEP 1 — BARRAMUNDI BODY ANATOMY (${bp.location}): bright elongated oval + long acoustic shadow = barramundi.` });
-        if (bp.thumbBase64) {
-          content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${bp.thumbBase64}`, detail: "low" } });
-        }
-        content.push({ type: "text", text: `CONFIRMED BARRAMUNDI body — ${bp.location} (${bp.votes} expert votes).` });
-      }
-
-      // Step 2: Saltwater croc body shape — cross-modal bridge croc silhouette → live sonar blob
-      // Only inject images with base64 thumbnails — skip any that only have raw external URLs
-      if (crocRefs.length > 0) {
-        content.push({ type: "text", text: `STEP 2 — SALTWATER CROCODILE SHAPE: wide near-surface blob, no swim-bladder shadow signature.` });
-        for (const cr of crocRefs) {
-          if (!cr.thumbBase64) continue;
-          const angleNote = cr.viewingAngle === "top" ? " [TOP VIEW — matches live sonar overhead perspective mode]"
-            : cr.viewingAngle === "side" ? " [SIDE VIEW — matches live sonar forward/down mode]" : "";
-          content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${cr.thumbBase64}`, detail: "low" } });
-          content.push({ type: "text", text: `CONFIRMED SALTWATER CROCODILE — ${cr.location}${angleNote}.` });
-        }
-      }
-
-      // Step 3: Live sonar display demos — brand UI + fish body shape references
-      if (liveSonarRefs.length > 0) {
-        content.push({ type: "text", text: `STEP 3 — LIVE SONAR DISPLAY REFERENCES (${liveSonarRefs.length} screens): use these for brand chrome and target layout calibration.` });
-        for (const ref of liveSonarRefs) {
-          content.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
-          content.push({ type: "text", text: `${ref.brand} live sonar reference (Demo ${ref.demoNum}). ${ref.label.split('\n')[0]}` });
-        }
-      }
-
-      content.push({ type: "text", text: "STEP 4 — ANALYSE THE USER'S LIVE SONAR IMAGE BELOW. Apply cross-modal reasoning: barramundi body anatomy → live sonar physics → species verdict. For croc: compare any large near-surface blob against the croc body shapes above." });
-    }
+    const content: Array<ImagePart | TextPart> = buildCompactLiveReferenceContent(barraRefs, crocRefs, liveSonarRefs).slice();
 
     // User's actual live sonar image — LOW detail (85 tokens vs ~2,500+ for high;
     // gpt-4.1-mini resolves fish body shapes well at 512px which is sufficient)

@@ -87,6 +87,8 @@ type FlashRead = {
   quickRead: string;
 };
 
+const compactSonarRefBlockCache = new Map<string, object[]>();
+
 function selectCompactSonarRefs() {
   const refs = getSonarFewShotRefs();
   const firstPositiveDemo = refs.find((ref) => ref.isPositive && ref.source === "demo") ?? null;
@@ -94,6 +96,42 @@ function selectCompactSonarRefs() {
   const firstCommunityPositive = refs.find((ref) => ref.isPositive && ref.source === "community") ?? null;
 
   return [firstPositiveDemo, firstNegativeDemo, firstCommunityPositive].filter(Boolean);
+}
+
+function buildCompactSonarRefBlocks() {
+  const refs = selectCompactSonarRefs();
+  const cacheKey = refs
+    .map((ref) => `${ref.source}:${ref.brand}:${ref.label}`)
+    .join("|");
+
+  const cached = compactSonarRefBlockCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const refBlocks: object[] = [];
+  if (refs.length > 0) {
+    const positives = refs.filter(r => r.isPositive);
+    const negatives = refs.filter(r => !r.isPositive);
+    if (positives.length > 0) {
+      refBlocks.push({ type: "text", text: "REFERENCE: confirmed barra arch signatures." });
+      for (const ref of positives) {
+        refBlocks.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
+        refBlocks.push({ type: "text", text: `BARRA reference — ${ref.brand}: ${ref.label.split("\n")[0]}` });
+      }
+    }
+    if (negatives.length > 0) {
+      refBlocks.push({ type: "text", text: "CONTRAST: common non-barra lookalike arches." });
+      for (const ref of negatives) {
+        refBlocks.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
+        refBlocks.push({ type: "text", text: `NOT BARRA — ${ref.brand}: ${ref.label.split("\n")[0]}` });
+      }
+    }
+    refBlocks.push({ type: "text", text: "Now evaluate the user's sonar image against these references." });
+  }
+
+  compactSonarRefBlockCache.set(cacheKey, refBlocks);
+  return refBlocks;
 }
 
 function parseFlashRead(raw: string): FlashRead | null {
@@ -200,27 +238,7 @@ router.post("/analyze", async (req, res) => {
     // Keep the payload compact: one barra demo, one contrast demo, and at most
     // one community-confirmed barra example. This preserves grounding while
     // avoiding the larger 8-10 image prompt that slowed mobile scans.
-    const refs = selectCompactSonarRefs();
-    const refBlocks: object[] = [];
-    if (refs.length > 0) {
-      const positives = refs.filter(r => r.isPositive);
-      const negatives = refs.filter(r => !r.isPositive);
-      if (positives.length > 0) {
-        refBlocks.push({ type: "text", text: "REFERENCE: confirmed barra arch signatures." });
-        for (const ref of positives) {
-          refBlocks.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
-          refBlocks.push({ type: "text", text: `BARRA reference — ${ref.brand}: ${ref.label.split("\n")[0]}` });
-        }
-      }
-      if (negatives.length > 0) {
-        refBlocks.push({ type: "text", text: "CONTRAST: common non-barra lookalike arches." });
-        for (const ref of negatives) {
-          refBlocks.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
-          refBlocks.push({ type: "text", text: `NOT BARRA — ${ref.brand}: ${ref.label.split("\n")[0]}` });
-        }
-      }
-      refBlocks.push({ type: "text", text: "Now evaluate the user's sonar image against these references." });
-    }
+    const refBlocks = buildCompactSonarRefBlocks();
 
     // Turbo: mini + high detail — drives the master confidence score.
     // High detail lets the model see fish arch shapes, brightness tiers, and shadow voids clearly.
