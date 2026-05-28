@@ -5,16 +5,18 @@ import { Feather } from "@expo/vector-icons";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 export function OfflineBanner() {
-  const { isOnline, cameraWifiMode } = useNetworkStatus();
+  const { isOnline, cameraWifiMode, apiConfigured } = useNetworkStatus();
   const { top } = useSafeAreaInsets();
 
-  if (isOnline) return null;
+  if (isOnline && apiConfigured) return null;
 
-  const bgColor = cameraWifiMode ? "#92400e" : "#b91c1c";
-  const icon    = cameraWifiMode ? "camera"  : "wifi-off";
-  const message = cameraWifiMode
-    ? "Camera WiFi active · AI Brain paused · disconnect to restore"
-    : "Weak signal · AI retrying automatically";
+  const bgColor = !apiConfigured ? "#7c2d12" : cameraWifiMode ? "#92400e" : "#b91c1c";
+  const icon = !apiConfigured ? "alert-triangle" : cameraWifiMode ? "camera" : "wifi-off";
+  const message = !apiConfigured
+    ? "API server not configured for this mobile build"
+    : cameraWifiMode
+      ? "Camera WiFi active · AI Brain paused · disconnect to restore"
+      : "Weak signal · AI retrying automatically";
 
   return (
     <View style={[styles.banner, { paddingTop: top + 6, backgroundColor: bgColor }]}>

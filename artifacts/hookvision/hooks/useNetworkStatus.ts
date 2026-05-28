@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { getApiDiagnostics, getApiUrl } from "@/utils/apiBase";
 
-const DOMAIN     = process.env.EXPO_PUBLIC_DOMAIN;
-const HEALTH_URL = DOMAIN ? `https://${DOMAIN}/api/healthz` : null;
+const HEALTH_URL = getApiUrl("/api/healthz");
 
 const CAMERA_IPS = [
   "http://192.168.42.1",
@@ -30,6 +30,7 @@ async function pingUrl(url: string, timeoutMs: number): Promise<boolean> {
 }
 
 export function useNetworkStatus() {
+  const { apiConfigured, baseUrl } = getApiDiagnostics();
   const [isOnline,       setIsOnline]       = useState(true);
   const [cameraWifiMode, setCameraWifiMode] = useState(false);
   const failStreak  = useRef(0);
@@ -86,5 +87,5 @@ export function useNetworkStatus() {
     };
   }, []);
 
-  return { isOnline, cameraWifiMode };
+  return { isOnline, cameraWifiMode, apiConfigured, apiBaseUrl: baseUrl };
 }

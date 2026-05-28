@@ -11,15 +11,13 @@
  */
 
 import { useCallback, useState } from "react";
-import { Platform } from "react-native";
+import { getApiUrl } from "@/utils/apiBase";
 
-const BASE_URL = Platform.OS === "web"
-  ? (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}` : "")
-  : (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
+const HUD_PAGE_URL_VALUE = getApiUrl("/api/hud");
+const HUD_GLASSES_URL_VALUE = getApiUrl("/api/hud/glasses");
 
-export const HUD_PAGE_URL    = `${BASE_URL}/api/hud`;
-export const HUD_GLASSES_URL = `${BASE_URL}/api/hud/glasses`;
-const        HUD_UPDATE_URL  = `${BASE_URL}/api/hud/update`;
+export const HUD_PAGE_URL = HUD_PAGE_URL_VALUE ?? "";
+export const HUD_GLASSES_URL = HUD_GLASSES_URL_VALUE ?? "";
 
 export interface HudPayload {
   species:      string;
@@ -52,8 +50,15 @@ export function useHudStream(): UseHudStreamResult {
   const [status, setStatus] = useState<HudStatus>("idle");
 
   const push = useCallback((payload: HudPayload) => {
+    const hudUpdateUrl = getApiUrl("/api/hud/update");
+    if (!hudUpdateUrl) {
+      setStatus("error");
+      setTimeout(() => setStatus("idle"), 2000);
+      return;
+    }
+
     setStatus("pushing");
-    fetch(HUD_UPDATE_URL, {
+    fetch(hudUpdateUrl, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(payload),

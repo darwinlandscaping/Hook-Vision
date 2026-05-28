@@ -24,11 +24,10 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { HistoryProvider } from "@/context/HistoryContext";
 import { NarratorProvider } from "@/context/NarratorContext";
 import { RiverScanProvider } from "@/context/RiverScanContext";
+import { getApiBaseUrl } from "@/utils/apiBase";
 import { setBaseUrl } from "@workspace/api-client-react";
 
-if (process.env.EXPO_PUBLIC_DOMAIN) {
-  setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
-}
+setBaseUrl(getApiBaseUrl());
 
 SplashScreen.preventAutoHideAsync();
 
