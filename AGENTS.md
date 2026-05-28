@@ -48,6 +48,7 @@ pnpm --filter @workspace/hookvision-web run dev
 - The `pnpm install` may show "Ignored build scripts" warnings for `better-sqlite3`, `esbuild`, and `msedge-tts`. The esbuild binary is bundled and works without its postinstall. `better-sqlite3` needs manual compilation (see above). `msedge-tts` has no native build to run.
 - `pnpm run typecheck` has pre-existing type errors in `lib/integrations-openai-ai-server` (missing `@types/node` dependency and OpenAI SDK type issues). The API server still builds and runs fine since it uses esbuild.
 - PostgreSQL must be started (`sudo pg_ctlcluster 16 main start`) before running the API server or DB schema push.
+- The web dashboard fetches from `/api/*` on the same origin. In Replit, a reverse proxy routes both services behind one domain. When running locally without that proxy, API calls from the web dashboard will fail (the API server on port 3001 still works independently via `curl`). The `/exec-daemon/node` binary shadows nvm's Node.js in the default PATH; prepend `$HOME/.nvm/versions/node/v24.16.0/bin` to PATH to use Node 24.
 
 ### Useful commands
 
