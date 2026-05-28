@@ -1225,7 +1225,7 @@ export default function HomeScreen() {
       // ── Flash fallback: only use flash confidence when turbo found absolutely nothing (0%) ──
       // Do NOT override a correct species ID (e.g. Threadfin) just because flash scored higher.
       {
-        const flashCandidate = localFlash;
+        const flashCandidate = (localFlash ?? flashResult) as FlashRead | null;
         const flashPct = Math.round((flashCandidate?.confidence ?? 0) * 100);
         const flashHadFish = Boolean(
           flashCandidate &&
