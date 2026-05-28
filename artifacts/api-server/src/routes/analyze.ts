@@ -80,6 +80,76 @@ function detectMimeType(b64: string): "image/jpeg" | "image/png" | "image/webp" 
   return "image/jpeg";
 }
 
+type FlashRead = {
+  species: string;
+  fishCount: number;
+  confidence: number;
+  quickRead: string;
+};
+
+function parseFlashRead(raw: string): FlashRead | null {
+  const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const match = cleaned.match(/\{[\s\S]*?\}/);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = JSON.parse(match[0]) as Partial<FlashRead>;
+  if (typeof parsed.species !== "string") {
+    return null;
+  }
+
+  return {
+    species: parsed.species,
+    fishCount: typeof parsed.fishCount === "number" ? parsed.fishCount : 0,
+    confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0,
+    quickRead: typeof parsed.quickRead === "string" ? parsed.quickRead : "",
+  };
+}
+
+async function createAnalyzeFlashRead(imageBase64: string): Promise<FlashRead> {
+  const mime = detectMimeType(imageBase64);
+  const imgLow = {
+    type: "image_url" as const,
+    image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low" as const },
+  };
+
+  const flashResult = await openai.chat.completions.create({
+    model: getModel("fast"),
+    temperature: 0.4,
+    max_completion_tokens: 60,
+    stream: false,
+    messages: [
+      { role: "system", content: 'Sonar detector. JSON only: {"species":"string","fishCount":int,"confidence":float 0-1,"quickRead":"≤10 words"}' },
+      { role: "user", content: [imgLow, { type: "text", text: "Quick read." }] },
+    ],
+  }, { signal: AbortSignal.timeout(12_000) });
+
+  const raw = flashResult.choices[0]?.message?.content ?? "{}";
+  const parsed = parseFlashRead(raw);
+  if (!parsed) {
+    throw new Error("Invalid flash response");
+  }
+
+  return parsed;
+}
+
+router.post("/analyze/flash", async (req, res) => {
+  const { imageBase64 } = req.body as { imageBase64?: string };
+  if (!imageBase64) {
+    res.status(400).json({ error: "imageBase64 is required" });
+    return;
+  }
+
+  try {
+    const flash = await createAnalyzeFlashRead(imageBase64);
+    res.json(flash);
+  } catch (err) {
+    req.log.error({ err }, "Flash analyze request failed");
+    res.status(500).json({ error: "Flash analysis failed. Check your connection and try again." });
+  }
+});
+
 router.post("/analyze", async (req, res) => {
   const { imageBase64, cropBase64 } = req.body as { imageBase64?: string; cropBase64?: string };
   if (!imageBase64) { res.status(400).json({ error: "imageBase64 is required" }); return; }
@@ -95,8 +165,6 @@ router.post("/analyze", async (req, res) => {
 
   try {
     const mime = detectMimeType(imageBase64);
-    // Flash uses low detail (fast, cheap — just a quick read)
-    const imgLow  = { type: "image_url" as const, image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "low"  as const } };
     // Turbo uses high detail so small fish arches are visible in the tile grid
     const imgHigh = { type: "image_url" as const, image_url: { url: `data:${mime};base64,${imageBase64}`, detail: "high" as const } };
 
@@ -104,16 +172,7 @@ router.post("/analyze", async (req, res) => {
 
     // ── FIRE BOTH SIMULTANEOUSLY — flash and turbo start at time 0 ────────
     // Flash: nano + low detail, 60 tokens, non-streaming.  Arrives ~400-600ms.
-    const flashPromise = openai.chat.completions.create({
-      model: getModel("fast"),
-      temperature: 0.4,
-      max_completion_tokens: 60,
-      stream: false,
-      messages: [
-        { role: "system", content: 'Sonar detector. JSON only: {"species":"string","fishCount":int,"confidence":float 0-1,"quickRead":"≤10 words"}' },
-        { role: "user", content: [imgLow, { type: "text", text: "Quick read." }] },
-      ],
-    }, { signal: AbortSignal.timeout(12_000) });
+    const flashPromise = createAnalyzeFlashRead(imageBase64);
 
     const cvScan = await cvPromise;
     const cvContext = cvScan ? formatCvContext(cvScan) : null;
@@ -195,10 +254,7 @@ router.post("/analyze", async (req, res) => {
     // ── Write flash line first (always before any turbo content) ─────────
     if (flashResult) {
       try {
-        const raw = flashResult.choices[0]?.message?.content ?? "{}";
-        const clean = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-        const m = clean.match(/\{[\s\S]*?\}/);
-        if (m) res.write(`__FLASH__:${m[0]}\n`);
+        res.write(`__FLASH__:${JSON.stringify(flashResult)}\n`);
       } catch { /* non-fatal */ }
     }
 

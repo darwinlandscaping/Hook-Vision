@@ -399,11 +399,12 @@ Task: Classify the image and give a quick first-pass live sonar result.
 
 Return ONLY this JSON:
 {
-  "isLiveSonar": true/false,
-  "brand": "humminbird-mega-live-2" | "garmin-livescope-plus" | "lowrance-activetarget-2" | "simrad-activetarget" | "unknown-live-sonar" | "not-live-sonar",
-  "liveMode": "forward" | "down" | "landscape" | "perspective" | "scout" | "traditional-2d" | "unknown",
-  "quickSpecies": "quick first-pass species guess or null",
-  "quickConfidence": integer 0-100
+  "species": "quick first-pass species guess or No fish detected",
+  "fishCount": integer,
+  "confidence": float 0-1,
+  "quickRead": "brand + mode + quick verdict in <= 12 words",
+  "liveBrand": "humminbird-mega-live-2" | "garmin-livescope-plus" | "lowrance-activetarget-2" | "simrad-activetarget" | "unknown-live-sonar" | "not-live-sonar",
+  "liveMode": "forward" | "down" | "landscape" | "perspective" | "scout" | "traditional-2d" | "unknown"
 }`;
 
 function detectMime(b64: string): string {
@@ -412,6 +413,85 @@ function detectMime(b64: string): string {
   if (p.startsWith("UklGR"))   return "image/webp";
   return "image/jpeg";
 }
+
+type LiveFlashRead = {
+  species: string;
+  fishCount: number;
+  confidence: number;
+  quickRead: string;
+  liveBrand?: string;
+  liveMode?: string;
+};
+
+function parseLiveFlashRead(raw: string): LiveFlashRead | null {
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = JSON.parse(match[0]) as Partial<LiveFlashRead>;
+  if (typeof parsed.species !== "string") {
+    return null;
+  }
+
+  return {
+    species: parsed.species,
+    fishCount: typeof parsed.fishCount === "number" ? parsed.fishCount : 0,
+    confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0,
+    quickRead: typeof parsed.quickRead === "string" ? parsed.quickRead : "",
+    liveBrand: typeof parsed.liveBrand === "string" ? parsed.liveBrand : undefined,
+    liveMode: typeof parsed.liveMode === "string" ? parsed.liveMode : undefined,
+  };
+}
+
+async function createLiveFlashRead(imageBase64: string): Promise<LiveFlashRead> {
+  const mimeType = detectMime(imageBase64);
+  const flashResult = await openai.chat.completions.create({
+    model: getModel("fast"),
+    temperature: 0.4,
+    max_completion_tokens: 120,
+    stream: false,
+    messages: [
+      { role: "system", content: FLASH_PROMPT },
+      {
+        role: "user",
+        content: [
+          { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "low" } },
+          { type: "text", text: "Classify this live sonar image." }
+        ]
+      }
+    ]
+  }, { signal: AbortSignal.timeout(12_000) });
+
+  const flashRaw = flashResult.choices[0]?.message?.content ?? "{}";
+  const parsed = parseLiveFlashRead(flashRaw);
+  if (!parsed) {
+    throw new Error("Invalid live flash response");
+  }
+
+  return parsed;
+}
+
+router.post("/live-sonar-analyze/flash", async (req, res) => {
+  const { imageBase64 } = req.body as { imageBase64?: string };
+  if (!imageBase64) {
+    res.status(400).json({ error: "imageBase64 required" });
+    return;
+  }
+
+  try {
+    const flash = await createLiveFlashRead(imageBase64);
+    res.json(flash);
+  } catch (err) {
+    req.log.error({ err }, "Live sonar flash analysis failed");
+    res.status(500).json({ error: "Live sonar flash analysis failed. Check your connection and try again." });
+  }
+});
 
 // ─── POST /live-sonar-analyze ─────────────────────────────────────────────────
 router.post("/live-sonar-analyze", async (req, res) => {
@@ -451,22 +531,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     // Flash (~400ms) and deep stream both start at the same instant.
     // We await flash first, emit it so the client sees brand/mode immediately,
     // then drain the already-in-flight main stream.
-    const flashPromise = openai.chat.completions.create({
-      model: getModel("fast"),
-      temperature: 0.4,
-      max_completion_tokens: 120,
-      stream: false,
-      messages: [
-        { role: "system", content: FLASH_PROMPT },
-        {
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "low" } },
-            { type: "text", text: "Classify this live sonar image." }
-          ]
-        }
-      ]
-    }, { signal: AbortSignal.timeout(12_000) });
+    const flashPromise = createLiveFlashRead(imageBase64);
 
     // ── Build reference package (few-shot visual grounding) ──────────────────
     // Order mirrors the 2D analyze route's proven injection pattern:
@@ -548,17 +613,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     // ── Emit flash first — client sees brand/mode in ~400ms ──────────────────
     try {
       const flashResult = await flashPromise;
-      const flashRaw = flashResult.choices[0]?.message?.content ?? "{}";
-      const cleanFlash = flashRaw
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/```\s*$/i, "")
-        .trim();
-      const matchFlash = cleanFlash.match(/\{[\s\S]*\}/);
-      if (matchFlash) {
-        const flashData = JSON.parse(matchFlash[0]);
-        res.write(`__FLASH__:${JSON.stringify(flashData)}\n`);
-      }
+      res.write(`__FLASH__:${JSON.stringify(flashResult)}\n`);
     } catch { /* non-fatal — main stream still delivers full result */ }
 
     // ── Keep-alive heartbeat ──────────────────────────────────────────────────
