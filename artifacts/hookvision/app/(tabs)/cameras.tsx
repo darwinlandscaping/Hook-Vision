@@ -5,7 +5,7 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Animated, Dimensions, Easing, Linking, Platform,
+  Animated, Dimensions, Easing, InteractionManager, Linking, Platform,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
 import Svg, {
@@ -276,12 +276,25 @@ function CamerasScreen({ embedded = false }: { embedded?: boolean }) {
   const [selectedBrand, setSelectedBrand] = useState<BrandId>("insta360");
   const [tick, setTick]         = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [heavySectionsReady, setHeavySectionsReady] = useState(!embedded);
 
   // Tick drives the animated fisheye
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 1200);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (!embedded || heavySectionsReady) {
+      return;
+    }
+
+    const task = InteractionManager.runAfterInteractions(() => {
+      setTimeout(() => setHeavySectionsReady(true), 250);
+    });
+
+    return () => task.cancel();
+  }, [embedded, heavySectionsReady]);
 
   // Auto-scan on mount
   useEffect(() => {
@@ -685,6 +698,8 @@ function CamerasScreen({ embedded = false }: { embedded?: boolean }) {
           </>
         )}
 
+        {heavySectionsReady ? (
+          <>
         {/* ── 360° Live view ───────────────────────────────────────────── */}
         <Text style={[S.sectionTitle, { color: C.mute }]}>360° LIVE VIEW</Text>
         <View style={[S.fisheyeCard, { backgroundColor: C.card, borderColor: isConnected ? C.purple + "55" : C.border }]}>
@@ -828,6 +843,17 @@ function CamerasScreen({ embedded = false }: { embedded?: boolean }) {
             </>
           )}
         </View>
+          </>
+        ) : (
+          <View style={[S.guideBody, { backgroundColor: C.card, borderColor: C.purple + "33" }]}>
+            <Text style={[S.guideHeaderText, { color: C.purple }]}>Loading live preview + AI brain after the screen settles...</Text>
+            <Text style={[S.guideTipText, { color: C.dim }]}>Connection controls stay responsive first so Home opens faster.</Text>
+            <TouchableOpacity onPress={() => setHeavySectionsReady(true)} activeOpacity={0.8}
+              style={[S.guideBtn, { backgroundColor: C.purple + "22", borderColor: C.purple + "66" }]}>
+              <Text style={[S.guideBtnText, { color: C.purple }]}>Load live preview now</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
   </>);
 

@@ -40,7 +40,6 @@ import { useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { getVision, quickScan, visionStatusSync, type MobileSonarScan } from "@/services/vision";
 import { LiveScanStore } from "@/stores/LiveScanStore";
-import { useHudStream } from "@/hooks/useHudStream";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { getApiBaseUrl } from "@/utils/apiBase";
 
@@ -758,7 +757,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { addEntry } = useHistory();
   const { autoSpeak, speak, character, stop: stopSpeaking } = useNarrator();
-  const hud = useHudStream();
   const { isOnline } = useNetworkStatus();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -986,8 +984,10 @@ export default function HomeScreen() {
     setFlashResult(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // ── STEP 1: Sonar validate — classifies screen type, gates non-sonar ────────
-    // Runs sequentially first (~400ms) so we know which specialist endpoint to use.
+    // ── STEP 1: Sonar validate — classify fast, but fail open quickly ───────────
+    // Start the default flash request immediately so arch scans can show a fast read
+    // even if validation is slow. Validation gets a short soft timeout before we
+    // fall back to the normal arch analyzer path.
     const apiBaseUrl = getApiBaseUrl();
     if (!apiBaseUrl) {
       setError("AI API server is not configured for this mobile build yet.");
@@ -1019,12 +1019,34 @@ export default function HomeScreen() {
       }
     };
 
+    const earlyFlashPromise = Platform.OS === "web"
+      ? null
+      : fetch(`${apiBaseUrl}/api/analyze/flash`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64 }),
+          signal: flashAbort.signal,
+        })
+          .then(async (r) => {
+            if (!r.ok) return null;
+            return await r.json() as FlashRead;
+          })
+          .catch((error: unknown) => {
+            if (error instanceof Error && error.name === "AbortError") {
+              return null;
+            }
+            return null;
+          });
+
     let sonarType = "arch-2d";
+    const validateAbort = new AbortController();
+    const validateSoftTimeout = setTimeout(() => validateAbort.abort(), 1400);
     try {
       const vr = await fetch(`${apiBaseUrl}/api/sonar-validate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64 }),
+        signal: validateAbort.signal,
       });
       if (vr.ok) {
         const vData = await vr.json() as { isSonar: boolean; sonarType?: string; reason?: string | null };
@@ -1039,7 +1061,10 @@ export default function HomeScreen() {
         }
         sonarType = vData.sonarType ?? "arch-2d";
       }
-    } catch { /* fail open — proceed with arch-2d */ }
+    } catch { /* soft-fail open — don't block flash or analysis */ }
+    finally {
+      clearTimeout(validateSoftTimeout);
+    }
 
     // Auto-route: update live sonar mode from detected screen type
     const isLiveSonar = sonarType === "live-sonar";
@@ -1048,23 +1073,27 @@ export default function HomeScreen() {
 
     const flashPromise = Platform.OS === "web"
       ? null
-      : fetch(`${apiBaseUrl}${isLiveSonar ? "/api/live-sonar-analyze/flash" : "/api/analyze/flash"}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64 }),
-          signal: flashAbort.signal,
-        })
-          .then(async (r) => {
-            if (!r.ok) return null;
-            return await r.json() as FlashRead;
+      : isLiveSonar
+        ? fetch(`${apiBaseUrl}/api/live-sonar-analyze/flash`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64 }),
+            signal: flashAbort.signal,
           })
-          .then((flashData) => {
+            .then(async (r) => {
+              if (!r.ok) return null;
+              return await r.json() as FlashRead;
+            })
+            .then((flashData) => {
+              maybeApplyFlash(flashData);
+            })
+            .catch((error: unknown) => {
+              if (error instanceof Error && error.name === "AbortError") {
+                return;
+              }
+            })
+        : earlyFlashPromise?.then((flashData) => {
             maybeApplyFlash(flashData);
-          })
-          .catch((error: unknown) => {
-            if (error instanceof Error && error.name === "AbortError") {
-              return;
-            }
           });
 
     // ── STEP 2: Barra arch check — arch-2d only, fires while main call streams ─
@@ -1252,42 +1281,6 @@ export default function HomeScreen() {
       setAnalysis(data);
       setFlashResult(null); // full analysis arrived — dismiss flash banner
 
-      // ── Auto-save to Brain library (fire-and-forget) ──────────────────────
-      {
-        const scanDate    = new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
-        fetch(`${apiBaseUrl}/api/brain/sonar`, {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title:      `${data.species} — ${scanDate}`,
-            imageUri:   imageUri ?? null,
-            species:    data.species,
-            depth:      data.depth ?? null,
-            aiSummary:  data.suggestion ?? "",
-            tips:       [data.technique, data.rig, data.lure].filter(Boolean) as string[],
-            location:   capturedLocation ?? null,
-            fishCount:  data.fishCount ?? 0,
-          }),
-        }).catch(() => {/* silent — don't interrupt the user */});
-      }
-
-      // ── Auto-teach Sonar Brain: high-confidence scans feed the collective ──
-      // Fires when GPT-5 is ≥75% confident AND at least 1 fish was detected.
-      // This is a fire-and-forget background call — never blocks the user.
-      if ((data.confidence ?? 0) >= 75 && (data.fishCount ?? 0) > 0 && imageBase64) {
-        const scanDate    = new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
-        fetch(`${apiBaseUrl}/api/sonar-brain/submit`, {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            imageBase64,
-            depth:       data.depth ?? null,
-            fishCount:   data.fishCount ?? 0,
-            description: `Auto-learn: ${data.species} — ${data.confidence}% confidence — ${data.fishCount} fish — depth ${data.depth ?? "?"} — ${scanDate}`,
-          }),
-        }).catch(() => {/* silent — Sonar Brain submission is non-critical */});
-      }
-
       // ── CROC ALERT — native dialog fires immediately ──────────────────────
       if (data.crocAlert) {
         Alert.alert(
@@ -1332,44 +1325,59 @@ export default function HomeScreen() {
           suggestion: data.suggestion,
         });
       }
-      // ── Push result to smart-glass HUD (fire-and-forget) ───────────────────
-      hud.push({
-        species:    data.species    ?? "—",
-        fishCount:  data.fishCount  ?? 0,
-        depth:      data.depth      ?? "—",
-        confidence: (data.confidence ?? 0) / 100,
-        suggestion: data.suggestion ?? "",
-        sonarMode:  data.sonarMode  ?? null,
-        waterTemp:  data.waterTemp,
-        bottomType: data.bottomType,
-        lure:       data.lure,
-        crocAlert:  data.crocAlert  ?? false,
-        crocWarning:data.crocWarning ?? null,
-        archCount:  sonarBarraResult?.archCount ?? undefined,
-        barraPct:   sonarBarraResult?.confidence ?? undefined,
-        region:     "wa",
-        source:     LiveScanStore.boatActive ? "boat" : "live",
-      });
-      // Fire-and-forget: contribute to community data bank (with real location)
-      try {
-        // Await location — it's been fetching since the photo was selected
-        // so this is usually instant (already resolved) by the time AI finishes
-        const locationName = await (locationPromiseRef.current ?? Promise.resolve(null));
-        locationPromiseRef.current = null;
-        setCapturedLocation(locationName);
-        fetch(`${apiBaseUrl}/api/community/report`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      const scanDate = new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+      const locationName = await (locationPromiseRef.current ?? Promise.resolve(null)).catch(() => null);
+      locationPromiseRef.current = null;
+      setCapturedLocation(locationName);
+      fetch(`${apiBaseUrl}/api/scan/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brainSonar: {
+            title: `${data.species} — ${scanDate}`,
+            imageUri: imageUri ?? null,
+            species: data.species,
+            depth: data.depth ?? null,
+            aiSummary: data.suggestion ?? "",
+            tips: [data.technique, data.rig, data.lure].filter(Boolean),
+            location: locationName ?? null,
+            fishCount: data.fishCount ?? 0,
+          },
+          sonarBrain: (data.confidence ?? 0) >= 75 && (data.fishCount ?? 0) > 0 && imageBase64
+            ? {
+                imageBase64,
+                depth: data.depth ?? null,
+                fishCount: data.fishCount ?? 0,
+                description: `Auto-learn: ${data.species} — ${data.confidence}% confidence — ${data.fishCount} fish — depth ${data.depth ?? "?"} — ${scanDate}`,
+              }
+            : null,
+          communityReport: {
             species: data.species,
             fishCount: data.fishCount,
             depth: data.depth,
             lureSuggestion: data.suggestion,
             rawAnalysis: data,
             locationName: locationName ?? undefined,
-          }),
-        }).catch(() => {});
-      } catch {}
+          },
+          hud: {
+            species: data.species ?? "—",
+            fishCount: data.fishCount ?? 0,
+            depth: data.depth ?? "—",
+            confidence: (data.confidence ?? 0) / 100,
+            suggestion: data.suggestion ?? "",
+            sonarMode: data.sonarMode ?? null,
+            waterTemp: data.waterTemp,
+            bottomType: data.bottomType,
+            lure: data.lure,
+            crocAlert: data.crocAlert ?? false,
+            crocWarning: data.crocWarning ?? null,
+            archCount: sonarBarraResult?.archCount ?? undefined,
+            barraPct: sonarBarraResult?.confidence ?? undefined,
+            region: "wa",
+            source: LiveScanStore.boatActive ? "boat" : "live",
+          },
+        }),
+      }).catch(() => {});
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       setError(msg);
@@ -1379,7 +1387,7 @@ export default function HomeScreen() {
       setLoading(false);
       setStreaming(false);
     }
-  }, [imageBase64, imageUri, addEntry, analyzeScale, autoSpeak, hud.push]);
+  }, [imageBase64, imageUri, addEntry, analyzeScale, autoSpeak, flashResult, sonarBarraResult]);
 
   // Auto-analyse when a demo image is injected from the Demo tab
   useEffect(() => {
