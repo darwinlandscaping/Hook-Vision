@@ -87,6 +87,15 @@ type FlashRead = {
   quickRead: string;
 };
 
+function selectCompactSonarRefs() {
+  const refs = getSonarFewShotRefs();
+  const firstPositiveDemo = refs.find((ref) => ref.isPositive && ref.source === "demo") ?? null;
+  const firstNegativeDemo = refs.find((ref) => !ref.isPositive && ref.source === "demo") ?? null;
+  const firstCommunityPositive = refs.find((ref) => ref.isPositive && ref.source === "community") ?? null;
+
+  return [firstPositiveDemo, firstNegativeDemo, firstCommunityPositive].filter(Boolean);
+}
+
 function parseFlashRead(raw: string): FlashRead | null {
   const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   const match = cleaned.match(/\{[\s\S]*?\}/);
@@ -188,29 +197,29 @@ router.post("/analyze", async (req, res) => {
       crossScanCtx = `═══ RECENT SCAN HISTORY (${validRecent.length} prior scans in last 5 min) ═══\n${lines.join("\n")}\nUse this context to track movement: same species deeper = fish dropping. New species = population shift. Same count = holding pattern.`;
     }
 
-    // Build few-shot reference blocks — inject confirmed reference images before user's sonar image
-    // so the model has visual examples of barra (positive), jack (negative), threadfin (negative) etc.
-    // This is the most critical fix for Barra vs Jack confusion — previously ZERO references were sent.
-    const refs = getSonarFewShotRefs();
+    // Keep the payload compact: one barra demo, one contrast demo, and at most
+    // one community-confirmed barra example. This preserves grounding while
+    // avoiding the larger 8-10 image prompt that slowed mobile scans.
+    const refs = selectCompactSonarRefs();
     const refBlocks: object[] = [];
     if (refs.length > 0) {
       const positives = refs.filter(r => r.isPositive);
       const negatives = refs.filter(r => !r.isPositive);
       if (positives.length > 0) {
-        refBlocks.push({ type: "text", text: `REFERENCE IMAGES — CONFIRMED SPECIES (${positives.length} images). Study these FIRST before evaluating the user's sonar:` });
+        refBlocks.push({ type: "text", text: "REFERENCE: confirmed barra arch signatures." });
         for (const ref of positives) {
           refBlocks.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
-          refBlocks.push({ type: "text", text: `↑ POSITIVE: ${ref.brand} — ${ref.label.split("\n")[0]}` });
+          refBlocks.push({ type: "text", text: `BARRA reference — ${ref.brand}: ${ref.label.split("\n")[0]}` });
         }
       }
       if (negatives.length > 0) {
-        refBlocks.push({ type: "text", text: `CONTRAST REFERENCES — NOT BARRAMUNDI (${negatives.length} images — study what these look like so you do NOT misidentify them):` });
+        refBlocks.push({ type: "text", text: "CONTRAST: common non-barra lookalike arches." });
         for (const ref of negatives) {
           refBlocks.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
-          refBlocks.push({ type: "text", text: `↑ NEGATIVE (${ref.label.split("—")[1]?.trim().split(" ")[0] ?? "Not barra"}): ${ref.brand} — ${ref.label.split("\n")[0]}` });
+          refBlocks.push({ type: "text", text: `NOT BARRA — ${ref.brand}: ${ref.label.split("\n")[0]}` });
         }
       }
-      refBlocks.push({ type: "text", text: "NOW EVALUATE THE USER'S SONAR IMAGE below. Compare arch shape (complete vs half-arch), position (on structure vs mid-column vs buried in structure), shadow voids, and arch thickness against the references above." });
+      refBlocks.push({ type: "text", text: "Now evaluate the user's sonar image against these references." });
     }
 
     // Turbo: mini + high detail — drives the master confidence score.
@@ -218,7 +227,7 @@ router.post("/analyze", async (req, res) => {
     const turboPromise = openai.chat.completions.create({
       model: getModel("mid"),
       temperature: 0.4,
-      max_completion_tokens: 600,
+      max_completion_tokens: 500,
       stream: true,
       messages: [
         { role: "system", content: SYS },

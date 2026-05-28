@@ -544,8 +544,8 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     const content: Array<ImagePart | TextPart> = [];
 
     const barraRefs     = getBarraBodyRefs(1);
-    const crocRefs      = getCrocFewShotRefs(2);
-    const liveSonarRefs = getLiveSonarDemoRefs();
+    const crocRefs      = getCrocFewShotRefs(1);
+    const liveSonarRefs = getLiveSonarDemoRefs().slice(0, 2);
 
     const hasRefs = barraRefs.length > 0 || crocRefs.length > 0 || liveSonarRefs.length > 0;
 
@@ -557,32 +557,32 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
       // to OpenAI (Wikimedia/iNat URLs can be blocked and would cause a 400 crash)
       if (barraRefs.length > 0) {
         const bp = barraRefs[0]!;
-        content.push({ type: "text", text: `STEP 1 — BARRAMUNDI BODY ANATOMY (iNaturalist research-grade, ${bp.location}):\nThe PHYSOSTOMOUS SWIM BLADDER (large pale gas sac in upper body cavity) is the dominant sonar reflector. On live sonar, this bladder creates the BRIGHT ELONGATED OVAL body return + LONG ACOUSTIC SHADOW. Body L:H ratio on this specimen: approximately 3.5–4.5:1. The BLUNT FOREHEAD creates a steep front face on the oval. The narrowing at the rear is the caudal peduncle/tail. Connect this anatomy to what you see on the live sonar display: BRIGHT ELONGATED OVAL + LONG SHADOW = BARRAMUNDI.` });
+        content.push({ type: "text", text: `STEP 1 — BARRAMUNDI BODY ANATOMY (${bp.location}): bright elongated oval + long acoustic shadow = barramundi.` });
         if (bp.thumbBase64) {
           content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${bp.thumbBase64}`, detail: "low" } });
         }
-        content.push({ type: "text", text: `↑ CONFIRMED BARRAMUNDI body — ${bp.location} (${bp.votes} expert votes). This is what creates the live sonar signature: large swim bladder → bright oval return + long acoustic shadow.` });
+        content.push({ type: "text", text: `CONFIRMED BARRAMUNDI body — ${bp.location} (${bp.votes} expert votes).` });
       }
 
       // Step 2: Saltwater croc body shape — cross-modal bridge croc silhouette → live sonar blob
       // Only inject images with base64 thumbnails — skip any that only have raw external URLs
       if (crocRefs.length > 0) {
-        content.push({ type: "text", text: `STEP 2 — SALTWATER CROCODILE BODY SHAPE (${crocRefs.length} iNaturalist research-grade Crocodylus porosus):\nOn live sonar a croc appears as an ENORMOUS SOLID FILLED BLOB near the surface — much WIDER than any fish. Body width-to-length ratio ≈ 1:3 vs barra's 1:4. The croc's body is essentially RECTANGULAR (no fish-shaped narrowing at tail). CRITICAL: crocs have NO swim bladder, so their sonar return is a SOLID DENSE BLOB with NO internal void — unlike barra which has bright edges + shadow void.` });
+        content.push({ type: "text", text: `STEP 2 — SALTWATER CROCODILE SHAPE: wide near-surface blob, no swim-bladder shadow signature.` });
         for (const cr of crocRefs) {
           if (!cr.thumbBase64) continue;
           const angleNote = cr.viewingAngle === "top" ? " [TOP VIEW — matches live sonar overhead perspective mode]"
             : cr.viewingAngle === "side" ? " [SIDE VIEW — matches live sonar forward/down mode]" : "";
           content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${cr.thumbBase64}`, detail: "low" } });
-          content.push({ type: "text", text: `↑ CONFIRMED SALTWATER CROCODILE (Crocodylus porosus) — ${cr.location}${angleNote}. Compare body WIDTH vs fish — croc is MUCH WIDER relative to length. This body shape appears as a SOLID FILLED BLOB on live sonar near the surface.` });
+          content.push({ type: "text", text: `CONFIRMED SALTWATER CROCODILE — ${cr.location}${angleNote}.` });
         }
       }
 
       // Step 3: Live sonar display demos — brand UI + fish body shape references
       if (liveSonarRefs.length > 0) {
-        content.push({ type: "text", text: `STEP 3 — LIVE SONAR DISPLAY REFERENCES (${liveSonarRefs.length} editorial/manufacturer reference screens):\nStudy these live sonar screens to calibrate what each brand's display looks like. Notice the background colour, fish body shape vs structure echoes, and shadow direction.` });
+        content.push({ type: "text", text: `STEP 3 — LIVE SONAR DISPLAY REFERENCES (${liveSonarRefs.length} screens): use these for brand chrome and target layout calibration.` });
         for (const ref of liveSonarRefs) {
           content.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
-          content.push({ type: "text", text: `↑ ${ref.brand} live sonar display reference (Demo ${ref.demoNum}). ${ref.label.split('\n')[0]}` });
+          content.push({ type: "text", text: `${ref.brand} live sonar reference (Demo ${ref.demoNum}). ${ref.label.split('\n')[0]}` });
         }
       }
 
@@ -597,7 +597,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     const streamPromise = openai.chat.completions.create({
       model: getModel("mid"),
       temperature: 0.4,
-      max_completion_tokens: 500,
+      max_completion_tokens: 420,
       stream: true,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
