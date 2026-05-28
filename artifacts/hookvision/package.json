@@ -7,7 +7,7 @@
     "dev": "PORT=${PORT:-25351} ../../scripts/start-expo-dev.sh",
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "pnpm --filter @workspace/api-client-react run build && tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

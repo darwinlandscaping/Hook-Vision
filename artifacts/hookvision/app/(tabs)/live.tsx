@@ -100,6 +100,13 @@ interface VisionTarget {
   bodyProfile?: string;
 }
 
+interface TrophyTarget {
+  label: string;
+  sizeClass: "legal" | "trophy";
+  position: string;
+  note: string;
+}
+
 // Retries a fetch through transient network errors (e.g. Starlink handoff dropouts).
 // Uses capped linear back-off so the device waits long enough for the satellite
 // connection to re-establish (typically 1–10 s) without waiting forever.
@@ -817,6 +824,7 @@ function BoatGrid({ detectedZones, frameZones, movementVector, movingZones, stat
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function LiveScreen() {
+  const isNativePlatform: boolean = Platform.OS !== "web";
   const colors   = useColors();
   const insets   = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -902,7 +910,7 @@ export default function LiveScreen() {
   narratePageRef.current = narratePage;
   const [isOffline, setIsOffline] = useState(false);
   const trophyDetectedRef   = useRef(false);
-  const trophyBestTargetRef = useRef<{ label: string; sizeClass: string; position: string; note: string } | null>(null);
+  const trophyBestTargetRef = useRef<TrophyTarget | null>(null);
   const [trophyMode, setTrophyMode] = useState(false);
 
   // ── Live Scan Panel (non-boat-mode scan) ──────────────────────────────────
@@ -1135,7 +1143,7 @@ export default function LiveScreen() {
         trophyDetectedRef.current = true;
         trophyBestTargetRef.current = {
           label: bigFishTgt.label,
-          sizeClass: bigFishTgt.sizeClass ?? "legal",
+          sizeClass: bigFishTgt.sizeClass === "trophy" ? "trophy" : "legal",
           position: fi?.sides[0] ?? "centre",
           note: bigFishTgt.note ?? "",
         };
@@ -1195,7 +1203,7 @@ export default function LiveScreen() {
 
         if (trophyDetectedRef.current && trophyBestTargetRef.current) {
           // ── TROPHY TRACKING MODE — lock, instruct, follow-up ─────────────
-          const td = trophyBestTargetRef.current;
+          const td: TrophyTarget = trophyBestTargetRef.current;
           setTrophyMode(true);
           const castContent = [
             `TROPHY TRACKING MODE — ${td.sizeClass === "trophy" ? "TROPHY" : "LEGAL"} ${td.label} LOCKED ON SCOPE.`,
@@ -3128,7 +3136,7 @@ export default function LiveScreen() {
   if (visionMode) {
     return (
       <View style={[styles.container, { backgroundColor: "#000" }]}>
-        {Platform.OS !== "web" && (
+        {isNativePlatform && (
           <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" flash="off" animateShutter={false} shutterSound={false} enableTorch={false} />
         )}
 
@@ -3346,7 +3354,7 @@ export default function LiveScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Tiny camera keeps nativeCamRef warm so boat mode starts instantly */}
-      {Platform.OS !== "web" && !BoatDemoStore.active && (
+      {isNativePlatform && !BoatDemoStore.active && (
         <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" flash="off" animateShutter={false} shutterSound={false} enableTorch={false} />
       )}
       <ScrollView
@@ -3430,7 +3438,7 @@ export default function LiveScreen() {
                   </View>
                   {/* Guide text */}
                   <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    <MaterialCommunityIcons name="sonar" size={28} color="#ffffff22" />
+                    <MaterialCommunityIcons name="radar" size={28} color="#ffffff22" />
                     <Text style={{ color: "#ffffff44", fontSize: 12, fontFamily: "Inter_500Medium", textAlign: "center" }}>
                       {"Point at sonar screen\nthen tap Camera or Start Auto-Scan"}
                     </Text>
@@ -3644,7 +3652,7 @@ export default function LiveScreen() {
           </View>
         </View>
       </ScrollView>
-      {Platform.OS !== "web" && (
+      {isNativePlatform && (
         <SoundFAB
           isMonitoring={soundMonitoring}
           isListening={soundListening}
