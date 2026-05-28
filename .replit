@@ -76,7 +76,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bash /home/runner/workspace/scripts/eas-push.sh"
+args = "bash /home/runner/workspace/scripts/eas-push-nt.sh"
 
 [agent]
 stack = "PNPM_WORKSPACE"
