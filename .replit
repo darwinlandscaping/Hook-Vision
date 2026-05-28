@@ -71,12 +71,12 @@ outputType = "webview"
 name = "EAS Push (temp)"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "bash /tmp/eas_push5.sh"
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash /home/runner/workspace/scripts/eas-push.sh"
 
 [agent]
 stack = "PNPM_WORKSPACE"
