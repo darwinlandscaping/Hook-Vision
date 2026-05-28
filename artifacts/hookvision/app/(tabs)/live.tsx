@@ -182,6 +182,24 @@ async function readStreamWithTimeout(
   }
   return txt;
 }
+
+async function encodeAdaptiveAiJpeg(uri: string): Promise<{ uri: string; base64: string | null }> {
+  let jpeg = await manipulateAsync(
+    uri,
+    [{ resize: { width: 960 } }],
+    { compress: 0.7, format: SaveFormat.JPEG, base64: true }
+  );
+
+  if ((jpeg.base64?.length ?? 0) > 380_000) {
+    jpeg = await manipulateAsync(
+      jpeg.uri,
+      [{ resize: { width: 768 } }],
+      { compress: 0.58, format: SaveFormat.JPEG, base64: true }
+    );
+  }
+
+  return { uri: jpeg.uri, base64: jpeg.base64 ?? null };
+}
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { useColors } from "@/hooks/useColors";
@@ -1281,7 +1299,7 @@ export default function LiveScreen() {
     if (status !== "granted") { Alert.alert("Permission Required", "Allow camera access to photograph your sonar screen."); return; }
     const picked = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.85, base64: false });
     if (!picked.canceled && picked.assets[0]) {
-      const jpeg = await manipulateAsync(picked.assets[0].uri, [{ resize: { width: 1280 } }], { compress: 0.85, format: SaveFormat.JPEG, base64: true });
+      const jpeg = await encodeAdaptiveAiJpeg(picked.assets[0].uri);
       setLsUri(jpeg.uri); setLsB64(jpeg.base64 ?? null);
       setLsAnalysis(null); setLsError(null);
     }
@@ -1292,7 +1310,7 @@ export default function LiveScreen() {
     if (status !== "granted") { Alert.alert("Permission Required", "Allow access to your photo library."); return; }
     const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.85, base64: false });
     if (!picked.canceled && picked.assets[0]) {
-      const jpeg = await manipulateAsync(picked.assets[0].uri, [{ resize: { width: 1280 } }], { compress: 0.85, format: SaveFormat.JPEG, base64: true });
+      const jpeg = await encodeAdaptiveAiJpeg(picked.assets[0].uri);
       setLsUri(jpeg.uri); setLsB64(jpeg.base64 ?? null);
       setLsAnalysis(null); setLsError(null);
     }
@@ -1424,7 +1442,7 @@ export default function LiveScreen() {
       // Prefer manipulateAsync → guaranteed clean JPEG (same as scan page toJpeg)
       if (photo.uri) {
         try {
-          const j = await manipulateAsync(photo.uri, [], { format: SaveFormat.JPEG, compress: 0.75, base64: true });
+          const j = await encodeAdaptiveAiJpeg(photo.uri);
           if (j.base64) return { base64: j.base64, uri: j.uri };
         } catch { /* fall through to raw base64 */ }
       }
@@ -1794,11 +1812,7 @@ export default function LiveScreen() {
       setError(null);
 
       // Convert to JPEG base64 (fixes WebP / HEIC on Android/iOS)
-      const jpeg = await manipulateAsync(
-        asset.uri,
-        [],
-        { compress: 0.85, format: SaveFormat.JPEG, base64: true }
-      );
+      const jpeg = await encodeAdaptiveAiJpeg(asset.uri);
       if (!jpeg.base64) throw new Error("Could not read image.");
 
       if (Platform.OS !== "web") {
@@ -1852,11 +1866,7 @@ export default function LiveScreen() {
       const asset = result.assets[0];
       setScanning(true);
       setError(null);
-      const jpeg = await manipulateAsync(
-        asset.uri,
-        [],
-        { compress: 0.85, format: SaveFormat.JPEG, base64: true }
-      );
+      const jpeg = await encodeAdaptiveAiJpeg(asset.uri);
       if (!jpeg.base64) throw new Error("Could not read image.");
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

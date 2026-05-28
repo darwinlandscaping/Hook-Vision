@@ -657,11 +657,18 @@ const BT = StyleSheet.create({
 
 /** Ensure any picked image (WebP, HEIF, etc) is re-encoded as JPEG before upload */
 async function toJpeg(uri: string): Promise<{ uri: string; base64: string }> {
-  const result = await manipulateAsync(
+  let result = await manipulateAsync(
     uri,
-    [{ resize: { width: 1024 } }],
-    { format: SaveFormat.JPEG, compress: 0.75, base64: true },
+    [{ resize: { width: 960 } }],
+    { format: SaveFormat.JPEG, compress: 0.68, base64: true },
   );
+  if ((result.base64?.length ?? 0) > 380_000) {
+    result = await manipulateAsync(
+      result.uri,
+      [{ resize: { width: 768 } }],
+      { format: SaveFormat.JPEG, compress: 0.58, base64: true },
+    );
+  }
   return { uri: result.uri, base64: result.base64 ?? "" };
 }
 
