@@ -7,7 +7,7 @@ const apps = [
   { name: "CrocGuard", port: 25354 },
 ];
 
-function getExpoGoUrlFromManifest(manifest) {
+function getUrlsFromManifest(manifest) {
   const bundleUrl = manifest?.launchAsset?.url;
   if (!bundleUrl) {
     return null;
@@ -15,7 +15,13 @@ function getExpoGoUrlFromManifest(manifest) {
 
   try {
     const parsed = new URL(bundleUrl);
-    return `exp://${parsed.host}`;
+    const supportsSecureAlias = !parsed.port && parsed.hostname !== "localhost" && !/^\d+\.\d+\.\d+\.\d+$/.test(parsed.hostname);
+    return {
+      browserUrl: `${parsed.protocol}//${parsed.host}`,
+      expoUrl: `exp://${parsed.host}`,
+      secureBrowserUrl: supportsSecureAlias ? `https://${parsed.host}` : null,
+      secureExpoUrl: supportsSecureAlias ? `exps://${parsed.host}` : null,
+    };
   } catch {
     return null;
   }
@@ -31,12 +37,19 @@ async function inspectApp(app) {
     }
 
     const manifest = await response.json();
-    const expoGoUrl = getExpoGoUrlFromManifest(manifest);
+    const urls = getUrlsFromManifest(manifest);
 
     console.log(`${app.name}`);
     console.log(`  Local manifest: ${manifestUrl}`);
-    if (expoGoUrl) {
-      console.log(`  Expo Go URL:   ${expoGoUrl}`);
+    if (urls) {
+      if (urls.secureExpoUrl) {
+        console.log(`  Expo Go URL:   ${urls.secureExpoUrl}`);
+      }
+      console.log(`  Expo fallback: ${urls.expoUrl}`);
+      if (urls.secureBrowserUrl) {
+        console.log(`  Browser URL:   ${urls.secureBrowserUrl}`);
+      }
+      console.log(`  Browser URL:   ${urls.browserUrl}`);
     } else {
       console.log("  Expo Go URL:   unavailable (manifest did not expose a bundle host)");
     }
