@@ -1225,15 +1225,20 @@ export default function HomeScreen() {
       // ── Flash fallback: only use flash confidence when turbo found absolutely nothing (0%) ──
       // Do NOT override a correct species ID (e.g. Threadfin) just because flash scored higher.
       {
-        const flashPct = Math.round((localFlash?.confidence ?? 0) * 100);
-        const flashHadFish = localFlash && (localFlash.fishCount ?? 0) > 0
-          && !!localFlash.species && !localFlash.species.toLowerCase().includes("unknown");
-        if (flashHadFish && (data.confidence ?? 0) === 0) {
+        const flashCandidate = localFlash;
+        const flashPct = Math.round((flashCandidate?.confidence ?? 0) * 100);
+        const flashHadFish = Boolean(
+          flashCandidate &&
+          (flashCandidate.fishCount ?? 0) > 0 &&
+          flashCandidate.species &&
+          !flashCandidate.species.toLowerCase().includes("unknown")
+        );
+        if (flashCandidate && flashHadFish && (data.confidence ?? 0) === 0) {
           data = {
             ...data,
-            species:   localFlash!.species,
+            species:   flashCandidate.species,
             confidence: flashPct,
-            fishCount:  localFlash!.fishCount ?? 0,
+            fishCount:  flashCandidate.fishCount ?? 0,
           };
         }
       }
