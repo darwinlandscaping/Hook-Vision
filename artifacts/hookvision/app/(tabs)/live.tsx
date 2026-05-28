@@ -100,6 +100,13 @@ interface VisionTarget {
   bodyProfile?: string;
 }
 
+interface TrophyTarget {
+  label: string;
+  sizeClass: "legal" | "trophy";
+  position: string;
+  note: string;
+}
+
 // Retries a fetch through transient network errors (e.g. Starlink handoff dropouts).
 // Uses capped linear back-off so the device waits long enough for the satellite
 // connection to re-establish (typically 1–10 s) without waiting forever.
@@ -174,6 +181,24 @@ async function readStreamWithTimeout(
     txt += dec.decode(value, { stream: true });
   }
   return txt;
+}
+
+async function encodeAdaptiveAiJpeg(uri: string): Promise<{ uri: string; base64: string | null }> {
+  let jpeg = await manipulateAsync(
+    uri,
+    [{ resize: { width: 960 } }],
+    { compress: 0.7, format: SaveFormat.JPEG, base64: true }
+  );
+
+  if ((jpeg.base64?.length ?? 0) > 380_000) {
+    jpeg = await manipulateAsync(
+      jpeg.uri,
+      [{ resize: { width: 768 } }],
+      { compress: 0.58, format: SaveFormat.JPEG, base64: true }
+    );
+  }
+
+  return { uri: jpeg.uri, base64: jpeg.base64 ?? null };
 }
 import { NarratorSettingsTrigger } from "@/components/NarratorSettings";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
@@ -817,6 +842,7 @@ function BoatGrid({ detectedZones, frameZones, movementVector, movingZones, stat
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function LiveScreen() {
+  const isNativePlatform: boolean = Platform.OS !== "web";
   const colors   = useColors();
   const insets   = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -902,7 +928,7 @@ export default function LiveScreen() {
   narratePageRef.current = narratePage;
   const [isOffline, setIsOffline] = useState(false);
   const trophyDetectedRef   = useRef(false);
-  const trophyBestTargetRef = useRef<{ label: string; sizeClass: string; position: string; note: string } | null>(null);
+  const trophyBestTargetRef = useRef<TrophyTarget | null>(null);
   const [trophyMode, setTrophyMode] = useState(false);
 
   // ── Live Scan Panel (non-boat-mode scan) ──────────────────────────────────
@@ -1135,7 +1161,7 @@ export default function LiveScreen() {
         trophyDetectedRef.current = true;
         trophyBestTargetRef.current = {
           label: bigFishTgt.label,
-          sizeClass: bigFishTgt.sizeClass ?? "legal",
+          sizeClass: bigFishTgt.sizeClass === "trophy" ? "trophy" : "legal",
           position: fi?.sides[0] ?? "centre",
           note: bigFishTgt.note ?? "",
         };
@@ -1195,7 +1221,7 @@ export default function LiveScreen() {
 
         if (trophyDetectedRef.current && trophyBestTargetRef.current) {
           // ── TROPHY TRACKING MODE — lock, instruct, follow-up ─────────────
-          const td = trophyBestTargetRef.current;
+          const td: TrophyTarget = trophyBestTargetRef.current;
           setTrophyMode(true);
           const castContent = [
             `TROPHY TRACKING MODE — ${td.sizeClass === "trophy" ? "TROPHY" : "LEGAL"} ${td.label} LOCKED ON SCOPE.`,
@@ -1273,7 +1299,7 @@ export default function LiveScreen() {
     if (status !== "granted") { Alert.alert("Permission Required", "Allow camera access to photograph your sonar screen."); return; }
     const picked = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.85, base64: false });
     if (!picked.canceled && picked.assets[0]) {
-      const jpeg = await manipulateAsync(picked.assets[0].uri, [{ resize: { width: 1280 } }], { compress: 0.85, format: SaveFormat.JPEG, base64: true });
+      const jpeg = await encodeAdaptiveAiJpeg(picked.assets[0].uri);
       setLsUri(jpeg.uri); setLsB64(jpeg.base64 ?? null);
       setLsAnalysis(null); setLsError(null);
     }
@@ -1284,7 +1310,7 @@ export default function LiveScreen() {
     if (status !== "granted") { Alert.alert("Permission Required", "Allow access to your photo library."); return; }
     const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.85, base64: false });
     if (!picked.canceled && picked.assets[0]) {
-      const jpeg = await manipulateAsync(picked.assets[0].uri, [{ resize: { width: 1280 } }], { compress: 0.85, format: SaveFormat.JPEG, base64: true });
+      const jpeg = await encodeAdaptiveAiJpeg(picked.assets[0].uri);
       setLsUri(jpeg.uri); setLsB64(jpeg.base64 ?? null);
       setLsAnalysis(null); setLsError(null);
     }
@@ -1416,7 +1442,7 @@ export default function LiveScreen() {
       // Prefer manipulateAsync → guaranteed clean JPEG (same as scan page toJpeg)
       if (photo.uri) {
         try {
-          const j = await manipulateAsync(photo.uri, [], { format: SaveFormat.JPEG, compress: 0.75, base64: true });
+          const j = await encodeAdaptiveAiJpeg(photo.uri);
           if (j.base64) return { base64: j.base64, uri: j.uri };
         } catch { /* fall through to raw base64 */ }
       }
@@ -1786,11 +1812,7 @@ export default function LiveScreen() {
       setError(null);
 
       // Convert to JPEG base64 (fixes WebP / HEIC on Android/iOS)
-      const jpeg = await manipulateAsync(
-        asset.uri,
-        [],
-        { compress: 0.85, format: SaveFormat.JPEG, base64: true }
-      );
+      const jpeg = await encodeAdaptiveAiJpeg(asset.uri);
       if (!jpeg.base64) throw new Error("Could not read image.");
 
       if (Platform.OS !== "web") {
@@ -1844,11 +1866,7 @@ export default function LiveScreen() {
       const asset = result.assets[0];
       setScanning(true);
       setError(null);
-      const jpeg = await manipulateAsync(
-        asset.uri,
-        [],
-        { compress: 0.85, format: SaveFormat.JPEG, base64: true }
-      );
+      const jpeg = await encodeAdaptiveAiJpeg(asset.uri);
       if (!jpeg.base64) throw new Error("Could not read image.");
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -3128,7 +3146,7 @@ export default function LiveScreen() {
   if (visionMode) {
     return (
       <View style={[styles.container, { backgroundColor: "#000" }]}>
-        {Platform.OS !== "web" && (
+        {isNativePlatform && (
           <CameraView ref={nativeCamRef} style={StyleSheet.absoluteFill} facing="back" mode="picture" flash="off" animateShutter={false} shutterSound={false} enableTorch={false} />
         )}
 
@@ -3346,7 +3364,7 @@ export default function LiveScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Tiny camera keeps nativeCamRef warm so boat mode starts instantly */}
-      {Platform.OS !== "web" && !BoatDemoStore.active && (
+      {isNativePlatform && !BoatDemoStore.active && (
         <CameraView ref={nativeCamRef} style={{ width: 1, height: 1, opacity: 0 }} facing="back" mode="picture" flash="off" animateShutter={false} shutterSound={false} enableTorch={false} />
       )}
       <ScrollView
@@ -3430,7 +3448,7 @@ export default function LiveScreen() {
                   </View>
                   {/* Guide text */}
                   <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    <MaterialCommunityIcons name="sonar" size={28} color="#ffffff22" />
+                    <MaterialCommunityIcons name="radar" size={28} color="#ffffff22" />
                     <Text style={{ color: "#ffffff44", fontSize: 12, fontFamily: "Inter_500Medium", textAlign: "center" }}>
                       {"Point at sonar screen\nthen tap Camera or Start Auto-Scan"}
                     </Text>
@@ -3644,7 +3662,7 @@ export default function LiveScreen() {
           </View>
         </View>
       </ScrollView>
-      {Platform.OS !== "web" && (
+      {isNativePlatform && (
         <SoundFAB
           isMonitoring={soundMonitoring}
           isListening={soundListening}

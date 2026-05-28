@@ -399,11 +399,12 @@ Task: Classify the image and give a quick first-pass live sonar result.
 
 Return ONLY this JSON:
 {
-  "isLiveSonar": true/false,
-  "brand": "humminbird-mega-live-2" | "garmin-livescope-plus" | "lowrance-activetarget-2" | "simrad-activetarget" | "unknown-live-sonar" | "not-live-sonar",
-  "liveMode": "forward" | "down" | "landscape" | "perspective" | "scout" | "traditional-2d" | "unknown",
-  "quickSpecies": "quick first-pass species guess or null",
-  "quickConfidence": integer 0-100
+  "species": "quick first-pass species guess or No fish detected",
+  "fishCount": integer,
+  "confidence": float 0-1,
+  "quickRead": "brand + mode + quick verdict in <= 12 words",
+  "liveBrand": "humminbird-mega-live-2" | "garmin-livescope-plus" | "lowrance-activetarget-2" | "simrad-activetarget" | "unknown-live-sonar" | "not-live-sonar",
+  "liveMode": "forward" | "down" | "landscape" | "perspective" | "scout" | "traditional-2d" | "unknown"
 }`;
 
 function detectMime(b64: string): string {
@@ -412,6 +413,147 @@ function detectMime(b64: string): string {
   if (p.startsWith("UklGR"))   return "image/webp";
   return "image/jpeg";
 }
+
+type LiveFlashRead = {
+  species: string;
+  fishCount: number;
+  confidence: number;
+  quickRead: string;
+  liveBrand?: string;
+  liveMode?: string;
+};
+
+const compactLiveReferenceCache = new Map<string, Array<ImagePart | TextPart>>();
+
+function parseLiveFlashRead(raw: string): LiveFlashRead | null {
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = JSON.parse(match[0]) as Partial<LiveFlashRead>;
+  if (typeof parsed.species !== "string") {
+    return null;
+  }
+
+  return {
+    species: parsed.species,
+    fishCount: typeof parsed.fishCount === "number" ? parsed.fishCount : 0,
+    confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0,
+    quickRead: typeof parsed.quickRead === "string" ? parsed.quickRead : "",
+    liveBrand: typeof parsed.liveBrand === "string" ? parsed.liveBrand : undefined,
+    liveMode: typeof parsed.liveMode === "string" ? parsed.liveMode : undefined,
+  };
+}
+
+async function createLiveFlashRead(imageBase64: string): Promise<LiveFlashRead> {
+  const mimeType = detectMime(imageBase64);
+  const flashResult = await openai.chat.completions.create({
+    model: getModel("fast"),
+    temperature: 0.4,
+    max_completion_tokens: 120,
+    stream: false,
+    messages: [
+      { role: "system", content: FLASH_PROMPT },
+      {
+        role: "user",
+        content: [
+          { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "low" } },
+          { type: "text", text: "Classify this live sonar image." }
+        ]
+      }
+    ]
+  }, { signal: AbortSignal.timeout(12_000) });
+
+  const flashRaw = flashResult.choices[0]?.message?.content ?? "{}";
+  const parsed = parseLiveFlashRead(flashRaw);
+  if (!parsed) {
+    throw new Error("Invalid live flash response");
+  }
+
+  return parsed;
+}
+
+type ImagePart = { type: "image_url"; image_url: { url: string; detail: "high" | "low" } };
+type TextPart  = { type: "text"; text: string };
+
+function buildCompactLiveReferenceContent(
+  barraRefs: ReturnType<typeof getBarraBodyRefs>,
+  crocRefs: ReturnType<typeof getCrocFewShotRefs>,
+  liveSonarRefs: ReturnType<typeof getLiveSonarDemoRefs>,
+): Array<ImagePart | TextPart> {
+  const cacheKey = [
+    ...barraRefs.map((ref) => `barra:${ref.location}:${ref.votes}`),
+    ...crocRefs.map((ref) => `croc:${ref.location}:${ref.viewingAngle ?? "any"}`),
+    ...liveSonarRefs.map((ref) => `live:${ref.demoNum}:${ref.brand}`),
+  ].join("|");
+
+  const cached = compactLiveReferenceCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const content: Array<ImagePart | TextPart> = [];
+  const hasRefs = barraRefs.length > 0 || crocRefs.length > 0 || liveSonarRefs.length > 0;
+
+  if (hasRefs) {
+    content.push({ type: "text", text: "LIVE SONAR BRAIN — compact reference package:" });
+
+    if (barraRefs.length > 0) {
+      const bp = barraRefs[0]!;
+      content.push({ type: "text", text: `STEP 1 — BARRAMUNDI BODY ANATOMY (${bp.location}): bright elongated oval + long acoustic shadow = barramundi.` });
+      if (bp.thumbBase64) {
+        content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${bp.thumbBase64}`, detail: "low" } });
+      }
+      content.push({ type: "text", text: `CONFIRMED BARRAMUNDI body — ${bp.location} (${bp.votes} expert votes).` });
+    }
+
+    if (crocRefs.length > 0) {
+      content.push({ type: "text", text: "STEP 2 — SALTWATER CROCODILE SHAPE: wide near-surface blob, no swim-bladder shadow signature." });
+      for (const cr of crocRefs) {
+        if (!cr.thumbBase64) continue;
+        const angleNote = cr.viewingAngle === "top" ? " [TOP VIEW — matches live sonar overhead perspective mode]"
+          : cr.viewingAngle === "side" ? " [SIDE VIEW — matches live sonar forward/down mode]" : "";
+        content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${cr.thumbBase64}`, detail: "low" } });
+        content.push({ type: "text", text: `CONFIRMED SALTWATER CROCODILE — ${cr.location}${angleNote}.` });
+      }
+    }
+
+    if (liveSonarRefs.length > 0) {
+      content.push({ type: "text", text: `STEP 3 — LIVE SONAR DISPLAY REFERENCES (${liveSonarRefs.length} screens): use these for brand chrome and target layout calibration.` });
+      for (const ref of liveSonarRefs) {
+        content.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
+        content.push({ type: "text", text: `${ref.brand} live sonar reference (Demo ${ref.demoNum}). ${ref.label.split('\n')[0]}` });
+      }
+    }
+
+    content.push({ type: "text", text: "STEP 4 — ANALYSE THE USER'S LIVE SONAR IMAGE BELOW." });
+  }
+
+  compactLiveReferenceCache.set(cacheKey, content);
+  return content;
+}
+
+router.post("/live-sonar-analyze/flash", async (req, res) => {
+  const { imageBase64 } = req.body as { imageBase64?: string };
+  if (!imageBase64) {
+    res.status(400).json({ error: "imageBase64 required" });
+    return;
+  }
+
+  try {
+    const flash = await createLiveFlashRead(imageBase64);
+    res.json(flash);
+  } catch (err) {
+    req.log.error({ err }, "Live sonar flash analysis failed");
+    res.status(500).json({ error: "Live sonar flash analysis failed. Check your connection and try again." });
+  }
+});
 
 // ─── POST /live-sonar-analyze ─────────────────────────────────────────────────
 router.post("/live-sonar-analyze", async (req, res) => {
@@ -451,22 +593,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     // Flash (~400ms) and deep stream both start at the same instant.
     // We await flash first, emit it so the client sees brand/mode immediately,
     // then drain the already-in-flight main stream.
-    const flashPromise = openai.chat.completions.create({
-      model: getModel("fast"),
-      temperature: 0.4,
-      max_completion_tokens: 120,
-      stream: false,
-      messages: [
-        { role: "system", content: FLASH_PROMPT },
-        {
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "low" } },
-            { type: "text", text: "Classify this live sonar image." }
-          ]
-        }
-      ]
-    }, { signal: AbortSignal.timeout(12_000) });
+    const flashPromise = createLiveFlashRead(imageBase64);
 
     // ── Build reference package (few-shot visual grounding) ──────────────────
     // Order mirrors the 2D analyze route's proven injection pattern:
@@ -474,55 +601,10 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     //   STEP 2: Croc body shape (cross-modal bridge: croc silhouette → live sonar blob)
     //   STEP 3: Live sonar display demos (brand UI + fish body shape references)
     //   STEP 4: User's actual live sonar image for analysis
-    type ImagePart = { type: "image_url"; image_url: { url: string; detail: "high" | "low" } };
-    type TextPart  = { type: "text"; text: string };
-    const content: Array<ImagePart | TextPart> = [];
-
     const barraRefs     = getBarraBodyRefs(1);
-    const crocRefs      = getCrocFewShotRefs(2);
-    const liveSonarRefs = getLiveSonarDemoRefs();
-
-    const hasRefs = barraRefs.length > 0 || crocRefs.length > 0 || liveSonarRefs.length > 0;
-
-    if (hasRefs) {
-      content.push({ type: "text", text: "LIVE SONAR BRAIN — reference package (study all before analysing the target image):" });
-
-      // Step 1: Barramundi body anatomy — cross-modal bridge body → live sonar silhouette
-      // Only inject image if base64 thumbnail is available — never pass raw external URLs
-      // to OpenAI (Wikimedia/iNat URLs can be blocked and would cause a 400 crash)
-      if (barraRefs.length > 0) {
-        const bp = barraRefs[0]!;
-        content.push({ type: "text", text: `STEP 1 — BARRAMUNDI BODY ANATOMY (iNaturalist research-grade, ${bp.location}):\nThe PHYSOSTOMOUS SWIM BLADDER (large pale gas sac in upper body cavity) is the dominant sonar reflector. On live sonar, this bladder creates the BRIGHT ELONGATED OVAL body return + LONG ACOUSTIC SHADOW. Body L:H ratio on this specimen: approximately 3.5–4.5:1. The BLUNT FOREHEAD creates a steep front face on the oval. The narrowing at the rear is the caudal peduncle/tail. Connect this anatomy to what you see on the live sonar display: BRIGHT ELONGATED OVAL + LONG SHADOW = BARRAMUNDI.` });
-        if (bp.thumbBase64) {
-          content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${bp.thumbBase64}`, detail: "low" } });
-        }
-        content.push({ type: "text", text: `↑ CONFIRMED BARRAMUNDI body — ${bp.location} (${bp.votes} expert votes). This is what creates the live sonar signature: large swim bladder → bright oval return + long acoustic shadow.` });
-      }
-
-      // Step 2: Saltwater croc body shape — cross-modal bridge croc silhouette → live sonar blob
-      // Only inject images with base64 thumbnails — skip any that only have raw external URLs
-      if (crocRefs.length > 0) {
-        content.push({ type: "text", text: `STEP 2 — SALTWATER CROCODILE BODY SHAPE (${crocRefs.length} iNaturalist research-grade Crocodylus porosus):\nOn live sonar a croc appears as an ENORMOUS SOLID FILLED BLOB near the surface — much WIDER than any fish. Body width-to-length ratio ≈ 1:3 vs barra's 1:4. The croc's body is essentially RECTANGULAR (no fish-shaped narrowing at tail). CRITICAL: crocs have NO swim bladder, so their sonar return is a SOLID DENSE BLOB with NO internal void — unlike barra which has bright edges + shadow void.` });
-        for (const cr of crocRefs) {
-          if (!cr.thumbBase64) continue;
-          const angleNote = cr.viewingAngle === "top" ? " [TOP VIEW — matches live sonar overhead perspective mode]"
-            : cr.viewingAngle === "side" ? " [SIDE VIEW — matches live sonar forward/down mode]" : "";
-          content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${cr.thumbBase64}`, detail: "low" } });
-          content.push({ type: "text", text: `↑ CONFIRMED SALTWATER CROCODILE (Crocodylus porosus) — ${cr.location}${angleNote}. Compare body WIDTH vs fish — croc is MUCH WIDER relative to length. This body shape appears as a SOLID FILLED BLOB on live sonar near the surface.` });
-        }
-      }
-
-      // Step 3: Live sonar display demos — brand UI + fish body shape references
-      if (liveSonarRefs.length > 0) {
-        content.push({ type: "text", text: `STEP 3 — LIVE SONAR DISPLAY REFERENCES (${liveSonarRefs.length} editorial/manufacturer reference screens):\nStudy these live sonar screens to calibrate what each brand's display looks like. Notice the background colour, fish body shape vs structure echoes, and shadow direction.` });
-        for (const ref of liveSonarRefs) {
-          content.push({ type: "image_url", image_url: { url: `data:${ref.mimeType};base64,${ref.base64}`, detail: "low" } });
-          content.push({ type: "text", text: `↑ ${ref.brand} live sonar display reference (Demo ${ref.demoNum}). ${ref.label.split('\n')[0]}` });
-        }
-      }
-
-      content.push({ type: "text", text: "STEP 4 — ANALYSE THE USER'S LIVE SONAR IMAGE BELOW. Apply cross-modal reasoning: barramundi body anatomy → live sonar physics → species verdict. For croc: compare any large near-surface blob against the croc body shapes above." });
-    }
+    const crocRefs      = getCrocFewShotRefs(1);
+    const liveSonarRefs = getLiveSonarDemoRefs().slice(0, 2);
+    const content: Array<ImagePart | TextPart> = buildCompactLiveReferenceContent(barraRefs, crocRefs, liveSonarRefs).slice();
 
     // User's actual live sonar image — LOW detail (85 tokens vs ~2,500+ for high;
     // gpt-4.1-mini resolves fish body shapes well at 512px which is sufficient)
@@ -532,7 +614,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     const streamPromise = openai.chat.completions.create({
       model: getModel("mid"),
       temperature: 0.4,
-      max_completion_tokens: 500,
+      max_completion_tokens: 420,
       stream: true,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -548,17 +630,7 @@ Remember: fish on live sonar are SHAPES not arches. Focus on body oval proportio
     // ── Emit flash first — client sees brand/mode in ~400ms ──────────────────
     try {
       const flashResult = await flashPromise;
-      const flashRaw = flashResult.choices[0]?.message?.content ?? "{}";
-      const cleanFlash = flashRaw
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/```\s*$/i, "")
-        .trim();
-      const matchFlash = cleanFlash.match(/\{[\s\S]*\}/);
-      if (matchFlash) {
-        const flashData = JSON.parse(matchFlash[0]);
-        res.write(`__FLASH__:${JSON.stringify(flashData)}\n`);
-      }
+      res.write(`__FLASH__:${JSON.stringify(flashResult)}\n`);
     } catch { /* non-fatal — main stream still delivers full result */ }
 
     // ── Keep-alive heartbeat ──────────────────────────────────────────────────

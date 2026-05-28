@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Animated,
   Image,
+  InteractionManager,
   Platform,
   ScrollView,
   StyleSheet,
@@ -109,6 +110,7 @@ export default function HomeScreen() {
   const insets  = useSafeAreaInsets();
   const topPad  = Platform.OS === "web" ? 0 : insets.top;
   const domain  = process.env["EXPO_PUBLIC_DOMAIN"];
+  const [cameraHubReady, setCameraHubReady] = useState(false);
 
   // WA clock ticks every minute so golden hour updates live
   const [darwin, setDarwin] = useState(getDarwinTime);
@@ -157,7 +159,16 @@ export default function HomeScreen() {
   // Re-fetch on focus only if data is stale (> 2 min old)
   useFocusEffect(useCallback(() => {
     fetchConditions();
-  }, [fetchConditions]));
+    if (cameraHubReady) {
+      return undefined;
+    }
+
+    const task = InteractionManager.runAfterInteractions(() => {
+      setTimeout(() => setCameraHubReady(true), 250);
+    });
+
+    return () => task.cancel();
+  }, [cameraHubReady, fetchConditions]));
 
   // Auto-refresh every 5 minutes
   useEffect(() => {
@@ -385,7 +396,28 @@ export default function HomeScreen() {
 
       {/* ── CAMERA HUB ── */}
       <Text style={[S.sectionHead, { color: colors.mutedForeground }]}>CAMERA HUB</Text>
-      <CamerasContent />
+      {cameraHubReady ? (
+        <CamerasContent />
+      ) : (
+        <LilyPadCard innerStyle={S.cameraHubPlaceholder}>
+          <View style={S.cameraHubPlaceholderHeader}>
+            <Text style={S.cameraHubPlaceholderEmoji}>🎥</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={S.cameraHubPlaceholderTitle}>Loading Camera Hub after screen settles</Text>
+              <Text style={[S.cameraHubPlaceholderText, { color: colors.mutedForeground }]}>
+                Deferring the heavy 360 and camera UI makes Home open faster.
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            onPress={() => setCameraHubReady(true)}
+            activeOpacity={0.8}
+            style={[S.cameraHubLoadBtn, { borderColor: "#00d4aa66", backgroundColor: "#00d4aa12" }]}
+          >
+            <Text style={S.cameraHubLoadBtnText}>Load Camera Hub now</Text>
+          </TouchableOpacity>
+        </LilyPadCard>
+      )}
 
       <NarratorButton
         pageType="home"
@@ -464,6 +496,19 @@ const S = StyleSheet.create({
   weatherCellValue: { fontSize: 13, fontFamily: "Inter_700Bold" },
   weatherCellLabel: { fontSize: 9, fontFamily: "Inter_400Regular", color: "#666" },
   weatherSource: { fontSize: 9, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 4 },
+  cameraHubPlaceholder: { padding: 14, gap: 12 },
+  cameraHubPlaceholderHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  cameraHubPlaceholderEmoji: { fontSize: 24 },
+  cameraHubPlaceholderTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#00d4aa" },
+  cameraHubPlaceholderText: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  cameraHubLoadBtn: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  cameraHubLoadBtnText: { color: "#00d4aa", fontSize: 12, fontFamily: "Inter_600SemiBold" },
 
   seasonInner: { padding: 14, gap: 8 },
   seasonHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 },

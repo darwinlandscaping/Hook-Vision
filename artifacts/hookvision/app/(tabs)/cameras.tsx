@@ -5,7 +5,7 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Animated, Dimensions, Easing, Linking, Platform,
+  Animated, Dimensions, Easing, InteractionManager, Linking, Platform,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
 import Svg, {
@@ -20,6 +20,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { useInsta360Context } from "@/contexts/Insta360Context";
 import { useCameraScanner, type DiscoveredCamera } from "@/hooks/useCameraScanner";
 import { HVHeader } from "@/components/HVHeader";
+import { getApiUrl } from "@/utils/apiBase";
 
 let IntentLauncher: any = null;
 if (Platform.OS === "android") {
@@ -180,6 +181,35 @@ function FisheyeView({ tick, active }: { tick: number; active: boolean }) {
   );
 }
 
+function buildBrainUnavailableResult(summary: string) {
+  return {
+    summary,
+    activityLevel: "none",
+    castZone: "none",
+    crocRisk: "none",
+    crocDetail: "AI BRAIN OFFLINE",
+    tactics: {
+      priority: "Reconnect AI Brain",
+      lure: "—",
+      technique: "Retry once API is reachable",
+      depth: "—",
+    },
+    water: {
+      colour: "unknown",
+      conditions: "unknown",
+      visibility: "unknown",
+    },
+    birds: {
+      detected: false,
+      urgency: "none",
+      description: "No live AI result available",
+      species: [],
+    },
+    confidence: 0,
+    structure: "Unavailable while AI Brain is offline",
+  };
+}
+
 // ─── Step trail indicator ─────────────────────────────────────────────────────
 function StepDot({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
   const col = done ? C.green : active ? C.purple : C.mute;
@@ -246,12 +276,25 @@ function CamerasScreen({ embedded = false }: { embedded?: boolean }) {
   const [selectedBrand, setSelectedBrand] = useState<BrandId>("insta360");
   const [tick, setTick]         = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [heavySectionsReady, setHeavySectionsReady] = useState(!embedded);
 
   // Tick drives the animated fisheye
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 1200);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (!embedded || heavySectionsReady) {
+      return;
+    }
+
+    const task = InteractionManager.runAfterInteractions(() => {
+      setTimeout(() => setHeavySectionsReady(true), 250);
+    });
+
+    return () => task.cancel();
+  }, [embedded, heavySectionsReady]);
 
   // Auto-scan on mount
   useEffect(() => {
@@ -332,10 +375,6 @@ function CamerasScreen({ embedded = false }: { embedded?: boolean }) {
     return () => clearInterval(id);
   }, [brainLoading]);
 
-  const apiBase = process.env.EXPO_PUBLIC_DOMAIN
-    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-    : "";
-
   const runBrain = useCallback(async () => {
     if (brainLoading) return;
     setBrainLoading(true);
@@ -348,6 +387,18 @@ function CamerasScreen({ embedded = false }: { embedded?: boolean }) {
 
     const t0 = Date.now();
     let chars = 0;
+    const hudDataUrl = getApiUrl("/api/hud/data");
+    const streamBrainUrl = getApiUrl("/api/insta360/brain/stream");
+    const jsonBrainUrl = getApiUrl("/api/insta360/brain");
+    const shouldStreamBrain = Platform.OS === "web" && Boolean(streamBrainUrl);
+
+    if (!jsonBrainUrl) {
+      setBrainResult(buildBrainUnavailableResult("AI Brain needs a configured API server in this mobile build."));
+      setShowBrain(true);
+      setTotalMs(0);
+      setBrainLoading(false);
+      return;
+    }
 
     // ── Collect HUD data + camera frames in parallel ─────────────────────────
     let sonarContext: Record<string, unknown> = {};
@@ -358,8 +409,9 @@ function CamerasScreen({ embedded = false }: { embedded?: boolean }) {
     await Promise.allSettled([
       // HUD data fetch
       (async () => {
+        if (!hudDataUrl) return;
         try {
-          const hudRes = await fetch(`${apiBase}/api/hud/data`);
+          const hudRes = await fetch(hudDataUrl);
           if (hudRes.ok) {
             const hud = await hudRes.json() as {
               scan?: {
@@ -443,65 +495,82 @@ function CamerasScreen({ embedded = false }: { embedded?: boolean }) {
     setCapturedImageCount(capturedImages.length);
 
     try {
-      const res = await fetch(`${apiBase}/api/insta360/brain/stream`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          query:  queryParts,
-          sonarContext,
-          images: capturedImages,
-        }),
-      });
+      if (shouldStreamBrain && streamBrainUrl) {
+        const res = await fetch(streamBrainUrl, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({
+            query:  queryParts,
+            sonarContext,
+            images: capturedImages,
+          }),
+        });
 
-      if (!res.ok || !res.body) throw new Error(`API ${res.status}`);
+        if (!res.ok || !res.body) throw new Error(`API ${res.status}`);
 
-      const reader  = res.body.getReader();
-      const decoder = new TextDecoder();
-      let   buf     = "";
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        let   buf     = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
 
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const payload = line.slice(6);
-          if (payload === "[DONE]") continue;
-          try {
-            const msg = JSON.parse(payload);
-            if (msg.delta) {
-              chars += msg.delta.length;
-              setStreamChars(chars);
-              const elapsed = (Date.now() - t0) / 1000;
-              setStreamSpeed(Math.round(chars / Math.max(elapsed, 0.1)));
-            }
-            if (msg.done && msg.result) {
-              setBrainResult(msg.result);
-              setShowBrain(true);
-              setTotalMs(msg.totalMs ?? (Date.now() - t0));
-            }
-          } catch {}
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const payload = line.slice(6);
+            if (payload === "[DONE]") continue;
+            try {
+              const msg = JSON.parse(payload);
+              if (msg.delta) {
+                chars += msg.delta.length;
+                setStreamChars(chars);
+                const elapsed = (Date.now() - t0) / 1000;
+                setStreamSpeed(Math.round(chars / Math.max(elapsed, 0.1)));
+              }
+              if (msg.done && msg.result) {
+                setBrainResult(msg.result);
+                setShowBrain(true);
+                setTotalMs(msg.totalMs ?? (Date.now() - t0));
+              }
+            } catch {}
+          }
         }
+      } else {
+        const res = await fetch(jsonBrainUrl, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({
+            query:  queryParts,
+            sonarContext,
+            images: capturedImages,
+          }),
+        });
+
+        if (!res.ok) throw new Error(`API ${res.status}`);
+
+        const result = await res.json() as Record<string, unknown> & { _ms?: number };
+        setStreamChars(0);
+        setStreamSpeed(0);
+        setBrainResult(result);
+        setShowBrain(true);
+        setTotalMs(result._ms ?? (Date.now() - t0));
       }
-    } catch {
-      // Fallback to simulated result
-      const FALLBACK = [
-        { summary: "3 Barra arches detected, 4–6kg avg — surface activity high", activityLevel: "high", castZone: "left", crocRisk: "none", crocDetail: "CLEAR", tactics: { priority: "CAST LEFT 25°, 12m — fish busting surface", lure: "Halco Roosta Popper", technique: "Walk the dog", depth: "surface" }, water: { colour: "tannin", conditions: "calm", visibility: "poor" }, birds: { detected: true, urgency: "high", description: "Ospreys diving left bank", species: ["Osprey"] }, confidence: 91 },
-        { summary: "Surface bust in progress — bait ball centre channel", activityLevel: "high", castZone: "centre", crocRisk: "low", crocDetail: "LOW RISK · movement 40m upstream", tactics: { priority: "CAST CENTRE, 8m — bait ball forming", lure: "Lures 95mm minnow", technique: "Fast retrieve", depth: "1–3m" }, water: { colour: "clear", conditions: "rip", visibility: "good" }, birds: { detected: true, urgency: "high", description: "Frigatebirds wheeling tight", species: ["Frigatebird"] }, confidence: 78 },
-        { summary: "Large single 65–80cm — croc 12m right bank CAUTION", activityLevel: "medium", castZone: "left", crocRisk: "high", crocDetail: "⚠ CAUTION — 12m, right bank", tactics: { priority: "CAST LEFT 35°, AWAY from croc", lure: "Savage Gear 3D Barra", technique: "Slow roll", depth: "2–4m" }, water: { colour: "murky", conditions: "calm", visibility: "poor" }, birds: { detected: false, urgency: "none", description: "No birds", species: [] }, confidence: 94 },
-      ];
-      const fb = FALLBACK[Math.floor(Date.now() / 10000) % FALLBACK.length];
-      setBrainResult(fb);
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : "AI Brain is unavailable right now. Check camera WiFi or API connection and retry.";
+      setBrainResult(buildBrainUnavailableResult(message));
       setShowBrain(true);
       setTotalMs(Date.now() - t0);
     } finally {
       setBrainLoading(false);
     }
-  }, [brainLoading, apiBase, isConnected, selectedBrand, camera, pipelines]);
+  }, [brainLoading, isConnected, selectedBrand, camera, pipelines]);
 
   const crocColor = !brainResult ? C.mute
     : (brainResult.crocRisk === "high" || brainResult.crocDetail?.includes("CAUTION")) ? C.red
@@ -629,6 +698,8 @@ function CamerasScreen({ embedded = false }: { embedded?: boolean }) {
           </>
         )}
 
+        {heavySectionsReady ? (
+          <>
         {/* ── 360° Live view ───────────────────────────────────────────── */}
         <Text style={[S.sectionTitle, { color: C.mute }]}>360° LIVE VIEW</Text>
         <View style={[S.fisheyeCard, { backgroundColor: C.card, borderColor: isConnected ? C.purple + "55" : C.border }]}>
@@ -772,6 +843,17 @@ function CamerasScreen({ embedded = false }: { embedded?: boolean }) {
             </>
           )}
         </View>
+          </>
+        ) : (
+          <View style={[S.guideBody, { backgroundColor: C.card, borderColor: C.purple + "33" }]}>
+            <Text style={[S.guideHeaderText, { color: C.purple }]}>Loading live preview + AI brain after the screen settles...</Text>
+            <Text style={[S.guideTipText, { color: C.dim }]}>Connection controls stay responsive first so Home opens faster.</Text>
+            <TouchableOpacity onPress={() => setHeavySectionsReady(true)} activeOpacity={0.8}
+              style={[S.guideBtn, { backgroundColor: C.purple + "22", borderColor: C.purple + "66" }]}>
+              <Text style={[S.guideBtnText, { color: C.purple }]}>Load live preview now</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
   </>);
 

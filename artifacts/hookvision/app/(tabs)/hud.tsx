@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,18 +10,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { getApiUrl } from "@/utils/apiBase";
 
-const BASE_URL =
-  Platform.OS === "web"
-    ? typeof window !== "undefined"
-      ? `${window.location.protocol}//${window.location.hostname}`
-      : ""
-    : process.env.EXPO_PUBLIC_DOMAIN
-      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-      : "";
-
-const HUD_DATA_URL = `${BASE_URL}/api/hud/data`;
-const POLL_MS = 6000;
+const POLL_MS = 3000;
 
 interface BrainTarget {
   targetSpecies:   string;
@@ -97,9 +88,12 @@ function ConfBar({ value, color }: { value: number; color: string }) {
 
 export default function HudTab() {
   const insets = useSafeAreaInsets();
+  const { apiConfigured, apiBaseUrl, cameraWifiMode } = useNetworkStatus();
+  const hudDataUrl = getApiUrl("/api/hud/data");
   const [data,    setData]    = useState<HudState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(false);
+  const [errorKind, setErrorKind] = useState<"config" | "camera-wifi" | "offline" | null>(null);
   const [stopped, setStopped] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -118,18 +112,27 @@ export default function HudTab() {
 
   const fetchData = useCallback(async () => {
     if (stopped) return;
+    if (!hudDataUrl) {
+      setError(true);
+      setErrorKind("config");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const r = await fetch(HUD_DATA_URL, { signal: AbortSignal.timeout(8000) });
+      const r = await fetch(hudDataUrl, { signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error("non-ok");
       const json = await r.json() as HudState;
       setData(json);
       setError(false);
+      setErrorKind(null);
     } catch {
       setError(true);
+      setErrorKind(cameraWifiMode ? "camera-wifi" : "offline");
     } finally {
       setLoading(false);
     }
-  }, [stopped]);
+  }, [cameraWifiMode, hudDataUrl, stopped]);
 
   const startPolling = useCallback(() => {
     fetchData();
@@ -147,6 +150,7 @@ export default function HudTab() {
     if (!stopped) {
       setLoading(true);
       setError(false);
+      setErrorKind(null);
       startPolling();
     } else {
       stopPolling();
@@ -165,6 +169,7 @@ export default function HudTab() {
   const handleRefresh = useCallback(() => {
     setLoading(true);
     setError(false);
+    setErrorKind(null);
     fetchData();
   }, [fetchData]);
 
@@ -241,9 +246,27 @@ export default function HudTab() {
       {/* ── Error ── */}
       {!stopped && !loading && error && (
         <View style={styles.centreBox}>
-          <MaterialCommunityIcons name="wifi-off" size={48} color="#ffffff33" />
-          <Text style={styles.centreTitle}>Brain Offline</Text>
-          <Text style={styles.centreSub}>Cannot reach the API server.{"\n"}Make sure you are on the same network.</Text>
+          <MaterialCommunityIcons
+            name={errorKind === "camera-wifi" ? "camera-wireless-outline" : errorKind === "config" ? "alert-circle-outline" : "wifi-off"}
+            size={48}
+            color="#ffffff33"
+          />
+          <Text style={styles.centreTitle}>
+            {errorKind === "config" ? "API Not Configured" : errorKind === "camera-wifi" ? "Camera WiFi Blocking HUD" : "Brain Offline"}
+          </Text>
+          <Text style={styles.centreSub}>
+            {errorKind === "config"
+              ? "This Expo build has no API server address configured yet.\nSet EXPO_PUBLIC_DOMAIN or EXPO_PUBLIC_API_URL for the mobile app."
+              : errorKind === "camera-wifi"
+                ? "Your phone is likely connected to the camera hotspot.\nReconnect to mobile data or normal WiFi so the HUD can reach the AI server."
+                : "Cannot reach the API server.\nCheck your connection and retry."}
+          </Text>
+          {!!apiBaseUrl && errorKind !== "camera-wifi" && (
+            <Text style={styles.debugUrl}>API: {apiBaseUrl}</Text>
+          )}
+          {!apiConfigured && (
+            <Text style={styles.debugUrl}>HUD needs a real API base URL in the mobile app config.</Text>
+          )}
           <TouchableOpacity style={styles.retryBtn} onPress={handleRefresh}>
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
@@ -334,17 +357,17 @@ export default function HudTab() {
           ) : null}
 
           {/* ── Season note ── */}
-          {data.brain?.seasonNote ? (
+          {brain?.seasonNote ? (
             <View style={styles.infoRow}>
               <MaterialCommunityIcons name="weather-partly-cloudy" size={14} color="#00d4aa" />
-              <Text style={styles.infoText}>{data.brain.seasonNote}</Text>
+              <Text style={styles.infoText}>{brain.seasonNote}</Text>
             </View>
           ) : null}
           {/* ── Community note ── */}
-          {data.brain?.communityNote ? (
+          {brain?.communityNote ? (
             <View style={styles.infoRow}>
               <MaterialCommunityIcons name="account-group" size={14} color="#00e5ff" />
-              <Text style={styles.infoText}>{data.brain.communityNote}</Text>
+              <Text style={styles.infoText}>{brain.communityNote}</Text>
             </View>
           ) : null}
 
@@ -517,6 +540,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
     lineHeight: 20,
+  },
+  debugUrl: {
+    color: "#ffffff44",
+    fontSize: 11,
+    textAlign: "center",
+    lineHeight: 16,
   },
   retryBtn: {
     marginTop: 6,

@@ -40,8 +40,8 @@ import { useNarrator, type NarratorCharacter } from "@/context/NarratorContext";
 import { useAutoNarrate } from "@/hooks/useAutoNarrate";
 import { getVision, quickScan, visionStatusSync, type MobileSonarScan } from "@/services/vision";
 import { LiveScanStore } from "@/stores/LiveScanStore";
-import { useHudStream } from "@/hooks/useHudStream";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { getApiBaseUrl } from "@/utils/apiBase";
 
 interface FishAnalysis {
   fishCount: number;
@@ -73,6 +73,13 @@ interface FishAnalysis {
   structureProximity?: string;
   targetBoostActive?: boolean;
   paletteDetected?: string;
+}
+
+interface FlashRead {
+  species: string;
+  fishCount: number;
+  confidence: number;
+  quickRead: string;
 }
 
 const H_PAD = 14;
@@ -649,11 +656,18 @@ const BT = StyleSheet.create({
 
 /** Ensure any picked image (WebP, HEIF, etc) is re-encoded as JPEG before upload */
 async function toJpeg(uri: string): Promise<{ uri: string; base64: string }> {
-  const result = await manipulateAsync(
+  let result = await manipulateAsync(
     uri,
-    [{ resize: { width: 1024 } }],
-    { format: SaveFormat.JPEG, compress: 0.75, base64: true },
+    [{ resize: { width: 960 } }],
+    { format: SaveFormat.JPEG, compress: 0.68, base64: true },
   );
+  if ((result.base64?.length ?? 0) > 380_000) {
+    result = await manipulateAsync(
+      result.uri,
+      [{ resize: { width: 768 } }],
+      { format: SaveFormat.JPEG, compress: 0.58, base64: true },
+    );
+  }
   return { uri: result.uri, base64: result.base64 ?? "" };
 }
 
@@ -743,7 +757,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { addEntry } = useHistory();
   const { autoSpeak, speak, character, stop: stopSpeaking } = useNarrator();
-  const hud = useHudStream();
   const { isOnline } = useNetworkStatus();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -789,9 +802,7 @@ export default function HomeScreen() {
   const [sonarBarraResult, setSonarBarraResult] = useState<SonarBarraResult | null>(null);
   const [sonarBarraLoading, setSonarBarraLoading] = useState(false);
   // ── Flash scan — gpt-5-mini instant first read (~0.8-1.5 s) ──────────────
-  const [flashResult, setFlashResult] = useState<{
-    species: string; fishCount: number; confidence: number; quickRead: string;
-  } | null>(null);
+  const [flashResult, setFlashResult] = useState<FlashRead | null>(null);
   // ── Dual-scan consensus (scan 2 runs in background, appended as __SCAN2__ token) ──
   const [scan2Consensus, setScan2Consensus] = useState<{
     agreed: boolean; species2: string | null; confidence2: number | null;
@@ -973,23 +984,69 @@ export default function HomeScreen() {
     setFlashResult(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // ── STEP 1: Sonar validate — classifies screen type, gates non-sonar ────────
-    // Runs sequentially first (~400ms) so we know which specialist endpoint to use.
-    const domain  = process.env.EXPO_PUBLIC_DOMAIN;
-    const baseUrl = domain ? `https://${domain}` : "";
+    // ── STEP 1: Sonar validate — classify fast, but fail open quickly ───────────
+    // Start the default flash request immediately so arch scans can show a fast read
+    // even if validation is slow. Validation gets a short soft timeout before we
+    // fall back to the normal arch analyzer path.
+    const apiBaseUrl = getApiBaseUrl();
+    if (!apiBaseUrl) {
+      setError("AI API server is not configured for this mobile build yet.");
+      setSonarBarraLoading(false);
+      setLoading(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+
     const analyzeAbort = new AbortController();
     let analyzeTimedOut = false;
     const analyzeHardTimeout = setTimeout(() => {
       analyzeTimedOut = true;
       analyzeAbort.abort();
     }, 90_000);
+    const flashAbort = new AbortController();
+    let localFlash: FlashRead | null = null;
+    const maybeApplyFlash = (flashData: FlashRead | null) => {
+      if (!flashData?.species) {
+        return;
+      }
+
+      localFlash = flashData;
+      setFlashResult(flashData);
+      const isBarra = flashData.species.toLowerCase().includes("barramundi");
+      if (isBarra && (flashData.confidence ?? 0) >= 0.55) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 350);
+      }
+    };
+
+    const earlyFlashPromise = Platform.OS === "web"
+      ? null
+      : fetch(`${apiBaseUrl}/api/analyze/flash`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64 }),
+          signal: flashAbort.signal,
+        })
+          .then(async (r) => {
+            if (!r.ok) return null;
+            return await r.json() as FlashRead;
+          })
+          .catch((error: unknown) => {
+            if (error instanceof Error && error.name === "AbortError") {
+              return null;
+            }
+            return null;
+          });
 
     let sonarType = "arch-2d";
+    const validateAbort = new AbortController();
+    const validateSoftTimeout = setTimeout(() => validateAbort.abort(), 1400);
     try {
-      const vr = await fetch(`${baseUrl}/api/sonar-validate`, {
+      const vr = await fetch(`${apiBaseUrl}/api/sonar-validate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64 }),
+        signal: validateAbort.signal,
       });
       if (vr.ok) {
         const vData = await vr.json() as { isSonar: boolean; sonarType?: string; reason?: string | null };
@@ -1004,18 +1061,44 @@ export default function HomeScreen() {
         }
         sonarType = vData.sonarType ?? "arch-2d";
       }
-    } catch { /* fail open — proceed with arch-2d */ }
+    } catch { /* soft-fail open — don't block flash or analysis */ }
+    finally {
+      clearTimeout(validateSoftTimeout);
+    }
 
     // Auto-route: update live sonar mode from detected screen type
     const isLiveSonar = sonarType === "live-sonar";
     setLiveSonarMode(isLiveSonar);
     liveSonarModeRef.current = isLiveSonar;
 
+    const flashPromise = Platform.OS === "web"
+      ? null
+      : isLiveSonar
+        ? fetch(`${apiBaseUrl}/api/live-sonar-analyze/flash`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64 }),
+            signal: flashAbort.signal,
+          })
+            .then(async (r) => {
+              if (!r.ok) return null;
+              return await r.json() as FlashRead;
+            })
+            .then((flashData) => {
+              maybeApplyFlash(flashData);
+            })
+            .catch((error: unknown) => {
+              if (error instanceof Error && error.name === "AbortError") {
+                return;
+              }
+            })
+        : earlyFlashPromise?.then((flashData) => {
+            maybeApplyFlash(flashData);
+          });
+
     // ── STEP 2: Barra arch check — arch-2d only, fires while main call streams ─
     if (!isLiveSonar) {
-      const brDomain  = process.env.EXPO_PUBLIC_DOMAIN;
-      const brBaseUrl = brDomain ? `https://${brDomain}` : "";
-      fetch(`${brBaseUrl}/api/sonar-barra-check`, {
+      fetch(`${apiBaseUrl}/api/sonar-barra-check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64 }),
@@ -1039,7 +1122,7 @@ export default function HomeScreen() {
         // ── STEP 3: Route to the correct specialist endpoint ───────────────────
         // live-sonar → /api/live-sonar-analyze (shape/shadow physics, brand detection)
         // arch-2d / side-imaging / overhead → /api/analyze (arch brightness rules)
-        response = await fetch(`${baseUrl}${isLiveSonar ? '/api/live-sonar-analyze' : '/api/analyze'}`, {
+        response = await fetch(`${apiBaseUrl}${isLiveSonar ? '/api/live-sonar-analyze' : '/api/analyze'}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageBase64 }),
@@ -1070,7 +1153,6 @@ export default function HomeScreen() {
       // Full dual-scan (gpt-5.4 with crops + refs) follows ~3-5s later.
       let accumulated = "";
       let flashParsed = false;
-      let localFlash: { species: string; fishCount: number; confidence: number; quickRead: string } | null = null;
       if (response.body) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -1089,14 +1171,7 @@ export default function HomeScreen() {
                 try {
                   const fd = JSON.parse(fm[1]);
                   if (fd.species) {
-                    localFlash = fd;
-                    setFlashResult(fd);
-                    // Urgent double-haptic for high-confidence barramundi — tell the angler NOW
-                    const isBarra = (fd.species as string).toLowerCase().includes("barramundi");
-                    if (isBarra && (fd.confidence ?? 0) >= 0.55) {
-                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                      setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 350);
-                    }
+                    maybeApplyFlash(fd as FlashRead);
                   }
                 } catch { /* silent */ }
                 flashParsed = true;
@@ -1148,8 +1223,11 @@ export default function HomeScreen() {
       const cleaned = accumulated.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
+        if (flashPromise) {
+          await flashPromise;
+        }
         // Fallback: if flash gave us a confident species, show it rather than a blank error
-        const fr = flashResult;
+        const fr = localFlash ?? flashResult;
         if (fr?.species && (fr.confidence ?? 0) >= 0.40) {
           setCvRegions([]);
           setAnalysis({
@@ -1183,60 +1261,25 @@ export default function HomeScreen() {
       // ── Flash fallback: only use flash confidence when turbo found absolutely nothing (0%) ──
       // Do NOT override a correct species ID (e.g. Threadfin) just because flash scored higher.
       {
-        const flashPct = Math.round((localFlash?.confidence ?? 0) * 100);
-        const flashHadFish = localFlash && (localFlash.fishCount ?? 0) > 0
-          && !!localFlash.species && !localFlash.species.toLowerCase().includes("unknown");
-        if (flashHadFish && (data.confidence ?? 0) === 0) {
+        const flashCandidate = (localFlash ?? flashResult) as FlashRead | null;
+        const flashPct = Math.round((flashCandidate?.confidence ?? 0) * 100);
+        const flashHadFish = Boolean(
+          flashCandidate &&
+          (flashCandidate.fishCount ?? 0) > 0 &&
+          flashCandidate.species &&
+          !flashCandidate.species.toLowerCase().includes("unknown")
+        );
+        if (flashCandidate && flashHadFish && (data.confidence ?? 0) === 0) {
           data = {
             ...data,
-            species:   localFlash!.species,
+            species:   flashCandidate.species,
             confidence: flashPct,
-            fishCount:  localFlash!.fishCount ?? 0,
+            fishCount:  flashCandidate.fishCount ?? 0,
           };
         }
       }
       setAnalysis(data);
       setFlashResult(null); // full analysis arrived — dismiss flash banner
-
-      // ── Auto-save to Brain library (fire-and-forget) ──────────────────────
-      {
-        const brainDomain = process.env.EXPO_PUBLIC_DOMAIN;
-        const brainBase   = brainDomain ? `https://${brainDomain}` : "";
-        const scanDate    = new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
-        fetch(`${brainBase}/api/brain/sonar`, {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title:      `${data.species} — ${scanDate}`,
-            imageUri:   imageUri ?? null,
-            species:    data.species,
-            depth:      data.depth ?? null,
-            aiSummary:  data.suggestion ?? "",
-            tips:       [data.technique, data.rig, data.lure].filter(Boolean) as string[],
-            location:   capturedLocation ?? null,
-            fishCount:  data.fishCount ?? 0,
-          }),
-        }).catch(() => {/* silent — don't interrupt the user */});
-      }
-
-      // ── Auto-teach Sonar Brain: high-confidence scans feed the collective ──
-      // Fires when GPT-5 is ≥75% confident AND at least 1 fish was detected.
-      // This is a fire-and-forget background call — never blocks the user.
-      if ((data.confidence ?? 0) >= 75 && (data.fishCount ?? 0) > 0 && imageBase64) {
-        const brainDomain = process.env.EXPO_PUBLIC_DOMAIN;
-        const brainBase   = brainDomain ? `https://${brainDomain}` : "";
-        const scanDate    = new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
-        fetch(`${brainBase}/api/sonar-brain/submit`, {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            imageBase64,
-            depth:       data.depth ?? null,
-            fishCount:   data.fishCount ?? 0,
-            description: `Auto-learn: ${data.species} — ${data.confidence}% confidence — ${data.fishCount} fish — depth ${data.depth ?? "?"} — ${scanDate}`,
-          }),
-        }).catch(() => {/* silent — Sonar Brain submission is non-critical */});
-      }
 
       // ── CROC ALERT — native dialog fires immediately ──────────────────────
       if (data.crocAlert) {
@@ -1282,55 +1325,69 @@ export default function HomeScreen() {
           suggestion: data.suggestion,
         });
       }
-      // ── Push result to smart-glass HUD (fire-and-forget) ───────────────────
-      hud.push({
-        species:    data.species    ?? "—",
-        fishCount:  data.fishCount  ?? 0,
-        depth:      data.depth      ?? "—",
-        confidence: (data.confidence ?? 0) / 100,
-        suggestion: data.suggestion ?? "",
-        sonarMode:  data.sonarMode  ?? null,
-        waterTemp:  data.waterTemp,
-        bottomType: data.bottomType,
-        lure:       data.lure,
-        crocAlert:  data.crocAlert  ?? false,
-        crocWarning:data.crocWarning ?? null,
-        archCount:  sonarBarraResult?.archCount ?? undefined,
-        barraPct:   sonarBarraResult?.confidence ?? undefined,
-        region:     "wa",
-        source:     LiveScanStore.boatActive ? "boat" : "live",
-      });
-      // Fire-and-forget: contribute to community data bank (with real location)
-      try {
-        const reportDomain = process.env.EXPO_PUBLIC_DOMAIN;
-        const reportBase = reportDomain ? `https://${reportDomain}` : "";
-        // Await location — it's been fetching since the photo was selected
-        // so this is usually instant (already resolved) by the time AI finishes
-        const locationName = await (locationPromiseRef.current ?? Promise.resolve(null));
-        locationPromiseRef.current = null;
-        setCapturedLocation(locationName);
-        fetch(`${reportBase}/api/community/report`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      const scanDate = new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+      const locationName = await (locationPromiseRef.current ?? Promise.resolve(null)).catch(() => null);
+      locationPromiseRef.current = null;
+      setCapturedLocation(locationName);
+      fetch(`${apiBaseUrl}/api/scan/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brainSonar: {
+            title: `${data.species} — ${scanDate}`,
+            imageUri: imageUri ?? null,
+            species: data.species,
+            depth: data.depth ?? null,
+            aiSummary: data.suggestion ?? "",
+            tips: [data.technique, data.rig, data.lure].filter(Boolean),
+            location: locationName ?? null,
+            fishCount: data.fishCount ?? 0,
+          },
+          sonarBrain: (data.confidence ?? 0) >= 75 && (data.fishCount ?? 0) > 0 && imageBase64
+            ? {
+                imageBase64,
+                depth: data.depth ?? null,
+                fishCount: data.fishCount ?? 0,
+                description: `Auto-learn: ${data.species} — ${data.confidence}% confidence — ${data.fishCount} fish — depth ${data.depth ?? "?"} — ${scanDate}`,
+              }
+            : null,
+          communityReport: {
             species: data.species,
             fishCount: data.fishCount,
             depth: data.depth,
             lureSuggestion: data.suggestion,
             rawAnalysis: data,
             locationName: locationName ?? undefined,
-          }),
-        }).catch(() => {});
-      } catch {}
+          },
+          hud: {
+            species: data.species ?? "—",
+            fishCount: data.fishCount ?? 0,
+            depth: data.depth ?? "—",
+            confidence: (data.confidence ?? 0) / 100,
+            suggestion: data.suggestion ?? "",
+            sonarMode: data.sonarMode ?? null,
+            waterTemp: data.waterTemp,
+            bottomType: data.bottomType,
+            lure: data.lure,
+            crocAlert: data.crocAlert ?? false,
+            crocWarning: data.crocWarning ?? null,
+            archCount: sonarBarraResult?.archCount ?? undefined,
+            barraPct: sonarBarraResult?.confidence ?? undefined,
+            region: "wa",
+            source: LiveScanStore.boatActive ? "boat" : "live",
+          },
+        }),
+      }).catch(() => {});
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       setError(msg);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
+      flashAbort.abort();
       setLoading(false);
       setStreaming(false);
     }
-  }, [imageBase64, imageUri, addEntry, analyzeScale, autoSpeak, hud.push]);
+  }, [imageBase64, imageUri, addEntry, analyzeScale, autoSpeak, flashResult, sonarBarraResult]);
 
   // Auto-analyse when a demo image is injected from the Demo tab
   useEffect(() => {
@@ -1383,8 +1440,10 @@ export default function HomeScreen() {
   const learnWhy = useCallback(async (expected: string, found: string) => {
     try {
       setLoadingCompare(true);
-      const reportDomain = process.env.EXPO_PUBLIC_DOMAIN;
-      const base = reportDomain ? `https://${reportDomain}` : "";
+      const base = getApiBaseUrl();
+      if (!base) {
+        throw new Error("API not configured");
+      }
       const res = await fetch(
         `${base}/api/community/compare?a=${encodeURIComponent(expected)}&b=${encodeURIComponent(found)}`
       );

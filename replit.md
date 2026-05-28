@@ -8,10 +8,37 @@ A monorepo for fishing mobile applications, AI backend, and a crocodile safety m
 - `pnpm --filter @workspace/api-spec run codegen`: Regenerate API hooks and Zod schemas from OpenAPI spec.
 - `pnpm --filter @workspace/db run push`: Push DB schema changes (development only).
 - `pnpm --filter @workspace/api-server run dev`: Run the API server locally.
+- `pnpm --filter @workspace/hookvision run dev`: Start HookVision WA in Replit mode when Replit env vars exist, otherwise fall back to Expo tunnel mode for Expo Go.
+- `pnpm --filter @workspace/hookvision-nq run dev`: Start HookVision NQ with the same Replit-or-tunnel behavior.
+- `pnpm --filter @workspace/hookvision-nt run dev`: Start HookVision NT with the same Replit-or-tunnel behavior.
+- `pnpm --filter @workspace/crocguard run dev`: Start CrocGuard in Replit mode or Expo tunnel mode for phone testing.
+- `pnpm mobile:status`: Show the Expo Go URLs for any currently running mobile dev servers.
+- `pnpm mobile:changes`: Show which mobile-relevant files changed on the current branch and in the working tree.
+- `pnpm mobile:preview`: Publish the current uncommitted HookVision app changes to the Expo `preview` branch.
+- `pnpm mobile:preview:watch`: Watch the mobile app files and auto-publish uncommitted HookVision changes to Expo Go.
 
 **Required Environment Variables:**
 - `EXPO_TOKEN`: For EAS published updates.
 - `REPLIT_DEV_DOMAIN`: Default for CrocGuard API URL.
+
+## Mobile app preview modes
+
+There are two different ways to see app changes on a phone:
+
+1. **Live Expo dev server**
+   - Run any app's `dev` script.
+   - In Replit it uses the existing proxy workflow.
+   - Outside Replit it switches to `expo start --tunnel`, so the QR code in the terminal works from Expo Go without needing a commit.
+   - Run `pnpm mobile:status` to print the current Expo Go URL from the live manifest instead of hunting through terminal output.
+
+2. **Expo OTA preview**
+   - Run `pnpm mobile:preview` for a one-off publish.
+   - Run `pnpm mobile:preview:watch` to keep publishing uncommitted changes after edits.
+   - OTA publishes use `EAS_NO_VCS=1`, so a clean git state is not required.
+
+## Inspecting where mobile changes landed
+
+Run `pnpm mobile:changes` to list all committed mobile-relevant files changed on the current branch versus `main`, plus any uncommitted mobile-relevant files in the working tree.
 
 ## Stack
 
