@@ -28,6 +28,10 @@ args = "artifacts/hookvision-nt: expo"
 task = "workflow.run"
 args = "artifacts/crocguard: expo"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "EAS Push (temp)"
+
 [[workflows.workflow]]
 name = "artifacts/hookvision-nq: expo"
 author = "agent"
@@ -62,6 +66,17 @@ waitForPort = 3001
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow]]
+name = "EAS Push (temp)"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash /tmp/eas_push5.sh"
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [agent]
 stack = "PNPM_WORKSPACE"
