@@ -69,11 +69,11 @@ interface EnvContext {
 }
 
 interface HudState {
-  brain?:         BrainTarget | null;
-  scan?:          ScanData    | null;
-  tide?:          TideContext  | null;
-  env?:           EnvContext;
-  updatedAt:      number;
+  brain?:     BrainTarget | null;
+  scan?:      ScanData    | null;
+  tide?:      TideContext  | null;
+  env?:       EnvContext;
+  updatedAt:  number;
   brainUpdatedAt: number;
 }
 
@@ -104,6 +104,7 @@ export default function HudTab() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Live dot pulse
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
@@ -117,17 +118,21 @@ export default function HudTab() {
 
   const fetchData = useCallback(async () => {
     if (stopped) return;
-    try {
-      const r = await fetch(HUD_DATA_URL, { signal: AbortSignal.timeout(8000) });
-      if (!r.ok) throw new Error("non-ok");
-      const json = await r.json() as HudState;
-      setData(json);
-      setError(false);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await fetch(HUD_DATA_URL, { signal: AbortSignal.timeout(12_000) });
+        if (!r.ok) throw new Error("non-ok");
+        const json = await r.json() as HudState;
+        setData(json);
+        setError(false);
+        setLoading(false);
+        return;
+      } catch {
+        if (attempt === 0) await new Promise<void>((r) => setTimeout(r, 2000));
+      }
     }
+    setError(true);
+    setLoading(false);
   }, [stopped]);
 
   const startPolling = useCallback(() => {
@@ -153,20 +158,32 @@ export default function HudTab() {
     return stopPolling;
   }, [stopped, startPolling, stopPolling]);
 
-  const handleStop    = useCallback(() => setStopped(true),  []);
-  const handleResume  = useCallback(() => setStopped(false), []);
-  const handleRefresh = useCallback(() => { setLoading(true); setError(false); fetchData(); }, [fetchData]);
+  const handleStop = useCallback(() => {
+    setStopped(true);
+  }, []);
+
+  const handleResume = useCallback(() => {
+    setStopped(false);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    fetchData();
+  }, [fetchData]);
 
   const brain = data?.brain ?? null;
   const scan  = data?.scan  ?? null;
   const tide  = data?.tide  ?? null;
   const env   = data?.env;
   const hasData = !!(brain || scan);
+
   const urgencyColor = brain ? (URGENCY_COLOR[brain.urgency] ?? "#ffffff66") : "#ffffff66";
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
 
+      {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <MaterialCommunityIcons name="glasses" size={20} color="#ffd700" />
@@ -203,6 +220,7 @@ export default function HudTab() {
         </View>
       </View>
 
+      {/* ── Stopped screen ── */}
       {stopped && (
         <View style={styles.centreBox}>
           <MaterialCommunityIcons name="pause-circle-outline" size={60} color="#ffffff22" />
@@ -215,24 +233,28 @@ export default function HudTab() {
         </View>
       )}
 
+      {/* ── Loading ── */}
       {!stopped && loading && (
         <View style={styles.centreBox}>
           <ActivityIndicator color="#00d4aa" size="large" />
+          <Text style={styles.centreTitle} />
           <Text style={styles.centreSub}>Connecting to brain…</Text>
         </View>
       )}
 
-      {!stopped && !loading && error && (
+      {/* ── Error with no prior data ── */}
+      {!stopped && !loading && error && !hasData && (
         <View style={styles.centreBox}>
           <MaterialCommunityIcons name="wifi-off" size={48} color="#ffffff33" />
           <Text style={styles.centreTitle}>Brain Offline</Text>
-          <Text style={styles.centreSub}>Cannot reach the API server.{"\n"}Make sure you are on the same network.</Text>
+          <Text style={styles.centreSub}>Cannot reach the API server.{"\n"}Retrying automatically…</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={handleRefresh}>
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={styles.retryText}>Retry Now</Text>
           </TouchableOpacity>
         </View>
       )}
 
+      {/* ── Waiting for first scan ── */}
       {!stopped && !loading && !error && !hasData && (
         <View style={styles.centreBox}>
           <MaterialCommunityIcons name="radar" size={52} color="#00d4aa44" />
@@ -241,9 +263,23 @@ export default function HudTab() {
         </View>
       )}
 
-      {!stopped && !loading && !error && hasData && (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      {/* ── Reconnecting banner (shown over stale data) ── */}
+      {!stopped && !loading && error && hasData && (
+        <View style={styles.reconnectBanner}>
+          <ActivityIndicator color="#ffb300" size="small" />
+          <Text style={styles.reconnectText}>Weak signal — reconnecting…</Text>
+        </View>
+      )}
 
+      {/* ── Live data (or stale data during reconnection) ── */}
+      {!stopped && !loading && hasData && (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+
+          {/* ── Cast Zone (highlighted hero card) ── */}
           {brain && (
             <View style={styles.castZoneCard}>
               <View style={styles.castZoneHeader}>
@@ -258,6 +294,7 @@ export default function HudTab() {
             </View>
           )}
 
+          {/* ── Species + lure row ── */}
           {brain && (
             <View style={styles.row}>
               <View style={[styles.infoCard, { flex: 1 }]}>
@@ -271,6 +308,7 @@ export default function HudTab() {
             </View>
           )}
 
+          {/* ── Depth + technique ── */}
           {brain && (
             <View style={styles.row}>
               <View style={[styles.infoCard, { flex: 1 }]}>
@@ -284,6 +322,7 @@ export default function HudTab() {
             </View>
           )}
 
+          {/* ── Reasoning ── */}
           {brain?.reasoning ? (
             <View style={styles.reasoningCard}>
               <Text style={styles.reasoningLabel}>AI REASONING</Text>
@@ -291,6 +330,7 @@ export default function HudTab() {
             </View>
           ) : null}
 
+          {/* ── Tide note ── */}
           {brain?.tideNote ? (
             <View style={[styles.reasoningCard, { borderLeftColor: "#00a8ff" }]}>
               <Text style={[styles.reasoningLabel, { color: "#00a8ff" }]}>
@@ -305,12 +345,14 @@ export default function HudTab() {
             </View>
           ) : null}
 
+          {/* ── Season note ── */}
           {data.brain?.seasonNote ? (
             <View style={styles.infoRow}>
               <MaterialCommunityIcons name="weather-partly-cloudy" size={14} color="#00d4aa" />
               <Text style={styles.infoText}>{data.brain.seasonNote}</Text>
             </View>
           ) : null}
+          {/* ── Community note ── */}
           {data.brain?.communityNote ? (
             <View style={styles.infoRow}>
               <MaterialCommunityIcons name="account-group" size={14} color="#00e5ff" />
@@ -318,13 +360,14 @@ export default function HudTab() {
             </View>
           ) : null}
 
+          {/* ── Sonar row ── */}
           {scan && (
             <View style={styles.sonarRow}>
               {[
-                { label: "Fish",   value: String(scan.fishCount ?? "—"),                       color: "#00d4aa" },
-                { label: "Depth",  value: scan.depth || "—",                                   color: "#00a8ff" },
-                { label: "Barra%", value: scan.barraPct != null ? `${scan.barraPct}%` : "—",  color: "#ffd700" },
-                { label: "Temp",   value: scan.waterTemp || "—",                               color: "#ff8800" },
+                { label: "Fish",    value: String(scan.fishCount ?? "—"),          color: "#00d4aa" },
+                { label: "Depth",   value: scan.depth || "—",                     color: "#00a8ff" },
+                { label: "Barra%",  value: scan.barraPct != null ? `${scan.barraPct}%` : "—", color: "#ffd700" },
+                { label: "Temp",    value: scan.waterTemp || "—",                 color: "#ff8800" },
               ].map((m) => (
                 <View key={m.label} style={styles.sonarBox}>
                   <Text style={[styles.sonarVal, { color: m.color }]}>{m.value}</Text>
@@ -334,6 +377,7 @@ export default function HudTab() {
             </View>
           )}
 
+          {/* ── Season / moon ── */}
           {env && (
             <View style={styles.tagRow}>
               {env.season    && <View style={styles.envTag}><Text style={styles.envTagText}>{env.season}</Text></View>}
@@ -342,6 +386,7 @@ export default function HudTab() {
             </View>
           )}
 
+          {/* ── Croc / bird alerts ── */}
           {scan?.crocAlert && (
             <View style={styles.alertCard}>
               <Text style={styles.alertTitle}>🐊 CROC ALERT</Text>
@@ -355,6 +400,7 @@ export default function HudTab() {
             </View>
           )}
 
+          {/* ── Updated timestamp ── */}
           {data && data.brainUpdatedAt > 0 && (
             <Text style={styles.timestamp}>
               Brain updated {Math.round((Date.now() - data.brainUpdatedAt) / 1000)}s ago
@@ -368,57 +414,378 @@ export default function HudTab() {
 }
 
 const styles = StyleSheet.create({
-  root:            { flex: 1, backgroundColor: "#050d1c" },
-  header:          { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 10, backgroundColor: "#0a1628", borderBottomWidth: 1, borderBottomColor: "#ffd70033" },
-  headerLeft:      { flexDirection: "row", alignItems: "center", gap: 8 },
-  headerRight:     { flexDirection: "row", alignItems: "center", gap: 8 },
-  headerTitle:     { color: "#fff", fontWeight: "700", fontSize: 15, letterSpacing: 0.8 },
-  liveDot:         { width: 7, height: 7, borderRadius: 4, backgroundColor: "#00d4aa", marginLeft: 2 },
-  liveLabel:       { color: "#00d4aa", fontSize: 10, fontWeight: "700", letterSpacing: 1.5 },
-  stoppedBadge:    { backgroundColor: "#ff440022", borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: "#ff440055", marginLeft: 4 },
-  stoppedBadgeText:{ color: "#ff4400", fontSize: 10, fontWeight: "700", letterSpacing: 1.2 },
-  stopBtn:         { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: "#ff440018", borderWidth: 1, borderColor: "#ff440055" },
-  stopBtnText:     { color: "#ff4400", fontSize: 12, fontWeight: "700" },
-  iconBtn:         { padding: 4 },
-  resumeSmallBtn:  { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: "#ffd70018", borderWidth: 1, borderColor: "#ffd70055" },
-  resumeSmallText: { color: "#ffd700", fontSize: 12, fontWeight: "700" },
-  centreBox:       { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 32 },
-  centreTitle:     { color: "#fff", fontSize: 18, fontWeight: "700", textAlign: "center" },
-  centreSub:       { color: "#ffffff66", fontSize: 13, textAlign: "center", lineHeight: 20 },
-  retryBtn:        { marginTop: 6, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: "#00d4aa22", borderRadius: 20, borderWidth: 1, borderColor: "#00d4aa66" },
-  retryText:       { color: "#00d4aa", fontWeight: "700", fontSize: 14 },
-  resumeBtn:       { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: "#ffd70022", borderRadius: 22, borderWidth: 1.5, borderColor: "#ffd70066", marginTop: 6 },
-  resumeBtnText:   { color: "#ffd700", fontWeight: "700", fontSize: 15 },
-  scroll:          { flex: 1 },
-  scrollContent:   { padding: 14, gap: 10, paddingBottom: 32 },
-  castZoneCard:    { backgroundColor: "#ffd70012", borderWidth: 1.5, borderColor: "#ffd70055", borderRadius: 14, padding: 14, gap: 8 },
-  castZoneHeader:  { flexDirection: "row", alignItems: "center", gap: 7 },
-  castZoneLabel:   { color: "#ffd700", fontSize: 10, fontWeight: "900", letterSpacing: 2.5, flex: 1 },
-  urgencyBadge:    { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
-  urgencyText:     { fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
-  castZoneValue:   { color: "#fff", fontSize: 18, fontWeight: "800", lineHeight: 24 },
-  confRow:         { flexDirection: "row", alignItems: "center", gap: 8 },
-  confTrack:       { flex: 1, height: 4, backgroundColor: "#ffffff12", borderRadius: 2, overflow: "hidden" },
-  confFill:        { height: "100%", borderRadius: 2 },
-  confPct:         { fontSize: 13, fontWeight: "800", minWidth: 36, textAlign: "right" },
-  row:             { flexDirection: "row", gap: 10 },
-  infoCard:        { backgroundColor: "#ffffff08", borderWidth: 1, borderColor: "#ffffff12", borderRadius: 12, padding: 11, gap: 4 },
-  infoCardLabel:   { color: "#ffffff55", fontSize: 9, fontWeight: "800", letterSpacing: 1.8 },
-  infoCardValue:   { color: "#fff", fontSize: 15, fontWeight: "700", lineHeight: 20 },
-  reasoningCard:   { borderLeftWidth: 3, borderLeftColor: "#ffd700", backgroundColor: "#ffd7000a", paddingVertical: 9, paddingHorizontal: 12, gap: 4, borderRadius: 4 },
-  reasoningLabel:  { color: "#ffd700", fontSize: 9, fontWeight: "800", letterSpacing: 1.8 },
-  reasoningText:   { color: "#ffffffcc", fontSize: 12, lineHeight: 18, fontWeight: "500" },
-  infoRow:         { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 4 },
-  infoText:        { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "500", flex: 1, lineHeight: 18 },
-  sonarRow:        { flexDirection: "row", gap: 8 },
-  sonarBox:        { flex: 1, backgroundColor: "#ffffff07", borderWidth: 1, borderColor: "#ffffff10", borderRadius: 10, padding: 10, alignItems: "center", gap: 2 },
-  sonarVal:        { fontSize: 17, fontWeight: "900", lineHeight: 20 },
-  sonarLbl:        { color: "#ffffff55", fontSize: 8, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase" },
-  tagRow:          { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  envTag:          { borderWidth: 1, borderColor: "#ffffff22", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: "#ffffff08" },
-  envTagText:      { color: "#ffffff99", fontSize: 10, fontWeight: "600" },
-  alertCard:       { borderWidth: 1, borderColor: "#ff3b3044", backgroundColor: "#ff3b3012", borderRadius: 12, padding: 12, gap: 5 },
-  alertTitle:      { color: "#ff3b30", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
-  alertText:       { color: "#ffffffcc", fontSize: 12, lineHeight: 18 },
-  timestamp:       { color: "#ffffff33", fontSize: 10, textAlign: "center", marginTop: 4 },
+  root: {
+    flex: 1,
+    backgroundColor: "#050d1c",
+  },
+
+  /* Header */
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#0a1628",
+    borderBottomWidth: 1,
+    borderBottomColor: "#ffd70033",
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerTitle: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 15,
+    letterSpacing: 0.8,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#00d4aa",
+    marginLeft: 2,
+  },
+  liveLabel: {
+    color: "#00d4aa",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.5,
+  },
+  stoppedBadge: {
+    backgroundColor: "#ff440022",
+    borderRadius: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "#ff440055",
+    marginLeft: 4,
+  },
+  stoppedBadgeText: {
+    color: "#ff4400",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+  },
+  stopBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: "#ff440018",
+    borderWidth: 1,
+    borderColor: "#ff440055",
+  },
+  stopBtnText: {
+    color: "#ff4400",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  iconBtn: {
+    padding: 4,
+  },
+  resumeSmallBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: "#ffd70018",
+    borderWidth: 1,
+    borderColor: "#ffd70055",
+  },
+  resumeSmallText: {
+    color: "#ffd700",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  /* Centre states */
+  centreBox: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingHorizontal: 32,
+  },
+  centreTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  centreSub: {
+    color: "#ffffff66",
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  retryBtn: {
+    marginTop: 6,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: "#00d4aa22",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#00d4aa66",
+  },
+  retryText: {
+    color: "#00d4aa",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  reconnectBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#ffb30022",
+    borderBottomWidth: 1,
+    borderBottomColor: "#ffb30044",
+    paddingVertical: 8,
+  },
+  reconnectText: {
+    color: "#ffb300",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  resumeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    backgroundColor: "#ffd70022",
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: "#ffd70066",
+    marginTop: 6,
+  },
+  resumeBtnText: {
+    color: "#ffd700",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+
+  /* Scroll */
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 14,
+    gap: 10,
+    paddingBottom: 32,
+  },
+
+  /* Cast Zone hero */
+  castZoneCard: {
+    backgroundColor: "#ffd70012",
+    borderWidth: 1.5,
+    borderColor: "#ffd70055",
+    borderRadius: 14,
+    padding: 14,
+    gap: 8,
+  },
+  castZoneHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  castZoneLabel: {
+    color: "#ffd700",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 2.5,
+    flex: 1,
+  },
+  urgencyBadge: {
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  urgencyText: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+  },
+  castZoneValue: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "800",
+    lineHeight: 24,
+  },
+  confRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  confTrack: {
+    flex: 1,
+    height: 4,
+    backgroundColor: "#ffffff12",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  confFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+  confPct: {
+    fontSize: 13,
+    fontWeight: "800",
+    minWidth: 36,
+    textAlign: "right",
+  },
+
+  /* Info cards */
+  row: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  infoCard: {
+    backgroundColor: "#ffffff08",
+    borderWidth: 1,
+    borderColor: "#ffffff12",
+    borderRadius: 12,
+    padding: 11,
+    gap: 4,
+  },
+  infoCardLabel: {
+    color: "#ffffff55",
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1.8,
+  },
+  infoCardValue: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+
+  /* Reasoning */
+  reasoningCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: "#ffd700",
+    borderRadius: 4,
+    backgroundColor: "#ffd7000a",
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    gap: 4,
+  },
+  reasoningLabel: {
+    color: "#ffd700",
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1.8,
+  },
+  reasoningText: {
+    color: "#ffffffcc",
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "500",
+  },
+
+  /* Info row (season / community notes) */
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  infoText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    fontWeight: "500",
+    flex: 1,
+    lineHeight: 18,
+  },
+
+  /* Sonar strip */
+  sonarRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  sonarBox: {
+    flex: 1,
+    backgroundColor: "#ffffff07",
+    borderWidth: 1,
+    borderColor: "#ffffff10",
+    borderRadius: 10,
+    padding: 10,
+    alignItems: "center",
+    gap: 2,
+  },
+  sonarVal: {
+    fontSize: 17,
+    fontWeight: "900",
+    lineHeight: 20,
+  },
+  sonarLbl: {
+    color: "#ffffff55",
+    fontSize: 8,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+
+  /* Env tags */
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  envTag: {
+    borderWidth: 1,
+    borderColor: "#ffffff22",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#ffffff08",
+  },
+  envTagText: {
+    color: "#ffffff99",
+    fontSize: 10,
+    fontWeight: "600",
+  },
+
+  /* Alert cards */
+  alertCard: {
+    borderWidth: 1,
+    borderColor: "#ff3b3044",
+    backgroundColor: "#ff3b3012",
+    borderRadius: 12,
+    padding: 12,
+    gap: 5,
+  },
+  alertTitle: {
+    color: "#ff3b30",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  alertText: {
+    color: "#ffffffcc",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+
+  /* Timestamp */
+  timestamp: {
+    color: "#ffffff33",
+    fontSize: 10,
+    textAlign: "center",
+    marginTop: 4,
+  },
 });

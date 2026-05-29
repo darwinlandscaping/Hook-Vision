@@ -48,22 +48,40 @@ export interface UseHudStreamResult {
   push:    (payload: HudPayload) => void;
 }
 
+async function pushWithRetry(
+  payload: HudPayload,
+  retries = 3,
+  baseDelayMs = 2000,
+): Promise<boolean> {
+  const body = JSON.stringify(payload);
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 10_000);
+      const r = await fetch(HUD_UPDATE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      if (r.ok) return true;
+    } catch { /* retry */ }
+    if (attempt < retries - 1) {
+      await new Promise<void>((r) => setTimeout(r, baseDelayMs * (attempt + 1)));
+    }
+  }
+  return false;
+}
+
 export function useHudStream(): UseHudStreamResult {
   const [status, setStatus] = useState<HudStatus>("idle");
 
   const push = useCallback((payload: HudPayload) => {
     setStatus("pushing");
-    fetch(HUD_UPDATE_URL, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(payload),
-    })
-      .then((r) => {
-        setStatus(r.ok ? "ok" : "error");
-        setTimeout(() => setStatus("idle"), 2000);
-      })
-      .catch(() => {
-        setStatus("error");
+    pushWithRetry(payload)
+      .then((ok) => {
+        setStatus(ok ? "ok" : "error");
         setTimeout(() => setStatus("idle"), 2000);
       });
   }, []);

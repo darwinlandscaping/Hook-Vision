@@ -465,7 +465,7 @@ router.get("/hud/events", (req, res) => {
   sseClients.add(res);
   const heartbeat = setInterval(() => {
     try { res.write(":heartbeat\n\n"); } catch { clearInterval(heartbeat); sseClients.delete(res); }
-  }, 30_000);
+  }, 15_000);
   req.on("close", () => { clearInterval(heartbeat); sseClients.delete(res); });
 });
 

@@ -118,17 +118,21 @@ export default function HudTab() {
 
   const fetchData = useCallback(async () => {
     if (stopped) return;
-    try {
-      const r = await fetch(HUD_DATA_URL, { signal: AbortSignal.timeout(8000) });
-      if (!r.ok) throw new Error("non-ok");
-      const json = await r.json() as HudState;
-      setData(json);
-      setError(false);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await fetch(HUD_DATA_URL, { signal: AbortSignal.timeout(12_000) });
+        if (!r.ok) throw new Error("non-ok");
+        const json = await r.json() as HudState;
+        setData(json);
+        setError(false);
+        setLoading(false);
+        return;
+      } catch {
+        if (attempt === 0) await new Promise<void>((r) => setTimeout(r, 2000));
+      }
     }
+    setError(true);
+    setLoading(false);
   }, [stopped]);
 
   const startPolling = useCallback(() => {
@@ -238,14 +242,14 @@ export default function HudTab() {
         </View>
       )}
 
-      {/* ── Error ── */}
-      {!stopped && !loading && error && (
+      {/* ── Error with no prior data ── */}
+      {!stopped && !loading && error && !hasData && (
         <View style={styles.centreBox}>
           <MaterialCommunityIcons name="wifi-off" size={48} color="#ffffff33" />
           <Text style={styles.centreTitle}>Brain Offline</Text>
-          <Text style={styles.centreSub}>Cannot reach the API server.{"\n"}Make sure you are on the same network.</Text>
+          <Text style={styles.centreSub}>Cannot reach the API server.{"\n"}Retrying automatically…</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={handleRefresh}>
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={styles.retryText}>Retry Now</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -259,8 +263,16 @@ export default function HudTab() {
         </View>
       )}
 
-      {/* ── Live data ── */}
-      {!stopped && !loading && !error && hasData && (
+      {/* ── Reconnecting banner (shown over stale data) ── */}
+      {!stopped && !loading && error && hasData && (
+        <View style={styles.reconnectBanner}>
+          <ActivityIndicator color="#ffb300" size="small" />
+          <Text style={styles.reconnectText}>Weak signal — reconnecting…</Text>
+        </View>
+      )}
+
+      {/* ── Live data (or stale data during reconnection) ── */}
+      {!stopped && !loading && hasData && (
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -531,6 +543,21 @@ const styles = StyleSheet.create({
     color: "#00d4aa",
     fontWeight: "700",
     fontSize: 14,
+  },
+  reconnectBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#ffb30022",
+    borderBottomWidth: 1,
+    borderBottomColor: "#ffb30044",
+    paddingVertical: 8,
+  },
+  reconnectText: {
+    color: "#ffb300",
+    fontSize: 13,
+    fontWeight: "600",
   },
   resumeBtn: {
     flexDirection: "row",
