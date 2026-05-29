@@ -30,7 +30,7 @@ for i in "${!APPS[@]}"; do
 
   cd "$DIR"
 
-  CI=1 EXPO_TOKEN="$EXPO_TOKEN" EAS_SKIP_AUTO_FINGERPRINT=1 EAS_NO_VCS=1 METRO_MAX_WORKERS=1 \
+  CI=1 EXPO_TOKEN="$EXPO_TOKEN" EAS_SKIP_AUTO_FINGERPRINT=1 METRO_MAX_WORKERS=1 \
     eas update --branch "$BRANCH" --platform all --message "$MSG" --non-interactive 2>&1 | tee /tmp/eas-update-$APP.log
 
   PROJECT_ID=$(grep -o '"projectId"[[:space:]]*:[[:space:]]*"[^"]*"' app.json | head -1 | grep -o '"[^"]*"$' | tr -d '"')
