@@ -59,79 +59,85 @@ const server = app.listen(port, (err) => {
     socket.setKeepAlive(true, 30_000);
   });
 
-  // Auto-detect the best available OpenAI models for each tier (top/mid/fast).
-  // Refreshes every 6 hours so new model releases are picked up automatically.
+  // ── Phase 1: Immediate (server is ready for requests NOW) ─────────────────
+  // Model auto-detect and daily conditions are lightweight — run immediately.
   initModels().catch((err) =>
     logger.warn({ err }, "Model auto-select failed — using hardcoded fallbacks")
   );
 
-  // Load + compress demo reference images (now async — thumbnails built at startup).
-  // Chain sonar brain init AFTER so it can use the compressed thumbnails.
-  loadDemoReferences()
-    .catch((err) => logger.warn({ err }, "Demo reference load/compress failed"))
-    .then(() =>
-      initSonarBrain().catch((err) =>
-        logger.warn({ err }, "Sonar brain init failed — analysis will use text-only prompt")
-      )
-    );
+  // Periodic model refresh every 6 hours
+  setInterval(() => {
+    initModels().catch(() => {});
+  }, 6 * 60 * 60 * 1000);
 
-  // Kick off the daily data refresh immediately on startup,
-  // then it auto-schedules itself at midnight WA time (AWST UTC+8:00).
   refreshDailyConditions().catch((err) =>
     logger.error({ err }, "Initial daily conditions refresh failed")
   );
 
-  // Initialise the Lates reference library:
-  // Fetches ALL available Lates calcarifer (barramundi/Asian sea bass, ~700 globally) +
-  // Lates niloticus (Nile perch, ~100 globally) from iNaturalist — all quality grades,
-  // no region restriction. After iNat sync completes, Wikimedia Commons collection runs
-  // as a chained background job (adds curated CC-licensed photos for both species).
-  initBarraLibrary()
-    .then(() =>
-      collectWikimediaLates().catch((err) =>
-        logger.warn({ err }, "Wikimedia Lates collection failed — iNat photos still active")
-      )
-    )
-    .catch((err) =>
-      logger.warn({ err }, "Barra library init failed — detection will use text-only prompt")
-    );
-
-  // Initialise contrast species library (Jack, Threadfin Salmon, Fingermark).
-  // On startup: load from DB into memory cache only (fast, no network).
-  // Full iNaturalist sync deferred to 8 minutes after boot so it doesn't
-  // compete with barra/croc/bird inits for memory.
-  initContrastLibrary()
-    .catch((err) =>
-      logger.warn({ err }, "Contrast library init failed")
-    );
-  setTimeout(() => {
-    syncContrastSpecies().catch((err) =>
-      logger.warn({ err }, "Contrast species deferred sync failed")
-    );
-  }, 8 * 60 * 1000);  // 8 minutes after boot
-
-  // Croc + bird libraries are staggered so they don't compete with the barra init
-  // for memory at startup (all loading 80 refs + downloading thumbnails sequentially).
-  // Croc: 2 minutes after boot. Bird: 4 minutes after boot.
-  setTimeout(() => {
-    initCrocLibrary().catch((err) =>
-      logger.warn({ err }, "Croc library init failed — croc detection will use text-only prompt")
-    );
-  }, 2 * 60 * 1000);
-
-  setTimeout(() => {
-    initBirdLibrary().catch((err) =>
-      logger.warn({ err }, "Bird library init failed — surface detection will use text-only prompt")
-    );
-  }, 4 * 60 * 1000);
-
-  // Seed brain with expert regional fishing knowledge (WA/NQ/NT).
-  // Idempotent — checks for seed marker before inserting, so safe to call on every boot.
   seedBrainKnowledge().catch((err) =>
     logger.warn({ err }, "Brain knowledge seed failed — brain will rely on user-submitted data only")
   );
 
-  // Daily library refresh — runs 6 hours after boot (offset from daily conditions)
+  try {
+    initCrocguardDb();
+  } catch (err) {
+    logger.warn({ err }, "CrocGuard DB init failed — detection API will be limited");
+  }
+
+  // ── Phase 2: 10s after boot — demo refs + sonar brain (local assets only) ──
+  setTimeout(() => {
+    loadDemoReferences()
+      .catch((err) => logger.warn({ err }, "Demo reference load/compress failed"))
+      .then(() =>
+        initSonarBrain().catch((err) =>
+          logger.warn({ err }, "Sonar brain init failed — analysis will use text-only prompt")
+        )
+      );
+    initContrastLibrary().catch((err) =>
+      logger.warn({ err }, "Contrast library init failed")
+    );
+    initCrocguardDetector().catch((err) =>
+      logger.warn({ err }, "CrocGuard detector start failed")
+    );
+  }, 10_000);
+
+  // ── Phase 3: 90s after boot — heavy network inits (iNaturalist downloads) ──
+  // Staggered aggressively so the server stays responsive for user requests.
+  setTimeout(() => {
+    logger.info("[startup] Phase 3: starting barra library init");
+    initBarraLibrary()
+      .then(() =>
+        collectWikimediaLates().catch((err) =>
+          logger.warn({ err }, "Wikimedia Lates collection failed — iNat photos still active")
+        )
+      )
+      .catch((err) =>
+        logger.warn({ err }, "Barra library init failed — detection will use text-only prompt")
+      );
+  }, 90_000);
+
+  setTimeout(() => {
+    logger.info("[startup] Phase 3: starting croc library init");
+    initCrocLibrary().catch((err) =>
+      logger.warn({ err }, "Croc library init failed — croc detection will use text-only prompt")
+    );
+  }, 3 * 60 * 1000);
+
+  setTimeout(() => {
+    logger.info("[startup] Phase 3: starting bird library init");
+    initBirdLibrary().catch((err) =>
+      logger.warn({ err }, "Bird library init failed — surface detection will use text-only prompt")
+    );
+  }, 5 * 60 * 1000);
+
+  setTimeout(() => {
+    logger.info("[startup] Phase 3: starting contrast species sync");
+    syncContrastSpecies().catch((err) =>
+      logger.warn({ err }, "Contrast species deferred sync failed")
+    );
+  }, 10 * 60 * 1000);
+
+  // Daily library refresh — 6 hours after boot, then every 24 hours
   setTimeout(() => {
     refreshBarraLibrary().catch(() => {});
     refreshCrocLibrary().catch(() => {});
@@ -142,16 +148,4 @@ const server = app.listen(port, (err) => {
       refreshBirdLibrary().catch(() => {});
     }, 24 * 60 * 60 * 1000);
   }, 6 * 60 * 60 * 1000);
-
-  // Initialise CrocGuard detection API:
-  // Creates SQLite DB + tables, hydrates in-memory caches, starts camera
-  // sampling loop and sonar status fusion engine.
-  try {
-    initCrocguardDb();
-    initCrocguardDetector().catch((err) =>
-      logger.warn({ err }, "CrocGuard detector start failed")
-    );
-  } catch (err) {
-    logger.warn({ err }, "CrocGuard init failed — detection API will be limited");
-  }
 });
