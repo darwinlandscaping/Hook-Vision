@@ -19,8 +19,11 @@ const BASE_URL =
       ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
       : "";
 
+const TIDES_PORT   = process.env.EXPO_PUBLIC_TIDES_PORT ?? "darwin";
 const HUD_DATA_URL = `${BASE_URL}/api/hud/data`;
+const TIDES_URL    = BASE_URL ? `${BASE_URL}/api/tides?port=${TIDES_PORT}&days=1` : "";
 const POLL_MS      = 6000;
+const TIDES_POLL_MS = 5 * 60 * 1000;
 const PANEL_SECS   = 20;
 const PANEL_COUNT  = 8;
 
