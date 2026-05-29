@@ -136,6 +136,11 @@ export default function WelcomeScreen() {
     });
   }, []);
 
+  useEffect(() => {
+    const t = setTimeout(() => router.replace("/(tabs)/home"), 1500);
+    return () => clearTimeout(t);
+  }, [router]);
+
   const enter = () => router.replace("/(tabs)/home");
 
   const flagRotate     = windAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: ["-2deg", "2.5deg", "-2deg"] });
