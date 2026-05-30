@@ -449,7 +449,7 @@ export default function HudTab() {
   const fetchData = useCallback(async () => {
     if (!HUD_DATA_URL) return;
     try {
-      const r = await fetch(HUD_DATA_URL, { signal: AbortSignal.timeout(8000) });
+      const r = await fetch(HUD_DATA_URL);
       if (!r.ok) throw new Error("non-ok");
       const raw = await r.json() as Record<string, unknown>;
       // New format has scan/brain/brainUpdatedAt; old format is a flat HudData object
@@ -482,7 +482,7 @@ export default function HudTab() {
   const fetchTides = useCallback(async () => {
     if (!TIDES_URL) return;
     try {
-      const r = await fetch(TIDES_URL, { signal: AbortSignal.timeout(8000) });
+      const r = await fetch(TIDES_URL);
       if (!r.ok) return;
       const body = await r.json() as { data?: { tides: TideEntry[] }[]; tides?: { tides: TideEntry[] }[] };
       const all  = (body.data ?? body.tides ?? []).flatMap(d => d.tides ?? []);

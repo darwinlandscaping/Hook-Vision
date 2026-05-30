@@ -61,7 +61,7 @@ async function fetchDailyWeather(): Promise<DailyWeather | null> {
   try {
     const domain = process.env.EXPO_PUBLIC_DOMAIN;
     const baseUrl = domain ? `https://${domain}` : "";
-    const res = await fetch(`${baseUrl}/api/daily-conditions`, { signal: AbortSignal.timeout(10_000) });
+    const res = await fetch(`${baseUrl}/api/daily-conditions`);
     if (!res.ok) return null;
     const d = await res.json();
     return (d.weather as DailyWeather) ?? null;
@@ -74,7 +74,7 @@ async function fetchDailyWeather(): Promise<DailyWeather | null> {
 async function fetchTidesForLocation(locationId: string): Promise<TideResponse> {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   const baseUrl = domain ? `https://${domain}` : "";
-  const res = await fetch(`${baseUrl}/api/tides?location=${locationId}&days=3`, { signal: AbortSignal.timeout(12_000) });
+  const res = await fetch(`${baseUrl}/api/tides?location=${locationId}&days=3`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Network error" }));
     throw new Error((err as { error: string }).error || "Failed to load tides");
