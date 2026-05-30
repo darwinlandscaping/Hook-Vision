@@ -48,6 +48,7 @@ interface TideContext {
   port: string; state: string; phase: string;
   nextTide?: { type: string; time: string; height: number } | null;
 }
+interface TideEntry { time: string; type: string; height: number; timestamp: number; }
 interface CommunityContext {
   hotSpecies: { species: string; count: number; trend: string }[];
   tips: string[]; summary: string; reportCount: number;
@@ -154,26 +155,52 @@ function PanelBarra({ s }: { s: HudData | null | undefined }) {
   );
 }
 
-function PanelEnvironment({ tide, env, s }: { tide?: TideContext | null; env?: EnvContext; s?: HudData | null }) {
+function PanelEnvironment({ tide, env, s, upcomingTides }: {
+  tide?: TideContext | null; env?: EnvContext; s?: HudData | null; upcomingTides?: TideEntry[];
+}) {
+  const now = Date.now();
+  const nextIdx = upcomingTides ? upcomingTides.findIndex(t => t.timestamp > now) : -1;
+  const stateLabel =
+    tide?.state === "rising"  ? "↑ Rising"  :
+    tide?.state === "falling" ? "↓ Falling" :
+    tide?.state === "high"    ? "⬆ HIGH"    :
+    tide?.state === "low"     ? "⬇ LOW"     : "—";
   return (
     <View style={styles.panelBody}>
-      <Text style={[styles.heroText, { color: C.blue, fontSize: 18, lineHeight: 26 }]} numberOfLines={3}>
-        {tide?.phase || "Loading tide data…"}
+      <Text style={[styles.heroText, { color: C.blue, fontSize: 16, lineHeight: 22 }]} numberOfLines={3}>
+        {tide?.phase || "Checking tides…"}
       </Text>
-      <View style={styles.metricRow3}>
-        <MetricBox label="Tide"
-          value={tide?.state === "rising" ? "↑ Rising" : tide?.state === "falling" ? "↓ Falling" : tide?.state === "high" ? "⬆ HIGH" : tide?.state === "low" ? "⬇ LOW" : "—"}
-          color={C.blue} accent={C.blue}
-        />
-        <MetricBox label="Next" value={tide?.nextTide?.type || "—"} />
-        <MetricBox label="Water°" value={(s?.waterTemp) || "—"} />
-      </View>
-      {!!(tide?.nextTide) && (
+
+      {upcomingTides && upcomingTides.length > 0 ? (
+        <View style={styles.tideList}>
+          {upcomingTides.map((t, i) => {
+            const isNext = i === nextIdx;
+            const isHW   = t.type === "HW";
+            const col    = isNext ? C.gold : isHW ? C.teal : C.blue;
+            return (
+              <View key={t.timestamp} style={[styles.tideRow, isNext && styles.tideRowNext]}>
+                <Text style={[styles.tideArrow, { color: col }]}>{isHW ? "↑" : "↓"}</Text>
+                <Text style={[styles.tideType,  { color: col }]}>{t.type}</Text>
+                <Text style={styles.tideTime}>{t.time}</Text>
+                <Text style={[styles.tideHt, { color: col }]}>{t.height.toFixed(1)}m</Text>
+                {isNext && <View style={styles.nextBadge}><Text style={styles.nextBadgeText}>NEXT</Text></View>}
+              </View>
+            );
+          })}
+        </View>
+      ) : (
         <InfoBlock
-          text={`Next ${tide.nextTide.type} at ${tide.nextTide.time} — ${tide.nextTide.height}m`}
+          text={tide?.nextTide
+            ? `Next ${tide.nextTide.type} at ${tide.nextTide.time} — ${tide.nextTide.height}m`
+            : "Loading tides…"}
           borderColor={C.blue}
         />
       )}
+
+      <View style={styles.metricRow2}>
+        <MetricBox label="State"  value={stateLabel}        color={C.blue} accent={C.blue} />
+        <MetricBox label="Water°" value={s?.waterTemp || "—"} />
+      </View>
       <View style={styles.tagRow}>
         {!!env?.season    && <View style={[styles.envTag, { borderColor: C.teal  + "88" }]}><Text style={[styles.envTagText, { color: C.teal  }]}>{env.season}</Text></View>}
         {!!env?.moonPhase && <View style={[styles.envTag, { borderColor: "#ffffff44" }]}><Text style={[styles.envTagText, { color: C.dim   }]}>{env.moonPhase}</Text></View>}
@@ -360,7 +387,8 @@ function WaitingContent({ sub }: { sub: string }) {
 
 export default function HudTab() {
   const insets = useSafeAreaInsets();
-  const [data,    setData]    = useState<HudState | null>(null);
+  const [data,          setData]          = useState<HudState | null>(null);
+  const [upcomingTides, setUpcomingTides] = useState<TideEntry[]>([]);
   const [panelIdx, setPanelIdx] = useState(0);
   const [elapsed,  setElapsed]  = useState(0);
   const [clock,    setClock]    = useState("");
@@ -417,13 +445,30 @@ export default function HudTab() {
     setPanelIdx(idx);
   }, []);
 
-  // Data polling
+  // Data polling — handles both new BrainHudState and legacy flat HudData formats
   const fetchData = useCallback(async () => {
     if (!HUD_DATA_URL) return;
     try {
       const r = await fetch(HUD_DATA_URL, { signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error("non-ok");
-      setData(await r.json() as HudState);
+      const raw = await r.json() as Record<string, unknown>;
+      // New format has scan/brain/brainUpdatedAt; old format is a flat HudData object
+      if ("scan" in raw || "brainUpdatedAt" in raw) {
+        setData(raw as unknown as HudState);
+      } else if ("species" in raw) {
+        // Legacy flat scan — wrap it into HudState shape
+        setData({
+          scan:           raw as unknown as HudData,
+          brain:          null,
+          tide:           null,
+          community:      null,
+          env:            undefined,
+          updatedAt:      (raw.updatedAt as number) ?? Date.now(),
+          brainUpdatedAt: 0,
+        });
+      } else {
+        setData(raw as unknown as HudState);
+      }
     } catch {}
   }, []);
 
@@ -432,6 +477,28 @@ export default function HudTab() {
     const id = setInterval(fetchData, POLL_MS);
     return () => clearInterval(id);
   }, [fetchData]);
+
+  // Tides polling — fetches today's full HW/LW schedule directly
+  const fetchTides = useCallback(async () => {
+    if (!TIDES_URL) return;
+    try {
+      const r = await fetch(TIDES_URL, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return;
+      const body = await r.json() as { data?: { tides: TideEntry[] }[]; tides?: { tides: TideEntry[] }[] };
+      const all  = (body.data ?? body.tides ?? []).flatMap(d => d.tides ?? []);
+      all.sort((a, b) => a.timestamp - b.timestamp);
+      // Keep past tide + all future ones (so we can mark NEXT correctly)
+      const now = Date.now();
+      const upcoming = all.filter(t => t.timestamp > now - 60_000);
+      setUpcomingTides(upcoming.slice(0, 6));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchTides();
+    const id = setInterval(fetchTides, TIDES_POLL_MS);
+    return () => clearInterval(id);
+  }, [fetchTides]);
 
   const scan      = data?.scan      ?? null;
   const brain     = data?.brain     ?? null;
@@ -477,7 +544,7 @@ export default function HudTab() {
 
             {panelIdx === 0 && <PanelSonar       s={scan}                               />}
             {panelIdx === 1 && <PanelBarra        s={scan}                               />}
-            {panelIdx === 2 && <PanelEnvironment  tide={tide}  env={env}  s={scan}      />}
+            {panelIdx === 2 && <PanelEnvironment  tide={tide}  env={env}  s={scan}  upcomingTides={upcomingTides} />}
             {panelIdx === 3 && <PanelBirds        s={scan}                               />}
             {panelIdx === 4 && <PanelCroc         s={scan}                               />}
             {panelIdx === 5 && <PanelWater        s={scan}                               />}
@@ -598,6 +665,17 @@ const styles = StyleSheet.create({
   microLabel:   { fontSize: 8, fontWeight: "700", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 2 },
   fieldText:    { fontSize: 13, fontWeight: "700", lineHeight: 18 },
   techniqueText: { fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.75)", lineHeight: 18 },
+
+  // Tide list
+  tideList:      { gap: 4 },
+  tideRow:       { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 5, paddingHorizontal: 8, borderRadius: 8, backgroundColor: "#ffffff06" },
+  tideRowNext:   { backgroundColor: "#ffd70012", borderWidth: 1, borderColor: "#ffd70033" },
+  tideArrow:     { fontSize: 14, fontWeight: "900", width: 14, textAlign: "center" },
+  tideType:      { fontSize: 12, fontWeight: "900", letterSpacing: 1, width: 22 },
+  tideTime:      { fontSize: 14, fontWeight: "600", color: "#fff", flex: 1 },
+  tideHt:        { fontSize: 13, fontWeight: "700", minWidth: 36, textAlign: "right" },
+  nextBadge:     { backgroundColor: "#ffd70022", borderWidth: 1, borderColor: "#ffd70066", borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+  nextBadgeText: { fontSize: 8, fontWeight: "900", letterSpacing: 1.5, color: "#ffd700" },
 
   // Footer
   footer: {
